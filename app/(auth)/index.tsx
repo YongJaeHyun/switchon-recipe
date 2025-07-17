@@ -1,14 +1,11 @@
 import GoogleLoginButton from 'components/signIn/GoogleLoginButton';
 import KakaoLoginButton from 'components/signIn/KakaoLoginButton';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
 import { Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { logo } from '../utils/assets';
+import { logo } from '../../utils/assets';
 
 export default function LaunchScreen() {
-  const router = useRouter();
-
   return (
     <SafeAreaView className="flex-1 bg-white px-5">
       <View className="mb-28 mt-32 flex-1 items-center justify-between">
@@ -19,7 +16,7 @@ export default function LaunchScreen() {
             스위치온 다이어트, 뭐 먹을지 고민될 땐?
           </Text>
         </View>
-        <View className="items-center gap-4">
+        <View className="items-center gap-8">
           <GoogleLoginButton />
           <KakaoLoginButton />
         </View>

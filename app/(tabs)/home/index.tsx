@@ -1,3 +1,4 @@
+import { logout } from 'api/supabaseAPI';
 import { useState } from 'react';
 import { Button, TextInput, View } from 'react-native';
 
@@ -15,6 +16,7 @@ export default function HomeScreen() {
         style={{ borderWidth: 1, padding: 10, marginBottom: 20 }}
       />
       <Button title="보내기" onPress={handlePress} />
+      <Button title="로그아웃" onPress={logout} />
     </View>
   );
 }

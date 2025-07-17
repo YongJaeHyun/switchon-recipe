@@ -24,7 +24,7 @@ export default function KakaoLoginButton() {
 
   return (
     <Pressable onPress={signInWithKakao}>
-      <Image style={{ width: 320, height: 48 }} source={kakaoIcon} />
+      <Image style={{ width: 310, height: 44 }} source={kakaoIcon} />
     </Pressable>
   );
 }
