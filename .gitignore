@@ -32,8 +32,12 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
 
 # typescript
 *.tsbuildinfo
 
 app-example
+
+# service account key
+gen-lang-client-*.json

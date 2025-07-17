@@ -1,38 +1,39 @@
 {
   "expo": {
-    "name": "switchon-recipe",
+    "name": "스위치온 레시피",
     "slug": "switchon-recipe",
     "version": "1.0.0",
     "scheme": "switchon-recipe",
-
-    "web": {
-      "favicon": "./assets/images/favicon.png"
-    },
-
+    "githubUrl": "https://github.com/YongJaeHyun/switchon-recipe",
     "experiments": {
       "typedRoutes": true
     },
-
+    "web": {
+      "bundler": "metro"
+    },
     "plugins": [
+      [
+        "expo-font",
+        {
+          "fonts": ["node_modules/@expo-google-fonts/roboto/500Medium/Roboto_500Medium.ttf"]
+        }
+      ],
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
+          "image": "./assets/splash.png",
+          "resizeMode": "cover",
           "backgroundColor": "#ffffff"
         }
-      ]
+      ],
+      "expo-font"
     ],
-
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-
     "splash": {
-      "image": "./assets/images/splash.png",
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -41,8 +42,9 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.dltjrrbs2020.switchonrecipe",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true
@@ -53,6 +55,12 @@
         "projectId": "6e4add71-7b1c-405b-845c-0cc15fa653e7"
       }
     },
-    "owner": "dltjrrbs2020"
+    "owner": "dltjrrbs2020",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/6e4add71-7b1c-405b-845c-0cc15fa653e7"
+    }
   }
 }
