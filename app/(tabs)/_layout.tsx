@@ -1,9 +1,10 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Tabs } from 'expo-router';
+import colors from 'tailwindcss/colors';
 
 export default function TabLayout() {
   return (
-    <Tabs screenOptions={{ headerShown: false }}>
+    <Tabs screenOptions={{ tabBarActiveTintColor: colors.green[600], headerShown: false }}>
       <Tabs.Screen
         name="home"
         options={{
