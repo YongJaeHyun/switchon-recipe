@@ -5,10 +5,12 @@ import {
 } from '@react-native-google-signin/google-signin';
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
+import { useUserStore } from 'stores/userStore';
 import { supabase } from '../../lib/supabase';
 
 export default function GoogleLoginButton() {
   const router = useRouter();
+  const setUser = useUserStore((state) => state.setUser);
 
   useEffect(() => {
     GoogleSignin.configure({
@@ -35,6 +37,14 @@ export default function GoogleLoginButton() {
               throw new Error(`Supabase sign-in error: ${error.message}`);
             }
             if (data.user.email) {
+              setUser({
+                id: data.user.id,
+                email: data.user.email,
+                name: data.user.user_metadata.full_name || '',
+                avatar_url: data.user.user_metadata.avatar_url || '',
+                provider: data.user.app_metadata.provider,
+                created_at: data.user.created_at,
+              });
               router.replace('/home');
             }
           } else {

@@ -1,21 +1,18 @@
-import { router } from 'expo-router';
+import { useUserStore } from 'stores/userStore';
 import { supabase } from '../lib/supabase';
 
-const checkSession = async () => {
+const getSession = async () => {
   const { data, error } = await supabase.auth.getSession();
-
   if (error) {
-    console.error('세션 확인 중 오류 발생:', error.message);
+    console.error('세션 가져오기 오류:', error.message);
     return null;
   }
+  return data.session;
+};
 
-  const session = data?.session;
-
-  if (session) {
-    return session;
-  } else {
-    return null;
-  }
+const checkIsLoggedIn = async () => {
+  const session = await getSession();
+  return session?.access_token ? true : false;
 };
 
 const logout = async () => {
@@ -24,8 +21,8 @@ const logout = async () => {
   if (error) {
     console.error('로그아웃 실패:', error.message);
   } else {
-    router.replace('/(auth)');
+    useUserStore.getState().setUser(null);
   }
 };
 
-export { checkSession, logout };
+export { checkIsLoggedIn, getSession, logout };

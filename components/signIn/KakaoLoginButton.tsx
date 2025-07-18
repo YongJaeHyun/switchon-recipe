@@ -1,30 +1,46 @@
+import { login } from '@react-native-seoul/kakao-login';
 import { Image } from 'expo-image';
-import { RelativePathString, useRouter } from 'expo-router';
+import { router } from 'expo-router';
 import { supabase } from 'lib/supabase';
-import { Pressable } from 'react-native';
+import { TouchableHighlight } from 'react-native';
+import { useUserStore } from 'stores/userStore';
 import { kakaoIcon } from 'utils/assets';
 
 export default function KakaoLoginButton() {
-  const router = useRouter();
+  const setUser = useUserStore((state) => state.setUser);
 
   async function signInWithKakao() {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'kakao',
-      options: {
-        redirectTo: 'switchon-recipe://home',
-      },
-    });
-    if (error) {
-      console.error('Kakao login error:', error);
-    }
-    if (data.url) {
-      router.replace(data.url as RelativePathString);
+    try {
+      const response = await login();
+      if (response?.idToken) {
+        const { data, error } = await supabase.auth.signInWithIdToken({
+          provider: 'kakao',
+          token: response.idToken,
+        });
+
+        if (error) {
+          console.error('Kakao login error:', error);
+        }
+        if (data.user.email) {
+          setUser({
+            id: data.user.id,
+            email: data.user.email,
+            name: data.user.user_metadata.full_name || '',
+            avatar_url: data.user.user_metadata.avatar_url || '',
+            provider: data.user.app_metadata.provider,
+            created_at: data.user.created_at,
+          });
+          router.replace('/home');
+        }
+      }
+    } catch (error: any) {
+      console.error('Kakao login failed:', error);
     }
   }
 
   return (
-    <Pressable onPress={signInWithKakao}>
+    <TouchableHighlight onPress={signInWithKakao}>
       <Image style={{ width: 310, height: 44 }} source={kakaoIcon} />
-    </Pressable>
+    </TouchableHighlight>
   );
 }

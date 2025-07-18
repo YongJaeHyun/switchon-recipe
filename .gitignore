@@ -41,3 +41,6 @@ app-example
 
 # service account key
 gen-lang-client-*.json
+
+# android
+android
