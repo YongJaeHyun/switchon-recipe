@@ -1,3 +1,22 @@
 export const logo = require('../assets/icon.png');
 export const googleIcon = require('../assets/images/android_google_icon.png');
 export const kakaoIcon = require('../assets/images/kakao_login_large_wide.png');
+export const recipeButtonBG = require('../assets/images/recipe_button_bg.png');
+
+export const onion = require('../assets/images/ingredients/onion.jpg');
+export const garlic = require('../assets/images/ingredients/garlic.jpg');
+export const redPepperPowder = require('../assets/images/ingredients/redpepper_powder.jpg');
+export const curcuma = require('../assets/images/ingredients/curcuma.jpg');
+export const cabbage = require('../assets/images/ingredients/cabbage.jpg');
+export const eastCabbage = require('../assets/images/ingredients/east_cabbage.jpg');
+export const radish = require('../assets/images/ingredients/radish.jpg');
+export const carrot = require('../assets/images/ingredients/carrot.jpg');
+export const cucumber = require('../assets/images/ingredients/cucumber.jpg');
+export const broccoli = require('../assets/images/ingredients/broccoli.jpg');
+export const spinach = require('../assets/images/ingredients/spinach.jpg');
+export const paprika = require('../assets/images/ingredients/paprika.jpg');
+export const avocado = require('../assets/images/ingredients/avocado.jpg');
+export const bokChoy = require('../assets/images/ingredients/bok_choy.jpg');
+export const perillaOil = require('../assets/images/ingredients/perilla_oil.jpg');
+export const tofu = require('../assets/images/ingredients/tofu.jpg');
+export const softTofu = require('../assets/images/ingredients/soft_tofu.jpg');

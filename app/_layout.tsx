@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { checkSession } from 'api/supabaseAPI';
+import { checkIsLoggedIn } from 'api/supabaseAPI';
 import { useFonts } from 'expo-font';
 import { router, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -12,20 +12,18 @@ const queryClient = new QueryClient();
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const [session, setSession] = useState(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loaded, error] = useFonts({
     pretendard: require('../assets/fonts/Pretendard-Regular.otf'),
   });
 
-  const checkSessionAndLoad = async () => {
-    const session = await checkSession();
-    if (session) {
-      setSession(session);
-    }
-  };
-
   useEffect(() => {
-    checkSessionAndLoad();
+    const checkUserLogin = async () => {
+      const isLoggedIn = await checkIsLoggedIn();
+      setIsLoggedIn(isLoggedIn);
+    };
+
+    checkUserLogin();
   }, []);
 
   useEffect(() => {
@@ -34,12 +32,14 @@ export default function RootLayout() {
     }
   }, [loaded, error]);
 
+  useEffect(() => {
+    if (isLoggedIn) {
+      router.replace('/(tabs)/home');
+    }
+  }, [isLoggedIn]);
+
   if (!loaded && !error) {
     return null;
-  }
-
-  if (session?.access_token) {
-    router.replace('/(tabs)/home');
   }
   return (
     <QueryClientProvider client={queryClient}>
