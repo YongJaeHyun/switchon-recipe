@@ -1,15 +1,21 @@
 import { Image } from 'expo-image';
 import { useState } from 'react';
 import { Text, TouchableHighlight, View } from 'react-native';
+import { useIngredientStore } from 'stores/ingredientStore';
 import colors from 'tailwindcss/colors';
-import { IngredientProps } from 'types/recipe';
+import { IIngredient } from 'types/recipe';
 
-export default function Ingredient({ name, image }: IngredientProps) {
-  const [isSelected, setIsSelected] = useState(false);
+interface IngredientProps extends IIngredient {
+  isSelected: boolean;
+}
+
+export default function Ingredient({ name, image, isSelected: prevIsSelected }: IngredientProps) {
+  const [isSelected, setIsSelected] = useState(prevIsSelected);
+  const toggleIngredient = useIngredientStore((state) => state.toggleIngredient);
 
   const toggleSelect = () => {
-    console.log(isSelected);
     setIsSelected((prev) => !prev);
+    toggleIngredient({ name, image });
   };
   return (
     <TouchableHighlight

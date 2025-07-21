@@ -1,8 +1,8 @@
 import { ImageSource } from 'expo-image';
 
-interface IngredientProps {
+interface IIngredient {
   name: string;
   image: ImageSource;
 }
 
-export { IngredientProps };
+export { IIngredient };

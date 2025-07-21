@@ -1,4 +1,4 @@
-import { IngredientProps } from 'types/recipe';
+import { IIngredient } from 'types/recipe';
 import {
   avocado,
   bokChoy,
@@ -20,7 +20,7 @@ import {
   tofu,
 } from 'utils/assets';
 
-export const firstWeekIngredients: IngredientProps[] = [
+export const firstWeekIngredients: IIngredient[] = [
   {
     name: '양파',
     image: onion,
@@ -191,7 +191,7 @@ export const firstWeekIngredients: IngredientProps[] = [
   },
 ];
 
-export const secondWeekIngredients: IngredientProps[] = [
+export const secondWeekIngredients: IIngredient[] = [
   {
     name: '치즈',
     image: logo,
@@ -210,7 +210,7 @@ export const secondWeekIngredients: IngredientProps[] = [
   },
 ];
 
-export const thirdWeekIngredients: IngredientProps[] = [
+export const thirdForthWeekIngredients: IIngredient[] = [
   {
     name: '토마토',
     image: logo,
