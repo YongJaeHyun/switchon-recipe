@@ -3,6 +3,7 @@ import { checkIsLoggedIn } from 'api/supabaseAPI';
 import { useFonts } from 'expo-font';
 import { router, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import '../global.css';
@@ -49,6 +50,7 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         </Stack>
       </SafeAreaProvider>
+      <StatusBar style="dark" />
     </QueryClientProvider>
   );
 }
