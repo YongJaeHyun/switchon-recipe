@@ -1,3 +1,4 @@
+import { IngredientsProps } from 'components/recipeCreation/Ingredients';
 import { IIngredient } from 'types/recipe';
 import {
   avocado,
@@ -47,6 +48,14 @@ export const firstWeekIngredients: IIngredient[] = [
   },
   {
     name: '알배추',
+    image: eastCabbage,
+  },
+  {
+    name: '콩나물',
+    image: eastCabbage,
+  },
+  {
+    name: '숙주',
     image: eastCabbage,
   },
   {
@@ -214,5 +223,23 @@ export const thirdForthWeekIngredients: IIngredient[] = [
   {
     name: '토마토',
     image: logo,
+  },
+];
+
+export const allIngredients: IngredientsProps[] = [
+  {
+    title: '1주차',
+    week: 1,
+    ingredientList: firstWeekIngredients,
+  },
+  {
+    title: '2주차',
+    week: 2,
+    ingredientList: secondWeekIngredients,
+  },
+  {
+    title: '3, 4주차',
+    week: 3,
+    ingredientList: thirdForthWeekIngredients,
   },
 ];
