@@ -1,11 +1,8 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import Ingredients, { IngredientsProps } from 'components/recipeCreation/Ingredients';
-import {
-  firstWeekIngredients,
-  secondWeekIngredients,
-  thirdForthWeekIngredients,
-} from 'const/ingredients';
+import Ingredients from 'components/recipeCreation/Ingredients';
+import { allIngredients } from 'const/ingredients';
 import { router, useNavigation } from 'expo-router';
+import { useGemini } from 'hooks/useGemini';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -16,39 +13,32 @@ import {
   TouchableHighlight,
   View,
 } from 'react-native';
-
-const allIngredients: IngredientsProps[] = [
-  {
-    title: '1주차',
-    week: 1,
-    ingredientList: firstWeekIngredients,
-  },
-  {
-    title: '2주차',
-    week: 2,
-    ingredientList: secondWeekIngredients,
-  },
-  {
-    title: '3, 4주차',
-    week: 3,
-    ingredientList: thirdForthWeekIngredients,
-  },
-];
+import { useIngredientStore } from 'stores/ingredientStore';
 
 export default function RecipeCreationScreen() {
   const navigation = useNavigation();
+  const selectedIngredients = useIngredientStore((state) => state.selectedIngredients);
   const [keyword, setKeyword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const isCanceled = useRef(false);
+
+  const { mutateAsync } = useGemini();
+  const createRecipe = async () => {
+    const ingredients = selectedIngredients.map((ingredients) => ingredients.name).join(', ');
+    const command = `다음 재료들만 이용해서 스위치온 1주차에 먹을 수 있는 음식의 레시피를 만들어줘. 하지만, 모든 재료를 이용할 필요는 없어. 소스나 조미료는 자유롭게 활용해도 돼. \n재료: ${ingredients}`;
+    // const command = `다음 재료들만 이용해서 만들 수 있는 자작한 국물 음식의 레시피를 만들어줘. 하지만, 모든 재료를 이용할 필요는 없어. 소스나 조미료는 자유롭게 활용해도 돼. \n재료: ${ingredients}`;
+    const recipe = await mutateAsync(command);
+    return recipe;
+  };
 
   const handleCreateRecipe = async () => {
     try {
       setIsLoading(true);
 
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const recipe = await createRecipe();
 
       if (!isCanceled.current) {
-        router.push('/(tabs)/home/recipeDetail');
+        router.push(`/(tabs)/home/recipeDetail?recipe=${JSON.stringify(recipe)}`);
       }
     } catch (error) {
       console.error('레시피 생성 실패:', error);
@@ -76,7 +66,6 @@ export default function RecipeCreationScreen() {
     };
 
     const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-
     return () => subscription.remove();
   }, []);
 
