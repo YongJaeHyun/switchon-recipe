@@ -17,13 +17,15 @@ interface Part {
 
 export interface Recipe {
   recipeName: string;
-  cookingTime: string;
+  imageUri: string | null;
+  cookingTime: number;
   ingredients: string[];
+  cookingSteps: string[];
   nutrition: {
-    carbohydrates: string;
-    protein: string;
-    fat: string;
-    fiber: string;
-    sugar: string;
+    carbohydrates: number;
+    protein: number;
+    fat: number;
+    fiber: number;
+    sugar: number;
   };
 }

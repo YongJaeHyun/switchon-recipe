@@ -11,7 +11,6 @@ import { recipeButtonBG } from 'utils/assets';
 
 export default function HomeScreen() {
   const userInfo = useUserStore((state) => state.user);
-  const handlePress = () => {};
 
   const logoutAndRedirect = async () => {
     await logout();

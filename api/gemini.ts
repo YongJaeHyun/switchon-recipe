@@ -1,7 +1,9 @@
+import { RecipeDB } from 'types/database';
 import { GeminiResponse, Recipe } from 'types/gemini';
 import gemini from '../lib/axiosInstance';
+import { insertRecipeToDB, uploadImageToDB } from './supabaseAPI';
 
-export const fetchGemini = async (message: string): Promise<Recipe> => {
+export const createRecipe = async (message: string): Promise<RecipeDB> => {
   const res = await gemini.post<GeminiResponse>('/models/gemini-2.5-flash:generateContent', {
     generationConfig: {
       responseMimeType: 'application/json',
@@ -9,18 +11,22 @@ export const fetchGemini = async (message: string): Promise<Recipe> => {
         type: 'OBJECT',
         properties: {
           recipeName: { type: 'STRING' },
-          cookingTime: { type: 'STRING' },
+          cookingTime: { type: 'NUMBER' },
           nutrition: {
             type: 'OBJECT',
             properties: {
-              carbohydrates: { type: 'STRING' },
-              protein: { type: 'STRING' },
-              fat: { type: 'STRING' },
-              fiber: { type: 'STRING' },
-              sugar: { type: 'STRING' },
+              carbohydrates: { type: 'NUMBER' },
+              protein: { type: 'NUMBER' },
+              fat: { type: 'NUMBER' },
+              fiber: { type: 'NUMBER' },
+              sugar: { type: 'NUMBER' },
             },
           },
           ingredients: {
+            type: 'ARRAY',
+            items: { type: 'STRING' },
+          },
+          cookingSteps: {
             type: 'ARRAY',
             items: { type: 'STRING' },
           },
@@ -45,5 +51,42 @@ export const fetchGemini = async (message: string): Promise<Recipe> => {
     ],
   });
 
-  return JSON.parse(res.data.candidates[0].content.parts[0].text);
+  const recipe: Recipe = JSON.parse(res.data.candidates[0].content.parts[0].text);
+
+  const generatedImageUri = await createRecipeImage(
+    `name: ${recipe.recipeName}\ningredients: ${recipe.ingredients}`
+  );
+  recipe.imageUri = generatedImageUri;
+
+  const recipeFromDB = await insertRecipeToDB(recipe);
+
+  return recipeFromDB;
+};
+
+export const createRecipeImage = async (message: string) => {
+  const res = await gemini.post(
+    '/models/gemini-2.0-flash-preview-image-generation:generateContent',
+    {
+      generationConfig: {
+        responseModalities: ['TEXT', 'IMAGE'],
+      },
+      contents: [
+        {
+          parts: [
+            {
+              text: `Generate images for the following foods. The food names and ingredients are as follows: \n${message}`,
+            },
+          ],
+        },
+      ],
+    }
+  );
+
+  const imagePart = res.data.candidates[0].content.parts.find(
+    (part) => 'inlineData' in part
+  )?.inlineData;
+  const base64Image = imagePart?.data;
+  const mimeType = imagePart?.mimeType;
+  const imageUri = await uploadImageToDB(mimeType, base64Image);
+  return imageUri;
 };

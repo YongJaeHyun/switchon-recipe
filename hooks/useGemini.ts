@@ -1,8 +1,8 @@
 import { useMutation } from '@tanstack/react-query';
-import { fetchGemini } from '../api/gemini';
+import { createRecipe } from '../api/gemini';
 
 export const useGemini = () => {
   return useMutation({
-    mutationFn: fetchGemini,
+    mutationFn: createRecipe,
   });
 };

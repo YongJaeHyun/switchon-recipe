@@ -1,11 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { User } from 'types/database';
+import { UserDB } from 'types/database';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 interface UserState {
-  user: null | User;
-  setUser: (user: User) => void;
+  user: null | UserDB;
+  setUser: (user: UserDB) => void;
 }
 
 export const useUserStore = create<UserState>()(
