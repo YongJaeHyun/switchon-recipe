@@ -16,9 +16,10 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
 } from 'react-native-reanimated';
+import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { RecipeDB } from 'types/database';
-import { Recipe } from 'types/gemini';
+import { Recipe } from 'types/recipe';
 import { logo } from 'utils/assets';
 
 export default function RecipeDetailScreen() {
@@ -38,7 +39,8 @@ export default function RecipeDetailScreen() {
   const parsedNutrition: Recipe['nutrition'] = JSON.parse(nutrition);
   const parsedCookingSteps: Recipe['cookingSteps'] = JSON.parse(cooking_steps);
 
-  const [isSaved, setIsSaved] = useState(false);
+  const userId = useUserStore((state) => state.user.id);
+  const [isSaved, setIsSaved] = useState(uid === userId);
   const timer = useRef<NodeJS.Timeout>(null);
 
   const toggleIsSaved = () => {
@@ -65,14 +67,6 @@ export default function RecipeDetailScreen() {
     },
   });
 
-  const animatedImageStyle = useAnimatedStyle(() => {
-    const height = interpolate(scrollY.value, [0, 150], [240, 0], Extrapolation.CLAMP);
-
-    return {
-      height,
-    };
-  });
-
   const animatedTitleStyle = useAnimatedStyle(() => {
     const translateY = interpolate(scrollY.value, [0, 150], [20, -90], Extrapolation.CLAMP);
     const paddingHorizontal = interpolate(scrollY.value, [0, 150], [20, 0], Extrapolation.CLAMP);
@@ -94,7 +88,7 @@ export default function RecipeDetailScreen() {
 
   return (
     <View className="flex-1 bg-white">
-      <Animated.View style={animatedImageStyle} className="relative flex-[3]">
+      <View className="relative flex-[3]">
         <View className="absolute left-5 top-12 z-10">
           <MaterialIcons name="arrow-back" size={32} color="black" />
         </View>
@@ -110,7 +104,7 @@ export default function RecipeDetailScreen() {
             color={colors.yellow[500]}
           />
         </Pressable>
-      </Animated.View>
+      </View>
 
       <Animated.View style={animatedTitleStyle} className="relative z-50 items-center">
         <View className="absolute -top-14 h-40 w-full items-center justify-evenly rounded-xl bg-white shadow-xl">

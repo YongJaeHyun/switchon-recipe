@@ -1,5 +1,6 @@
 import { RecipeDB } from 'types/database';
-import { GeminiResponse, Recipe } from 'types/gemini';
+import { GeminiResponse } from 'types/gemini';
+import { Recipe } from 'types/recipe';
 import gemini from '../lib/axiosInstance';
 import { insertRecipeToDB, uploadImageToDB } from './supabaseAPI';
 
