@@ -1,7 +1,7 @@
 import { decode } from 'base64-arraybuffer';
 import { useUserStore } from 'stores/userStore';
 import { RecipeDB, SavedRecipeDB } from 'types/database';
-import { Recipe } from 'types/gemini';
+import { Recipe } from 'types/recipe';
 import { supabase } from '../lib/supabase';
 
 // AUTH
@@ -30,6 +30,19 @@ const logout = async () => {
 };
 
 // RECIPE
+const selectRecentRecipeFromDB = async (): Promise<RecipeDB[]> => {
+  const userId = useUserStore.getState().user.id;
+  const { data, error } = await supabase
+    .from('recipe_with_is_saved')
+    .select('*')
+    .eq('uid', userId)
+    .order('created_at', { ascending: false })
+    .range(0, 9);
+
+  if (error) console.error('최근 레시피 조회 실패', error);
+  return data;
+};
+
 const insertRecipeToDB = async (recipe: Recipe): Promise<RecipeDB> => {
   const { data, error } = await supabase
     .from('recipe')
@@ -49,23 +62,54 @@ const insertRecipeToDB = async (recipe: Recipe): Promise<RecipeDB> => {
 };
 
 // SAVED_RECIPE
+const checkIsSavedRecipe = async (recipeId: number): Promise<boolean> => {
+  const { data, error } = await supabase
+    .from('saved_recipe')
+    .select('id')
+    .eq('recipe_id', recipeId)
+    .limit(1);
+
+  if (error) {
+    console.error('저장된 레시피 여부 조회 실패', error);
+    return false;
+  }
+
+  return !!data?.length;
+};
+
+const selectSavedRecipeFromDB = async (): Promise<RecipeDB[]> => {
+  const userId = useUserStore.getState().user.id;
+  const { data, error } = await supabase
+    .from('recipe_with_is_saved')
+    .select('*')
+    .eq('uid', userId)
+    .eq('isSaved', true)
+    .order('created_at', { ascending: false })
+    .range(0, 9);
+
+  if (error) console.error('저장된 레시피 조회 실패', error);
+  return data;
+};
+
 const insertSavedRecipeToDB = async (recipeId: number, recipeUid: string) => {
-  const { error } = await supabase.from('saved-recipe').insert<Partial<SavedRecipeDB>>({
-    recipe_id: recipeId,
-    uid: recipeUid,
-  });
-  if (error) console.error('레시피 저장 실패', error);
+  const isSavedRecipe = await checkIsSavedRecipe(recipeId);
+
+  if (!isSavedRecipe) {
+    const { error } = await supabase.from('saved_recipe').insert<Partial<SavedRecipeDB>>({
+      recipe_id: recipeId,
+      uid: recipeUid,
+    });
+
+    if (error) console.error('레시피 저장 실패', error);
+  }
 };
 
 const deleteSavedRecipeFromDB = async (recipeId: number) => {
-  const { data } = await supabase
-    .from('saved-recipe')
-    .select('id')
-    .eq('recipe_id', recipeId)
-    .maybeSingle();
+  const isSavedRecipe = await checkIsSavedRecipe(recipeId);
 
-  if (data?.id) {
-    const { error } = await supabase.from('saved-recipe').delete().eq('recipe_id', recipeId);
+  if (isSavedRecipe) {
+    const { error } = await supabase.from('saved_recipe').delete().eq('recipe_id', recipeId);
+
     if (error) console.error('저장된 레시피 삭제 실패', error);
   }
 };
@@ -93,5 +137,7 @@ export {
   insertRecipeToDB,
   insertSavedRecipeToDB,
   logout,
+  selectRecentRecipeFromDB,
+  selectSavedRecipeFromDB,
   uploadImageToDB,
 };
