@@ -43,6 +43,14 @@ export const firstWeekIngredients: IIngredient[] = [
     image: curcuma,
   },
   {
+    name: '상추',
+    image: cabbage,
+  },
+  {
+    name: '양상추',
+    image: cabbage,
+  },
+  {
     name: '양배추',
     image: cabbage,
   },
