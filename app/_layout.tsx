@@ -1,11 +1,13 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { checkIsLoggedIn } from 'api/supabaseAPI';
+import { toastConfig } from 'config/toastConfig';
 import { useFonts } from 'expo-font';
 import { router, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 import '../global.css';
 import '../utils/polyfills';
 
@@ -50,6 +52,7 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         </Stack>
       </SafeAreaProvider>
+      <Toast config={toastConfig} />
       <StatusBar style="dark" />
     </QueryClientProvider>
   );
