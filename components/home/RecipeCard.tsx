@@ -25,7 +25,7 @@ export default function RecipeCard(recipe: RecipeDB) {
         await deleteSavedRecipeFromDB(recipe.id);
       }
       timer.current = null;
-    }, 1000);
+    }, 500);
   };
   return (
     <Link
