@@ -28,16 +28,16 @@ export default function RecipeCard(recipe: RecipeDB) {
     }, 500);
   };
   return (
-    <Link
-      href={`/(tabs)/home/recipeDetail?recipe=${JSON.stringify(recipe)}`}
-      className="relative w-48">
+    <Link href={`/(tabs)/home/recipeDetail?recipe=${JSON.stringify(recipe)}`} className=" w-48">
       <View className="w-full flex-1 overflow-hidden rounded-xl">
-        <View className="flex-[5]">
+        <View className="relative flex-[5]">
           <Image source={{ uri: recipe.image_uri }} style={{ width: '100%', height: '100%' }} />
+
           <Pressable onPress={toggleIsSaved} className="absolute right-2 top-2 z-50">
+            <View className="absolute left-0 top-0 h-full w-full rounded-full bg-black/30" />
             <MaterialIcons
               name={isSaved ? 'star' : 'star-outline'}
-              size={32}
+              size={30}
               color={colors.yellow[500]}
             />
           </Pressable>

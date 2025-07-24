@@ -90,9 +90,10 @@ export default function RecipeDetailScreen() {
           <Image source={logo} style={{ width: '100%', height: '100%' }} />
         )}
         <Pressable onPress={toggleIsSaved} className="absolute right-5 top-12 z-10">
+          <View className="absolute left-0 top-0 h-full w-full rounded-full bg-black/30" />
           <MaterialIcons
             name={isSaved ? 'star' : 'star-outline'}
-            size={32}
+            size={40}
             color={colors.yellow[500]}
           />
         </Pressable>
