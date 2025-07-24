@@ -1,4 +1,5 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { selectSavedRecipeFromDB } from 'api/supabaseAPI';
 import ListEmptyText from 'components/common/ListEmptyText';
 import { useEffect } from 'react';
 import { ActivityIndicator, FlatList, Text, View } from 'react-native';
@@ -8,13 +9,14 @@ import RecipeCard from './RecipeCard';
 
 export default function SavedRecipes({ refreshing }: { refreshing: boolean }) {
   const recipes = useRecipeStore((state) => state.savedRecipes);
-  const fetchSavedRecipes = useRecipeStore((state) => state.fetchSavedRecipes);
+  const setSavedRecipes = useRecipeStore((state) => state.setSavedRecipes);
 
   useEffect(() => {
     (async () => {
-      await fetchSavedRecipes();
+      const recipes = await selectSavedRecipeFromDB();
+      setSavedRecipes(recipes);
     })();
-  }, [fetchSavedRecipes]);
+  }, [setSavedRecipes]);
 
   return (
     <View className="">
