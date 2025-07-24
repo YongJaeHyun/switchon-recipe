@@ -16,7 +16,6 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
 } from 'react-native-reanimated';
-import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { RecipeDB } from 'types/database';
 import { Recipe } from 'types/recipe';
@@ -24,23 +23,16 @@ import { logo } from 'utils/assets';
 
 export default function RecipeDetailScreen() {
   const { recipe }: { recipe: string } = useLocalSearchParams();
-  const {
-    id,
-    uid,
-    recipe_name,
-    cooking_time,
-    ingredients,
-    nutrition,
-    cooking_steps,
-    image_uri,
-  }: RecipeDB = JSON.parse(recipe);
+
+  const parsedRecipe: RecipeDB = JSON.parse(recipe);
+  const { id, uid, recipe_name, cooking_time, ingredients, nutrition, cooking_steps, image_uri } =
+    parsedRecipe;
 
   const parsedIngredients: Recipe['ingredients'] = JSON.parse(ingredients);
   const parsedNutrition: Recipe['nutrition'] = JSON.parse(nutrition);
   const parsedCookingSteps: Recipe['cookingSteps'] = JSON.parse(cooking_steps);
 
-  const userId = useUserStore((state) => state.user.id);
-  const [isSaved, setIsSaved] = useState(uid === userId);
+  const [isSaved, setIsSaved] = useState(parsedRecipe?.isSaved ?? false);
   const timer = useRef<NodeJS.Timeout>(null);
 
   const toggleIsSaved = () => {
@@ -56,7 +48,7 @@ export default function RecipeDetailScreen() {
         await deleteSavedRecipeFromDB(id);
       }
       timer.current = null;
-    }, 1000);
+    }, 500);
   };
 
   const scrollY = useSharedValue(0);
