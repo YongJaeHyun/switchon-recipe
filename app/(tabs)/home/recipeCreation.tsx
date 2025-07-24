@@ -1,4 +1,5 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { selectRecentRecipeFromDB } from 'api/supabaseAPI';
 import Ingredients from 'components/recipeCreation/Ingredients';
 import { allIngredients } from 'const/ingredients';
 import { router, useNavigation } from 'expo-router';
@@ -14,10 +15,13 @@ import {
   View,
 } from 'react-native';
 import { useIngredientStore } from 'stores/ingredientStore';
+import { useRecipeStore } from 'stores/recipeStore';
 
 export default function RecipeCreationScreen() {
   const navigation = useNavigation();
   const selectedIngredients = useIngredientStore((state) => state.selectedIngredients);
+  const setRecentRecipes = useRecipeStore((state) => state.setRecentRecipes);
+
   const [keyword, setKeyword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const isCanceled = useRef(false);
@@ -27,24 +31,25 @@ export default function RecipeCreationScreen() {
     const ingredients = selectedIngredients.map((ingredients) => ingredients.name).join(', ');
     // const command = `다음 재료들만 이용해서 스위치온 1주차에 먹을 수 있는 음식의 레시피를 만들어줘. 하지만, 모든 재료를 이용할 필요는 없어. 소스나 조미료는 자유롭게 활용해도 돼. \n재료: ${ingredients}`;
     const command = `다음 재료들만 이용해서 만들 수 있는 점심 레시피를 만들어줘. 하지만, 모든 재료를 이용할 필요는 없어. 소스나 조미료는 자유롭게 활용해도 돼. \n재료: ${ingredients}`;
+
     const recipe = await mutateAsync(command);
+    if (!recipe) return null;
+
+    const recentRecipes = await selectRecentRecipeFromDB();
+    setRecentRecipes(recentRecipes);
+
     return recipe;
   };
 
   const handleCreateRecipe = async () => {
-    try {
-      setIsLoading(true);
+    setIsLoading(true);
 
-      const recipe = await createRecipe();
-
-      if (!isCanceled.current) {
-        router.push(`/(tabs)/home/recipeDetail?recipe=${JSON.stringify(recipe)}`);
-      }
-    } catch (error) {
-      console.error('레시피 생성 실패:', error);
-    } finally {
-      setIsLoading(false);
+    const recipe = await createRecipe();
+    if (recipe && !isCanceled.current) {
+      router.push(`/(tabs)/home/recipeDetail?recipe=${JSON.stringify(recipe)}`);
     }
+
+    setIsLoading(false);
   };
 
   useEffect(() => {

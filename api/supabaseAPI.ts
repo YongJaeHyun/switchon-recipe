@@ -3,14 +3,19 @@ import { useRecipeStore } from 'stores/recipeStore';
 import { useUserStore } from 'stores/userStore';
 import { RecipeDB, SavedRecipeDB } from 'types/database';
 import { Recipe } from 'types/recipe';
+import { showErrorToast } from 'utils/showToast';
 import { supabase } from '../lib/supabase';
 
 // AUTH
 const getSession = async () => {
   const { data, error } = await supabase.auth.getSession();
   if (error) {
-    console.error('세션 가져오기 오류:', error.message);
-    return null;
+    showErrorToast({
+      text1: 'DB 에러 발생',
+      text2: '에러 정보가 관리자에게 전달되었습니다. 빠른 시일 내에 조치하겠습니다.',
+      error,
+    });
+    return;
   }
   return data.session;
 };
@@ -24,10 +29,15 @@ const logout = async () => {
   const { error } = await supabase.auth.signOut();
 
   if (error) {
-    console.error('로그아웃 실패:', error.message);
-  } else {
-    useUserStore.getState().setUser(null);
+    showErrorToast({
+      text1: 'DB 에러 발생',
+      text2: '에러 정보가 관리자에게 전달되었습니다. 빠른 시일 내에 조치하겠습니다.',
+      error,
+    });
+    return;
   }
+
+  useUserStore.getState().setUser(null);
 };
 
 // RECIPE
@@ -40,7 +50,14 @@ const selectRecentRecipeFromDB = async (): Promise<RecipeDB[]> => {
     .order('created_at', { ascending: false })
     .range(0, 9);
 
-  if (error) console.error('최근 레시피 조회 실패', error);
+  if (error) {
+    showErrorToast({
+      text1: 'DB 에러 발생',
+      text2: '에러 정보가 관리자에게 전달되었습니다. 빠른 시일 내에 조치하겠습니다.',
+      error,
+    });
+    return;
+  }
   return data;
 };
 
@@ -58,7 +75,13 @@ const insertRecipeToDB = async (recipe: Recipe): Promise<RecipeDB> => {
     .select()
     .single();
 
-  if (error) console.error('레시피 추가 실패', error);
+  if (error) {
+    showErrorToast({
+      text1: 'DB 에러 발생',
+      text2: '에러 정보가 관리자에게 전달되었습니다. 빠른 시일 내에 조치하겠습니다.',
+      error,
+    });
+  }
   return data;
 };
 
@@ -71,7 +94,11 @@ const checkIsSavedRecipe = async (recipeId: number): Promise<boolean> => {
     .limit(1);
 
   if (error) {
-    console.error('저장된 레시피 여부 조회 실패', error);
+    showErrorToast({
+      text1: 'DB 에러 발생',
+      text2: '에러 정보가 관리자에게 전달되었습니다. 빠른 시일 내에 조치하겠습니다.',
+      error,
+    });
     return false;
   }
 
@@ -88,7 +115,15 @@ const selectSavedRecipeFromDB = async (): Promise<RecipeDB[]> => {
     .order('created_at', { ascending: false })
     .range(0, 9);
 
-  if (error) console.error('저장된 레시피 조회 실패', error);
+  if (error) {
+    showErrorToast({
+      text1: 'DB 에러 발생',
+      text2: '에러 정보가 관리자에게 전달되었습니다. 빠른 시일 내에 조치하겠습니다.',
+      error,
+    });
+    return;
+  }
+
   return data;
 };
 
@@ -102,11 +137,17 @@ const insertSavedRecipeToDB = async (recipeId: number, recipeUid: string) => {
       uid: recipeUid,
     });
 
-    if (error) console.error('레시피 저장 실패', error);
-    else {
-      const savedRecipes = await selectSavedRecipeFromDB();
-      setSavedRecipes(savedRecipes);
+    if (error) {
+      showErrorToast({
+        text1: 'DB 에러 발생',
+        text2: '에러 발생이 관리자에게 전달되었습니다. 빠른 시일 내에 조치하겠습니다.',
+        error,
+      });
+      return;
     }
+
+    const savedRecipes = await selectSavedRecipeFromDB();
+    setSavedRecipes(savedRecipes);
   }
 };
 
@@ -118,15 +159,21 @@ const deleteSavedRecipeFromDB = async (recipeId: number) => {
   if (isSavedRecipe) {
     const { error } = await supabase.from('saved_recipe').delete().eq('recipe_id', recipeId);
 
-    if (error) console.error('저장된 레시피 삭제 실패', error);
-    else {
-      const [savedRecipes, recentRecipes] = await Promise.all([
-        selectSavedRecipeFromDB(),
-        selectRecentRecipeFromDB(),
-      ]);
-      setSavedRecipes(savedRecipes);
-      setRecentRecipes(recentRecipes);
+    if (error) {
+      showErrorToast({
+        text1: 'DB 에러 발생',
+        text2: '에러 정보가 관리자에게 전달되었습니다. 빠른 시일 내에 조치하겠습니다.',
+        error,
+      });
+      return;
     }
+
+    const [savedRecipes, recentRecipes] = await Promise.all([
+      selectSavedRecipeFromDB(),
+      selectRecentRecipeFromDB(),
+    ]);
+    setSavedRecipes(savedRecipes);
+    setRecentRecipes(recentRecipes);
   }
 };
 
@@ -139,7 +186,12 @@ const uploadImageToDB = async (mime, base64Image) => {
     .upload(fileName, decode(base64Image), { contentType: mime, upsert: false });
 
   if (error) {
-    console.error('Error uploading image: ', error);
+    showErrorToast({
+      text1: 'DB 에러 발생',
+      text2: '에러 정보가 관리자에게 전달되었습니다. 빠른 시일 내에 조치하겠습니다.',
+      error,
+    });
+    return;
   }
 
   const { data } = supabase.storage.from('recipe-images').getPublicUrl(fileName);

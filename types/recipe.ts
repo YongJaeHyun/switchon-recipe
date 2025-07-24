@@ -1,23 +1,25 @@
 import { ImageSource } from 'expo-image';
+import { z } from 'zod';
 
 interface IIngredient {
   name: string;
   image: ImageSource;
 }
 
-interface Recipe {
-  recipeName: string;
-  imageUri: string | null;
-  cookingTime: number;
-  ingredients: string[];
-  cookingSteps: string[];
-  nutrition: {
-    carbohydrates: number;
-    protein: number;
-    fat: number;
-    fiber: number;
-    sugar: number;
-  };
-}
+const RecipeSchema = z.object({
+  recipeName: z.string(),
+  imageUri: z.string().nullish(),
+  cookingTime: z.number(),
+  ingredients: z.array(z.string()),
+  cookingSteps: z.array(z.string()),
+  nutrition: z.object({
+    carbohydrates: z.number(),
+    protein: z.number(),
+    fat: z.number(),
+    fiber: z.number(),
+    sugar: z.number(),
+  }),
+});
+type Recipe = z.infer<typeof RecipeSchema>;
 
-export { IIngredient, Recipe };
+export { IIngredient, Recipe, RecipeSchema };
