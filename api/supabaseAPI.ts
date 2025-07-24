@@ -93,7 +93,7 @@ const selectSavedRecipeFromDB = async (): Promise<RecipeDB[]> => {
 };
 
 const insertSavedRecipeToDB = async (recipeId: number, recipeUid: string) => {
-  const fetchSavedRecipes = useRecipeStore.getState().fetchSavedRecipes;
+  const setSavedRecipes = useRecipeStore.getState().setSavedRecipes;
   const isSavedRecipe = await checkIsSavedRecipe(recipeId);
 
   if (!isSavedRecipe) {
@@ -103,20 +103,30 @@ const insertSavedRecipeToDB = async (recipeId: number, recipeUid: string) => {
     });
 
     if (error) console.error('레시피 저장 실패', error);
-    else await fetchSavedRecipes();
+    else {
+      const savedRecipes = await selectSavedRecipeFromDB();
+      setSavedRecipes(savedRecipes);
+    }
   }
 };
 
 const deleteSavedRecipeFromDB = async (recipeId: number) => {
-  const fetchSavedRecipes = useRecipeStore.getState().fetchSavedRecipes;
-  const fetchRecentRecipes = useRecipeStore.getState().fetchRecentRecipes;
+  const setSavedRecipes = useRecipeStore.getState().setSavedRecipes;
+  const setRecentRecipes = useRecipeStore.getState().setRecentRecipes;
   const isSavedRecipe = await checkIsSavedRecipe(recipeId);
 
   if (isSavedRecipe) {
     const { error } = await supabase.from('saved_recipe').delete().eq('recipe_id', recipeId);
 
     if (error) console.error('저장된 레시피 삭제 실패', error);
-    else await Promise.all([fetchSavedRecipes(), fetchRecentRecipes()]);
+    else {
+      const [savedRecipes, recentRecipes] = await Promise.all([
+        selectSavedRecipeFromDB(),
+        selectRecentRecipeFromDB(),
+      ]);
+      setSavedRecipes(savedRecipes);
+      setRecentRecipes(recentRecipes);
+    }
   }
 };
 

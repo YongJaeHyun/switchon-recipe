@@ -3,10 +3,10 @@ import { RecipeDB } from 'types/database';
 import { GeminiResponse } from 'types/gemini';
 import { Recipe } from 'types/recipe';
 import gemini from '../lib/axiosInstance';
-import { insertRecipeToDB, uploadImageToDB } from './supabaseAPI';
+import { insertRecipeToDB, selectRecentRecipeFromDB, uploadImageToDB } from './supabaseAPI';
 
 export const createRecipe = async (message: string): Promise<RecipeDB> => {
-  const fetchRecentRecipes = useRecipeStore.getState().fetchRecentRecipes;
+  const setRecentRecipes = useRecipeStore.getState().setRecentRecipes;
 
   const res = await gemini.post<GeminiResponse>('/models/gemini-2.5-flash:generateContent', {
     generationConfig: {
@@ -63,7 +63,9 @@ export const createRecipe = async (message: string): Promise<RecipeDB> => {
   recipe.imageUri = generatedImageUri;
 
   const recipeFromDB = await insertRecipeToDB(recipe);
-  await fetchRecentRecipes();
+
+  const recentRecipes = await selectRecentRecipeFromDB();
+  setRecentRecipes(recentRecipes);
 
   return recipeFromDB;
 };

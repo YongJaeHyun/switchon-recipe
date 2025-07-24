@@ -1,27 +1,25 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { selectRecentRecipeFromDB, selectSavedRecipeFromDB } from 'api/supabaseAPI';
 import { RecipeDB } from 'types/database';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 interface UserState {
   savedRecipes: RecipeDB[];
-  fetchSavedRecipes: () => Promise<void>;
+  setSavedRecipes: (recipes: RecipeDB[]) => void;
   recentRecipes: RecipeDB[];
-  fetchRecentRecipes: () => Promise<void>;
+  setRecentRecipes: (recipes: RecipeDB[]) => void;
 }
 
 export const useRecipeStore = create<UserState>()(
   persist(
     (set) => ({
       savedRecipes: [],
-      fetchSavedRecipes: async () => {
-        const recipes = await selectSavedRecipeFromDB();
+      setSavedRecipes: (recipes) => {
         set({ savedRecipes: recipes });
       },
+
       recentRecipes: [],
-      fetchRecentRecipes: async () => {
-        const recipes = await selectRecentRecipeFromDB();
+      setRecentRecipes: (recipes) => {
         set({ recentRecipes: recipes });
       },
     }),

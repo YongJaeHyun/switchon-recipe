@@ -1,5 +1,5 @@
 import Feather from '@expo/vector-icons/Feather';
-import { logout } from 'api/supabaseAPI';
+import { logout, selectRecentRecipeFromDB, selectSavedRecipeFromDB } from 'api/supabaseAPI';
 import RecentRecipes from 'components/home/RecentRecipes';
 import RecipeCreation from 'components/home/RecipeCreation';
 import SavedRecipes from 'components/home/SavedRecipes';
@@ -8,6 +8,7 @@ import { router } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Button, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { useRecipeStore } from '../../../stores/recipeStore';
@@ -16,19 +17,31 @@ export default function HomeScreen() {
   const userInfo = useUserStore((state) => state.user);
 
   const [refreshing, setRefreshing] = useState(false);
-  const fetchRecentRecipes = useRecipeStore((state) => state.fetchRecentRecipes);
-  const fetchSavedRecipes = useRecipeStore((state) => state.fetchSavedRecipes);
+  const setRecentRecipes = useRecipeStore((state) => state.setRecentRecipes);
+  const setSavedRecipes = useRecipeStore((state) => state.setSavedRecipes);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchRecentRecipes();
-    await fetchSavedRecipes();
+    const [recentRecipes, savedRecipes] = await Promise.all([
+      selectRecentRecipeFromDB(),
+      selectSavedRecipeFromDB(),
+    ]);
+    setRecentRecipes(recentRecipes);
+    setSavedRecipes(savedRecipes);
     setRefreshing(false);
-  }, [fetchRecentRecipes, fetchSavedRecipes]);
+  }, [setRecentRecipes, setSavedRecipes]);
 
   const logoutAndRedirect = async () => {
     await logout();
     router.replace('/(auth)');
+  };
+
+  const showToast = () => {
+    Toast.show({
+      type: 'success',
+      text1: 'Hello',
+      text2: 'This is some something 👋',
+    });
   };
 
   if (!userInfo) logoutAndRedirect();
@@ -61,6 +74,7 @@ export default function HomeScreen() {
           <SavedRecipes refreshing={refreshing} />
           <RecentRecipes refreshing={refreshing} />
           <Button title="로그아웃" onPress={logoutAndRedirect} />
+          <Button title="토스트 발생" onPress={showToast} />
         </View>
       </ScrollView>
     </SafeAreaView>
