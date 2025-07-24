@@ -1,4 +1,5 @@
 import { decode } from 'base64-arraybuffer';
+import { useRecipeStore } from 'stores/recipeStore';
 import { useUserStore } from 'stores/userStore';
 import { RecipeDB, SavedRecipeDB } from 'types/database';
 import { Recipe } from 'types/recipe';
@@ -92,6 +93,7 @@ const selectSavedRecipeFromDB = async (): Promise<RecipeDB[]> => {
 };
 
 const insertSavedRecipeToDB = async (recipeId: number, recipeUid: string) => {
+  const fetchSavedRecipes = useRecipeStore.getState().fetchSavedRecipes;
   const isSavedRecipe = await checkIsSavedRecipe(recipeId);
 
   if (!isSavedRecipe) {
@@ -101,16 +103,20 @@ const insertSavedRecipeToDB = async (recipeId: number, recipeUid: string) => {
     });
 
     if (error) console.error('레시피 저장 실패', error);
+    else await fetchSavedRecipes();
   }
 };
 
 const deleteSavedRecipeFromDB = async (recipeId: number) => {
+  const fetchSavedRecipes = useRecipeStore.getState().fetchSavedRecipes;
+  const fetchRecentRecipes = useRecipeStore.getState().fetchRecentRecipes;
   const isSavedRecipe = await checkIsSavedRecipe(recipeId);
 
   if (isSavedRecipe) {
     const { error } = await supabase.from('saved_recipe').delete().eq('recipe_id', recipeId);
 
     if (error) console.error('저장된 레시피 삭제 실패', error);
+    else await Promise.all([fetchSavedRecipes(), fetchRecentRecipes()]);
   }
 };
 
