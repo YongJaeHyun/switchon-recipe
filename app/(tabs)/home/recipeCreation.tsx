@@ -1,4 +1,3 @@
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { selectRecentRecipeFromDB } from 'api/supabaseAPI';
 import Ingredients from 'components/recipeCreation/Ingredients';
 import { allIngredients } from 'const/ingredients';
@@ -76,15 +75,12 @@ export default function RecipeCreationScreen() {
 
   return (
     <View className="relative flex-1 bg-white px-5">
-      <View className="my-8 w-full flex-row items-center gap-4">
-        <TextInput
-          className="flex-1 rounded-lg border border-neutral-400 px-3 py-2"
-          onChangeText={setKeyword}
-          value={keyword}
-          placeholder="재료를 검색하세요!"
-        />
-        <MaterialIcons name="search" size={30} />
-      </View>
+      <TextInput
+        className="mb-8 mt-6 w-full rounded-lg border border-neutral-400 px-3 py-2.5"
+        onChangeText={setKeyword}
+        value={keyword}
+        placeholder="재료를 검색하세요!"
+      />
       <FlatList
         className="mb-4 flex-1"
         contentContainerStyle={{ gap: 24 }}
