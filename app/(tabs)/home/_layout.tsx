@@ -6,7 +6,6 @@ export default function HomeLayout() {
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="recipeDetail" options={{ headerShown: false }} />
       <Stack.Screen name="setting" options={{ headerShown: false }} />
-      <Stack.Screen name="profile" options={{ headerShown: false }} />
     </Stack>
   );
 }

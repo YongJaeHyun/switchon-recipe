@@ -7,7 +7,7 @@ import RecipeCreation from 'components/home/RecipeCreation';
 import SavedRecipes from 'components/home/SavedRecipes';
 import { router } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Button, RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
@@ -59,7 +59,6 @@ export default function HomeScreen() {
           <RecipeCreation />
           <SavedRecipes refreshing={refreshing} />
           <RecentRecipes refreshing={refreshing} />
-          <Button title="로그아웃" onPress={logoutAndRedirect} />
         </View>
       </ScrollView>
 
