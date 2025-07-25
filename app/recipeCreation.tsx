@@ -1,3 +1,4 @@
+import Feather from '@expo/vector-icons/Feather';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { selectRecentRecipeFromDB } from 'api/supabaseAPI';
 import Ingredients from 'components/recipeCreation/Ingredients';
@@ -12,6 +13,7 @@ import {
   Text,
   TextInput,
   TouchableHighlight,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -23,6 +25,8 @@ import { getWeekAndDay } from 'utils/date';
 
 export default function RecipeCreationScreen() {
   const selectedIngredients = useIngredientStore((state) => state.selectedIngredients);
+  const toggleIngredient = useIngredientStore((state) => state.toggleIngredient);
+  const resetIngredients = useIngredientStore((state) => state.resetIngredients);
   const setRecentRecipes = useRecipeStore((state) => state.setRecentRecipes);
 
   const startDate = useUserStore((state) => state.user.start_date);
@@ -31,6 +35,8 @@ export default function RecipeCreationScreen() {
   const [keyword, setKeyword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const controller = useRef<AbortController>(null);
+
+  const [resetTrigger, setResetTrigger] = useState(false);
 
   const { mutateAsync } = useGemini();
 
@@ -61,18 +67,41 @@ export default function RecipeCreationScreen() {
     setIsLoading(false);
   };
 
+  const handleReset = () => {
+    resetIngredients();
+    setResetTrigger((prev) => !prev);
+  };
+
   useEffect(() => {
     return () => controller.current?.abort();
   }, []);
 
   return (
     <SafeAreaView className="relative flex-1 bg-white px-5">
-      <View className="relative mb-8 w-full">
+      <View className="relative mb-8 w-full gap-3">
         <TextInput
           className="w-full rounded-lg border border-neutral-400 px-3 py-2.5 pr-10"
           onChangeText={setKeyword}
           value={keyword}
           placeholder="재료를 검색하세요!"
+        />
+        <FlatList
+          className="min-h-10"
+          contentContainerClassName="gap-2"
+          data={selectedIngredients}
+          renderItem={({ item }) => (
+            <Pressable
+              key={item.name}
+              onPress={() => toggleIngredient(item)}
+              className="flex-row items-center gap-2 rounded-full border border-green-600 px-3 py-2">
+              <Text>{item.name}</Text>
+              <View>
+                <Feather name="x" size={16} color="black" />
+              </View>
+            </Pressable>
+          )}
+          horizontal
+          showsHorizontalScrollIndicator={false}
         />
 
         {keyword.length > 0 && (
@@ -85,8 +114,9 @@ export default function RecipeCreationScreen() {
         )}
       </View>
       <FlatList
+        key={resetTrigger ? 'reset-1' : 'reset-0'}
         className="mb-4 flex-1"
-        contentContainerStyle={{ gap: 24 }}
+        contentContainerStyle={{ gap: 48 }}
         data={allIngredients}
         renderItem={({ item }) => (
           <Ingredients
@@ -98,13 +128,21 @@ export default function RecipeCreationScreen() {
           />
         )}
       />
-      <TouchableHighlight
-        className="mb-8 w-full items-center justify-center rounded-lg bg-green-600 py-4"
-        underlayColor="#379237"
-        onPress={handleCreateRecipe}
-        disabled={isLoading}>
-        <Text className="text-lg font-semibold text-white">레시피 제작</Text>
-      </TouchableHighlight>
+      <View className="mb-8 mt-4 w-full flex-row gap-2">
+        <TouchableOpacity
+          className="flex-[3.5] items-center justify-center rounded-lg border border-green-600 py-4"
+          onPress={handleReset}
+          disabled={isLoading}>
+          <Text className="text-lg font-semibold text-green-600">재료 리셋</Text>
+        </TouchableOpacity>
+        <TouchableHighlight
+          className="flex-[6.5] items-center justify-center rounded-lg bg-green-600 py-4"
+          underlayColor="#379237"
+          onPress={handleCreateRecipe}
+          disabled={isLoading}>
+          <Text className="text-lg font-semibold text-white">레시피 제작</Text>
+        </TouchableHighlight>
+      </View>
 
       {isLoading && (
         <View className="absolute inset-0 z-50 items-center justify-center">

@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { useState } from 'react';
+import React from 'react';
 import { Text, TouchableHighlight, View } from 'react-native';
 import { useIngredientStore } from 'stores/ingredientStore';
 import colors from 'tailwindcss/colors';
@@ -9,12 +9,10 @@ interface IngredientProps extends IIngredient {
   isSelected: boolean;
 }
 
-export default function Ingredient({ name, image, isSelected: prevIsSelected }: IngredientProps) {
-  const [isSelected, setIsSelected] = useState(prevIsSelected);
+function Ingredient({ name, image, isSelected }: IngredientProps) {
   const toggleIngredient = useIngredientStore((state) => state.toggleIngredient);
 
   const toggleSelect = () => {
-    setIsSelected((prev) => !prev);
     toggleIngredient({ name, image });
   };
   return (
@@ -24,11 +22,13 @@ export default function Ingredient({ name, image, isSelected: prevIsSelected }: 
       underlayColor={colors.neutral[200]}>
       <View className="items-center gap-1">
         <View
-          className={`h-20 w-20 overflow-hidden rounded-full ${isSelected ? 'border-[3px] border-green-500' : 'border-2 border-neutral-200'}`}>
+          className={`h-20 w-20 overflow-hidden rounded-full ${isSelected ? 'border-[5px] border-green-700/80' : 'border-2 border-neutral-200'}`}>
           <Image style={{ width: '100%', height: '100%', objectFit: 'cover' }} source={image} />
         </View>
-        <Text className="h-6 w-full text-lg">{name}</Text>
+        <Text className={`h-6 w-full text-lg ${isSelected && 'font-semibold'}`}>{name}</Text>
       </View>
     </TouchableHighlight>
   );
 }
+
+export default React.memo(Ingredient);

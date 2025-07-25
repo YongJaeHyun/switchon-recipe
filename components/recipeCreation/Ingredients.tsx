@@ -20,6 +20,8 @@ export default function Ingredients({ title, week, ingredientList }: Ingredients
       <Text className={`text-3xl font-semibold ${getWeekColor(week)}`}>{title}</Text>
       <FlatList
         data={chunkedList}
+        extraData={selectedIngredients.length}
+        keyExtractor={(_, index) => `ingredients-${index}`}
         renderItem={({ item }) => (
           <View className="mr-4">
             {item.map((ingredient) => (

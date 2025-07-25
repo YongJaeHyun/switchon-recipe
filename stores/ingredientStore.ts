@@ -6,6 +6,7 @@ import { persist } from 'zustand/middleware';
 interface IngredientState {
   selectedIngredients: IIngredient[];
   toggleIngredient: (ingredient: IIngredient) => void;
+  resetIngredients: () => void;
 }
 
 export const useIngredientStore = create<IngredientState>()(
@@ -17,17 +18,16 @@ export const useIngredientStore = create<IngredientState>()(
         const exists = selected.some((i) => i.name === ingredient.name);
 
         if (exists) {
-          // 이름이 같은 재료 제거
           set({
             selectedIngredients: selected.filter((i) => i.name !== ingredient.name),
           });
         } else {
-          // 이름이 같은 재료가 없을 때 추가
           set({
             selectedIngredients: [...selected, ingredient],
           });
         }
       },
+      resetIngredients: () => set({ selectedIngredients: [] }),
     }),
     {
       name: 'ingredientStore',
