@@ -17,11 +17,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useIngredientStore } from 'stores/ingredientStore';
 import { useRecipeStore } from 'stores/recipeStore';
+import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
+import { getWeekAndDay } from 'utils/date';
 
 export default function RecipeCreationScreen() {
   const selectedIngredients = useIngredientStore((state) => state.selectedIngredients);
   const setRecentRecipes = useRecipeStore((state) => state.setRecentRecipes);
+
+  const startDate = useUserStore((state) => state.user.start_date);
+  const { week } = getWeekAndDay(startDate);
 
   const [keyword, setKeyword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -31,8 +36,8 @@ export default function RecipeCreationScreen() {
 
   const createRecipe = async () => {
     const ingredients = selectedIngredients.map((ingredients) => ingredients.name).join(', ');
-    // const command = `다음 재료들만 이용해서 스위치온 1주차에 먹을 수 있는 음식의 레시피를 만들어줘. 하지만, 모든 재료를 이용할 필요는 없어. 소스나 조미료는 자유롭게 활용해도 돼. \n재료: ${ingredients}`;
-    const command = `다음 재료들만 이용해서 만들 수 있는 점심 레시피를 만들어줘. 하지만, 모든 재료를 이용할 필요는 없어. 소스나 조미료는 자유롭게 활용해도 돼. \n재료: ${ingredients}`;
+    const command = `다음 재료들만 이용해서 스위치온 ${week}주차에 먹을 수 있는 음식의 레시피를 만들어줘. 하지만, 모든 재료를 이용할 필요는 없어. 소스나 조미료는 자유롭게 활용해도 돼. \n재료: ${ingredients}`;
+    // const command = `다음 재료들만 이용해서 만들 수 있는 점심 레시피를 만들어줘. 하지만, 모든 재료를 이용할 필요는 없어. 소스나 조미료는 자유롭게 활용해도 돼. \n재료: ${ingredients}`;
 
     controller.current = new AbortController();
 
