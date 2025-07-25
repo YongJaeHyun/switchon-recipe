@@ -8,11 +8,11 @@ import { recipeButtonBG } from 'utils/assets';
 
 export default function RecipeCreation() {
   return (
-    <Link href={'/(tabs)/home/recipeCreation'} className="h-48 w-full shadow-lg">
-      <View className="flex-row overflow-hidden rounded-xl bg-white">
-        <View className="flex-[3] justify-between px-5 py-4">
+    <Link href={'/(tabs)/home/recipeCreation'} className="h-52 w-full">
+      <View className="flex-row overflow-hidden rounded-xl bg-white shadow-lg">
+        <View className="flex-[3] justify-between px-6 py-5">
           <View className="flex-row items-center gap-2">
-            <Text className="text-2xl font-bold">레시피 제작</Text>
+            <Text className="text-3xl font-bold">레시피 제작</Text>
             <MaterialIcons name="arrow-forward-ios" size={24} color={colors.neutral[400]} />
           </View>
           <View>
