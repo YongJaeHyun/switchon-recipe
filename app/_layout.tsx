@@ -6,8 +6,10 @@ import { router, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
+import '../config/CalendarConfig';
 import '../global.css';
 import '../utils/polyfills';
 
@@ -46,14 +48,16 @@ export default function RootLayout() {
   }
   return (
     <QueryClientProvider client={queryClient}>
-      <SafeAreaProvider>
-        <Stack>
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        </Stack>
-      </SafeAreaProvider>
-      <Toast config={toastConfig} />
-      <StatusBar style="dark" />
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <Stack>
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          </Stack>
+        </SafeAreaProvider>
+        <Toast config={toastConfig} />
+        <StatusBar style="dark" />
+      </GestureHandlerRootView>
     </QueryClientProvider>
   );
 }

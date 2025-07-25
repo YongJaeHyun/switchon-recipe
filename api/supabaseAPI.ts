@@ -3,7 +3,7 @@ import { useRecipeStore } from 'stores/recipeStore';
 import { useUserStore } from 'stores/userStore';
 import { RecipeDB, SavedRecipeDB } from 'types/database';
 import { Recipe } from 'types/recipe';
-import { showErrorToast } from 'utils/showToast';
+import { showErrorToast, showSuccessToast } from 'utils/showToast';
 import { supabase } from '../lib/supabase';
 
 // AUTH
@@ -38,6 +38,27 @@ const logout = async () => {
   }
 
   useUserStore.getState().setUser(null);
+};
+
+// USER
+const updateStartDateToDB = async (start_date: string) => {
+  const user = useUserStore.getState().user;
+  const { error } = await supabase.from('user').update({ start_date }).eq('id', user.id);
+
+  if (error) {
+    showErrorToast({
+      text1: 'DB 에러 발생',
+      text2: '에러 정보가 관리자에게 전달되었습니다. 빠른 시일 내에 조치하겠습니다.',
+      error,
+    });
+    return;
+  } else {
+    showSuccessToast({
+      text1: '시작날짜 재설정 성공',
+      text2: `${start_date}일로 정상적으로 변경되었습니다`,
+      error,
+    });
+  }
 };
 
 // RECIPE
@@ -207,5 +228,6 @@ export {
   logout,
   selectRecentRecipeFromDB,
   selectSavedRecipeFromDB,
+  updateStartDateToDB,
   uploadImageToDB,
 };

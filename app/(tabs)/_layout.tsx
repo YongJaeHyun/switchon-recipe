@@ -1,5 +1,6 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Tabs } from 'expo-router';
+import 'react-native-gesture-handler';
 import colors from 'tailwindcss/colors';
 
 export default function TabLayout() {
