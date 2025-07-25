@@ -40,7 +40,14 @@ module.exports = {
         {
           image: './assets/splash.png',
           resizeMode: 'cover',
-          backgroundColor: '#ffffff',
+          backgroundColor: '#fff',
+          imageWidth: 190,
+          android: {
+            adaptiveIcon: {
+              foregroundImage: './assets/adaptive-icon.png',
+              backgroundColor: '#fff',
+            },
+          },
         },
       ],
       'expo-font',
@@ -61,7 +68,7 @@ module.exports = {
     android: {
       package: 'com.dltjrrbs2020.switchonrecipe',
       adaptiveIcon: {
-        foregroundImage: './assets/adaptive-icon.png',
+        foregroundImage: './assets/icon.png',
         backgroundColor: '#ffffff',
       },
       edgeToEdgeEnabled: true,
