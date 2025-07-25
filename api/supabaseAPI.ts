@@ -42,8 +42,14 @@ const logout = async () => {
 
 // USER
 const updateStartDateToDB = async (start_date: string) => {
-  const user = useUserStore.getState().user;
-  const { error } = await supabase.from('user').update({ start_date }).eq('id', user.id);
+  const setUser = useUserStore.getState().setUser;
+  const userId = useUserStore.getState().user.id;
+  const { data, error } = await supabase
+    .from('user')
+    .update({ start_date })
+    .eq('id', userId)
+    .select()
+    .single();
 
   if (error) {
     showErrorToast({
@@ -53,6 +59,7 @@ const updateStartDateToDB = async (start_date: string) => {
     });
     return;
   } else {
+    setUser(data);
     showSuccessToast({
       text1: '시작날짜 재설정 성공',
       text2: `${start_date}일로 정상적으로 변경되었습니다`,
