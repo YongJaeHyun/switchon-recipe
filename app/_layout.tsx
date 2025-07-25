@@ -1,8 +1,10 @@
+import * as Sentry from '@sentry/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { checkIsLoggedIn } from 'api/supabaseAPI';
 import { toastConfig } from 'config/toastConfig';
+import { isRunningInExpoGo } from 'expo';
 import { useFonts } from 'expo-font';
-import { router, Stack } from 'expo-router';
+import { router, Stack, useNavigationContainerRef } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
@@ -16,11 +18,30 @@ import '../utils/polyfills';
 const queryClient = new QueryClient();
 SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
+const navigationIntegration = Sentry.reactNavigationIntegration({
+  enableTimeToInitialDisplay: !isRunningInExpoGo(),
+});
+Sentry.init({
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+  sendDefaultPii: true,
+  tracesSampleRate: 1.0,
+  profilesSampleRate: 1.0,
+  integrations: [navigationIntegration],
+  enableNativeFramesTracking: !isRunningInExpoGo(),
+});
+
+function RootLayout() {
+  const ref = useNavigationContainerRef();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loaded, error] = useFonts({
     pretendard: require('../assets/fonts/Pretendard-Regular.otf'),
   });
+
+  useEffect(() => {
+    if (ref) {
+      navigationIntegration.registerNavigationContainer(ref);
+    }
+  }, [ref]);
 
   useEffect(() => {
     const checkUserLogin = async () => {
@@ -69,3 +90,5 @@ export default function RootLayout() {
     </QueryClientProvider>
   );
 }
+
+export default Sentry.wrap(RootLayout);

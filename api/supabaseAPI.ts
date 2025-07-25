@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/react-native';
 import { decode } from 'base64-arraybuffer';
 import { useRecipeStore } from 'stores/recipeStore';
 import { useUserStore } from 'stores/userStore';
@@ -29,6 +30,7 @@ const logout = async () => {
   const { error } = await supabase.auth.signOut();
 
   if (error) {
+    Sentry.captureException(error, { level: 'fatal' });
     showErrorToast({
       text1: 'DB 에러 발생',
       text2: '에러 정보가 관리자에게 전달되었습니다. 빠른 시일 내에 조치하겠습니다.',
@@ -52,6 +54,7 @@ const updateStartDateToDB = async (start_date: string) => {
     .single();
 
   if (error) {
+    Sentry.captureException(error, { level: 'fatal' });
     showErrorToast({
       text1: 'DB 에러 발생',
       text2: '에러 정보가 관리자에게 전달되었습니다. 빠른 시일 내에 조치하겠습니다.',
@@ -79,6 +82,7 @@ const selectRecentRecipeFromDB = async (): Promise<RecipeDB[]> => {
     .range(0, 9);
 
   if (error) {
+    Sentry.captureException(error, { level: 'fatal' });
     showErrorToast({
       text1: 'DB 에러 발생',
       text2: '에러 정보가 관리자에게 전달되었습니다. 빠른 시일 내에 조치하겠습니다.',
@@ -104,6 +108,7 @@ const insertRecipeToDB = async (recipe: Recipe): Promise<RecipeDB> => {
     .single();
 
   if (error) {
+    Sentry.captureException(error, { level: 'fatal' });
     showErrorToast({
       text1: 'DB 에러 발생',
       text2: '에러 정보가 관리자에게 전달되었습니다. 빠른 시일 내에 조치하겠습니다.',
@@ -122,6 +127,7 @@ const checkIsSavedRecipe = async (recipeId: number): Promise<boolean> => {
     .limit(1);
 
   if (error) {
+    Sentry.captureException(error, { level: 'fatal' });
     showErrorToast({
       text1: 'DB 에러 발생',
       text2: '에러 정보가 관리자에게 전달되었습니다. 빠른 시일 내에 조치하겠습니다.',
@@ -144,6 +150,7 @@ const selectSavedRecipeFromDB = async (): Promise<RecipeDB[]> => {
     .range(0, 9);
 
   if (error) {
+    Sentry.captureException(error, { level: 'fatal' });
     showErrorToast({
       text1: 'DB 에러 발생',
       text2: '에러 정보가 관리자에게 전달되었습니다. 빠른 시일 내에 조치하겠습니다.',
@@ -166,6 +173,7 @@ const insertSavedRecipeToDB = async (recipeId: number, recipeUid: string) => {
     });
 
     if (error) {
+      Sentry.captureException(error, { level: 'fatal' });
       showErrorToast({
         text1: 'DB 에러 발생',
         text2: '에러 발생이 관리자에게 전달되었습니다. 빠른 시일 내에 조치하겠습니다.',
@@ -188,6 +196,7 @@ const deleteSavedRecipeFromDB = async (recipeId: number) => {
     const { error } = await supabase.from('saved_recipe').delete().eq('recipe_id', recipeId);
 
     if (error) {
+      Sentry.captureException(error, { level: 'fatal' });
       showErrorToast({
         text1: 'DB 에러 발생',
         text2: '에러 정보가 관리자에게 전달되었습니다. 빠른 시일 내에 조치하겠습니다.',
@@ -214,6 +223,7 @@ const uploadImageToDB = async (mime, base64Image) => {
     .upload(fileName, decode(base64Image), { contentType: mime, upsert: false });
 
   if (error) {
+    Sentry.captureException(error, { level: 'fatal' });
     showErrorToast({
       text1: 'DB 에러 발생',
       text2: '에러 정보가 관리자에게 전달되었습니다. 빠른 시일 내에 조치하겠습니다.',

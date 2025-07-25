@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/react-native';
 import { CanceledError } from 'axios';
 import { RecipeDB } from 'types/database';
 import { GeminiResponse } from 'types/gemini';
@@ -82,6 +83,7 @@ export const createRecipe = async ({ message, signal }: CreateRecipeProps): Prom
         error,
       });
     } else {
+      Sentry.captureException(error, { level: 'warning' });
       showErrorToast({
         text1: '일시적인 에러 발생',
         text2: `레시피 생성에 실패했습니다, 다시 한번 시도해주세요.`,
