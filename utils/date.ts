@@ -1,8 +1,8 @@
 import { differenceInDays, parseISO } from 'date-fns';
 
-const getWeekAndDay = (startDate: string, currentDate: string) => {
+const getWeekAndDay = (startDate: string) => {
   const start = parseISO(startDate);
-  const current = parseISO(currentDate);
+  const current = parseISO(getKoreanToday());
 
   const daysDiff = differenceInDays(current, start);
 

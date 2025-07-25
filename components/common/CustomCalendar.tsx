@@ -7,6 +7,7 @@ import { Calendar } from 'react-native-calendars';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { getWeekAndDay } from 'utils/date';
+import { getWeekColor } from 'utils/getWeekColor';
 
 interface CustomCalendarProps {
   bottomSheetRef?: React.RefObject<BottomSheetMethods>;
@@ -18,7 +19,7 @@ export default function CustomCalendar({ bottomSheetRef }: CustomCalendarProps) 
 
   const [selectedDate, setSelectedDate] = useState<string>(userInfo.start_date ?? today);
   const [calendarKey, setCalendarKey] = useState(0); // 캘린더 리렌더링용 키
-  const { week, day } = getWeekAndDay(selectedDate, today);
+  const { week, day } = getWeekAndDay(selectedDate);
 
   const setDateToToday = () => {
     setSelectedDate(today);
@@ -41,7 +42,7 @@ export default function CustomCalendar({ bottomSheetRef }: CustomCalendarProps) 
           <Text className="text-green-600">오늘로 설정</Text>
         </TouchableOpacity>
       </View>
-      <Text className="mb-6">날짜를 선택해주세요</Text>
+      <Text className="mb-6 text-neutral-500">날짜를 선택해주세요</Text>
 
       <Calendar
         key={calendarKey}
@@ -64,7 +65,7 @@ export default function CustomCalendar({ bottomSheetRef }: CustomCalendarProps) 
       />
 
       <View className="my-6 flex-row justify-center gap-1">
-        <Text className="text-lg">{week}주차</Text>
+        <Text className={`text-lg ${getWeekColor(week)}`}>{week}주차</Text>
         <Text className="text-lg">{day}일부터 시작해요</Text>
       </View>
 
