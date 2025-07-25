@@ -13,7 +13,7 @@ export interface IngredientsProps {
 
 export default function Ingredients({ title, week, ingredientList }: IngredientsProps) {
   const selectedIngredients = useIngredientStore((state) => state.selectedIngredients);
-  const chunkedList = chunkArray(ingredientList, 2);
+  const chunkedList = chunkArray(ingredientList, week === 1 ? 3 : 2);
 
   return (
     <View className="gap-3">
