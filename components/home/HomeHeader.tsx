@@ -3,6 +3,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { BottomSheetMethods } from '@gorhom/bottom-sheet/lib/typescript/types';
 import { Image } from 'expo-image';
 import { Link } from 'expo-router';
+import useKoreanToday from 'hooks/useKoreanToday';
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
@@ -15,14 +16,15 @@ interface HomeHeaderProps {
 
 export default function HomeHeader({ bottomSheetRef }: HomeHeaderProps) {
   const userInfo = useUserStore((state) => state.user);
-  const { week, day } = getWeekAndDay(userInfo.start_date);
+  const today = useKoreanToday();
 
+  const { week, day } = getWeekAndDay(userInfo?.start_date ?? today);
   return (
     <View>
       <View className="mb-1 mt-4 flex-row items-center justify-between">
         <Text className="text-neutral-600">오늘도 화이팅!</Text>
         <View className="h-10 w-10 overflow-hidden rounded-full">
-          <Link href={'/(tabs)/home/profile'}>
+          <Link href={'/profile'}>
             <Image style={{ width: '100%', height: '100%' }} source={userInfo?.avatar_url} />
           </Link>
         </View>

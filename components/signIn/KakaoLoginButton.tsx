@@ -5,6 +5,7 @@ import { supabase } from 'lib/supabase';
 import { TouchableHighlight } from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import { kakaoIcon } from 'utils/assets';
+import { getKoreanToday } from 'utils/date';
 
 export default function KakaoLoginButton() {
   const setUser = useUserStore((state) => state.setUser);
@@ -29,6 +30,7 @@ export default function KakaoLoginButton() {
             avatar_url: data.user.user_metadata.avatar_url || '',
             provider: data.user.app_metadata.provider,
             created_at: data.user.created_at,
+            start_date: getKoreanToday(),
           });
           router.replace('/home');
         }
