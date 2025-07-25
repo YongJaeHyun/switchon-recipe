@@ -53,6 +53,13 @@ export default function RootLayout() {
           <Stack>
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="recipeCreation"
+              options={{
+                title: '레시피 제작',
+                headerTitleStyle: { fontFamily: 'pretendard', fontSize: 20 },
+              }}
+            />
           </Stack>
         </SafeAreaProvider>
         <Toast config={toastConfig} />
