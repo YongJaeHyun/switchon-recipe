@@ -1,3 +1,4 @@
+import { CanceledError } from 'axios';
 import { RecipeDB } from 'types/database';
 import { GeminiResponse } from 'types/gemini';
 import { RecipeSchema } from 'types/recipe';
@@ -5,54 +6,65 @@ import { showErrorToast } from 'utils/showToast';
 import gemini from '../lib/axiosInstance';
 import { insertRecipeToDB, uploadImageToDB } from './supabaseAPI';
 
-export const createRecipe = async (message: string): Promise<RecipeDB> => {
+interface CreateRecipeProps {
+  message: string;
+  signal?: AbortSignal;
+}
+
+export const createRecipe = async ({ message, signal }: CreateRecipeProps): Promise<RecipeDB> => {
   try {
-    const res = await gemini.post<GeminiResponse>('/models/gemini-2.5-flash:generateContent', {
-      generationConfig: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: 'OBJECT',
-          properties: {
-            recipeName: { type: 'STRING' },
-            cookingTime: { type: 'NUMBER' },
-            nutrition: {
-              type: 'OBJECT',
-              properties: {
-                carbohydrates: { type: 'NUMBER' },
-                protein: { type: 'NUMBER' },
-                fat: { type: 'NUMBER' },
-                fiber: { type: 'NUMBER' },
-                sugar: { type: 'NUMBER' },
+    const res = await gemini.post<GeminiResponse>(
+      '/models/gemini-2.5-flash:generateContent',
+      {
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: 'OBJECT',
+            properties: {
+              recipeName: { type: 'STRING' },
+              cookingTime: { type: 'NUMBER' },
+              nutrition: {
+                type: 'OBJECT',
+                properties: {
+                  carbohydrates: { type: 'NUMBER' },
+                  protein: { type: 'NUMBER' },
+                  fat: { type: 'NUMBER' },
+                  fiber: { type: 'NUMBER' },
+                  sugar: { type: 'NUMBER' },
+                },
               },
-            },
-            ingredients: {
-              type: 'ARRAY',
-              items: { type: 'STRING' },
-            },
-            cookingSteps: {
-              type: 'ARRAY',
-              items: { type: 'STRING' },
+              ingredients: {
+                type: 'ARRAY',
+                items: { type: 'STRING' },
+              },
+              cookingSteps: {
+                type: 'ARRAY',
+                items: { type: 'STRING' },
+              },
             },
           },
         },
-      },
-      system_instruction: {
-        parts: [
-          {
-            text: '너는 요리 레시피를 생성하는 데 특화된 AI 어시스턴트야. 사용자가 요리 레시피를 요청하면, 그에 맞는 레시피를 생성해줘. 응답은 항상 한국어로 해야해.',
-          },
-        ],
-      },
-      contents: [
-        {
+        system_instruction: {
           parts: [
             {
-              text: message,
+              text: '너는 요리 레시피를 생성하는 데 특화된 AI 어시스턴트야. 사용자가 요리 레시피를 요청하면, 그에 맞는 레시피를 생성해줘. 응답은 항상 한국어로 해야해.',
             },
           ],
         },
-      ],
-    });
+        contents: [
+          {
+            parts: [
+              {
+                text: message,
+              },
+            ],
+          },
+        ],
+      },
+      {
+        signal,
+      }
+    );
 
     const recipe = JSON.parse(res.data.candidates[0].content.parts[0].text);
     const validatedRecipe = validateRecipe(recipe);
@@ -63,11 +75,19 @@ export const createRecipe = async (message: string): Promise<RecipeDB> => {
     const recipeFromDB = await insertRecipeToDB(validatedRecipe);
     return recipeFromDB;
   } catch (error) {
-    showErrorToast({
-      text1: '일시적인 에러 발생',
-      text2: `레시피 생성에 실패했습니다, 다시 한번 시도해주세요.`,
-      error,
-    });
+    if (error instanceof CanceledError) {
+      showErrorToast({
+        text1: '레시피 생성 취소',
+        text2: `레시피 생성이 취소되었습니다.`,
+        error,
+      });
+    } else {
+      showErrorToast({
+        text1: '일시적인 에러 발생',
+        text2: `레시피 생성에 실패했습니다, 다시 한번 시도해주세요.`,
+        error,
+      });
+    }
   }
 };
 
