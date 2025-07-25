@@ -14,6 +14,7 @@ import {
   TouchableHighlight,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useIngredientStore } from 'stores/ingredientStore';
 import { useRecipeStore } from 'stores/recipeStore';
 import colors from 'tailwindcss/colors';
@@ -60,8 +61,8 @@ export default function RecipeCreationScreen() {
   }, []);
 
   return (
-    <View className="relative flex-1 bg-white px-5">
-      <View className="relative mb-8 mt-6 w-full">
+    <SafeAreaView className="relative flex-1 bg-white px-5">
+      <View className="relative mb-8 w-full">
         <TextInput
           className="w-full rounded-lg border border-neutral-400 px-3 py-2.5 pr-10"
           onChangeText={setKeyword}
@@ -93,7 +94,7 @@ export default function RecipeCreationScreen() {
         )}
       />
       <TouchableHighlight
-        className="mb-4 w-full items-center justify-center rounded-lg bg-green-600 py-4"
+        className="mb-8 w-full items-center justify-center rounded-lg bg-green-600 py-4"
         underlayColor="#379237"
         onPress={handleCreateRecipe}
         disabled={isLoading}>
@@ -101,11 +102,11 @@ export default function RecipeCreationScreen() {
       </TouchableHighlight>
 
       {isLoading && (
-        <View className="absolute z-50 h-full w-screen items-center justify-center">
-          <View className="absolute h-full w-full bg-black/30" />
+        <View className="absolute inset-0 z-50 items-center justify-center">
+          <View className="absolute inset-0 bg-black/30" />
           <ActivityIndicator size={56} color={colors.emerald[300]} />
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 }

@@ -8,7 +8,7 @@ import { recipeButtonBG } from 'utils/assets';
 
 export default function RecipeCreation() {
   return (
-    <Link href={'/(tabs)/home/recipeCreation'} className="h-52 w-full">
+    <Link href={'/recipeCreation'} className="h-52 w-full">
       <View className="flex-row overflow-hidden rounded-xl bg-white shadow-lg">
         <View className="flex-[3] justify-between px-6 py-5">
           <View className="flex-row items-center gap-2">
