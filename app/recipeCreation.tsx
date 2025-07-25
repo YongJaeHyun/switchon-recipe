@@ -78,7 +78,7 @@ export default function RecipeCreationScreen() {
 
   return (
     <SafeAreaView className="relative flex-1 bg-white px-5">
-      <View className="relative mb-8 w-full gap-3">
+      <View className="mb-8 w-full gap-3">
         <TextInput
           className="w-full rounded-lg border border-neutral-400 px-3 py-2.5 pr-10"
           onChangeText={setKeyword}
@@ -86,8 +86,12 @@ export default function RecipeCreationScreen() {
           placeholder="재료를 검색하세요!"
         />
         <FlatList
-          className="min-h-10"
           contentContainerClassName="gap-2"
+          ListEmptyComponent={
+            <Pressable className="flex-row items-center gap-2 rounded-full border border-green-600 px-3 py-2">
+              <Text>선택된 재료 표시</Text>
+            </Pressable>
+          }
           data={selectedIngredients}
           renderItem={({ item }) => (
             <Pressable
