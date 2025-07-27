@@ -9,7 +9,7 @@ import colors from 'tailwindcss/colors';
 import { RecipeDB } from 'types/database';
 
 export default function RecipeCard(recipe: RecipeDB) {
-  const [isSaved, setIsSaved] = useState(recipe.isSaved);
+  const [isSaved, setIsSaved] = useState<boolean>(recipe?.isSaved ?? false);
   const timer = useRef<NodeJS.Timeout>(null);
 
   const toggleIsSaved = () => {
@@ -28,9 +28,9 @@ export default function RecipeCard(recipe: RecipeDB) {
     }, 500);
   };
   return (
-    <Link href={`/(tabs)/home/recipeDetail?recipe=${JSON.stringify(recipe)}`} className=" w-48">
+    <Link href={`/(tabs)/home/recipeDetail?recipe=${JSON.stringify(recipe)}`} className="h-48 w-48">
       <View className="w-full flex-1 overflow-hidden rounded-xl">
-        <View className="relative flex-[5]">
+        <View className="relative h-full w-full flex-[5] shadow-xl">
           <Image source={{ uri: recipe.image_uri }} style={{ width: '100%', height: '100%' }} />
 
           <Pressable onPress={toggleIsSaved} className="absolute right-2 top-2 z-50">

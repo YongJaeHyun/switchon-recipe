@@ -139,6 +139,28 @@ const checkIsSavedRecipe = async (recipeId: number): Promise<boolean> => {
   return !!data?.length;
 };
 
+const selectAllSavedRecipeFromDB = async (): Promise<RecipeDB[]> => {
+  const userId = useUserStore.getState().user.id;
+  const { data, error } = await supabase
+    .from('recipe_with_is_saved')
+    .select('*')
+    .eq('uid', userId)
+    .eq('isSaved', true)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    Sentry.captureException(error, { level: 'fatal' });
+    showErrorToast({
+      text1: 'DB 에러 발생',
+      text2: '에러 정보가 관리자에게 전달되었습니다. 빠른 시일 내에 조치하겠습니다.',
+      error,
+    });
+    return;
+  }
+
+  return data;
+};
+
 const selectSavedRecipeFromDB = async (): Promise<RecipeDB[]> => {
   const userId = useUserStore.getState().user.id;
   const { data, error } = await supabase
@@ -243,6 +265,7 @@ export {
   insertRecipeToDB,
   insertSavedRecipeToDB,
   logout,
+  selectAllSavedRecipeFromDB,
   selectRecentRecipeFromDB,
   selectSavedRecipeFromDB,
   updateStartDateToDB,

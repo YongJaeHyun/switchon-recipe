@@ -1,6 +1,7 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { selectSavedRecipeFromDB } from 'api/supabaseAPI';
 import ListEmptyText from 'components/common/ListEmptyText';
+import { Link } from 'expo-router';
 import { useEffect } from 'react';
 import { ActivityIndicator, FlatList, Text, View } from 'react-native';
 import { useRecipeStore } from 'stores/recipeStore';
@@ -22,11 +23,13 @@ export default function SavedRecipes({ refreshing }: { refreshing: boolean }) {
     <View className="">
       <View className="mb-6 flex-row items-center justify-between">
         <Text className="text-2xl font-semibold">저장한 레시피</Text>
-        {recipes.length > 10 && (
-          <View className="flex-row items-center">
-            <Text className="text-neutral-500">더보기</Text>
-            <MaterialIcons name="keyboard-arrow-right" size={20} color={colors.neutral[500]} />
-          </View>
+        {recipes.length === 10 && (
+          <Link href={'/(tabs)/home/savedRecipes'}>
+            <View className="flex-row items-center">
+              <Text className="text-neutral-500">더보기</Text>
+              <MaterialIcons name="keyboard-arrow-right" size={20} color={colors.neutral[500]} />
+            </View>
+          </Link>
         )}
       </View>
 
