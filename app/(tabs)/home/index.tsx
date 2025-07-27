@@ -37,10 +37,6 @@ export default function HomeScreen() {
     router.replace('/(auth)');
   };
 
-  const handleSheetChanges = useCallback((index: number) => {
-    console.log('handleSheetChanges', index);
-  }, []);
-
   if (!userInfo) logoutAndRedirect();
   return (
     <SafeAreaView className="flex-1 bg-neutral-100 px-5">
@@ -62,12 +58,7 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
 
-      <BottomSheet
-        ref={bottomSheetRef}
-        index={-1}
-        snapPoints={['70%']}
-        onChange={handleSheetChanges}
-        enablePanDownToClose>
+      <BottomSheet ref={bottomSheetRef} index={-1} snapPoints={['70%']} enablePanDownToClose>
         <BottomSheetView className="px-5">
           <CustomCalendar bottomSheetRef={bottomSheetRef} />
         </BottomSheetView>
