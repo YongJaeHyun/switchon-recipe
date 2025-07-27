@@ -7,7 +7,7 @@ import { useFonts } from 'expo-font';
 import { router, Stack, useNavigationContainerRef } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -32,7 +32,6 @@ Sentry.init({
 
 function RootLayout() {
   const ref = useNavigationContainerRef();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loaded, error] = useFonts({
     pretendard: require('../assets/fonts/Pretendard-Regular.otf'),
   });
@@ -44,25 +43,18 @@ function RootLayout() {
   }, [ref]);
 
   useEffect(() => {
-    const checkUserLogin = async () => {
+    const prepare = async () => {
       const isLoggedIn = await checkIsLoggedIn();
-      setIsLoggedIn(isLoggedIn);
+      if (isLoggedIn) {
+        router.replace('/(tabs)/home');
+      }
+
+      if (loaded || error) {
+        await SplashScreen.hideAsync();
+      }
     };
-
-    checkUserLogin();
-  }, []);
-
-  useEffect(() => {
-    if (loaded || error) {
-      SplashScreen.hideAsync();
-    }
+    prepare();
   }, [loaded, error]);
-
-  useEffect(() => {
-    if (isLoggedIn) {
-      router.replace('/(tabs)/home');
-    }
-  }, [isLoggedIn]);
 
   if (!loaded && !error) {
     return null;
