@@ -4,6 +4,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { deleteSavedRecipeFromDB, insertSavedRecipeToDB } from 'api/supabaseAPI';
+import { logo } from 'const/assets';
 import { Image } from 'expo-image';
 import { useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -19,7 +20,6 @@ import Animated, {
 import colors from 'tailwindcss/colors';
 import { RecipeDB } from 'types/database';
 import { Recipe } from 'types/recipe';
-import { logo } from 'utils/assets';
 
 export default function RecipeDetailScreen() {
   const { recipe }: { recipe: string } = useLocalSearchParams();

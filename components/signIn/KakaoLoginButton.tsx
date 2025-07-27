@@ -1,10 +1,10 @@
 import { login } from '@react-native-seoul/kakao-login';
+import { kakaoIcon } from 'const/assets';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { supabase } from 'lib/supabase';
 import { TouchableHighlight } from 'react-native';
 import { useUserStore } from 'stores/userStore';
-import { kakaoIcon } from 'utils/assets';
 import { getKoreanToday } from 'utils/date';
 
 export default function KakaoLoginButton() {

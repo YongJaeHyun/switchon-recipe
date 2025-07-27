@@ -1,10 +1,10 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { recipeButtonBG } from 'const/assets';
 import { Image } from 'expo-image';
 import { Link } from 'expo-router';
 import React from 'react';
 import { Text, View } from 'react-native';
 import colors from 'tailwindcss/colors';
-import { recipeButtonBG } from 'utils/assets';
 
 export default function RecipeCreation() {
   return (
