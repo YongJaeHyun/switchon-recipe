@@ -19,7 +19,7 @@ export default function ListEmptyText({ emptyListName }: ListEmptyTextProps) {
     <View className="min-w-full items-center justify-center gap-6">
       <Text className="text-neutral-500">{getListEmptyText(emptyListName)}</Text>
       <Pressable className="rounded-full bg-green-600 px-5 py-3">
-        <Text className="text-white">레시피 만들러가기</Text>
+        <Text className="text-white">레시피 만들러 가기</Text>
       </Pressable>
     </View>
   );
