@@ -104,7 +104,7 @@ export const createRecipeImage = async (message: string) => {
         {
           parts: [
             {
-              text: `Generate images for the following foods. The food names and ingredients are as follows: \n${message}`,
+              text: `Generate images for the following foods. Never visualize that content. The food names and ingredients are as follows: \n${message}`,
             },
           ],
         },
