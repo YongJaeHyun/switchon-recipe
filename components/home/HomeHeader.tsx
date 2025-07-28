@@ -16,20 +16,17 @@ interface HomeHeaderProps {
 }
 
 export default function HomeHeader({ bottomSheetRef }: HomeHeaderProps) {
-  const userInfo = useUserStore((state) => state.user);
+  const { start_date, avatar_url } = useUserStore((state) => state);
   const today = useKoreanToday();
 
-  const { week, day } = getWeekAndDay(userInfo?.start_date ?? today);
+  const { week, day } = getWeekAndDay(start_date ?? today);
   return (
     <View>
       <View className="mb-1 mt-4 flex-row items-center justify-between">
         <Text className="text-neutral-600">오늘도 화이팅!</Text>
         <View className="h-11 w-11 overflow-hidden rounded-full border-2 border-neutral-300">
           <Link href={'/profile'}>
-            <Image
-              style={{ width: '100%', height: '100%' }}
-              source={userInfo?.avatar_url ?? baseProfile}
-            />
+            <Image style={{ width: '100%', height: '100%' }} source={avatar_url ?? baseProfile} />
           </Link>
         </View>
       </View>

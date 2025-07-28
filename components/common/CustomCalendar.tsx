@@ -14,10 +14,10 @@ interface CustomCalendarProps {
 }
 
 export default function CustomCalendar({ bottomSheetRef }: CustomCalendarProps) {
-  const userInfo = useUserStore((state) => state.user);
+  const startDate = useUserStore((state) => state.start_date);
   const today = useKoreanToday();
 
-  const [selectedDate, setSelectedDate] = useState<string>(userInfo?.start_date ?? today);
+  const [selectedDate, setSelectedDate] = useState<string>(startDate ?? today);
   const [calendarKey, setCalendarKey] = useState(0); // 캘린더 리렌더링용 키
   const { week, day } = getWeekAndDay(selectedDate);
 

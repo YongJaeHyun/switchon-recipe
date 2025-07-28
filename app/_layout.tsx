@@ -7,10 +7,12 @@ import { useFonts } from 'expo-font';
 import { router, Stack, useNavigationContainerRef } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
+import { supabase } from 'lib/supabase';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
+import { useUserStore } from 'stores/userStore';
 import '../config/CalendarConfig';
 import '../global.css';
 import '../utils/polyfills';
@@ -55,6 +57,20 @@ function RootLayout() {
     };
     prepare();
   }, [loaded, error]);
+
+  useEffect(() => {
+    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!session) {
+        const resetUser = useUserStore.getState().resetUser;
+        await resetUser();
+        router.replace('/(auth)');
+      }
+    });
+
+    return () => {
+      listener.subscription.unsubscribe();
+    };
+  }, []);
 
   if (!loaded && !error) {
     return null;

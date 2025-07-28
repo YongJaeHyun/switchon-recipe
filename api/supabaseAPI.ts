@@ -23,6 +23,13 @@ const getSession = async () => {
 
 const checkIsLoggedIn = async () => {
   const session = await getSession();
+
+  if (session?.access_token) {
+    const setUser = useUserStore.getState().setUser;
+    const user = await selectUserFromDB(session.user.id);
+    await setUser(user);
+  }
+
   return session?.access_token ? true : false;
 };
 
@@ -38,14 +45,27 @@ const logout = async () => {
     });
     return;
   }
-
-  useUserStore.getState().setUser(null);
 };
 
 // USER
+const selectUserFromDB = async (userId: string) => {
+  const { data, error } = await supabase.from('user').select().eq('id', userId).single();
+
+  if (error) {
+    Sentry.captureException(error, { level: 'fatal' });
+    showErrorToast({
+      text1: 'DB 에러 발생',
+      text2: '에러 정보가 관리자에게 전달되었습니다. 빠른 시일 내에 조치하겠습니다.',
+      error,
+    });
+    return;
+  }
+  return data;
+};
+
 const updateStartDateToDB = async (start_date: string) => {
   const setUser = useUserStore.getState().setUser;
-  const userId = useUserStore.getState().user.id;
+  const userId = useUserStore.getState().id;
   const { data, error } = await supabase
     .from('user')
     .update({ start_date })
@@ -73,7 +93,7 @@ const updateStartDateToDB = async (start_date: string) => {
 
 // RECIPE
 const selectRecentRecipeFromDB = async (): Promise<RecipeDB[]> => {
-  const userId = useUserStore.getState().user.id;
+  const userId = useUserStore.getState().id;
   const { data, error } = await supabase
     .from('recipe_with_is_saved')
     .select('*')
@@ -140,7 +160,7 @@ const checkIsSavedRecipe = async (recipeId: number): Promise<boolean> => {
 };
 
 const selectAllSavedRecipeFromDB = async (): Promise<RecipeDB[]> => {
-  const userId = useUserStore.getState().user.id;
+  const userId = useUserStore.getState().id;
   const { data, error } = await supabase
     .from('recipe_with_is_saved')
     .select('*')
@@ -162,7 +182,7 @@ const selectAllSavedRecipeFromDB = async (): Promise<RecipeDB[]> => {
 };
 
 const selectSavedRecipeFromDB = async (): Promise<RecipeDB[]> => {
-  const userId = useUserStore.getState().user.id;
+  const userId = useUserStore.getState().id;
   const { data, error } = await supabase
     .from('recipe_with_is_saved')
     .select('*')
@@ -268,6 +288,7 @@ export {
   selectAllSavedRecipeFromDB,
   selectRecentRecipeFromDB,
   selectSavedRecipeFromDB,
+  selectUserFromDB,
   updateStartDateToDB,
   uploadImageToDB,
 };

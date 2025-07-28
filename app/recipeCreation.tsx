@@ -29,7 +29,7 @@ export default function RecipeCreationScreen() {
   const resetIngredients = useIngredientStore((state) => state.resetIngredients);
   const setRecentRecipes = useRecipeStore((state) => state.setRecentRecipes);
 
-  const startDate = useUserStore((state) => state.user.start_date);
+  const startDate = useUserStore((state) => state.start_date);
   const { week } = getWeekAndDay(startDate);
 
   const [keyword, setKeyword] = useState('');

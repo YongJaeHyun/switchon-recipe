@@ -8,7 +8,7 @@ import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 
 export default function Profile() {
-  const userInfo = useUserStore((state) => state.user);
+  const { avatar_url, name, email } = useUserStore((state) => state);
 
   const logoutAndRedirect = async () => {
     await logout();
@@ -22,13 +22,10 @@ export default function Profile() {
         </TouchableOpacity>
 
         <View className="h-32 w-32 overflow-hidden rounded-full">
-          <Image
-            source={userInfo?.avatar_url ?? baseProfile}
-            style={{ width: '100%', height: '100%' }}
-          />
+          <Image source={avatar_url ?? baseProfile} style={{ width: '100%', height: '100%' }} />
         </View>
-        <Text className="text-2xl font-semibold">{userInfo?.name}</Text>
-        <Text className="text-lg text-neutral-500">{userInfo?.email}</Text>
+        <Text className="text-2xl font-semibold">{name}</Text>
+        <Text className="text-lg text-neutral-500">{email}</Text>
       </View>
       <View className="mt-6 flex-[2] gap-4 px-5">
         <TouchableHighlight
