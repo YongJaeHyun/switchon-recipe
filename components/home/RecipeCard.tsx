@@ -28,7 +28,9 @@ export default function RecipeCard(recipe: RecipeDB) {
     }, 500);
   };
   return (
-    <Link href={`/(tabs)/home/recipeDetail?recipe=${JSON.stringify(recipe)}`} className="h-48 w-48">
+    <Link
+      href={`/(tabs)/home/recipeDetail?recipe=${JSON.stringify({ ...recipe, isSaved })}`}
+      className="h-48 w-48">
       <View className="w-full flex-1 overflow-hidden rounded-xl">
         <View className="relative h-full w-full flex-[5] shadow-xl">
           <Image source={{ uri: recipe.image_uri }} style={{ width: '100%', height: '100%' }} />
