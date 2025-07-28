@@ -1,4 +1,5 @@
 export const logo = require('../assets/icon.png');
+export const baseProfile = require('../assets/images/base_profile.png');
 export const googleIcon = require('../assets/images/android_google_icon.png');
 export const kakaoIcon = require('../assets/images/kakao_login_large_wide.png');
 export const recipeButtonBG = require('../assets/images/recipe_button_bg.png');

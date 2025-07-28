@@ -1,6 +1,7 @@
 import Feather from '@expo/vector-icons/Feather';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { BottomSheetMethods } from '@gorhom/bottom-sheet/lib/typescript/types';
+import { baseProfile } from 'const/assets';
 import { Image } from 'expo-image';
 import { Link } from 'expo-router';
 import useKoreanToday from 'hooks/useKoreanToday';
@@ -23,9 +24,12 @@ export default function HomeHeader({ bottomSheetRef }: HomeHeaderProps) {
     <View>
       <View className="mb-1 mt-4 flex-row items-center justify-between">
         <Text className="text-neutral-600">오늘도 화이팅!</Text>
-        <View className="h-10 w-10 overflow-hidden rounded-full">
+        <View className="h-11 w-11 overflow-hidden rounded-full border-2 border-neutral-300">
           <Link href={'/profile'}>
-            <Image style={{ width: '100%', height: '100%' }} source={userInfo?.avatar_url} />
+            <Image
+              style={{ width: '100%', height: '100%' }}
+              source={userInfo?.avatar_url ?? baseProfile}
+            />
           </Link>
         </View>
       </View>

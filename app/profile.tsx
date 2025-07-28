@@ -1,5 +1,6 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { logout } from 'api/supabaseAPI';
+import { baseProfile } from 'const/assets';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Text, TouchableHighlight, TouchableOpacity, View } from 'react-native';
@@ -21,7 +22,10 @@ export default function Profile() {
         </TouchableOpacity>
 
         <View className="h-32 w-32 overflow-hidden rounded-full">
-          <Image source={{ uri: userInfo?.avatar_url }} style={{ width: '100%', height: '100%' }} />
+          <Image
+            source={userInfo?.avatar_url ?? baseProfile}
+            style={{ width: '100%', height: '100%' }}
+          />
         </View>
         <Text className="text-2xl font-semibold">{userInfo?.name}</Text>
         <Text className="text-lg text-neutral-500">{userInfo?.email}</Text>
