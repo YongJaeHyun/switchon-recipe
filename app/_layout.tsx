@@ -63,7 +63,7 @@ function RootLayout() {
       if (!session) {
         const resetUser = useUserStore.getState().resetUser;
         await resetUser();
-        router.replace('/(auth)');
+        router.replace('/(auth)/signIn');
       }
     });
 
