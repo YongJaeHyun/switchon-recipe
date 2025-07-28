@@ -1,11 +1,25 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Tabs } from 'expo-router';
+import { Pressable } from 'react-native';
 import 'react-native-gesture-handler';
 import colors from 'tailwindcss/colors';
 
 export default function TabLayout() {
   return (
-    <Tabs screenOptions={{ tabBarActiveTintColor: colors.green[600], headerShown: false }}>
+    <Tabs
+      screenOptions={{
+        tabBarActiveTintColor: colors.green[600],
+        headerShown: false,
+        animation: 'shift',
+        tabBarButton: ({ children, onPress }) => (
+          <Pressable
+            onPress={onPress}
+            style={{ justifyContent: 'center', alignItems: 'center', height: '100%' }}
+            android_ripple={null}>
+            {children}
+          </Pressable>
+        ),
+      }}>
       <Tabs.Screen
         name="home"
         options={{
