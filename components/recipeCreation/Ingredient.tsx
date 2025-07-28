@@ -10,11 +10,11 @@ interface IngredientProps extends IIngredient {
   disabled: boolean;
 }
 
-function Ingredient({ name, image, isSelected, disabled }: IngredientProps) {
+function Ingredient({ name, image, week, isSelected, disabled }: IngredientProps) {
   const toggleIngredient = useIngredientStore((state) => state.toggleIngredient);
 
   const toggleSelect = () => {
-    toggleIngredient({ name, image });
+    toggleIngredient({ name, image, week });
   };
   return (
     <TouchableHighlight

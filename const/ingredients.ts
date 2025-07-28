@@ -91,7 +91,7 @@ import {
 } from 'const/assets';
 import { IIngredient } from 'types/recipe';
 
-export const firstWeekIngredients: IIngredient[] = [
+export const firstWeekIngredients: Omit<IIngredient, 'week'>[] = [
   {
     name: '현미잡곡밥',
     image: mixedRice,
@@ -358,7 +358,7 @@ export const firstWeekIngredients: IIngredient[] = [
   },
 ];
 
-export const secondWeekIngredients: IIngredient[] = [
+export const secondWeekIngredients: Omit<IIngredient, 'week'>[] = [
   {
     name: '오트밀',
     image: oatmeal,
@@ -409,7 +409,7 @@ export const secondWeekIngredients: IIngredient[] = [
   },
 ];
 
-export const thirdWeekIngredients: IIngredient[] = [
+export const thirdWeekIngredients: Omit<IIngredient, 'week'>[] = [
   {
     name: '떡국떡',
     image: ricecake,

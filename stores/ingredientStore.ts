@@ -6,6 +6,7 @@ import { persist } from 'zustand/middleware';
 interface IngredientState {
   selectedIngredients: IIngredient[];
   toggleIngredient: (ingredient: IIngredient) => void;
+  setIngredients: (ingredients: IIngredient[]) => void;
   resetIngredients: () => void;
 }
 
@@ -27,6 +28,7 @@ export const useIngredientStore = create<IngredientState>()(
           });
         }
       },
+      setIngredients: (ingredients) => set({ selectedIngredients: ingredients }),
       resetIngredients: () => set({ selectedIngredients: [] }),
     }),
     {

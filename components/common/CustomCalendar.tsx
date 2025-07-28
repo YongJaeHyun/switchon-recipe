@@ -4,6 +4,7 @@ import useKoreanToday from 'hooks/useKoreanToday';
 import { useState } from 'react';
 import { Text, TouchableHighlight, TouchableOpacity, View } from 'react-native';
 import { Calendar } from 'react-native-calendars';
+import { useIngredientStore } from 'stores/ingredientStore';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { getWeekAndDay } from 'utils/date';
@@ -18,16 +19,22 @@ export default function CustomCalendar({ bottomSheetRef }: CustomCalendarProps) 
   const today = useKoreanToday();
 
   const [selectedDate, setSelectedDate] = useState<string>(startDate ?? today);
-  const [calendarKey, setCalendarKey] = useState(0); // 캘린더 리렌더링용 키
+  const [calendarKey, setCalendarKey] = useState(false); // 캘린더 리렌더링용 키
   const { week, day } = getWeekAndDay(selectedDate);
 
   const setDateToToday = () => {
     setSelectedDate(today);
-    setCalendarKey((prev) => prev + 1);
+    setCalendarKey((prev) => !prev);
   };
 
   const updateStartDate = async () => {
+    const setIngredients = useIngredientStore.getState().setIngredients;
+    const selectedIngredients = useIngredientStore.getState().selectedIngredients;
+
+    const filteredIngredients = selectedIngredients.filter((ingredient) => ingredient.week <= week);
+    setIngredients(filteredIngredients);
     await updateStartDateToDB(selectedDate);
+
     if (bottomSheetRef) {
       bottomSheetRef.current.close();
     }
@@ -45,7 +52,7 @@ export default function CustomCalendar({ bottomSheetRef }: CustomCalendarProps) 
       <Text className="mb-6 text-neutral-500">날짜를 선택해주세요</Text>
 
       <Calendar
-        key={calendarKey}
+        key={String(calendarKey)}
         current={selectedDate}
         maxDate={today}
         onDayPress={(day) => {
