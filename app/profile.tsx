@@ -2,7 +2,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { logout } from 'api/supabaseAPI';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Text, TouchableHighlight, View } from 'react-native';
+import { Text, TouchableHighlight, TouchableOpacity, View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 
@@ -16,9 +16,9 @@ export default function Profile() {
   return (
     <View className="flex-1 bg-white">
       <View className="relative flex-1 items-center justify-center gap-3 bg-green-50 pt-4">
-        <View className="absolute left-6 top-16 z-10">
+        <TouchableOpacity onPress={router.back} className="absolute left-6 top-16 z-10">
           <MaterialIcons name="arrow-back" size={32} color="black" />
-        </View>
+        </TouchableOpacity>
 
         <View className="h-32 w-32 overflow-hidden rounded-full">
           <Image source={{ uri: userInfo?.avatar_url }} style={{ width: '100%', height: '100%' }} />

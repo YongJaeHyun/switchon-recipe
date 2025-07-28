@@ -6,10 +6,10 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { deleteSavedRecipeFromDB, insertSavedRecipeToDB } from 'api/supabaseAPI';
 import { logo } from 'const/assets';
 import { Image } from 'expo-image';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useRef, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
   Extrapolation,
   interpolate,
@@ -81,9 +81,9 @@ export default function RecipeDetailScreen() {
   return (
     <View className="flex-1 bg-white">
       <View className="relative flex-[3]">
-        <View className="absolute left-5 top-12 z-10">
+        <TouchableOpacity onPress={router.back} className="absolute left-5 top-12 z-10">
           <MaterialIcons name="arrow-back" size={32} color="black" />
-        </View>
+        </TouchableOpacity>
         {image_uri ? (
           <Image source={{ uri: image_uri }} style={{ width: '100%', height: '100%' }} />
         ) : (
