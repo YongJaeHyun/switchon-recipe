@@ -7,9 +7,10 @@ import { IIngredient } from 'types/recipe';
 
 interface IngredientProps extends IIngredient {
   isSelected: boolean;
+  disabled: boolean;
 }
 
-function Ingredient({ name, image, isSelected }: IngredientProps) {
+function Ingredient({ name, image, isSelected, disabled }: IngredientProps) {
   const toggleIngredient = useIngredientStore((state) => state.toggleIngredient);
 
   const toggleSelect = () => {
@@ -17,9 +18,10 @@ function Ingredient({ name, image, isSelected }: IngredientProps) {
   };
   return (
     <TouchableHighlight
-      className="h-32 w-24 items-center justify-center rounded-lg"
+      className={`h-32 w-24 items-center justify-center rounded-lg ${disabled && 'opacity-40'}`}
       onPress={toggleSelect}
-      underlayColor={colors.neutral[200]}>
+      underlayColor={colors.neutral[200]}
+      disabled={disabled}>
       <View className="items-center gap-1">
         <View
           className={`h-20 w-20 overflow-hidden rounded-full ${isSelected ? 'border-[5px] border-green-700/80' : 'border-2 border-neutral-200'}`}>
