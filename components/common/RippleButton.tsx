@@ -1,21 +1,57 @@
-import React from 'react';
-import { Pressable, PressableProps, Text } from 'react-native';
+import React, { useRef } from 'react';
+import { Animated, Pressable, PressableProps } from 'react-native';
+
+type Rounded = 'lg' | 'xl' | 'full';
 
 interface RippleButtonProps extends PressableProps {
   rippleColor: string;
+  rounded: Rounded;
   children?: React.ReactNode;
 }
 
 const RippleButton = React.forwardRef<React.ComponentRef<typeof Pressable>, RippleButtonProps>(
-  ({ children, rippleColor, ...rest }, ref) => {
+  ({ children, rippleColor, className, rounded, ...rest }, ref) => {
+    const scale = useRef(new Animated.Value(1)).current;
+
+    const handlePressIn = () => {
+      Animated.spring(scale, {
+        toValue: 0.96,
+        useNativeDriver: true,
+        speed: 50,
+      }).start();
+    };
+
+    const handlePressOut = () => {
+      Animated.spring(scale, {
+        toValue: 1,
+        useNativeDriver: true,
+        speed: 50,
+      }).start();
+    };
+
+    const getRoundedClassName = (rounded: Rounded) => {
+      if (rounded === 'lg') return 'rounded-lg';
+      else if (rounded === 'xl') return 'rounded-xl';
+      else if (rounded === 'full') return 'rounded-full';
+      else return '';
+    };
+
     return (
-      <Pressable
-        ref={ref}
-        android_ripple={{ color: rippleColor, foreground: true }}
-        className="w-full items-center justify-center overflow-hidden rounded-xl bg-green-600 py-5"
-        {...rest}>
-        <Text className="text-xl text-white">{children}</Text>
-      </Pressable>
+      <Animated.View
+        style={{
+          transform: [{ scale }],
+        }}
+        className={`items-center justify-center overflow-hidden ${getRoundedClassName(rounded)}`}>
+        <Pressable
+          ref={ref}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          android_ripple={{ color: rippleColor, foreground: true }}
+          className={`w-full items-center justify-center ${className}`}
+          {...rest}>
+          {children}
+        </Pressable>
+      </Animated.View>
     );
   }
 );

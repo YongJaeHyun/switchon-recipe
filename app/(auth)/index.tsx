@@ -48,7 +48,9 @@ export default function LaunchScreen() {
           </View>
         </View>
         <Link href="/(auth)/signIn" asChild replace>
-          <RippleButton rippleColor={colors.green[700]}>로그인 하러가기</RippleButton>
+          <RippleButton rounded="xl" className="bg-green-600 py-4" rippleColor={colors.green[700]}>
+            <Text className="text-lg text-white">로그인 하러가기</Text>
+          </RippleButton>
         </Link>
       </View>
       <View className="flex-[1]" />
