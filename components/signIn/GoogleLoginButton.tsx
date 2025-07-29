@@ -3,13 +3,13 @@ import {
   GoogleSigninButton,
   statusCodes,
 } from '@react-native-google-signin/google-signin';
-import { useRouter } from 'expo-router';
+import { selectUserFromDB } from 'api/supabaseAPI';
+import { router } from 'expo-router';
 import { useEffect } from 'react';
 import { useUserStore } from 'stores/userStore';
 import { supabase } from '../../lib/supabase';
 
 export default function GoogleLoginButton() {
-  const router = useRouter();
   const setUser = useUserStore((state) => state.setUser);
 
   useEffect(() => {
@@ -37,14 +37,17 @@ export default function GoogleLoginButton() {
               throw new Error(`Supabase sign-in error: ${error.message}`);
             }
             if (data.user.email) {
+              const user = await selectUserFromDB(data.user.id);
               setUser({
-                id: data.user.id,
-                email: data.user.email,
-                name: data.user.user_metadata.full_name || '',
-                avatar_url: data.user.user_metadata.avatar_url || '',
-                provider: data.user.app_metadata.provider,
-                created_at: data.user.created_at,
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                avatar_url: user.avatar_url,
+                provider: user.provider,
+                created_at: user.created_at,
+                start_date: user.start_date,
               });
+
               router.replace('/home');
             }
           } else {

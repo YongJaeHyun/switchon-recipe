@@ -2,7 +2,7 @@ import * as Sentry from '@sentry/react-native';
 import { decode } from 'base64-arraybuffer';
 import { useRecipeStore } from 'stores/recipeStore';
 import { useUserStore } from 'stores/userStore';
-import { RecipeDB, SavedRecipeDB } from 'types/database';
+import { RecipeDB, SavedRecipeDB, UserDB } from 'types/database';
 import { Recipe } from 'types/recipe';
 import { showErrorToast, showSuccessToast } from 'utils/showToast';
 import { supabase } from '../lib/supabase';
@@ -49,7 +49,7 @@ const logout = async () => {
 
 // USER
 const selectUserFromDB = async (userId: string) => {
-  const { data, error } = await supabase.from('user').select().eq('id', userId).single();
+  const { data, error } = await supabase.from('user').select().eq('id', userId).single<UserDB>();
 
   if (error) {
     Sentry.captureException(error, { level: 'fatal' });

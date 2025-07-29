@@ -1,11 +1,11 @@
 import { login } from '@react-native-seoul/kakao-login';
+import { selectUserFromDB } from 'api/supabaseAPI';
 import { kakaoIcon } from 'const/assets';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { supabase } from 'lib/supabase';
 import { TouchableHighlight } from 'react-native';
 import { useUserStore } from 'stores/userStore';
-import { getKoreanToday } from 'utils/date';
 
 export default function KakaoLoginButton() {
   const setUser = useUserStore((state) => state.setUser);
@@ -23,15 +23,17 @@ export default function KakaoLoginButton() {
           console.error('Kakao login error:', error);
         }
         if (data.user.email) {
+          const user = await selectUserFromDB(data.user.id);
           setUser({
-            id: data.user.id,
-            email: data.user.email,
-            name: data.user.user_metadata.full_name || '',
-            avatar_url: data.user.user_metadata.avatar_url || '',
-            provider: data.user.app_metadata.provider,
-            created_at: data.user.created_at,
-            start_date: getKoreanToday(),
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            avatar_url: user.avatar_url,
+            provider: user.provider,
+            created_at: user.created_at,
+            start_date: user.start_date,
           });
+
           router.replace('/home');
         }
       }
@@ -41,7 +43,7 @@ export default function KakaoLoginButton() {
   }
 
   return (
-    <TouchableHighlight onPress={signInWithKakao}>
+    <TouchableHighlight onPress={signInWithKakao} className="rounded-lg">
       <Image style={{ width: 310, height: 44 }} source={kakaoIcon} />
     </TouchableHighlight>
   );
