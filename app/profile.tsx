@@ -10,10 +10,6 @@ import colors from 'tailwindcss/colors';
 export default function Profile() {
   const { avatar_url, name, email } = useUserStore((state) => state);
 
-  const logoutAndRedirect = async () => {
-    await logout();
-    router.replace('/(auth)');
-  };
   return (
     <View className="flex-1 bg-white">
       <View className="relative flex-1 items-center justify-center gap-3 bg-green-50 pt-4">
@@ -35,7 +31,7 @@ export default function Profile() {
           <Text className="text-lg text-neutral-600">문의사항 보내기</Text>
         </TouchableHighlight>
         <TouchableHighlight
-          onPress={logoutAndRedirect}
+          onPress={logout}
           underlayColor={colors.neutral[300]}
           className="w-full items-center rounded-xl bg-neutral-100 py-4">
           <Text className="text-lg text-neutral-600">로그아웃</Text>
