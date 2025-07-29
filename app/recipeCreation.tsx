@@ -104,10 +104,10 @@ export default function RecipeCreationScreen() {
         />
       </View>
       <FlatList
-        key={resetTrigger ? 'reset-1' : 'reset-0'}
         className="mb-4 flex-1"
         contentContainerStyle={{ gap: 48 }}
         data={allIngredients}
+        extraData={resetTrigger ? 'reset-1' : 'reset-0'}
         renderItem={({ item }) => (
           <Ingredients
             title={item.title}
