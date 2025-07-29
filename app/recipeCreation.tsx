@@ -1,7 +1,7 @@
-import Feather from '@expo/vector-icons/Feather';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { selectRecentRecipeFromDB } from 'api/supabaseAPI';
 import Ingredients from 'components/recipeCreation/Ingredients';
+import SelectedIngredient from 'components/recipeCreation/SelectedIngredient';
 import { allIngredients } from 'const/ingredients';
 import { router } from 'expo-router';
 import { useGemini } from 'hooks/useGemini';
@@ -25,7 +25,6 @@ import { getWeekAndDay } from 'utils/date';
 
 export default function RecipeCreationScreen() {
   const selectedIngredients = useIngredientStore((state) => state.selectedIngredients);
-  const toggleIngredient = useIngredientStore((state) => state.toggleIngredient);
   const resetIngredients = useIngredientStore((state) => state.resetIngredients);
   const setRecentRecipes = useRecipeStore((state) => state.setRecentRecipes);
 
@@ -79,43 +78,30 @@ export default function RecipeCreationScreen() {
   return (
     <SafeAreaView className="relative flex-1 bg-white px-5">
       <View className="mb-8 w-full gap-3">
-        <TextInput
-          className="w-full rounded-lg border border-neutral-400 px-3 py-2.5 pr-10"
-          onChangeText={setKeyword}
-          value={keyword}
-          placeholder="재료를 검색하세요!"
-        />
-        <FlatList
-          contentContainerClassName="gap-2"
-          ListEmptyComponent={
-            <Pressable className="flex-row items-center gap-2 rounded-full border border-green-600 px-3 py-2">
-              <Text>선택된 재료 표시</Text>
-            </Pressable>
-          }
-          data={selectedIngredients}
-          renderItem={({ item }) => (
+        <View className="relative">
+          <TextInput
+            className="w-full rounded-lg border border-neutral-400 px-3 py-2.5 pr-10"
+            onChangeText={setKeyword}
+            value={keyword}
+            placeholder="재료를 검색하세요!"
+          />
+          {keyword.length > 0 && (
             <Pressable
-              key={item.name}
-              onPress={() => toggleIngredient(item)}
-              className="flex-row items-center gap-2 rounded-full border border-green-600 px-3 py-2">
-              <Text>{item.name}</Text>
-              <View>
-                <Feather name="x" size={16} color="black" />
-              </View>
+              onPress={() => setKeyword('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2"
+              hitSlop={10}>
+              <Ionicons name="close-circle" size={20} color="#888" />
             </Pressable>
           )}
+        </View>
+        <FlatList
+          contentContainerClassName="gap-2"
+          ListEmptyComponent={<SelectedIngredient />}
+          data={selectedIngredients}
+          renderItem={({ item }) => <SelectedIngredient ingredient={item} />}
           horizontal
           showsHorizontalScrollIndicator={false}
         />
-
-        {keyword.length > 0 && (
-          <Pressable
-            onPress={() => setKeyword('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2"
-            hitSlop={10}>
-            <Ionicons name="close-circle" size={20} color="#888" />
-          </Pressable>
-        )}
       </View>
       <FlatList
         key={resetTrigger ? 'reset-1' : 'reset-0'}
