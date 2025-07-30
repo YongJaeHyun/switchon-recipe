@@ -32,9 +32,14 @@ export default function KakaoLoginButton() {
             provider: user.provider,
             created_at: user.created_at,
             start_date: user.start_date,
+            is_onboarded: user.is_onboarded,
           });
 
-          router.replace('/home');
+          if (user.is_onboarded) {
+            router.replace('/(tabs)/home');
+          } else {
+            router.replace('/(auth)/onboard');
+          }
         }
       }
     } catch (error: any) {

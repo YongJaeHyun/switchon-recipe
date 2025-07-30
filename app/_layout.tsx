@@ -48,7 +48,13 @@ function RootLayout() {
     const prepare = async () => {
       const isLoggedIn = await checkIsLoggedIn();
       if (isLoggedIn) {
-        router.replace('/(tabs)/home');
+        const isOnboarded = useUserStore.getState().is_onboarded;
+
+        if (isOnboarded) {
+          router.replace('/(tabs)/home');
+        } else {
+          router.replace('/(auth)/onboard');
+        }
       }
 
       if (loaded || error) {

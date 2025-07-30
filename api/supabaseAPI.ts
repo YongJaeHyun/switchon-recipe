@@ -63,6 +63,30 @@ const selectUserFromDB = async (userId: string) => {
   return data;
 };
 
+const updateOnboardingToDB = async (start_date: string) => {
+  const setUser = useUserStore.getState().setUser;
+  const userId = useUserStore.getState().id;
+
+  const { data, error } = await supabase
+    .from('user')
+    .update({ start_date, is_onboarded: true })
+    .eq('id', userId)
+    .select()
+    .single();
+
+  if (error) {
+    Sentry.captureException(error, { level: 'fatal' });
+    showErrorToast({
+      text1: 'DB 에러 발생',
+      text2: '에러 정보가 관리자에게 전달되었습니다. 빠른 시일 내에 조치하겠습니다.',
+      error,
+    });
+    return;
+  } else {
+    setUser(data);
+  }
+};
+
 const updateStartDateToDB = async (start_date: string) => {
   const setUser = useUserStore.getState().setUser;
   const userId = useUserStore.getState().id;
@@ -289,6 +313,7 @@ export {
   selectRecentRecipeFromDB,
   selectSavedRecipeFromDB,
   selectUserFromDB,
+  updateOnboardingToDB,
   updateStartDateToDB,
   uploadImageToDB,
 };

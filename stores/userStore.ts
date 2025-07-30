@@ -14,6 +14,7 @@ export const useUserStore = create<UserState>()((set) => ({
   created_at: '',
   start_date: '',
   avatar_url: null,
+  is_onboarded: false,
   setUser: (user) =>
     new Promise((resolve) => {
       set({ ...user });
@@ -29,6 +30,7 @@ export const useUserStore = create<UserState>()((set) => ({
         created_at: '',
         start_date: '',
         avatar_url: null,
+        is_onboarded: false,
       });
       resolve();
     }),
