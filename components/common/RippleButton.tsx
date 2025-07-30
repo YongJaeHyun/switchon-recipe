@@ -1,16 +1,28 @@
 import React, { useRef } from 'react';
 import { Animated, Pressable, PressableProps } from 'react-native';
+import colors from 'tailwindcss/colors';
 
 type Rounded = 'lg' | 'xl' | 'full';
 
 interface RippleButtonProps extends PressableProps {
-  rippleColor: string;
-  rounded: Rounded;
+  rippleColor?: string;
+  rounded?: Rounded;
+  borderClassName?: string;
   children?: React.ReactNode;
 }
 
 const RippleButton = React.forwardRef<React.ComponentRef<typeof Pressable>, RippleButtonProps>(
-  ({ children, rippleColor, className, rounded, ...rest }, ref) => {
+  (
+    {
+      children,
+      className,
+      borderClassName,
+      rippleColor = borderClassName ? colors.white : colors.green[700],
+      rounded = 'xl',
+      ...rest
+    },
+    ref
+  ) => {
     const scale = useRef(new Animated.Value(1)).current;
 
     const handlePressIn = () => {
@@ -41,7 +53,7 @@ const RippleButton = React.forwardRef<React.ComponentRef<typeof Pressable>, Ripp
         style={{
           transform: [{ scale }],
         }}
-        className={`items-center justify-center overflow-hidden ${getRoundedClassName(rounded)}`}>
+        className={`items-center justify-center overflow-hidden ${borderClassName} ${getRoundedClassName(rounded)}`}>
         <Pressable
           ref={ref}
           onPressIn={handlePressIn}
