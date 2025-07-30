@@ -133,7 +133,7 @@ export default function RecipeCreationScreen() {
       {isLoading && (
         <View className="absolute inset-0 z-50 items-center justify-center">
           <View className="absolute inset-0 bg-black/30" />
-          <ActivityIndicator size={56} color={colors.emerald[300]} />
+          <ActivityIndicator className="-translate-y-20" size={56} color={colors.emerald[300]} />
         </View>
       )}
     </SafeAreaView>
