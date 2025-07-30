@@ -3,6 +3,7 @@ import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { shareCustomTemplate } from '@react-native-kakao/share';
 import { deleteSavedRecipeFromDB, insertSavedRecipeToDB } from 'api/supabaseAPI';
 import { logo } from 'const/assets';
 import { Image } from 'expo-image';
@@ -78,6 +79,18 @@ export default function RecipeDetailScreen() {
     };
   });
 
+  const shareRecipeWithKakao = async () => {
+    await shareCustomTemplate({
+      templateId: 122968,
+      templateArgs: {
+        title: recipe_name,
+        image_uri,
+        recipe,
+        description: `🍚 ${parsedNutrition.carbohydrates}\n🍗 ${parsedNutrition.protein}\n🧀 ${parsedNutrition.fat}`,
+      },
+    });
+  };
+
   return (
     <View className="flex-1 bg-white">
       <View className="relative flex-[3]">
@@ -90,6 +103,12 @@ export default function RecipeDetailScreen() {
           <Image source={logo} style={{ width: '100%', height: '100%' }} />
         )}
 
+        <Pressable
+          onPress={shareRecipeWithKakao}
+          className="absolute right-24 top-12 z-10 h-12 w-12 items-center justify-center">
+          <View className="absolute left-0 top-0 h-full w-full rounded-full bg-black/30" />
+          <MaterialIcons name={'share'} size={32} color={colors.neutral[200]} />
+        </Pressable>
         <Pressable
           onPress={toggleIsSaved}
           className="absolute right-5 top-12 z-10 h-12 w-12 items-center justify-center">

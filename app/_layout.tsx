@@ -1,3 +1,4 @@
+import { initializeKakaoSDK } from '@react-native-kakao/core';
 import * as Sentry from '@sentry/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { checkIsLoggedIn } from 'api/supabaseAPI';
@@ -16,6 +17,8 @@ import { useUserStore } from 'stores/userStore';
 import '../config/CalendarConfig';
 import '../global.css';
 import '../utils/polyfills';
+
+initializeKakaoSDK(process.env.EXPO_PUBLIC_KAKAO_API_KEY);
 
 const queryClient = new QueryClient();
 SplashScreen.preventAutoHideAsync();
