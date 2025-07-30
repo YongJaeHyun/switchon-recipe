@@ -1,10 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { createRecipe } from 'api/gemini';
 import { selectRecentRecipeFromDB } from 'api/supabaseAPI';
 import Ingredients from 'components/recipeCreation/Ingredients';
 import SelectedIngredient from 'components/recipeCreation/SelectedIngredient';
 import { allIngredients } from 'const/ingredients';
 import { router } from 'expo-router';
-import { useGemini } from 'hooks/useGemini';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -32,9 +32,7 @@ export default function RecipeCreationScreen() {
 
   const [resetTrigger, setResetTrigger] = useState(false);
 
-  const { mutateAsync } = useGemini();
-
-  const createRecipe = async () => {
+  const createRecipeWithAI = async () => {
     const ingredients = selectedIngredients.map((ingredients) => ingredients.name).join(', ');
     const week = Math.max(...selectedIngredients.map((ingredient) => ingredient.week));
     const command = `다음 재료들만 이용해서 스위치온 ${week}주차에 먹을 수 있는 음식의 레시피를 만들어줘. 하지만, 모든 재료를 이용할 필요는 없어. 소스나 조미료는 자유롭게 활용해도 돼. \n재료: ${ingredients}`;
@@ -42,7 +40,7 @@ export default function RecipeCreationScreen() {
 
     controller.current = new AbortController();
 
-    const recipe = await mutateAsync({ command, week, signal: controller.current.signal });
+    const recipe = await createRecipe({ command, week, signal: controller.current.signal });
     if (!recipe) return null;
 
     const recentRecipes = await selectRecentRecipeFromDB();
@@ -54,7 +52,7 @@ export default function RecipeCreationScreen() {
   const handleCreateRecipe = async () => {
     setIsLoading(true);
 
-    const recipe = await createRecipe();
+    const recipe = await createRecipeWithAI();
     if (recipe) {
       router.push(`/(tabs)/home/recipeDetail?recipe=${JSON.stringify(recipe)}`);
     }
