@@ -1,3 +1,5 @@
+import 'dotenv/config';
+
 module.exports = {
   expo: {
     name: '스위치온 레시피',
@@ -13,11 +15,13 @@ module.exports = {
     },
     plugins: [
       [
-        '@react-native-seoul/kakao-login',
+        '@react-native-kakao/core',
         {
-          kakaoAppKey: process.env.EXPO_PUBLIC_KAKAO_API_KEY ?? '',
-          overrideKakaoSDKVersion: '2.11.2',
-          kotlinVersion: '2.0.21',
+          nativeAppKey: process.env.EXPO_PUBLIC_KAKAO_API_KEY ?? '',
+          android: {
+            forwardKakaoLinkIntentFilterToMainActivity: true,
+            authCodeHandlerActivity: true,
+          },
         },
       ],
       [

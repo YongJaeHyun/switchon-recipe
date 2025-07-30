@@ -1,4 +1,4 @@
-import { login } from '@react-native-seoul/kakao-login';
+import { login } from '@react-native-kakao/user';
 import { selectUserFromDB } from 'api/supabaseAPI';
 import { kakaoIcon } from 'const/assets';
 import { Image } from 'expo-image';
