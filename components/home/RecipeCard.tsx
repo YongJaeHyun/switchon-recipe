@@ -7,9 +7,10 @@ import { useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import colors from 'tailwindcss/colors';
 import { RecipeDB } from 'types/database';
+import { getWeekColor } from 'utils/getWeekColor';
 
 export default function RecipeCard(recipe: RecipeDB) {
-  const [isSaved, setIsSaved] = useState<boolean>(recipe?.isSaved ?? false);
+  const [isSaved, setIsSaved] = useState<boolean>(recipe?.is_saved ?? false);
   const timer = useRef<NodeJS.Timeout>(null);
 
   const toggleIsSaved = () => {
@@ -33,6 +34,10 @@ export default function RecipeCard(recipe: RecipeDB) {
       className="h-48 w-48">
       <View className="w-full flex-1 overflow-hidden rounded-xl">
         <View className="relative h-full w-full flex-[5] shadow-xl">
+          <View className={`absolute left-2 top-2 z-50 rounded-full bg-white px-2 py-1`}>
+            <Text className={`${getWeekColor(recipe.week)}`}>{recipe.week}주차</Text>
+          </View>
+
           <Image source={{ uri: recipe.image_uri }} style={{ width: '100%', height: '100%' }} />
 
           <Pressable onPress={toggleIsSaved} className="absolute right-2 top-2 z-50">

@@ -32,7 +32,7 @@ export default function RecipeDetailScreen() {
   const parsedNutrition: Recipe['nutrition'] = JSON.parse(nutrition);
   const parsedCookingSteps: Recipe['cookingSteps'] = JSON.parse(cooking_steps);
 
-  const [isSaved, setIsSaved] = useState(parsedRecipe?.isSaved ?? false);
+  const [isSaved, setIsSaved] = useState(parsedRecipe?.is_saved ?? false);
   const timer = useRef<NodeJS.Timeout>(null);
 
   const toggleIsSaved = () => {

@@ -8,11 +8,16 @@ import gemini from '../lib/axiosInstance';
 import { insertRecipeToDB, uploadImageToDB } from './supabaseAPI';
 
 interface CreateRecipeProps {
-  message: string;
+  command: string;
+  week: number;
   signal?: AbortSignal;
 }
 
-export const createRecipe = async ({ message, signal }: CreateRecipeProps): Promise<RecipeDB> => {
+export const createRecipe = async ({
+  command,
+  week,
+  signal,
+}: CreateRecipeProps): Promise<RecipeDB> => {
   try {
     const res = await gemini.post<GeminiResponse>(
       '/models/gemini-2.5-flash:generateContent',
@@ -56,7 +61,7 @@ export const createRecipe = async ({ message, signal }: CreateRecipeProps): Prom
           {
             parts: [
               {
-                text: message,
+                text: command,
               },
             ],
           },
@@ -73,7 +78,7 @@ export const createRecipe = async ({ message, signal }: CreateRecipeProps): Prom
       `name: ${validatedRecipe.recipeName}\ningredients: ${validatedRecipe.ingredients}`
     );
 
-    const recipeFromDB = await insertRecipeToDB(validatedRecipe);
+    const recipeFromDB = await insertRecipeToDB(validatedRecipe, week);
     return recipeFromDB;
   } catch (error) {
     if (error instanceof CanceledError) {

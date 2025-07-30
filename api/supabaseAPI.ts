@@ -137,7 +137,7 @@ const selectRecentRecipeFromDB = async (): Promise<RecipeDB[]> => {
   return data;
 };
 
-const insertRecipeToDB = async (recipe: Recipe): Promise<RecipeDB> => {
+const insertRecipeToDB = async (recipe: Recipe, week: number): Promise<RecipeDB> => {
   const { data, error } = await supabase
     .from('recipe')
     .insert<Partial<RecipeDB>>({
@@ -147,6 +147,7 @@ const insertRecipeToDB = async (recipe: Recipe): Promise<RecipeDB> => {
       cooking_time: recipe.cookingTime,
       recipe_name: recipe.recipeName,
       image_uri: recipe.imageUri,
+      week,
     })
     .select()
     .single();
@@ -211,7 +212,7 @@ const selectSavedRecipeFromDB = async (): Promise<RecipeDB[]> => {
     .from('recipe_with_is_saved')
     .select('*')
     .eq('uid', userId)
-    .eq('isSaved', true)
+    .eq('is_saved', true)
     .order('created_at', { ascending: false })
     .range(0, 9);
 
