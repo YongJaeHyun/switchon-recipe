@@ -23,21 +23,19 @@ export default function SavedRecipes({ refreshing }: { refreshing: boolean }) {
     <View className="">
       <View className="mb-6 flex-row items-center justify-between">
         <Text className="text-2xl font-semibold">저장한 레시피</Text>
-        {recipes.length === 10 && (
-          <Link href={'/(tabs)/home/savedRecipes'}>
-            <View className="flex-row items-center">
-              <Text className="text-neutral-500">더보기</Text>
-              <MaterialIcons name="keyboard-arrow-right" size={20} color={colors.neutral[500]} />
-            </View>
-          </Link>
-        )}
+        <Link href={'/(tabs)/home/savedRecipes'}>
+          <View className="flex-row items-center">
+            <Text className="text-neutral-500">모두보기</Text>
+            <MaterialIcons name="keyboard-arrow-right" size={20} color={colors.neutral[500]} />
+          </View>
+        </Link>
       </View>
 
       {refreshing ? (
         <ActivityIndicator className="h-48" size="large" color={colors.green[500]} />
       ) : (
         <FlatList
-          className="h-48"
+          className="h-52"
           data={recipes}
           contentContainerClassName={'gap-5'}
           keyExtractor={(item) => 'SavedRecipes' + item.id.toString()}

@@ -32,10 +32,19 @@ export default function RecipeCard(recipe: RecipeDB) {
     <Link
       href={`/(tabs)/home/recipeDetail?recipe=${JSON.stringify({ ...recipe, isSaved })}`}
       className="h-48 w-48">
-      <View className="w-full flex-1 overflow-hidden rounded-xl">
-        <View className="relative h-full w-full flex-[5] shadow-xl">
+      <View
+        className="w-full flex-1 overflow-hidden rounded-xl"
+        style={{
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.5,
+          shadowRadius: 2,
+          elevation: 2,
+        }}>
+        <View className="relative h-full w-full flex-[5]">
           <View className={`absolute left-2 top-2 z-50 rounded-full bg-white px-2 py-1`}>
-            <Text className={`${getWeekColor(recipe.week)}`}>{recipe.week}주차</Text>
+            <Text className={`${getWeekColor(recipe.week)}`}>
+              {recipe.week}주차{recipe.week === 3 && '+'}
+            </Text>
           </View>
 
           <Image source={{ uri: recipe.image_uri }} style={{ width: '100%', height: '100%' }} />

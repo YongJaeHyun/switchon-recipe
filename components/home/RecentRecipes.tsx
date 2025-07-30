@@ -24,7 +24,7 @@ export default function RecentRecipes({ refreshing }: { refreshing: boolean }) {
         <ActivityIndicator className="h-48" size="large" color={colors.green[500]} />
       ) : (
         <FlatList
-          className="h-48"
+          className="h-52"
           data={recipes}
           contentContainerClassName={'gap-5'}
           keyExtractor={(item) => 'RecentRecipes' + item.id.toString()}
