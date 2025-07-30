@@ -190,7 +190,7 @@ const selectAllSavedRecipeFromDB = async (): Promise<RecipeDB[]> => {
     .from('recipe_with_is_saved')
     .select('*')
     .eq('uid', userId)
-    .eq('isSaved', true)
+    .eq('is_saved', true)
     .order('created_at', { ascending: false });
 
   if (error) {
