@@ -49,7 +49,9 @@ export default function RecipeCard(recipe: RecipeDB) {
 
           <Image source={{ uri: recipe.image_uri }} style={{ width: '100%', height: '100%' }} />
 
-          <Pressable onPress={toggleIsSaved} className="absolute right-2 top-2 z-50">
+          <Pressable
+            onPress={toggleIsSaved}
+            className="absolute right-2 top-2 z-50 h-10 w-10 items-center justify-center">
             <View className="absolute left-0 top-0 h-full w-full rounded-full bg-black/30" />
             <MaterialIcons
               name={isSaved ? 'star' : 'star-outline'}

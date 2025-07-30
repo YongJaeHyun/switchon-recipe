@@ -89,11 +89,14 @@ export default function RecipeDetailScreen() {
         ) : (
           <Image source={logo} style={{ width: '100%', height: '100%' }} />
         )}
-        <Pressable onPress={toggleIsSaved} className="absolute right-5 top-12 z-10">
+
+        <Pressable
+          onPress={toggleIsSaved}
+          className="absolute right-5 top-12 z-10 h-12 w-12 items-center justify-center">
           <View className="absolute left-0 top-0 h-full w-full rounded-full bg-black/30" />
           <MaterialIcons
             name={isSaved ? 'star' : 'star-outline'}
-            size={40}
+            size={36}
             color={colors.yellow[500]}
           />
         </Pressable>
