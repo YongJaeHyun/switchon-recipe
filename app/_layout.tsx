@@ -4,7 +4,7 @@ import { checkIsLoggedIn } from 'api/supabaseAPI';
 import { toastConfig } from 'config/toastConfig';
 import { isRunningInExpoGo } from 'expo';
 import { useFonts } from 'expo-font';
-import { router, Stack, useNavigationContainerRef } from 'expo-router';
+import { router, Stack, useNavigation, useNavigationContainerRef } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { supabase } from 'lib/supabase';
@@ -34,6 +34,8 @@ Sentry.init({
 
 function RootLayout() {
   const ref = useNavigationContainerRef();
+  const navigation = useNavigation();
+
   const [loaded, error] = useFonts({
     pretendard: require('../assets/fonts/Pretendard-Regular.otf'),
   });
@@ -69,6 +71,8 @@ function RootLayout() {
       if (!session) {
         const resetUser = useUserStore.getState().resetUser;
         await resetUser();
+
+        if (router.canDismiss()) router.dismissAll();
         router.replace('/(auth)/signIn');
       }
     });
@@ -76,7 +80,7 @@ function RootLayout() {
     return () => {
       listener.subscription.unsubscribe();
     };
-  }, []);
+  }, [navigation]);
 
   if (!loaded && !error) {
     return null;
