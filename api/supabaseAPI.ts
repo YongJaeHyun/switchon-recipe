@@ -184,12 +184,13 @@ const checkIsSavedRecipe = async (recipeId: number): Promise<boolean> => {
   return !!data?.length;
 };
 
-const selectAllSavedRecipeFromDB = async (): Promise<RecipeDB[]> => {
+const selectSavedRecipeByWeekFromDB = async (week: number): Promise<RecipeDB[]> => {
   const userId = useUserStore.getState().id;
   const { data, error } = await supabase
     .from('recipe_with_is_saved')
     .select('*')
     .eq('uid', userId)
+    .eq('week', week)
     .eq('is_saved', true)
     .order('created_at', { ascending: false });
 
@@ -310,8 +311,8 @@ export {
   insertRecipeToDB,
   insertSavedRecipeToDB,
   logout,
-  selectAllSavedRecipeFromDB,
   selectRecentRecipeFromDB,
+  selectSavedRecipeByWeekFromDB,
   selectSavedRecipeFromDB,
   selectUserFromDB,
   updateOnboardingToDB,
