@@ -120,7 +120,7 @@ export default function RecipeDetailScreen() {
       </Animated.View>
 
       <Animated.ScrollView
-        className="relative flex-[7]"
+        className="relative mb-10 flex-[7]"
         onScroll={scrollHandler}
         scrollEventThrottle={16}
         contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 20 }}>

@@ -50,7 +50,7 @@ export default function SavedRecipes() {
         <FlatList
           data={recipes}
           numColumns={2}
-          className="rounded-xl bg-white"
+          className="mb-10 rounded-xl bg-white"
           ListEmptyComponent={
             <ListEmptyText emptyListName="savedRecipes" href={'/recipeCreation'} />
           }

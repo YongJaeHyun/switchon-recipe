@@ -76,7 +76,7 @@ export default function HomeScreen() {
           style={{ borderBottomWidth: 2, borderBottomColor: colors.neutral[400] }}
         />
 
-        <View className="gap-10">
+        <View className="mb-10 gap-10">
           <RecipeCreation />
           <SavedRecipes refreshing={refreshing} />
           <RecentRecipes refreshing={refreshing} />
