@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { ActivityIndicator, FlatList, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import colors from 'tailwindcss/colors';
+import { RecipeDB } from 'types/database';
 import { getWeekColor } from 'utils/getWeekColor';
 
 const weekTabs = ['1주차', '2주차', '3주차+'];
@@ -14,13 +15,18 @@ export default function SavedRecipes() {
   const [selectedWeek, setSelectedWeek] = useState<'1주차' | '2주차' | '3주차+'>('1주차');
 
   const {
-    data: recipes,
+    data: recipes = [],
     isLoading,
     refetch,
   } = useQuery({
     queryFn: async () => await selectSavedRecipeByWeekFromDB(parseInt(selectedWeek[0])),
     queryKey: [`savedRecipes-${selectedWeek}`],
   });
+
+  const filledRecipes: (RecipeDB & { isDummy?: true })[] = [...recipes];
+  if (recipes.length === 1) {
+    filledRecipes.push({ ...recipes[0], isDummy: true });
+  }
 
   const changeSelectedWeek = async (week: typeof selectedWeek) => {
     setSelectedWeek(week);
@@ -48,15 +54,17 @@ export default function SavedRecipes() {
         </View>
       ) : (
         <FlatList
-          data={recipes}
+          data={filledRecipes}
           numColumns={2}
           className="mb-10 rounded-xl bg-white"
           ListEmptyComponent={
             <ListEmptyText emptyListName="savedRecipes" href={'/recipeCreation'} />
           }
-          contentContainerClassName={`items-start gap-4 mx-auto py-5 flex-grow justify-center`}
-          columnWrapperClassName="justify-between gap-4"
-          renderItem={({ item }) => <RecipeCard {...item} />}
+          contentContainerClassName={`items-start gap-4 py-4 flex-grow mx-auto ${recipes.length === 0 ? 'justify-center' : 'justify-start'}`}
+          columnWrapperClassName="justify-start gap-4"
+          renderItem={({ item }) =>
+            item.isDummy ? <View className="h-48 w-48" /> : <RecipeCard {...item} />
+          }
         />
       )}
     </SafeAreaView>
