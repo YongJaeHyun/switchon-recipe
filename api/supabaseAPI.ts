@@ -9,16 +9,20 @@ import { supabase } from '../lib/supabase';
 
 // AUTH
 const getSession = async () => {
-  const { data, error } = await supabase.auth.getSession();
-  if (error) {
+  try {
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+
+    if (sessionError) throw sessionError;
+
+    return sessionData.session;
+  } catch (error) {
     showErrorToast({
       text1: 'DB 에러 발생',
       text2: '에러 정보가 관리자에게 전달되었습니다. 빠른 시일 내에 조치하겠습니다.',
       error,
     });
-    return;
+    return null;
   }
-  return data.session;
 };
 
 const checkIsLoggedIn = async () => {
@@ -118,6 +122,8 @@ const updateStartDateToDB = async (start_date: string) => {
 // RECIPE
 const selectRecentRecipeFromDB = async (): Promise<RecipeDB[]> => {
   const userId = useUserStore.getState().id;
+  if (!userId) return;
+
   const { data, error } = await supabase
     .from('recipe_with_is_saved')
     .select('*')
@@ -186,6 +192,8 @@ const checkIsSavedRecipe = async (recipeId: number): Promise<boolean> => {
 
 const selectSavedRecipeByWeekFromDB = async (week: number): Promise<RecipeDB[]> => {
   const userId = useUserStore.getState().id;
+  if (!userId) return;
+
   const { data, error } = await supabase
     .from('recipe_with_is_saved')
     .select('*')
@@ -209,6 +217,8 @@ const selectSavedRecipeByWeekFromDB = async (week: number): Promise<RecipeDB[]> 
 
 const selectSavedRecipeFromDB = async (): Promise<RecipeDB[]> => {
   const userId = useUserStore.getState().id;
+  if (!userId) return;
+
   const { data, error } = await supabase
     .from('recipe_with_is_saved')
     .select('*')

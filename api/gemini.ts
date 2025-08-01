@@ -38,7 +38,6 @@ export const createRecipe = async ({
         error: error as Error,
       });
     } else {
-      console.log(error);
       Sentry.captureException(error, { level: 'warning' });
       showErrorToast({
         text1: '일시적인 에러 발생',

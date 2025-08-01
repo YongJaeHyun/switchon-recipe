@@ -1,5 +1,5 @@
 import { Stack } from 'expo-router';
 
-export default function AuthNavigator() {
+export default function GreetNavigator() {
   return <Stack screenOptions={{ headerShown: false }} />;
 }
