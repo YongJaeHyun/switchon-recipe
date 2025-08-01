@@ -44,12 +44,12 @@ module.exports = {
         {
           image: './assets/splash.png',
           resizeMode: 'cover',
-          backgroundColor: '#fff',
+          backgroundColor: '#ffffff',
           imageWidth: 190,
           android: {
             adaptiveIcon: {
               foregroundImage: './assets/adaptive-icon.png',
-              backgroundColor: '#fff',
+              backgroundColor: '#ffffff',
             },
           },
         },
@@ -65,6 +65,7 @@ module.exports = {
       resizeMode: 'contain',
       backgroundColor: '#ffffff',
     },
+    assets: ['./assets/fonts/'],
     assetBundlePatterns: ['**/*'],
     ios: {
       supportsTablet: true,
