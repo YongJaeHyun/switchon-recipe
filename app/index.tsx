@@ -1,5 +1,4 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Sentry from '@sentry/react-native';
 import { checkIsLoggedIn } from 'api/supabaseAPI';
 import { FIRST_LAUNCH_KEY } from 'const/const';
 import { Redirect, SplashScreen, useRootNavigationState } from 'expo-router';
@@ -21,7 +20,6 @@ export default function Index() {
 
     const checkFirstLaunch = async () => {
       const value = await AsyncStorage.getItem(FIRST_LAUNCH_KEY);
-      Sentry.captureMessage(value);
 
       if (!value) {
         setIsFirstLaunch(true);
