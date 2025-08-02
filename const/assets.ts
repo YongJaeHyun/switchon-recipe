@@ -4,6 +4,7 @@ export const googleIcon = require('../assets/images/android_google_icon.png');
 export const kakaoIcon = require('../assets/images/kakao_login_large_wide.png');
 export const onboardQuestionImage = require('../assets/images/onboard_question.png');
 export const recipeButtonBG = require('../assets/images/recipe_button_bg.png');
+export const selectIngredientPhoneImage = require('../assets/images/select_ingredient_phone.png');
 
 export const allulose = require('../assets/images/ingredients/allulose.jpg');
 export const avocado = require('../assets/images/ingredients/avocado.jpg');
