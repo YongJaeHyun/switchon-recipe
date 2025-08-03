@@ -86,7 +86,7 @@ export default function RecipeDetailScreen() {
         title: recipe_name,
         image_uri,
         recipe,
-        description: `🍚 ${parsedNutrition.carbohydrates}\n🍗 ${parsedNutrition.protein}\n🧀 ${parsedNutrition.fat}`,
+        description: `탄수화물 🍚 ${parsedNutrition.carbohydrates}g  |  단백질 🍗 ${parsedNutrition.protein}g  |  지방 🧀 ${parsedNutrition.fat}g`,
       },
     });
   };
