@@ -39,7 +39,7 @@ export default function Index() {
   }, [navigation?.key]);
 
   if (!isReady) return null;
-  if (isReady && isFirstLaunch) return <Redirect href={'/(greet)'} />;
-  if (isReady && !isLoggedIn) return <Redirect href={'/(auth)'} />;
+  if (isFirstLaunch) return <Redirect href={'/(greet)'} />;
+  if (!isLoggedIn) return <Redirect href={'/(auth)'} />;
   return isOnboarded ? <Redirect href={'/(tabs)/home'} /> : <Redirect href={'/(auth)/onboard'} />;
 }
