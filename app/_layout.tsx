@@ -44,7 +44,7 @@ function RootLayout() {
 
   const [isFontsLoaded, setIsFontsLoaded] = useState(false);
 
-  useAutoUpdate();
+  const updated = useAutoUpdate();
 
   useEffect(() => {
     if (ref) {
@@ -67,7 +67,7 @@ function RootLayout() {
     prepare();
   }, []);
 
-  if (!isFontsLoaded) {
+  if (!isFontsLoaded || !updated) {
     return null;
   }
   return (
@@ -80,6 +80,7 @@ function RootLayout() {
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)/home" options={{ headerShown: false }} />
             <Stack.Screen name="profile" options={{ headerShown: false }} />
+            <Stack.Screen name="kakaolink" options={{ headerShown: false }} />
             <Stack.Screen
               name="recipeCreation"
               options={{
