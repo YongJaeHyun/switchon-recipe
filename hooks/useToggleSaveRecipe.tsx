@@ -1,0 +1,51 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { deleteSavedRecipeFromDB, insertSavedRecipeToDB } from 'api/supabaseAPI';
+
+export function useToggleSaveRecipe({ id, uid }: { id: number; uid: string }) {
+  const queryClient = useQueryClient();
+
+  const optimisticUpdate = (next: boolean) => {
+    queryClient.setQueryData(['savedRecipe', id], next);
+  };
+
+  const rollback = (previous: boolean) => {
+    queryClient.setQueryData(['savedRecipe', id], previous);
+  };
+
+  const saveMutation = useMutation({
+    mutationFn: () => insertSavedRecipeToDB(id, uid),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['savedRecipe', id] });
+      const prev = queryClient.getQueryData<boolean>(['savedRecipe', id]);
+      optimisticUpdate(true);
+      return { prev };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prev !== undefined) rollback(context.prev);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteSavedRecipeFromDB(id),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['savedRecipe', id] });
+      const prev = queryClient.getQueryData<boolean>(['savedRecipe', id]);
+      optimisticUpdate(false);
+      return { prev };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prev !== undefined) rollback(context.prev);
+    },
+  });
+
+  const toggleIsSaved = () => {
+    const current = queryClient.getQueryData<boolean>(['savedRecipe', id]) ?? false;
+    if (current) {
+      deleteMutation.mutate();
+    } else {
+      saveMutation.mutate();
+    }
+  };
+
+  return { toggleIsSaved };
+}
