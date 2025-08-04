@@ -33,6 +33,7 @@ export const useIngredientStore = create<IngredientState>()(
     }),
     {
       name: 'ingredientStore',
+      version: 1,
       storage: {
         getItem: async (name: string) => {
           const value = await AsyncStorage.getItem(name);
