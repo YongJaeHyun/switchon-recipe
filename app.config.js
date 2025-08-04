@@ -1,8 +1,10 @@
 import 'dotenv/config';
 
+const appEnv = process.env.APP_ENV || 'production';
+
 module.exports = {
   expo: {
-    name: '스위치온 레시피',
+    name: appEnv === 'development' ? '스위치온 레시피 개발용' : '스위치온 레시피',
     slug: 'switchon-recipe',
     version: '1.0.0',
     scheme: 'switchon-recipe',
@@ -71,7 +73,10 @@ module.exports = {
       supportsTablet: true,
     },
     android: {
-      package: 'com.dltjrrbs2020.switchonrecipe',
+      package:
+        appEnv === 'development'
+          ? 'com.dltjrrbs2020.switchonrecipe.dev'
+          : 'com.dltjrrbs2020.switchonrecipe',
       adaptiveIcon: {
         foregroundImage: './assets/icon.png',
         backgroundColor: '#ffffff',
