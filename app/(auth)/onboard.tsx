@@ -38,7 +38,7 @@ export default function OnboardingScreen() {
   return (
     <SafeAreaView className="flex-1 bg-white px-5">
       <View className="flex-[1.5] items-end justify-center gap-3">
-        {step < totalSteps && <ProgressBar progress={(step - 1) / totalSteps} />}
+        {step < totalSteps && <ProgressBar progress={(step - 1) / (totalSteps - 1)} />}
       </View>
       <View className="flex-[10] justify-between">
         {step === 1 && (
