@@ -4,12 +4,13 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { shareCustomTemplate } from '@react-native-kakao/share';
-import { deleteSavedRecipeFromDB, insertSavedRecipeToDB } from 'api/supabaseAPI';
+import { useQuery } from '@tanstack/react-query';
+import { checkIsSavedRecipe } from 'api/supabaseAPI';
 import { logo } from 'const/assets';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useRef, useState } from 'react';
+import { useToggleSaveRecipe } from 'hooks/useToggleSaveRecipe';
 import { Pressable, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
   Extrapolation,
@@ -33,24 +34,11 @@ export default function RecipeDetailScreen() {
   const parsedNutrition: Recipe['nutrition'] = JSON.parse(nutrition);
   const parsedCookingSteps: Recipe['cookingSteps'] = JSON.parse(cooking_steps);
 
-  const [isSaved, setIsSaved] = useState(parsedRecipe?.is_saved ?? false);
-  const timer = useRef<NodeJS.Timeout>(null);
-
-  const toggleIsSaved = () => {
-    const next = !isSaved;
-    setIsSaved(next);
-
-    if (timer.current) clearTimeout(timer.current);
-
-    timer.current = setTimeout(async () => {
-      if (next) {
-        await insertSavedRecipeToDB(id, uid);
-      } else {
-        await deleteSavedRecipeFromDB(id);
-      }
-      timer.current = null;
-    }, 500);
-  };
+  const { data: isSaved = false } = useQuery({
+    queryKey: ['savedRecipe', id],
+    queryFn: () => checkIsSavedRecipe(id),
+  });
+  const { toggleIsSaved } = useToggleSaveRecipe({ id, uid });
 
   const scrollY = useSharedValue(0);
 
@@ -79,6 +67,14 @@ export default function RecipeDetailScreen() {
     };
   });
 
+  const handleGoBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)/home');
+    }
+  };
+
   const shareRecipeWithKakao = async () => {
     await shareCustomTemplate({
       templateId: 122968,
@@ -86,7 +82,7 @@ export default function RecipeDetailScreen() {
         title: recipe_name,
         image_uri,
         recipe,
-        description: `🍚 ${parsedNutrition.carbohydrates}\n🍗 ${parsedNutrition.protein}\n🧀 ${parsedNutrition.fat}`,
+        description: `탄수화물 🍚 ${parsedNutrition.carbohydrates}g  |  단백질 🍗 ${parsedNutrition.protein}g  |  지방 🧀 ${parsedNutrition.fat}g`,
       },
     });
   };
@@ -94,7 +90,7 @@ export default function RecipeDetailScreen() {
   return (
     <View className="flex-1 bg-white">
       <View className="relative flex-[3]">
-        <TouchableOpacity onPress={router.back} className="absolute left-5 top-12 z-10">
+        <TouchableOpacity onPress={handleGoBack} className="absolute left-5 top-12 z-10">
           <MaterialIcons name="arrow-back" size={32} color="black" />
         </TouchableOpacity>
         {image_uri ? (

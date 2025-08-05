@@ -33,6 +33,13 @@ export const useIngredientStore = create<IngredientState>()(
     }),
     {
       name: 'ingredientStore',
+      version: 1,
+      migrate: (persistedState, version) => {
+        if (version === 0) {
+          return [];
+        }
+        return persistedState;
+      },
       storage: {
         getItem: async (name: string) => {
           const value = await AsyncStorage.getItem(name);

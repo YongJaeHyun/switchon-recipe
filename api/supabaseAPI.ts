@@ -316,6 +316,7 @@ const uploadImageToDB = async (mime, base64Image) => {
 
 export {
   checkIsLoggedIn,
+  checkIsSavedRecipe,
   deleteSavedRecipeFromDB,
   getSession,
   insertRecipeToDB,
