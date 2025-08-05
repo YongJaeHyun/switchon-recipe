@@ -1,4 +1,4 @@
-# 🥗 스위치온 레시피 어플
+# 🥗 스위치온 레시피 🥗
 ![Android Only](https://img.shields.io/badge/Android_only-green?logo=android)
 
 스위치온 다이어트를 위한 **AI 맞춤 레시피 생성 앱**입니다!
