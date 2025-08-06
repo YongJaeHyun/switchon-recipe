@@ -59,7 +59,7 @@ const RippleButton = React.forwardRef<React.ComponentRef<typeof Pressable>, Ripp
           onPressIn={handlePressIn}
           onPressOut={handlePressOut}
           android_ripple={{ color: rippleColor, foreground: true }}
-          className={`w-full items-center justify-center ${className}`}
+          className={`items-center justify-center ${className}`}
           {...rest}>
           {children}
         </Pressable>

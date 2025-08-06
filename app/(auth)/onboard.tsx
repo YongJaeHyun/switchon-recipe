@@ -26,7 +26,7 @@ export default function OnboardingScreen() {
   const [selectedDate, setSelectedDate] = useState(today);
   const { week, day } = getWeekAndDay(selectedDate);
 
-  const setDateAndgoLastStep = (startDate: string) => {
+  const setDateAndGoLastStep = (startDate: string) => {
     setSelectedDate(startDate);
     goLastStep();
   };
@@ -53,13 +53,13 @@ export default function OnboardingScreen() {
               <Image source={onboardQuestionImage} style={{ width: 250, height: 250 }} />
             </AnimatedTextView>
             <AnimatedTextView className="gap-5" delay={1500}>
-              <RippleButton className="bg-green-600 py-5" onPress={goNextStep}>
+              <RippleButton className="w-full bg-green-600 py-5" onPress={goNextStep}>
                 <Text className="text-xl text-white">시작하기</Text>
               </RippleButton>
               <RippleButton
                 className="py-5"
                 borderClassName="border border-green-600"
-                onPress={() => setDateAndgoLastStep(today)}>
+                onPress={() => setDateAndGoLastStep(today)}>
                 <Text className="text-xl text-green-600">건너뛰기</Text>
               </RippleButton>
             </AnimatedTextView>
@@ -73,13 +73,13 @@ export default function OnboardingScreen() {
               </Text>
             </AnimatedTextView>
             <AnimatedTextView className="gap-5" delay={1000}>
-              <RippleButton className="bg-green-600 py-5" onPress={goNextStep}>
+              <RippleButton className="w-full bg-green-600 py-5" onPress={goNextStep}>
                 <Text className="text-xl text-white">네</Text>
               </RippleButton>
               <RippleButton
                 className="py-5"
                 borderClassName="border border-green-600"
-                onPress={() => setDateAndgoLastStep(getKoreanDateWeeksAgo(4))}>
+                onPress={() => setDateAndGoLastStep(getKoreanDateWeeksAgo(4))}>
                 <Text className="text-xl text-green-600">아니오</Text>
               </RippleButton>
             </AnimatedTextView>
@@ -96,7 +96,7 @@ export default function OnboardingScreen() {
               <CustomCalendar selectedDate={selectedDate} setSelectedDate={setSelectedDate} />
             </AnimatedTextView>
             <AnimatedTextView delay={1500}>
-              <RippleButton className="bg-green-600 py-5" onPress={goNextStep}>
+              <RippleButton className="w-full bg-green-600 py-5" onPress={goNextStep}>
                 <Text className="text-xl text-white">선택하기</Text>
               </RippleButton>
             </AnimatedTextView>
@@ -123,7 +123,7 @@ export default function OnboardingScreen() {
               </AnimatedTextView>
             </View>
             <AnimatedTextView delay={1500}>
-              <RippleButton className="bg-green-600 py-5" onPress={completeOnboarding}>
+              <RippleButton className="w-full bg-green-600 py-5" onPress={completeOnboarding}>
                 <Text className="text-xl text-white">시작하기</Text>
               </RippleButton>
             </AnimatedTextView>
