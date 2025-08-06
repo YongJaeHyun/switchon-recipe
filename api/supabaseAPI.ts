@@ -114,7 +114,6 @@ const updateStartDateToDB = async (start_date: string) => {
     showSuccessToast({
       text1: '시작날짜 재설정 성공',
       text2: `${start_date}일로 정상적으로 변경되었습니다`,
-      error,
     });
   }
 };
