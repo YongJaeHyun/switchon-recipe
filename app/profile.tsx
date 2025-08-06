@@ -3,7 +3,7 @@ import { logout } from 'api/supabaseAPI';
 import RippleButton from 'components/common/RippleButton';
 import { baseProfile } from 'const/assets';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
@@ -25,12 +25,14 @@ export default function Profile() {
         <Text className="text-lg text-neutral-500">{email}</Text>
       </View>
       <View className="mt-6 flex-[2] gap-4 px-5">
-        <RippleButton
-          onPress={() => {}}
-          rippleColor={colors.neutral[300]}
-          className="w-full items-center rounded-xl bg-neutral-100 py-4">
-          <Text className="text-lg text-neutral-600">문의사항 보내기</Text>
-        </RippleButton>
+        <Link href={'/(inquiry)'} asChild>
+          <RippleButton
+            onPress={() => {}}
+            rippleColor={colors.neutral[300]}
+            className="w-full items-center rounded-xl bg-neutral-100 py-4">
+            <Text className="text-lg text-neutral-600">문의사항 보내기</Text>
+          </RippleButton>
+        </Link>
         <RippleButton
           onPress={logout}
           rippleColor={colors.neutral[300]}
