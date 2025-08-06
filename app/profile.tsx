@@ -30,7 +30,7 @@ export default function Profile() {
             onPress={() => {}}
             rippleColor={colors.neutral[300]}
             className="w-full items-center rounded-xl bg-neutral-100 py-4">
-            <Text className="text-lg text-neutral-600">문의사항 보내기</Text>
+            <Text className="text-lg text-neutral-600">문의사항</Text>
           </RippleButton>
         </Link>
         <RippleButton
