@@ -1,62 +1,86 @@
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
 import { InquiryAPI } from 'api/InquiryAPI';
 import ListEmptyText from 'components/common/ListEmptyText';
 import RippleButton from 'components/common/RippleButton';
+import AnswerToggle from 'components/inquiry/AnswerToggle';
+import { QueryKey } from 'const/queryKey';
 import { Link, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { FlatList, Pressable, Text, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  AppState,
+  FlatList,
+  RefreshControl,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import colors from 'tailwindcss/colors';
 import { InquiryDB } from 'types/database';
-import { formatKoreanDate } from 'utils/date';
 
 export default function InquiriesMainScreen() {
   const router = useRouter();
-  const [inquiries, setInquiries] = useState<InquiryDB[]>([]);
+
+  const [refreshing, setRefreshing] = useState(false);
+  const {
+    data: inquiries = [],
+    refetch,
+    isLoading,
+  } = useQuery<InquiryDB[]>({
+    queryKey: [QueryKey.inquiries],
+    queryFn: InquiryAPI.selectAll,
+  });
 
   useEffect(() => {
-    (async () => {
-      const inquiries = await InquiryAPI.selectAll();
-      setInquiries(inquiries);
-    })();
-  }, []);
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        refetch();
+      }
+    });
 
-  const renderItem = ({ item }: { item: InquiryDB }) => (
-    <Pressable
-      onPress={() => router.push(`/inquiry/${item.id}`)}
-      style={{
-        padding: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#e5e5e5',
-      }}>
-      <Text style={{ fontSize: 16, fontWeight: '600' }}>{item.title}</Text>
-      <Text style={{ color: '#888', marginTop: 4 }}>{formatKoreanDate(item.created_at)}</Text>
-    </Pressable>
-  );
+    return () => subscription.remove();
+  }, [refetch]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  }, [refetch]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
+    <SafeAreaView className="flex-1 bg-white">
       <View className="flex-row items-center justify-between p-4">
         <View className="flex-row items-center gap-4">
           <TouchableOpacity onPress={router.back}>
             <MaterialIcons name="arrow-back" size={28} color="black" />
           </TouchableOpacity>
-          <Text style={{ fontSize: 20, fontWeight: 'bold' }}>내 문의사항</Text>
+          <Text className="text-xl font-bold">내 문의사항</Text>
         </View>
-        <Link href={'/(inquiry)/new)'} asChild>
-          <RippleButton className="!w-24 flex-row bg-green-600 py-2.5" rounded="full">
-            <Ionicons name="add" size={18} color="white" />
-            <Text className="ml-1 text-white">새 문의</Text>
+        <Link href={'/(inquiry)/new'} asChild>
+          <RippleButton className="flex-row bg-green-600 px-3 py-2.5" rounded="full">
+            <Ionicons name="add" size={16} color="white" />
+            <Text className="text-white">새 문의</Text>
           </RippleButton>
         </Link>
       </View>
 
-      <FlatList
-        data={inquiries}
-        keyExtractor={(item) => item.id.toString()}
-        ListEmptyComponent={<ListEmptyText emptyListName="inquiry" href={'/(inquiry)/new'} />}
-        renderItem={renderItem}
-        contentContainerClassName={`flex-grow pb-4 items-start ${inquiries.length === 0 ? 'justify-center mb-20' : 'justify-start'}`}
-      />
+      {isLoading ? (
+        <View className="absolute inset-0 z-50 items-center justify-center">
+          <ActivityIndicator size={56} color={colors.emerald[300]} />
+        </View>
+      ) : (
+        <FlatList
+          data={inquiries}
+          keyExtractor={(item) => item.id.toString()}
+          className="mt-2"
+          contentContainerClassName={`flex-grow items-stretch gap-1 px-5 ${inquiries.length === 0 ? 'justify-center mb-20' : 'justify-start'}`}
+          ListEmptyComponent={<ListEmptyText emptyListName="inquiry" href={'/(inquiry)/new'} />}
+          renderItem={({ item }) => <AnswerToggle inquiry={item} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        />
+      )}
     </SafeAreaView>
   );
 }
