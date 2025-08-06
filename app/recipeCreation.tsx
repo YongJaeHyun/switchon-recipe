@@ -19,7 +19,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useIngredientStore } from 'stores/ingredientStore';
 import { useRecipeStore } from 'stores/recipeStore';
+import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
+import { getWeekAndDay } from 'utils/date';
 
 export default function RecipeCreationScreen() {
   const selectedIngredients = useIngredientStore((state) => state.selectedIngredients);
@@ -32,11 +34,22 @@ export default function RecipeCreationScreen() {
 
   const [resetTrigger, setResetTrigger] = useState(false);
 
+  const getAdjustedWeek = () => {
+    if (selectedIngredients.length > 0)
+      return Math.max(...selectedIngredients.map((ingredient) => ingredient.week));
+
+    const startDate = useUserStore.getState().start_date;
+    const { week: userWeek } = getWeekAndDay(startDate);
+
+    if (userWeek > 4) return 4;
+    return userWeek;
+  };
+
   const createRecipeWithAI = async () => {
     const ingredients = selectedIngredients.map((ingredients) => ingredients.name).join(', ');
-    const week = Math.max(...selectedIngredients.map((ingredient) => ingredient.week));
+    const week = getAdjustedWeek();
+
     const command = `다음 재료들만 이용해서 스위치온 ${week}주차에 먹을 수 있는 음식의 레시피를 만들어줘. 하지만, 모든 재료를 이용할 필요는 없어. 소스나 조미료는 자유롭게 활용해도 돼. \n재료: ${ingredients}`;
-    // const command = `다음 재료들만 이용해서 만들 수 있는 점심 레시피를 만들어줘. 하지만, 모든 재료를 이용할 필요는 없어. 소스나 조미료는 자유롭게 활용해도 돼. \n재료: ${ingredients}`;
 
     controller.current = new AbortController();
 
@@ -124,7 +137,9 @@ export default function RecipeCreationScreen() {
           underlayColor="#379237"
           onPress={handleCreateRecipe}
           disabled={isLoading}>
-          <Text className="text-lg font-semibold text-white">레시피 제작</Text>
+          <Text className="text-lg font-semibold text-white">
+            {selectedIngredients.length > 0 ? '레시피 제작' : `랜덤 레시피 제작`}
+          </Text>
         </TouchableHighlight>
       </View>
 
