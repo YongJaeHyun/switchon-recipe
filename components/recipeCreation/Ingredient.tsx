@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
+import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import React from 'react';
 import { Text, TouchableHighlight, View } from 'react-native';
-import { useIngredientStore } from 'stores/ingredientStore';
 import colors from 'tailwindcss/colors';
 import { IIngredient } from 'types/recipe';
 
@@ -11,7 +11,7 @@ interface IngredientProps extends IIngredient {
 }
 
 function Ingredient({ name, image, week, isSelected, disabled }: IngredientProps) {
-  const toggleIngredient = useIngredientStore((state) => state.toggleIngredient);
+  const { toggleIngredient } = useSelectedIngredients();
 
   const toggleSelect = () => {
     toggleIngredient({ name, image, week });

@@ -17,19 +17,23 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useIngredientStore } from 'stores/ingredientStore';
 import { useRecipeStore } from 'stores/recipeStore';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { getWeekAndDay } from 'utils/date';
+import { useSelectedIngredients } from '../hooks/useSelectedIngredients';
 
 export default function RecipeCreationScreen() {
-  const selectedIngredients = useIngredientStore((state) => state.selectedIngredients);
-  const resetIngredients = useIngredientStore((state) => state.resetIngredients);
+  const {
+    selectedIngredients,
+    resetIngredients,
+    isLoading: isIngredientsLoading,
+  } = useSelectedIngredients();
+
   const setRecentRecipes = useRecipeStore((state) => state.setRecentRecipes);
 
   const [keyword, setKeyword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isRecipeLoading, setIsRecipeLoading] = useState(false);
   const controller = useRef<AbortController>(null);
 
   const [resetTrigger, setResetTrigger] = useState(false);
@@ -63,14 +67,14 @@ export default function RecipeCreationScreen() {
   };
 
   const handleCreateRecipe = async () => {
-    setIsLoading(true);
+    setIsRecipeLoading(true);
 
     const recipe = await createRecipeWithAI();
     if (recipe) {
       router.push(`/(tabs)/home/recipeDetail?recipe=${JSON.stringify(recipe)}`);
     }
 
-    setIsLoading(false);
+    setIsRecipeLoading(false);
   };
 
   const handleReset = () => {
@@ -129,21 +133,21 @@ export default function RecipeCreationScreen() {
         <TouchableOpacity
           className="flex-[3.5] items-center justify-center rounded-lg border border-green-600 py-4"
           onPress={handleReset}
-          disabled={isLoading}>
+          disabled={isRecipeLoading}>
           <Text className="text-lg font-semibold text-green-600">재료 리셋</Text>
         </TouchableOpacity>
         <TouchableHighlight
           className="flex-[6.5] items-center justify-center rounded-lg bg-green-600 py-4"
           underlayColor="#379237"
           onPress={handleCreateRecipe}
-          disabled={isLoading}>
+          disabled={isRecipeLoading}>
           <Text className="text-lg font-semibold text-white">
             {selectedIngredients.length > 0 ? '레시피 제작' : `랜덤 레시피 제작`}
           </Text>
         </TouchableHighlight>
       </View>
 
-      {isLoading && (
+      {(isIngredientsLoading || isRecipeLoading) && (
         <View className="absolute inset-0 z-50 items-center justify-center">
           <View className="absolute inset-0 bg-black/30" />
           <ActivityIndicator className="-translate-y-20" size={56} color={colors.emerald[300]} />

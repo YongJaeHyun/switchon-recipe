@@ -2,12 +2,20 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { recipeButtonBG } from 'const/assets';
 import { Image } from 'expo-image';
 import { Link } from 'expo-router';
-import React from 'react';
+import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
+import React, { useEffect } from 'react';
 import { Text, View } from 'react-native';
 import colors from 'tailwindcss/colors';
 import RippleButton from '../common/RippleButton';
 
 export default function RecipeCreation() {
+  const { prefetch } = useSelectedIngredients();
+
+  useEffect(() => {
+    (async () => await prefetch())();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <Link href={'/recipeCreation'} className="h-52 w-full shadow-xl" asChild>
       <RippleButton

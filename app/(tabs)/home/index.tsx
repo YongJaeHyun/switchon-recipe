@@ -11,10 +11,10 @@ import RecentRecipes from 'components/home/RecentRecipes';
 import RecipeCreation from 'components/home/RecipeCreation';
 import SavedRecipes from 'components/home/SavedRecipes';
 import useKoreanToday from 'hooks/useKoreanToday';
+import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { useCallback, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useIngredientStore } from 'stores/ingredientStore';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { getWeekAndDay } from 'utils/date';
@@ -22,6 +22,8 @@ import { useRecipeStore } from '../../../stores/recipeStore';
 
 export default function HomeScreen() {
   const bottomSheetRef = useRef<BottomSheet>(null);
+
+  const { selectedIngredients, upsertIngredients } = useSelectedIngredients();
 
   const [refreshing, setRefreshing] = useState(false);
   const setRecentRecipes = useRecipeStore((state) => state.setRecentRecipes);
@@ -38,13 +40,11 @@ export default function HomeScreen() {
   };
 
   const updateStartDate = async () => {
-    const setIngredients = useIngredientStore.getState().setIngredients;
-    const selectedIngredients = useIngredientStore.getState().selectedIngredients;
-
     const { week } = getWeekAndDay(selectedDate);
 
     const filteredIngredients = selectedIngredients.filter((ingredient) => ingredient.week <= week);
-    setIngredients(filteredIngredients);
+    upsertIngredients(filteredIngredients);
+
     await updateStartDateToDB(selectedDate);
 
     if (bottomSheetRef) {
@@ -99,7 +99,7 @@ export default function HomeScreen() {
             selectedDate={selectedDate}
             setSelectedDate={setSelectedDate}
           />
-          <RippleButton className="bg-green-600 py-4" onPress={updateStartDate}>
+          <RippleButton className="w-full bg-green-600 py-4" onPress={updateStartDate}>
             <Text className="text-lg font-semibold text-white">날짜 재설정하기</Text>
           </RippleButton>
         </BottomSheetView>
