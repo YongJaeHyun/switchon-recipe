@@ -38,7 +38,7 @@ export default function RecipeDetailScreen() {
     queryKey: ['savedRecipe', id],
     queryFn: () => checkIsSavedRecipe(id),
   });
-  const { toggleIsSaved } = useToggleSaveRecipe({ id, uid });
+  const { toggleIsSaved } = useToggleSaveRecipe({ id });
 
   const scrollY = useSharedValue(0);
 

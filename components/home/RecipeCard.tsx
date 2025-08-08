@@ -21,7 +21,7 @@ export default function RecipeCard(recipe: RecipeDB) {
 
     timer.current = setTimeout(async () => {
       if (next) {
-        await insertSavedRecipeToDB(recipe.id, recipe.uid);
+        await insertSavedRecipeToDB(recipe.id);
       } else {
         await deleteSavedRecipeFromDB(recipe.id);
       }

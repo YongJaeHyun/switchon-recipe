@@ -239,14 +239,15 @@ const selectSavedRecipeFromDB = async (): Promise<RecipeDB[]> => {
   return data;
 };
 
-const insertSavedRecipeToDB = async (recipeId: number, recipeUid: string) => {
+const insertSavedRecipeToDB = async (recipeId: number) => {
+  const userId = useUserStore.getState().id;
   const setSavedRecipes = useRecipeStore.getState().setSavedRecipes;
   const isSavedRecipe = await checkIsSavedRecipe(recipeId);
 
   if (!isSavedRecipe) {
     const { error } = await supabase.from('saved_recipe').insert<Partial<SavedRecipeDB>>({
       recipe_id: recipeId,
-      uid: recipeUid,
+      uid: userId,
     });
 
     if (error) {
