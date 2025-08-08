@@ -20,7 +20,6 @@ export default function Index() {
 
     const checkFirstLaunch = async () => {
       const value = await AsyncStorage.getItem(FIRST_LAUNCH_KEY);
-      console.log(value);
 
       if (!value) {
         setIsFirstLaunch(true);

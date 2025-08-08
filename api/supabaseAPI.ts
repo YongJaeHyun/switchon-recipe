@@ -196,10 +196,9 @@ const selectSavedRecipeByWeekFromDB = async (week: number): Promise<RecipeDB[]> 
   const { data, error } = await supabase
     .from('recipe_with_is_saved')
     .select('*')
-    .eq('uid', userId)
     .eq('week', week)
     .eq('is_saved', true)
-    .order('created_at', { ascending: false });
+    .order('saved_at', { ascending: false });
 
   if (error) {
     Sentry.captureException(error, { level: 'fatal' });
@@ -221,9 +220,8 @@ const selectSavedRecipeFromDB = async (): Promise<RecipeDB[]> => {
   const { data, error } = await supabase
     .from('recipe_with_is_saved')
     .select('*')
-    .eq('uid', userId)
     .eq('is_saved', true)
-    .order('created_at', { ascending: false })
+    .order('saved_at', { ascending: false })
     .range(0, 9);
 
   if (error) {
