@@ -21,14 +21,14 @@ const RecipeSchema = z.object({
 
 type Recipe = z.infer<typeof RecipeSchema>;
 
-serve(async (req: Request): Promise<Response> => {
+serve(async (req: Request) => {
   const supabaseClient = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    Deno.env.get('SUPABASE_URL'),
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
     {
       global: {
         headers: {
-          Authorization: req.headers.get('Authorization')!,
+          Authorization: req.headers.get('Authorization'),
         },
       },
     }
@@ -52,32 +52,52 @@ serve(async (req: Request): Promise<Response> => {
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           generationConfig: {
             responseMimeType: 'application/json',
             responseSchema: {
               type: 'OBJECT',
               properties: {
-                recipeName: { type: 'STRING' },
-                cookingTime: { type: 'NUMBER' },
+                recipeName: {
+                  type: 'STRING',
+                },
+                cookingTime: {
+                  type: 'NUMBER',
+                },
                 nutrition: {
                   type: 'OBJECT',
                   properties: {
-                    carbohydrates: { type: 'NUMBER' },
-                    protein: { type: 'NUMBER' },
-                    fat: { type: 'NUMBER' },
-                    fiber: { type: 'NUMBER' },
-                    sugar: { type: 'NUMBER' },
+                    carbohydrates: {
+                      type: 'NUMBER',
+                    },
+                    protein: {
+                      type: 'NUMBER',
+                    },
+                    fat: {
+                      type: 'NUMBER',
+                    },
+                    fiber: {
+                      type: 'NUMBER',
+                    },
+                    sugar: {
+                      type: 'NUMBER',
+                    },
                   },
                 },
                 ingredients: {
                   type: 'ARRAY',
-                  items: { type: 'STRING' },
+                  items: {
+                    type: 'STRING',
+                  },
                 },
                 cookingSteps: {
                   type: 'ARRAY',
-                  items: { type: 'STRING' },
+                  items: {
+                    type: 'STRING',
+                  },
                 },
               },
             },
@@ -85,11 +105,19 @@ serve(async (req: Request): Promise<Response> => {
           system_instruction: {
             parts: [
               {
-                text: '너는 요리 레시피를 생성하는 데 특화된 AI 어시스턴트야. 사용자가 요리 레시피를 요청하면, 그에 맞는 레시피를 생성해줘. 응답은 항상 한국어로 해야해.',
+                text: '너는 스위치온 다이어트 요리 레시피를 생성하는 데 특화된 AI 어시스턴트야. 사용자가 레시피를 요청하면, 그에 맞는 레시피를 생성해줘. 응답은 항상 한국어로 해야해. 재료가 적혀있지 않으면, 해당 스위치온 주차에 먹을 수 있는 가장 맛있는 저탄수식 레시피를 만들어줘',
               },
             ],
           },
-          contents: [{ parts: [{ text: command }] }],
+          contents: [
+            {
+              parts: [
+                {
+                  text: command,
+                },
+              ],
+            },
+          ],
         }),
       }
     );
@@ -110,7 +138,9 @@ serve(async (req: Request): Promise<Response> => {
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${geminiKey}`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           generationConfig: {
             responseModalities: ['TEXT', 'IMAGE'],
@@ -119,7 +149,9 @@ serve(async (req: Request): Promise<Response> => {
             {
               parts: [
                 {
-                  text: `Generate images for the following foods. However, it should never contain text. The food names and ingredients are as follows:\nname: ${validated.recipeName}\ningredients: ${validated.ingredients.join(', ')}`,
+                  text: `Generate photo of the following foods taken with a macro lens of 100mm. The images should ONLY show the food, with absolutely NO text, letters, words, logos, or watermarks anywhere in the image.
+
+name: ${validated.recipeName}`,
                 },
               ],
             },
@@ -182,18 +214,26 @@ serve(async (req: Request): Promise<Response> => {
     if (error) throw new Error(`DB 저장 실패: ${error.message}`);
 
     return new Response(JSON.stringify(data), {
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+      },
       status: 200,
     });
   } catch (err) {
     console.error('Edge function error:', err);
-    return new Response(JSON.stringify({ error: String(err) }), {
-      headers: { 'Content-Type': 'application/json' },
-      status: 500,
-    });
+    return new Response(
+      JSON.stringify({
+        error: String(err),
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        status: 500,
+      }
+    );
   }
 });
-
 const validateRecipe = (recipe: unknown) => {
   const result: Recipe = RecipeSchema.safeParse(recipe);
   if (!result.success) {
