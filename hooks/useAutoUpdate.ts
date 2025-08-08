@@ -1,9 +1,52 @@
+import { VersionAPI } from 'api/VersionAPI';
 import Constants from 'expo-constants';
 import * as Updates from 'expo-updates';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Alert, AppState, Linking } from 'react-native';
+import semver from 'semver';
+
+const STORE_URL = 'https://play.google.com/store/apps/details?id=com.dltjrrbs2020.switchonrecipe';
 
 export const useAutoUpdate = () => {
+  const appState = useRef(AppState.currentState);
+
   const [isUpdated, setIsUpdated] = useState(false);
+
+  const redirectToStore = () => {
+    Linking.openURL(STORE_URL);
+  };
+
+  useEffect(() => {
+    const checkCurrentVersion = async () => {
+      const appVersion = Constants.expoConfig?.version;
+      const latestVersion = await VersionAPI.selectLatestVersion();
+
+      const isOutdated = semver.lt(appVersion, latestVersion);
+      if (isOutdated) {
+        Alert.alert(
+          '업데이트 알림',
+          '새로운 버전이 출시되었어요. 업데이트를 진행해주세요.',
+          [
+            {
+              text: '업데이트하기',
+              onPress: redirectToStore,
+            },
+          ],
+          { cancelable: false }
+        );
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+        checkCurrentVersion();
+      }
+      appState.current = nextAppState;
+    });
+
+    checkCurrentVersion();
+    return () => subscription.remove();
+  }, []);
 
   useEffect(() => {
     const checkAndApplyUpdate = async () => {
