@@ -118,7 +118,7 @@ export default function RecipeDetailScreen() {
       </View>
 
       <Animated.View style={animatedTitleStyle} className="relative z-50 items-center">
-        <View className="absolute -top-14 h-40 w-full items-center justify-evenly rounded-xl bg-white shadow-xl">
+        <View className="absolute -top-14 h-40 w-full items-center justify-evenly rounded-xl bg-white px-8 shadow-xl">
           <Text className="break-keep text-center text-3xl font-semibold">{recipe_name}</Text>
           <View className="flex-row gap-6">
             <View className="flex-row items-center gap-1">
