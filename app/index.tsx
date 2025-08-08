@@ -20,6 +20,7 @@ export default function Index() {
 
     const checkFirstLaunch = async () => {
       const value = await AsyncStorage.getItem(FIRST_LAUNCH_KEY);
+      console.log(value);
 
       if (!value) {
         setIsFirstLaunch(true);
@@ -29,13 +30,17 @@ export default function Index() {
     const checkCurrentLogin = async () => {
       const isLoggedIn = await checkIsLoggedIn();
       setIsLoggedIn(isLoggedIn);
+    };
+
+    const init = async () => {
+      await checkFirstLaunch();
+      await checkCurrentLogin();
 
       SplashScreen.hideAsync();
       setIsReady(true);
     };
 
-    checkFirstLaunch();
-    checkCurrentLogin();
+    init();
   }, [navigation?.key]);
 
   if (!isReady) return null;
