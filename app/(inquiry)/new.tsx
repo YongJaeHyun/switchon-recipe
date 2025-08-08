@@ -26,7 +26,7 @@ export default function NewInquiryScreen() {
   const [errors, setErrors] = useState<Partial<InquiryError>>({});
 
   const { mutate: insertInquiry, isPending } = useMutation({
-    mutationFn: InquiryAPI.insertInquiryToDB,
+    mutationFn: InquiryAPI.insert,
     onSuccess: (newData) => {
       queryClient.setQueryData<InquiryDB[]>([QueryKey.inquiries], (old) => [...newData, ...old]);
     },
