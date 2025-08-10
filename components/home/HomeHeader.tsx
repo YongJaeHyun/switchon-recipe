@@ -45,14 +45,14 @@ export default function HomeHeader({ bottomSheetRef }: HomeHeaderProps) {
           .fill(null)
           .map((_, i) =>
             i === 7 ? (
-              <View key={`${week + 1}주차`} className="ml-2 items-center gap-2">
-                <Text className={`font-semibold ${getWeekColor(week + 1)}`}>{week + 1}주차</Text>
+              <View key={`${week + 1}주차`} className="ml-2 items-center gap-1.5">
+                <Text className={`font-bold ${getWeekColor(week + 1)}`}>{week + 1}주차</Text>
                 <View className="h-8 w-8 items-center justify-center rounded-full bg-neutral-300">
                   <MaterialIcons name="arrow-forward" size={20} />
                 </View>
               </View>
             ) : (
-              <View key={`${week}주차 ${i + 1}일`} className="items-center gap-2">
+              <View key={`${week}주차 ${i + 1}일`} className="items-center gap-1.5">
                 <Text className="text-lg">{i + 1}일</Text>
                 <View className="h-8 w-8 items-center justify-center rounded-full bg-neutral-300">
                   {i + 1 <= day && <MaterialIcons name="check" size={20} />}

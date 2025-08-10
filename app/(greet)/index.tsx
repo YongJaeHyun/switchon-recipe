@@ -99,16 +99,15 @@ export default function LaunchScreen() {
               <Image
                 source={selectIngredientPhoneImage}
                 contentFit="contain"
-                style={{ width: '100%', height: 400 }}
+                style={{ width: '100%', height: 380 }}
               />
             </AnimatedTextView>
 
             <AnimatedTextView delay={2000}>
-              <View className="mb-12 items-center justify-center gap-2">
-                <Text className="text-lg text-neutral-600">
+              <View className="mb-12 items-center justify-center gap-4">
+                <Text className="text-lg font-semibold text-neutral-600">
                   선택할 수 있는 재료는{' '}
-                  <Text className="font-semibold text-green-600">스위치온 주차</Text>가 늘수록
-                  늘어나요!
+                  <Text className="font-bold text-green-600">스위치온 주차</Text>가 늘수록 늘어나요!
                 </Text>
                 <Text className="font-medium text-green-600">
                   재료를 고르지 않고, 랜덤 레시피를 만들 수도 있어요.

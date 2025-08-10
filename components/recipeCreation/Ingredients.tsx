@@ -23,7 +23,7 @@ export default function Ingredients({ title, week, ingredientList }: Ingredients
 
   return (
     <View className="gap-3">
-      <Text className={`text-3xl font-semibold ${getWeekColor(week)}`}>{title}</Text>
+      <Text className={`text-3xl font-bold ${getWeekColor(week)}`}>{title}</Text>
       <FlatList
         data={chunkedList}
         extraData={selectedIngredients.length}

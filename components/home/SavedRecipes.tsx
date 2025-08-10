@@ -23,7 +23,7 @@ export default function SavedRecipes({ refreshing }: { refreshing: boolean }) {
   return (
     <View className="">
       <View className="mb-6 flex-row items-center justify-between">
-        <Text className="text-2xl font-semibold">저장한 레시피</Text>
+        <Text className="text-2xl font-bold">저장한 레시피</Text>
         <Link href={'/(tabs)/home/savedRecipes'}>
           <View className="flex-row items-center">
             <Text className="text-neutral-500">모두보기</Text>

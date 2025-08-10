@@ -62,7 +62,7 @@ export default function RecipeCard(recipe: RecipeDB) {
           </Pressable>
         </View>
         <View className="flex-[3] justify-evenly bg-white px-3">
-          <Text className="line-clamp-1 text-lg font-semibold">{recipe.recipe_name}</Text>
+          <Text className="line-clamp-1 text-lg font-bold">{recipe.recipe_name}</Text>
           <View className="flex-row items-center gap-1.5">
             <Ionicons name="time-outline" size={16} color="black" />
             <Text className="text-sm">약 {recipe.cooking_time}분</Text>

@@ -11,6 +11,7 @@ module.exports = {
     'rounded-lg',
     'rounded-xl',
     'rounded-full',
+    'font-bold',
   ],
   presets: [require('nativewind/preset')],
   theme: {
@@ -19,6 +20,9 @@ module.exports = {
         system: platformSelect({
           default: 'PretendardVariable-Regular',
         }),
+      },
+      fontSize: {
+        medium: ['1.0625rem'],
       },
     },
   },

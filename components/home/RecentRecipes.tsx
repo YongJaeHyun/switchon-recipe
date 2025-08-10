@@ -20,7 +20,7 @@ export default function RecentRecipes({ refreshing }: { refreshing: boolean }) {
 
   return (
     <View className="">
-      <Text className="mb-6 text-2xl font-semibold">최근 만든 레시피</Text>
+      <Text className="mb-6 text-2xl font-bold">최근 만든 레시피</Text>
       {refreshing ? (
         <ActivityIndicator className="h-48" size="large" color={colors.green[500]} />
       ) : (

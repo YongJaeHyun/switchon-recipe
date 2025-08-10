@@ -87,7 +87,7 @@ export default function HomeScreen() {
       <BottomSheet ref={bottomSheetRef} index={-1} snapPoints={['70%']} enablePanDownToClose>
         <BottomSheetView className="px-5">
           <View className="flex-row items-center justify-between">
-            <Text className="mb-2 text-2xl font-semibold">시작 날짜 재설정</Text>
+            <Text className="mb-2 text-2xl font-bold">시작 날짜 재설정</Text>
             <TouchableOpacity
               className="rounded-lg border border-green-600 px-3 py-2.5"
               onPress={setDateToToday}>
