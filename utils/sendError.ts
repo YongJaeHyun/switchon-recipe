@@ -18,7 +18,7 @@ export default async function sendDBError<T>(
       Sentry.captureException(error, { level: 'fatal' });
     } else {
       const templateString = '[Supabase]: ';
-      Sentry.captureException(new Error(JSON.stringify(templateString + error)));
+      Sentry.captureException(new Error(templateString + JSON.stringify(error)));
     }
 
     showErrorToast({
