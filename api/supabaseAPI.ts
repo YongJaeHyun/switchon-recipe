@@ -89,6 +89,21 @@ const updateStartDateToDB = async (start_date: string) =>
     });
   });
 
+const deleteUserFromDB = async () =>
+  sendDBError(async () => {
+    const userId = useUserStore.getState().id;
+    if (!userId) return;
+
+    const { error } = await supabase.from('user').delete().eq('id', userId);
+
+    if (error) throw error;
+
+    showSuccessToast({
+      text1: '회원탈퇴 성공',
+      text2: '다시 오실 날을 기다리고 있을게요 :)',
+    });
+  });
+
 // RECIPE
 const selectRecentRecipeFromDB = async (): Promise<RecipeDB[]> =>
   sendDBError(async () => {
