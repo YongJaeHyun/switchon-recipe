@@ -2,15 +2,15 @@ import Feather from '@expo/vector-icons/Feather';
 import { updateOnboardingToDB } from 'api/supabaseAPI';
 import AnimatedTextView from 'components/common/AnimatedTextView';
 import CustomCalendar from 'components/common/CustomCalendar';
+import { Text } from 'components/common/Text';
 import { onboardQuestionImage } from 'const/assets';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import useSteps from 'hooks/useSteps';
 import { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { getKoreanDateWeeksAgo, getKoreanToday, getWeekAndDay } from 'utils/date';
 import { getWeekColor } from 'utils/getWeekColor';
@@ -19,14 +19,13 @@ import RippleButton from '../../components/common/RippleButton';
 const totalSteps = 4;
 
 export default function OnboardingScreen() {
-  const { name } = useUserStore((state) => state);
   const { step, goLastStep, goNextStep } = useSteps(totalSteps);
 
   const today = getKoreanToday();
   const [selectedDate, setSelectedDate] = useState(today);
   const { week, day } = getWeekAndDay(selectedDate);
 
-  const setDateAndgoLastStep = (startDate: string) => {
+  const setDateAndGoLastStep = (startDate: string) => {
     setSelectedDate(startDate);
     goLastStep();
   };
@@ -38,14 +37,14 @@ export default function OnboardingScreen() {
   return (
     <SafeAreaView className="flex-1 bg-white px-5">
       <View className="flex-[1.5] items-end justify-center gap-3">
-        {step < totalSteps && <ProgressBar progress={(step - 1) / totalSteps} />}
+        {step < totalSteps && <ProgressBar progress={(step - 1) / (totalSteps - 1)} />}
       </View>
       <View className="flex-[10] justify-between">
         {step === 1 && (
           <>
             <AnimatedTextView delay={500}>
               <Text className="text-3xl font-bold leading-snug">
-                <Text className="text-green-600">{name}</Text>
+                <Text className="text-green-600">다이어터</Text>
                 님께 꼭 맞는 경험을 위해 간단한 몇 가지 질문을 준비했어요.
               </Text>
             </AnimatedTextView>
@@ -53,13 +52,13 @@ export default function OnboardingScreen() {
               <Image source={onboardQuestionImage} style={{ width: 250, height: 250 }} />
             </AnimatedTextView>
             <AnimatedTextView className="gap-5" delay={1500}>
-              <RippleButton className="bg-green-600 py-5" onPress={goNextStep}>
+              <RippleButton className="w-full bg-green-600 py-5" onPress={goNextStep}>
                 <Text className="text-xl text-white">시작하기</Text>
               </RippleButton>
               <RippleButton
-                className="py-5"
-                borderClassName="border border-green-600"
-                onPress={() => setDateAndgoLastStep(today)}>
+                className="w-full py-5"
+                outerClassName="border border-green-600"
+                onPress={() => setDateAndGoLastStep(today)}>
                 <Text className="text-xl text-green-600">건너뛰기</Text>
               </RippleButton>
             </AnimatedTextView>
@@ -73,13 +72,13 @@ export default function OnboardingScreen() {
               </Text>
             </AnimatedTextView>
             <AnimatedTextView className="gap-5" delay={1000}>
-              <RippleButton className="bg-green-600 py-5" onPress={goNextStep}>
+              <RippleButton className="w-full bg-green-600 py-5" onPress={goNextStep}>
                 <Text className="text-xl text-white">네</Text>
               </RippleButton>
               <RippleButton
-                className="py-5"
-                borderClassName="border border-green-600"
-                onPress={() => setDateAndgoLastStep(getKoreanDateWeeksAgo(4))}>
+                className="w-full py-5"
+                outerClassName="border border-green-600"
+                onPress={() => setDateAndGoLastStep(getKoreanDateWeeksAgo(4))}>
                 <Text className="text-xl text-green-600">아니오</Text>
               </RippleButton>
             </AnimatedTextView>
@@ -96,7 +95,7 @@ export default function OnboardingScreen() {
               <CustomCalendar selectedDate={selectedDate} setSelectedDate={setSelectedDate} />
             </AnimatedTextView>
             <AnimatedTextView delay={1500}>
-              <RippleButton className="bg-green-600 py-5" onPress={goNextStep}>
+              <RippleButton className="w-full bg-green-600 py-5" onPress={goNextStep}>
                 <Text className="text-xl text-white">선택하기</Text>
               </RippleButton>
             </AnimatedTextView>
@@ -107,8 +106,9 @@ export default function OnboardingScreen() {
             <View className="gap-10">
               <AnimatedTextView delay={500}>
                 <Text className="text-3xl font-bold leading-snug">
-                  {name}님은 <Text className={getWeekColor(week)}>{week}주차</Text> {day}일{' '}
-                  {week >= 5 && '(유지기)'}로 시작해요!
+                  <Text className="text-green-600">다이어터</Text>님은{' '}
+                  <Text className={getWeekColor(week)}>{week}주차</Text> {day}일{' '}
+                  {week >= 5 && '(유지기)'}부터 시작해요!
                 </Text>
               </AnimatedTextView>
               <AnimatedTextView className="gap-3" delay={1000}>
@@ -123,7 +123,7 @@ export default function OnboardingScreen() {
               </AnimatedTextView>
             </View>
             <AnimatedTextView delay={1500}>
-              <RippleButton className="bg-green-600 py-5" onPress={completeOnboarding}>
+              <RippleButton className="w-full bg-green-600 py-5" onPress={completeOnboarding}>
                 <Text className="text-xl text-white">시작하기</Text>
               </RippleButton>
             </AnimatedTextView>

@@ -1,12 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AnimatedTextView from 'components/common/AnimatedTextView';
 import RippleButton from 'components/common/RippleButton';
+import { Text } from 'components/common/Text';
 import { selectIngredientPhoneImage } from 'const/assets';
 import { FIRST_LAUNCH_KEY } from 'const/const';
 import { Image } from 'expo-image';
 import { Link } from 'expo-router';
 import useSteps from 'hooks/useSteps';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import colors from 'tailwindcss/colors';
 
@@ -76,7 +77,7 @@ export default function LaunchScreen() {
               <RippleButton
                 onPress={goNextStep}
                 rounded="xl"
-                className="bg-green-600 py-4"
+                className="w-full bg-green-600 py-4"
                 rippleColor={colors.green[700]}>
                 <Text className="text-lg text-white">다음</Text>
               </RippleButton>
@@ -98,23 +99,25 @@ export default function LaunchScreen() {
               <Image
                 source={selectIngredientPhoneImage}
                 contentFit="contain"
-                style={{ width: '100%', height: 450 }}
+                style={{ width: '100%', height: 380 }}
               />
             </AnimatedTextView>
 
             <AnimatedTextView delay={2000}>
-              <View className="mb-12 items-center justify-center">
-                <Text className="text-lg text-neutral-600">
+              <View className="mb-12 items-center justify-center gap-4">
+                <Text className="text-lg font-semibold text-neutral-600">
                   선택할 수 있는 재료는{' '}
-                  <Text className="font-semibold text-green-600">스위치온 주차</Text>가 늘수록
-                  늘어나요!
+                  <Text className="font-bold text-green-600">스위치온 주차</Text>가 늘수록 늘어나요!
+                </Text>
+                <Text className="font-medium text-green-600">
+                  재료를 고르지 않고, 랜덤 레시피를 만들 수도 있어요.
                 </Text>
               </View>
               <Link href="/(auth)" asChild replace>
                 <RippleButton
                   onPress={handleFirstLaunch}
                   rounded="xl"
-                  className="bg-green-600 py-4"
+                  className="w-full bg-green-600 py-4"
                   rippleColor={colors.green[700]}>
                   <Text className="text-lg text-white">로그인 하러가기</Text>
                 </RippleButton>

@@ -1,10 +1,11 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { deleteSavedRecipeFromDB, insertSavedRecipeToDB } from 'api/supabaseAPI';
+import { Text } from 'components/common/Text';
 import { Image } from 'expo-image';
 import { Link } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import colors from 'tailwindcss/colors';
 import { RecipeDB } from 'types/database';
 import { getWeekColor } from 'utils/getWeekColor';
@@ -21,7 +22,7 @@ export default function RecipeCard(recipe: RecipeDB) {
 
     timer.current = setTimeout(async () => {
       if (next) {
-        await insertSavedRecipeToDB(recipe.id, recipe.uid);
+        await insertSavedRecipeToDB(recipe.id);
       } else {
         await deleteSavedRecipeFromDB(recipe.id);
       }
@@ -61,7 +62,7 @@ export default function RecipeCard(recipe: RecipeDB) {
           </Pressable>
         </View>
         <View className="flex-[3] justify-evenly bg-white px-3">
-          <Text className="line-clamp-1 text-lg font-semibold">{recipe.recipe_name}</Text>
+          <Text className="line-clamp-1 text-lg font-bold">{recipe.recipe_name}</Text>
           <View className="flex-row items-center gap-1.5">
             <Ionicons name="time-outline" size={16} color="black" />
             <Text className="text-sm">약 {recipe.cooking_time}분</Text>

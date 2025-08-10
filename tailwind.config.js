@@ -1,4 +1,6 @@
 /** @type {import('tailwindcss').Config} */
+import { platformSelect } from 'nativewind/theme';
+
 module.exports = {
   content: ['./app/**/*.{js,ts,tsx}', './components/**/*.{js,ts,tsx}'],
   safelist: [
@@ -9,10 +11,20 @@ module.exports = {
     'rounded-lg',
     'rounded-xl',
     'rounded-full',
+    'font-bold',
   ],
   presets: [require('nativewind/preset')],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        system: platformSelect({
+          default: 'PretendardVariable-Regular',
+        }),
+      },
+      fontSize: {
+        medium: ['1.0625rem'],
+      },
+    },
   },
   plugins: [],
 };

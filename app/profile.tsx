@@ -1,19 +1,40 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { logout } from 'api/supabaseAPI';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { unlink } from '@react-native-kakao/user';
+import { QueryClient } from '@tanstack/react-query';
+import { deleteUserFromDB, logout } from 'api/supabaseAPI';
+import ConfirmModal from 'components/common/ConfirmModal';
 import RippleButton from 'components/common/RippleButton';
-import { baseProfile } from 'const/assets';
+import { Text } from 'components/common/Text';
+import { baseProfile, googleIcon, kakaoIconSmall } from 'const/assets';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Link, router } from 'expo-router';
+import { useState } from 'react';
+import { TouchableOpacity, View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 
 export default function Profile() {
-  const { avatar_url, name, email } = useUserStore((state) => state);
+  const { avatar_url, email, provider } = useUserStore((state) => state);
+
+  const [isModalVisible, setModalVisible] = useState(false);
+
+  const handleConfirm = async () => {
+    await deleteUserFromDB();
+
+    if (provider === 'google') await GoogleSignin.signOut();
+    if (provider === 'kakao') await unlink();
+
+    if (router.canDismiss) router.dismissAll();
+    router.replace('/(auth)');
+
+    const queryClient = new QueryClient();
+    queryClient.clear();
+  };
 
   return (
     <View className="flex-1 bg-white">
-      <View className="relative flex-1 items-center justify-center gap-3 bg-green-50 pt-4">
+      <View className="relative flex-1 items-center justify-end gap-6 bg-green-50 py-10">
         <TouchableOpacity onPress={router.back} className="absolute left-6 top-16 z-10">
           <MaterialIcons name="arrow-back" size={32} color="black" />
         </TouchableOpacity>
@@ -21,23 +42,54 @@ export default function Profile() {
         <View className="h-32 w-32 overflow-hidden rounded-full">
           <Image source={avatar_url ?? baseProfile} style={{ width: '100%', height: '100%' }} />
         </View>
-        <Text className="text-2xl font-semibold">{name}</Text>
-        <Text className="text-lg text-neutral-500">{email}</Text>
+        <View className="flex-row items-center gap-2">
+          <View className="h-5 w-5">
+            {provider === 'google' && (
+              <Image source={googleIcon} style={{ width: '100%', height: '100%' }} />
+            )}
+            {provider === 'kakao' && (
+              <Image source={kakaoIconSmall} style={{ width: '100%', height: '100%' }} />
+            )}
+          </View>
+          <Text className="text-lg text-neutral-500">{email}</Text>
+        </View>
       </View>
-      <View className="mt-6 flex-[2] gap-4 px-5">
-        <RippleButton
-          onPress={() => {}}
-          rippleColor={colors.neutral[300]}
-          className="w-full items-center rounded-xl bg-neutral-100 py-4">
-          <Text className="text-lg text-neutral-600">문의사항 보내기</Text>
-        </RippleButton>
-        <RippleButton
-          onPress={logout}
-          rippleColor={colors.neutral[300]}
-          className="w-full items-center rounded-xl bg-neutral-100 py-4">
-          <Text className="text-lg text-neutral-600">로그아웃</Text>
-        </RippleButton>
+      <View className="mt-6 flex-[3] justify-between px-5">
+        <View className="gap-4">
+          <Link href={'/(inquiry)'} asChild>
+            <RippleButton
+              onPress={() => {}}
+              rippleColor={colors.neutral[300]}
+              className="w-full items-center rounded-xl bg-neutral-100 py-4">
+              <Text className="text-lg text-neutral-600">문의사항</Text>
+            </RippleButton>
+          </Link>
+          <RippleButton
+            onPress={logout}
+            rippleColor={colors.neutral[300]}
+            className="w-full items-center rounded-xl bg-neutral-100 py-4">
+            <Text className="text-lg text-neutral-600">로그아웃</Text>
+          </RippleButton>
+        </View>
+        <View className="mb-24">
+          <RippleButton
+            outerClassName="self-start border border-red-400"
+            className="px-4 py-2"
+            onPress={() => setModalVisible(true)}>
+            <Text className="text-red-400">회원탈퇴</Text>
+          </RippleButton>
+        </View>
       </View>
+
+      <ConfirmModal
+        type="delete"
+        iconElement={<MaterialIcons name="delete-forever" size={60} color={colors.red[600]} />}
+        visible={isModalVisible}
+        title="정말로 탈퇴하시겠어요?"
+        message="탈퇴 시 모든 데이터가 삭제되며, 다시 복구할 수 없어요."
+        onConfirm={handleConfirm}
+        onCancel={() => setModalVisible(false)}
+      />
     </View>
   );
 }

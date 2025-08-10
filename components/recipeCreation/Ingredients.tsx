@@ -1,5 +1,6 @@
-import { FlatList, Text, View } from 'react-native';
-import { useIngredientStore } from 'stores/ingredientStore';
+import { Text } from 'components/common/Text';
+import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
+import { FlatList, View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import { IIngredient } from 'types/recipe';
 import { chunkArray } from 'utils/chunkArray';
@@ -17,12 +18,12 @@ export default function Ingredients({ title, week, ingredientList }: Ingredients
   const startDate = useUserStore((state) => state.start_date);
   const { week: userWeek } = getWeekAndDay(startDate);
 
-  const selectedIngredients = useIngredientStore((state) => state.selectedIngredients);
+  const { selectedIngredients } = useSelectedIngredients();
   const chunkedList = chunkArray(ingredientList, week === 1 ? 3 : 2);
 
   return (
     <View className="gap-3">
-      <Text className={`text-3xl font-semibold ${getWeekColor(week)}`}>{title}</Text>
+      <Text className={`text-3xl font-bold ${getWeekColor(week)}`}>{title}</Text>
       <FlatList
         data={chunkedList}
         extraData={selectedIngredients.length}

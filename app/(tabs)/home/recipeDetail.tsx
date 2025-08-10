@@ -6,12 +6,13 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { shareCustomTemplate } from '@react-native-kakao/share';
 import { useQuery } from '@tanstack/react-query';
 import { checkIsSavedRecipe } from 'api/supabaseAPI';
+import { Text } from 'components/common/Text';
 import { logo } from 'const/assets';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useToggleSaveRecipe } from 'hooks/useToggleSaveRecipe';
-import { Pressable, Text, TouchableOpacity, View } from 'react-native';
+import { Pressable, TouchableOpacity, View } from 'react-native';
 import Animated, {
   Extrapolation,
   interpolate,
@@ -27,7 +28,7 @@ export default function RecipeDetailScreen() {
   const { recipe }: { recipe: string } = useLocalSearchParams();
 
   const parsedRecipe: RecipeDB = JSON.parse(recipe);
-  const { id, uid, recipe_name, cooking_time, ingredients, nutrition, cooking_steps, image_uri } =
+  const { id, recipe_name, cooking_time, ingredients, nutrition, cooking_steps, image_uri } =
     parsedRecipe;
 
   const parsedIngredients: Recipe['ingredients'] = JSON.parse(ingredients);
@@ -38,7 +39,7 @@ export default function RecipeDetailScreen() {
     queryKey: ['savedRecipe', id],
     queryFn: () => checkIsSavedRecipe(id),
   });
-  const { toggleIsSaved } = useToggleSaveRecipe({ id, uid });
+  const { toggleIsSaved } = useToggleSaveRecipe({ id });
 
   const scrollY = useSharedValue(0);
 
@@ -118,20 +119,20 @@ export default function RecipeDetailScreen() {
       </View>
 
       <Animated.View style={animatedTitleStyle} className="relative z-50 items-center">
-        <View className="absolute -top-14 h-40 w-full items-center justify-evenly rounded-xl bg-white shadow-xl">
-          <Text className="break-keep text-center text-3xl font-semibold">{recipe_name}</Text>
+        <View className="absolute -top-14 h-40 w-full items-center justify-evenly rounded-xl bg-white px-8 shadow-xl">
+          <Text className="break-keep text-center text-3xl font-bold">{recipe_name}</Text>
           <View className="flex-row gap-6">
-            <View className="flex-row items-center gap-1">
-              <MaterialCommunityIcons name="rice" size={14} color={colors.blue[500]} />
-              <Text className="font-medium">약 {parsedNutrition.carbohydrates}g</Text>
+            <View className="flex-row items-center gap-2">
+              <MaterialCommunityIcons name="rice" size={16} color={colors.blue[500]} />
+              <Text className="text-medium font-semibold">약 {parsedNutrition.carbohydrates}g</Text>
             </View>
-            <View className="flex-row items-center gap-1">
-              <FontAwesome6 name="cow" size={14} color={colors.red[500]} />
-              <Text className="font-medium">약 {parsedNutrition.protein}g</Text>
+            <View className="flex-row items-center gap-2">
+              <FontAwesome6 name="cow" size={16} color={colors.red[500]} />
+              <Text className="text-medium font-semibold">약 {parsedNutrition.protein}g</Text>
             </View>
-            <View className="flex-row items-center gap-1">
-              <FontAwesome5 name="cheese" size={14} color={colors.yellow[500]} />
-              <Text className="font-medium">약 {parsedNutrition.fat}g</Text>
+            <View className="flex-row items-center gap-2">
+              <FontAwesome5 name="cheese" size={16} color={colors.yellow[500]} />
+              <Text className="text-medium font-semibold">약 {parsedNutrition.fat}g</Text>
             </View>
           </View>
         </View>
@@ -144,19 +145,19 @@ export default function RecipeDetailScreen() {
         contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 20 }}>
         <Animated.View style={animatedContentStyle} className="w-full gap-6 px-3">
           <View>
-            <Text className="text-2xl font-semibold">재료 요약</Text>
+            <Text className="text-2xl font-bold">재료 요약</Text>
             <View className="mb-10 mt-2 border border-neutral-300" />
             {parsedIngredients.map((item) => (
               <View key={item} className="mb-8 flex-row items-center">
                 <View className="mr-4 h-2 w-2 rounded-full bg-green-500" />
-                <Text className="tracking-wide">{item}</Text>
+                <Text className="text-medium tracking-wide">{item}</Text>
               </View>
             ))}
           </View>
 
           <View className="mt-10">
             <View className="flex-row items-center gap-4">
-              <Text className="text-2xl font-semibold">조리순서</Text>
+              <Text className="text-2xl font-bold">조리순서</Text>
               <View className="flex-row items-center gap-1">
                 <Ionicons name="time-outline" size={16} color="black" />
                 <Text>약 {cooking_time}분</Text>
@@ -164,11 +165,11 @@ export default function RecipeDetailScreen() {
             </View>
             <View className="mb-10 mt-2 border border-neutral-300" />
             {parsedCookingSteps.map((step, index) => (
-              <View key={index} className="mb-10 w-full flex-row">
+              <View key={index} className="mb-8 w-full flex-row">
                 <View className="mr-4 h-6 w-6 items-center justify-center rounded-full bg-green-600">
                   <Text className="text-center text-white">{index + 1}</Text>
                 </View>
-                <Text className="flex-1 leading-6 tracking-wide">{step}</Text>
+                <Text className="text-medium flex-1 leading-6 tracking-wide">{step}</Text>
               </View>
             ))}
           </View>

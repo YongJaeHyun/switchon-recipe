@@ -1,4 +1,5 @@
-import { Text, View } from 'react-native';
+import { Text } from 'components/common/Text';
+import { View } from 'react-native';
 
 export const EditScreenInfo = ({ path }: { path: string }) => {
   const title = 'Open up the code for this screen:';

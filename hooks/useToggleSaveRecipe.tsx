@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { deleteSavedRecipeFromDB, insertSavedRecipeToDB } from 'api/supabaseAPI';
 
-export function useToggleSaveRecipe({ id, uid }: { id: number; uid: string }) {
+export function useToggleSaveRecipe({ id }: { id: number }) {
   const queryClient = useQueryClient();
 
   const optimisticUpdate = (next: boolean) => {
@@ -13,7 +13,7 @@ export function useToggleSaveRecipe({ id, uid }: { id: number; uid: string }) {
   };
 
   const saveMutation = useMutation({
-    mutationFn: () => insertSavedRecipeToDB(id, uid),
+    mutationFn: () => insertSavedRecipeToDB(id),
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ['savedRecipe', id] });
       const prev = queryClient.getQueryData<boolean>(['savedRecipe', id]);

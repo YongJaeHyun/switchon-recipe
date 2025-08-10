@@ -6,7 +6,7 @@ interface ToastTextProps {
   error: Error;
 }
 
-const showSuccessToast = ({ text1, text2 }: ToastTextProps) => {
+const showSuccessToast = ({ text1, text2 }: Omit<ToastTextProps, 'error'>) => {
   Toast.show({
     type: 'success',
     text1,

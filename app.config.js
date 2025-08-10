@@ -2,11 +2,11 @@ import 'dotenv/config';
 
 const appEnv = process.env.APP_ENV || 'production';
 
-module.exports = {
+export default {
   expo: {
     name: appEnv === 'development' ? '스위치온 레시피 개발용' : '스위치온 레시피',
     slug: 'switchon-recipe',
-    version: '1.0.0',
+    version: '1.0.1',
     scheme: 'switchon-recipe',
     githubUrl: 'https://github.com/YongJaeHyun/switchon-recipe',
     experiments: {
@@ -37,7 +37,10 @@ module.exports = {
       [
         'expo-font',
         {
-          fonts: ['node_modules/@expo-google-fonts/roboto/500Medium/Roboto_500Medium.ttf'],
+          fonts: [
+            './assets/fonts/PretendardVariable-Regular.ttf',
+            'node_modules/@expo-google-fonts/roboto/500Medium/Roboto_500Medium.ttf',
+          ],
         },
       ],
       'expo-router',
@@ -69,9 +72,6 @@ module.exports = {
     },
     assets: ['./assets/fonts/'],
     assetBundlePatterns: ['**/*'],
-    ios: {
-      supportsTablet: true,
-    },
     android: {
       package:
         appEnv === 'development'

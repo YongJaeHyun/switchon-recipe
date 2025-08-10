@@ -1,7 +1,8 @@
+import { Text } from 'components/common/Text';
 import { Image } from 'expo-image';
+import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import React from 'react';
-import { Text, TouchableHighlight, View } from 'react-native';
-import { useIngredientStore } from 'stores/ingredientStore';
+import { TouchableHighlight, View } from 'react-native';
 import colors from 'tailwindcss/colors';
 import { IIngredient } from 'types/recipe';
 
@@ -11,7 +12,7 @@ interface IngredientProps extends IIngredient {
 }
 
 function Ingredient({ name, image, week, isSelected, disabled }: IngredientProps) {
-  const toggleIngredient = useIngredientStore((state) => state.toggleIngredient);
+  const { toggleIngredient } = useSelectedIngredients();
 
   const toggleSelect = () => {
     toggleIngredient({ name, image, week });
@@ -22,12 +23,12 @@ function Ingredient({ name, image, week, isSelected, disabled }: IngredientProps
       onPress={toggleSelect}
       underlayColor={colors.neutral[200]}
       disabled={disabled}>
-      <View className="items-center gap-1">
+      <View className="items-center gap-1.5">
         <View
           className={`h-20 w-20 overflow-hidden rounded-full ${isSelected ? 'border-[5px] border-green-700/80' : 'border-2 border-neutral-200'}`}>
           <Image style={{ width: '100%', height: '100%', objectFit: 'cover' }} source={image} />
         </View>
-        <Text className={`h-6 w-full text-lg ${isSelected && 'font-semibold'}`}>{name}</Text>
+        <Text className={`h-6 w-full ${isSelected ? 'font-bold' : 'font-semibold'}`}>{name}</Text>
       </View>
     </TouchableHighlight>
   );

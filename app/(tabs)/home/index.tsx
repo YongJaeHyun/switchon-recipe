@@ -6,15 +6,16 @@ import {
 } from 'api/supabaseAPI';
 import CustomCalendar from 'components/common/CustomCalendar';
 import RippleButton from 'components/common/RippleButton';
+import { Text } from 'components/common/Text';
 import HomeHeader from 'components/home/HomeHeader';
 import RecentRecipes from 'components/home/RecentRecipes';
 import RecipeCreation from 'components/home/RecipeCreation';
 import SavedRecipes from 'components/home/SavedRecipes';
 import useKoreanToday from 'hooks/useKoreanToday';
+import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { useCallback, useRef, useState } from 'react';
-import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { RefreshControl, ScrollView, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useIngredientStore } from 'stores/ingredientStore';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { getWeekAndDay } from 'utils/date';
@@ -22,6 +23,8 @@ import { useRecipeStore } from '../../../stores/recipeStore';
 
 export default function HomeScreen() {
   const bottomSheetRef = useRef<BottomSheet>(null);
+
+  const { selectedIngredients, upsertIngredients } = useSelectedIngredients();
 
   const [refreshing, setRefreshing] = useState(false);
   const setRecentRecipes = useRecipeStore((state) => state.setRecentRecipes);
@@ -38,13 +41,11 @@ export default function HomeScreen() {
   };
 
   const updateStartDate = async () => {
-    const setIngredients = useIngredientStore.getState().setIngredients;
-    const selectedIngredients = useIngredientStore.getState().selectedIngredients;
-
     const { week } = getWeekAndDay(selectedDate);
 
     const filteredIngredients = selectedIngredients.filter((ingredient) => ingredient.week <= week);
-    setIngredients(filteredIngredients);
+    upsertIngredients(filteredIngredients);
+
     await updateStartDateToDB(selectedDate);
 
     if (bottomSheetRef) {
@@ -86,7 +87,7 @@ export default function HomeScreen() {
       <BottomSheet ref={bottomSheetRef} index={-1} snapPoints={['70%']} enablePanDownToClose>
         <BottomSheetView className="px-5">
           <View className="flex-row items-center justify-between">
-            <Text className="mb-2 text-2xl font-semibold">시작 날짜 재설정</Text>
+            <Text className="mb-2 text-2xl font-bold">시작 날짜 재설정</Text>
             <TouchableOpacity
               className="rounded-lg border border-green-600 px-3 py-2.5"
               onPress={setDateToToday}>
@@ -99,7 +100,7 @@ export default function HomeScreen() {
             selectedDate={selectedDate}
             setSelectedDate={setSelectedDate}
           />
-          <RippleButton className="bg-green-600 py-4" onPress={updateStartDate}>
+          <RippleButton className="w-full bg-green-600 py-4" onPress={updateStartDate}>
             <Text className="text-lg font-semibold text-white">날짜 재설정하기</Text>
           </RippleButton>
         </BottomSheetView>

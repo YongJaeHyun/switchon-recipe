@@ -7,6 +7,7 @@ import { selectUserFromDB } from 'api/supabaseAPI';
 import { router } from 'expo-router';
 import { useEffect } from 'react';
 import { useUserStore } from 'stores/userStore';
+import { captureError } from 'utils/sendError';
 import { supabase } from '../../lib/supabase';
 
 export default function GoogleLoginButton() {
@@ -41,7 +42,6 @@ export default function GoogleLoginButton() {
               setUser({
                 id: user.id,
                 email: user.email,
-                name: user.name,
                 avatar_url: user.avatar_url,
                 provider: user.provider,
                 created_at: user.created_at,
@@ -59,15 +59,22 @@ export default function GoogleLoginButton() {
             throw new Error('no ID token present!');
           }
         } catch (error: any) {
-          console.log('Sign in error:', error);
           if (error.code === statusCodes.SIGN_IN_CANCELLED) {
             // user cancelled the login flow
           } else if (error.code === statusCodes.IN_PROGRESS) {
-            // operation (e.g. sign in) is in progress already
+            captureError({ error, prefix: '[Google Login Error - IN_PROGRESS]: ', level: 'fatal' });
           } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-            // play services not available or outdated
+            captureError({
+              error,
+              prefix: '[Google Login Error - PLAY_SERVICES_NOT_AVAILABLE]: ',
+              level: 'fatal',
+            });
           } else {
-            // some other error happened
+            captureError({
+              error,
+              prefix: '[Google Login Error - Something Wrong]: ',
+              level: 'fatal',
+            });
           }
         }
       }}
