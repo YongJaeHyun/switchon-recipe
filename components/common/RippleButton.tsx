@@ -7,7 +7,7 @@ type Rounded = 'lg' | 'xl' | 'full';
 interface RippleButtonProps extends PressableProps {
   rippleColor?: string;
   rounded?: Rounded;
-  borderClassName?: string;
+  outerClassName?: string;
   children?: React.ReactNode;
 }
 
@@ -16,8 +16,8 @@ const RippleButton = React.forwardRef<React.ComponentRef<typeof Pressable>, Ripp
     {
       children,
       className,
-      borderClassName,
-      rippleColor = borderClassName ? colors.white : colors.green[700],
+      outerClassName,
+      rippleColor = outerClassName ? colors.white : colors.green[700],
       rounded = 'xl',
       ...rest
     },
@@ -53,7 +53,7 @@ const RippleButton = React.forwardRef<React.ComponentRef<typeof Pressable>, Ripp
         style={{
           transform: [{ scale }],
         }}
-        className={`items-center justify-center overflow-hidden ${borderClassName} ${getRoundedClassName(rounded)}`}>
+        className={`items-center justify-center overflow-hidden ${outerClassName} ${getRoundedClassName(rounded)}`}>
         <Pressable
           ref={ref}
           onPressIn={handlePressIn}

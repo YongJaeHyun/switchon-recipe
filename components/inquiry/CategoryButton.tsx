@@ -33,7 +33,7 @@ export default function CategoryButton({
 
   return (
     <RippleButton
-      borderClassName={`border ${isSelected ? getCategoryBorderColor() : 'border-neutral-400'}`}
+      outerClassName={`border ${isSelected ? getCategoryBorderColor() : 'border-neutral-400'}`}
       onPress={onPress}
       className="flex-row px-3 py-2">
       {category === '일반 문의' && (

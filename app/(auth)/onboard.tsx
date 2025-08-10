@@ -58,7 +58,7 @@ export default function OnboardingScreen() {
               </RippleButton>
               <RippleButton
                 className="py-5"
-                borderClassName="border border-green-600"
+                outerClassName="border border-green-600"
                 onPress={() => setDateAndGoLastStep(today)}>
                 <Text className="text-xl text-green-600">건너뛰기</Text>
               </RippleButton>
@@ -78,7 +78,7 @@ export default function OnboardingScreen() {
               </RippleButton>
               <RippleButton
                 className="py-5"
-                borderClassName="border border-green-600"
+                outerClassName="border border-green-600"
                 onPress={() => setDateAndGoLastStep(getKoreanDateWeeksAgo(4))}>
                 <Text className="text-xl text-green-600">아니오</Text>
               </RippleButton>
