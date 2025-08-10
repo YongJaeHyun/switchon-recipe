@@ -37,7 +37,10 @@ module.exports = {
       [
         'expo-font',
         {
-          fonts: ['node_modules/@expo-google-fonts/roboto/500Medium/Roboto_500Medium.ttf'],
+          fonts: [
+            './assets/fonts/PretendardVariable-Regular.ttf',
+            'node_modules/@expo-google-fonts/roboto/500Medium/Roboto_500Medium.ttf',
+          ],
         },
       ],
       'expo-router',
@@ -69,9 +72,6 @@ module.exports = {
     },
     assets: ['./assets/fonts/'],
     assetBundlePatterns: ['**/*'],
-    ios: {
-      supportsTablet: true,
-    },
     android: {
       package:
         appEnv === 'development'

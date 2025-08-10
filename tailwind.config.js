@@ -1,4 +1,6 @@
 /** @type {import('tailwindcss').Config} */
+import { platformSelect } from 'nativewind/theme';
+
 module.exports = {
   content: ['./app/**/*.{js,ts,tsx}', './components/**/*.{js,ts,tsx}'],
   safelist: [
@@ -12,7 +14,13 @@ module.exports = {
   ],
   presets: [require('nativewind/preset')],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        system: platformSelect({
+          default: 'PretendardVariable-Regular',
+        }),
+      },
+    },
   },
   plugins: [],
 };
