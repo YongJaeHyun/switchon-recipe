@@ -17,7 +17,7 @@ const selectAll = async (): Promise<IIngredient[]> =>
 
       if (error) throw error;
 
-      return JSON.parse(data.ingredients);
+      return data ? JSON.parse(data.ingredients) : [];
     },
     {
       errorReturnValue: [],
