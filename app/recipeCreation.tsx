@@ -38,20 +38,16 @@ export default function RecipeCreationScreen() {
 
   const [resetTrigger, setResetTrigger] = useState(false);
 
-  const getAdjustedWeek = () => {
-    if (selectedIngredients.length > 0)
-      return Math.max(...selectedIngredients.map((ingredient) => ingredient.week));
-
+  const getUserWeek = () => {
     const startDate = useUserStore.getState().start_date;
     const { week: userWeek } = getWeekAndDay(startDate);
 
-    if (userWeek > 4) return 4;
     return userWeek;
   };
 
   const createRecipeWithAI = async () => {
     const ingredients = selectedIngredients.map((ingredients) => ingredients.name).join(', ');
-    const week = getAdjustedWeek();
+    const week = getUserWeek();
 
     const command = `다음 재료들만 이용해서 스위치온 ${week}주차에 먹을 수 있는 음식의 레시피를 만들어줘. 하지만, 모든 재료를 이용할 필요는 없어. 소스나 조미료는 자유롭게 활용해도 돼. \n재료: ${ingredients}`;
 
