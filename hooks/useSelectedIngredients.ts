@@ -9,6 +9,7 @@ export const useSelectedIngredients = () => {
   const { data: selectedIngredients = [], isLoading } = useQuery({
     queryKey: [QueryKey.selectedIngredients],
     queryFn: SelectedIngredientAPI.selectAll,
+    staleTime: Infinity,
   });
 
   const prefetch = async () =>
@@ -19,15 +20,41 @@ export const useSelectedIngredients = () => {
 
   const { mutate: resetIngredients } = useMutation({
     mutationFn: SelectedIngredientAPI.reset,
-    onSuccess: () => {
-      queryClient.setQueryData<IIngredient[]>([QueryKey.selectedIngredients], () => []);
+    onMutate: async () => {
+      await queryClient.cancelQueries({
+        queryKey: [QueryKey.selectedIngredients],
+      });
+
+      const previousData =
+        queryClient.getQueryData<IIngredient[]>([QueryKey.selectedIngredients]) || [];
+
+      queryClient.setQueryData([QueryKey.selectedIngredients], []);
+
+      return { previousData };
+    },
+    onError: (err, _, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData([QueryKey.selectedIngredients], context.previousData);
+      }
     },
   });
 
   const { mutate: upsertIngredients } = useMutation({
     mutationFn: SelectedIngredientAPI.upsert,
-    onSuccess: (newData) => {
-      queryClient.setQueryData<IIngredient[]>([QueryKey.selectedIngredients], () => newData);
+    onMutate: async (newData) => {
+      await queryClient.cancelQueries({ queryKey: [QueryKey.selectedIngredients] });
+
+      const previousData =
+        queryClient.getQueryData<IIngredient[]>([QueryKey.selectedIngredients]) || [];
+
+      queryClient.setQueryData([QueryKey.selectedIngredients], () => newData);
+
+      return { previousData };
+    },
+    onError: (err, newData, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData([QueryKey.selectedIngredients], context.previousData);
+      }
     },
   });
 
@@ -37,12 +64,11 @@ export const useSelectedIngredients = () => {
 
     const isSelected = selectedIngredients.some((i) => i.name === ingredient.name);
 
-    if (isSelected) {
-      const filteredIngredient = selectedIngredients.filter((i) => i.name !== ingredient.name);
-      upsertIngredients(filteredIngredient);
-    } else {
-      upsertIngredients([...selectedIngredients, ingredient]);
-    }
+    const updatedIngredients = isSelected
+      ? selectedIngredients.filter((i) => i.name !== ingredient.name)
+      : [...selectedIngredients, ingredient];
+
+    upsertIngredients(updatedIngredients);
   };
 
   return {
