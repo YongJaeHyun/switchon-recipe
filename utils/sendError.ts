@@ -32,7 +32,7 @@ const sendDBError = async <T>(callback: () => Promise<T>, options?: OptionsProps
       text2: '에러 정보가 관리자에게 전달되었습니다. 빠른 시일 내에 조치하겠습니다.',
       error,
     });
-    return options.errorReturnValue;
+    return options?.errorReturnValue;
   }
 };
 
