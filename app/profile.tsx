@@ -6,7 +6,7 @@ import { deleteUserFromDB, logout } from 'api/supabaseAPI';
 import ConfirmModal from 'components/common/ConfirmModal';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
-import { baseProfile } from 'const/assets';
+import { baseProfile, googleIcon, kakaoIconSmall } from 'const/assets';
 import { Image } from 'expo-image';
 import { Link, router } from 'expo-router';
 import { useState } from 'react';
@@ -15,7 +15,7 @@ import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 
 export default function Profile() {
-  const { avatar_url, name, email, provider } = useUserStore((state) => state);
+  const { avatar_url, email, provider } = useUserStore((state) => state);
 
   const [isModalVisible, setModalVisible] = useState(false);
 
@@ -34,7 +34,7 @@ export default function Profile() {
 
   return (
     <View className="flex-1 bg-white">
-      <View className="relative flex-1 items-center justify-center gap-3 bg-green-50 pt-4">
+      <View className="relative flex-1 items-center justify-end gap-6 bg-green-50 py-10">
         <TouchableOpacity onPress={router.back} className="absolute left-6 top-16 z-10">
           <MaterialIcons name="arrow-back" size={32} color="black" />
         </TouchableOpacity>
@@ -42,10 +42,19 @@ export default function Profile() {
         <View className="h-32 w-32 overflow-hidden rounded-full">
           <Image source={avatar_url ?? baseProfile} style={{ width: '100%', height: '100%' }} />
         </View>
-        <Text className="text-2xl font-bold">{name}</Text>
-        <Text className="text-lg text-neutral-500">{email}</Text>
+        <View className="flex-row items-center gap-2">
+          <View className="h-5 w-5">
+            {provider === 'google' && (
+              <Image source={googleIcon} style={{ width: '100%', height: '100%' }} />
+            )}
+            {provider === 'kakao' && (
+              <Image source={kakaoIconSmall} style={{ width: '100%', height: '100%' }} />
+            )}
+          </View>
+          <Text className="text-lg text-neutral-500">{email}</Text>
+        </View>
       </View>
-      <View className="mt-6 flex-[2] justify-between px-5">
+      <View className="mt-6 flex-[3] justify-between px-5">
         <View className="gap-4">
           <Link href={'/(inquiry)'} asChild>
             <RippleButton
