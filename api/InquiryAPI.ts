@@ -1,7 +1,7 @@
 import { supabase } from 'lib/supabase';
 import { useUserStore } from 'stores/userStore';
 import { InquiryDB } from 'types/database';
-import sendDBError from 'utils/sendError';
+import { sendDBError } from 'utils/sendError';
 import { showSuccessToast } from 'utils/showToast';
 
 const selectAll = async (): Promise<InquiryDB[]> =>

@@ -2,7 +2,7 @@ import { supabase } from 'lib/supabase';
 import { useUserStore } from 'stores/userStore';
 import { SelectedIngredientDB } from 'types/database';
 import { IIngredient } from 'types/recipe';
-import sendDBError from 'utils/sendError';
+import { sendDBError } from 'utils/sendError';
 
 const selectAll = async (): Promise<IIngredient[]> =>
   sendDBError(

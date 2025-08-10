@@ -1,25 +1,31 @@
 import * as Sentry from '@sentry/react-native';
 import { showErrorToast } from './showToast';
 
+interface CaptureErrorProps {
+  error: unknown;
+  prefix: string;
+  level?: Sentry.SeverityLevel;
+}
+
 interface OptionsProps<T> {
   errorReturnValue?: T;
 }
 
-export default async function sendDBError<T>(
-  callback: () => Promise<T>,
-  options?: OptionsProps<T>
-) {
+const captureError = ({ error, prefix, level = 'error' }: CaptureErrorProps) => {
+  if (error instanceof Error) {
+    Sentry.captureException(error, { level });
+  } else {
+    Sentry.captureException(new Error(prefix + JSON.stringify(error)));
+  }
+};
+
+const sendDBError = async <T>(callback: () => Promise<T>, options?: OptionsProps<T>) => {
   try {
     const result = await callback();
 
     return result;
   } catch (error) {
-    if (error instanceof Error) {
-      Sentry.captureException(error, { level: 'fatal' });
-    } else {
-      const templateString = '[Supabase]: ';
-      Sentry.captureException(new Error(templateString + JSON.stringify(error)));
-    }
+    captureError({ error, prefix: '[Supabase]: ', level: 'fatal' });
 
     showErrorToast({
       text1: 'DB 에러 발생',
@@ -28,4 +34,6 @@ export default async function sendDBError<T>(
     });
     return options.errorReturnValue;
   }
-}
+};
+
+export { captureError, sendDBError };

@@ -3,7 +3,7 @@ import { useRecipeStore } from 'stores/recipeStore';
 import { useUserStore } from 'stores/userStore';
 import { RecipeDB, SavedRecipeDB, UserDB } from 'types/database';
 import { Recipe } from 'types/recipe';
-import sendDBError from 'utils/sendError';
+import { sendDBError } from 'utils/sendError';
 import { showSuccessToast } from 'utils/showToast';
 import { supabase } from '../lib/supabase';
 
@@ -235,6 +235,7 @@ export {
   checkIsLoggedIn,
   checkIsSavedRecipe,
   deleteSavedRecipeFromDB,
+  deleteUserFromDB,
   getSession,
   insertRecipeToDB,
   insertSavedRecipeToDB,

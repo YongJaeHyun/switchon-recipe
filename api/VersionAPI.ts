@@ -1,6 +1,6 @@
 import { supabase } from 'lib/supabase';
 import { VersionDB } from 'types/database';
-import sendDBError from 'utils/sendError';
+import { sendDBError } from 'utils/sendError';
 
 const selectLatestVersion = async () =>
   sendDBError(
