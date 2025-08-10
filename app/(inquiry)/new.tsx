@@ -3,11 +3,12 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { InquiryAPI } from 'api/InquiryAPI';
 import ConfirmModal from 'components/common/ConfirmModal';
 import RippleButton from 'components/common/RippleButton';
+import { Text } from 'components/common/Text';
 import CategoryButton from 'components/inquiry/CategoryButton';
 import { QueryKey } from 'const/queryKey';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { FlatList, ScrollView, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { InquiryCategory, InquiryDB } from 'types/database';
 

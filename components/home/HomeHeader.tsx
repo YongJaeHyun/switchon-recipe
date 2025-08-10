@@ -1,12 +1,13 @@
 import Feather from '@expo/vector-icons/Feather';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { BottomSheetMethods } from '@gorhom/bottom-sheet/lib/typescript/types';
+import { Text } from 'components/common/Text';
 import { baseProfile } from 'const/assets';
 import { Image } from 'expo-image';
 import { Link } from 'expo-router';
 import useKoreanToday from 'hooks/useKoreanToday';
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import { getWeekAndDay } from 'utils/date';
 import { getWeekColor } from 'utils/getWeekColor';
@@ -31,9 +32,7 @@ export default function HomeHeader({ bottomSheetRef }: HomeHeaderProps) {
         </View>
       </View>
       <View className="flex-row items-end gap-3">
-        <Text
-          style={{ fontFamily: 'roboto' }}
-          className={`text-4xl font-bold ${getWeekColor(week)}`}>
+        <Text className={`text-4xl font-bold ${getWeekColor(week)}`}>
           {week}주차 {week >= 5 && '(유지기)'}
         </Text>
         <Pressable onPress={() => bottomSheetRef.current?.expand()}>

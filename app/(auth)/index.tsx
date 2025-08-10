@@ -1,7 +1,8 @@
+import { Text } from 'components/common/Text';
 import GoogleLoginButton from 'components/signIn/GoogleLoginButton';
 import KakaoLoginButton from 'components/signIn/KakaoLoginButton';
 import { Image } from 'expo-image';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { logo } from '../../const/assets';
 

@@ -1,6 +1,6 @@
 import { FontAwesome5, MaterialIcons } from '@expo/vector-icons';
 import RippleButton from 'components/common/RippleButton';
-import { Text } from 'react-native';
+import { Text } from 'components/common/Text';
 import colors from 'tailwindcss/colors';
 import { InquiryCategory } from 'types/database';
 

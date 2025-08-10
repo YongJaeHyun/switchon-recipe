@@ -1,10 +1,11 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { deleteSavedRecipeFromDB, insertSavedRecipeToDB } from 'api/supabaseAPI';
+import { Text } from 'components/common/Text';
 import { Image } from 'expo-image';
 import { Link } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import colors from 'tailwindcss/colors';
 import { RecipeDB } from 'types/database';
 import { getWeekColor } from 'utils/getWeekColor';

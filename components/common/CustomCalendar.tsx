@@ -1,5 +1,6 @@
+import { Text } from 'components/common/Text';
 import useKoreanToday from 'hooks/useKoreanToday';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import colors from 'tailwindcss/colors';
 import { getWeekAndDay } from 'utils/date';

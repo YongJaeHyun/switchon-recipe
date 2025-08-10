@@ -1,6 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { createRecipe } from 'api/gemini';
 import { selectRecentRecipeFromDB } from 'api/supabaseAPI';
+import { Text } from 'components/common/Text';
 import Ingredients from 'components/recipeCreation/Ingredients';
 import SelectedIngredient from 'components/recipeCreation/SelectedIngredient';
 import { allIngredients } from 'const/ingredients';
@@ -10,7 +11,6 @@ import {
   ActivityIndicator,
   FlatList,
   Pressable,
-  Text,
   TextInput,
   TouchableHighlight,
   TouchableOpacity,

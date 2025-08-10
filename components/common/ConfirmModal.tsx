@@ -1,6 +1,7 @@
 // components/ConfirmModal.tsx
 import { MaterialIcons } from '@expo/vector-icons';
-import { Modal, Text, TouchableOpacity, View } from 'react-native';
+import { Text } from 'components/common/Text';
+import { Modal, TouchableOpacity, View } from 'react-native';
 import colors from 'tailwindcss/colors';
 
 type Props = {

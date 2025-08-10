@@ -1,5 +1,6 @@
+import { Text } from 'components/common/Text';
 import { Href, Link } from 'expo-router';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import colors from 'tailwindcss/colors';
 import RippleButton from './RippleButton';
 

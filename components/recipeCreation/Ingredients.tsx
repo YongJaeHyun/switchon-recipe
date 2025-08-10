@@ -1,5 +1,6 @@
+import { Text } from 'components/common/Text';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
-import { FlatList, Text, View } from 'react-native';
+import { FlatList, View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import { IIngredient } from 'types/recipe';
 import { chunkArray } from 'utils/chunkArray';

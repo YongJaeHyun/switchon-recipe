@@ -1,7 +1,8 @@
+import { Text } from 'components/common/Text';
 import { Image } from 'expo-image';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import React from 'react';
-import { Text, TouchableHighlight, View } from 'react-native';
+import { TouchableHighlight, View } from 'react-native';
 import colors from 'tailwindcss/colors';
 import { IIngredient } from 'types/recipe';
 

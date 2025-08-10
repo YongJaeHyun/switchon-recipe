@@ -6,6 +6,7 @@ import {
 } from 'api/supabaseAPI';
 import CustomCalendar from 'components/common/CustomCalendar';
 import RippleButton from 'components/common/RippleButton';
+import { Text } from 'components/common/Text';
 import HomeHeader from 'components/home/HomeHeader';
 import RecentRecipes from 'components/home/RecentRecipes';
 import RecipeCreation from 'components/home/RecipeCreation';
@@ -13,7 +14,7 @@ import SavedRecipes from 'components/home/SavedRecipes';
 import useKoreanToday from 'hooks/useKoreanToday';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { useCallback, useRef, useState } from 'react';
-import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { RefreshControl, ScrollView, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';

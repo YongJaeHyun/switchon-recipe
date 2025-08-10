@@ -1,10 +1,11 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { logout } from 'api/supabaseAPI';
 import RippleButton from 'components/common/RippleButton';
+import { Text } from 'components/common/Text';
 import { baseProfile } from 'const/assets';
 import { Image } from 'expo-image';
 import { Link, router } from 'expo-router';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { TouchableOpacity, View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 

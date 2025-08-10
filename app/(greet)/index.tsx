@@ -1,12 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AnimatedTextView from 'components/common/AnimatedTextView';
 import RippleButton from 'components/common/RippleButton';
+import { Text } from 'components/common/Text';
 import { selectIngredientPhoneImage } from 'const/assets';
 import { FIRST_LAUNCH_KEY } from 'const/const';
 import { Image } from 'expo-image';
 import { Link } from 'expo-router';
 import useSteps from 'hooks/useSteps';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import colors from 'tailwindcss/colors';
 

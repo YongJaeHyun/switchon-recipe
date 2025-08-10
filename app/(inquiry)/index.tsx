@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { InquiryAPI } from 'api/InquiryAPI';
 import ListEmptyText from 'components/common/ListEmptyText';
 import RippleButton from 'components/common/RippleButton';
+import { Text } from 'components/common/Text';
 import AnswerToggle from 'components/inquiry/AnswerToggle';
 import { QueryKey } from 'const/queryKey';
 import { Link, useRouter } from 'expo-router';
@@ -12,7 +13,6 @@ import {
   AppState,
   FlatList,
   RefreshControl,
-  Text,
   TouchableOpacity,
   View,
 } from 'react-native';

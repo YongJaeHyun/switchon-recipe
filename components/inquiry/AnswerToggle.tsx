@@ -1,6 +1,7 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { Text } from 'components/common/Text';
 import React, { useState } from 'react';
-import { LayoutChangeEvent, Pressable, Text, View } from 'react-native';
+import { LayoutChangeEvent, Pressable, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import colors from 'tailwindcss/colors';
 import { InquiryDB } from 'types/database';

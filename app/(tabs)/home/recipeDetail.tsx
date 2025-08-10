@@ -6,12 +6,13 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { shareCustomTemplate } from '@react-native-kakao/share';
 import { useQuery } from '@tanstack/react-query';
 import { checkIsSavedRecipe } from 'api/supabaseAPI';
+import { Text } from 'components/common/Text';
 import { logo } from 'const/assets';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useToggleSaveRecipe } from 'hooks/useToggleSaveRecipe';
-import { Pressable, Text, TouchableOpacity, View } from 'react-native';
+import { Pressable, TouchableOpacity, View } from 'react-native';
 import Animated, {
   Extrapolation,
   interpolate,
@@ -27,7 +28,7 @@ export default function RecipeDetailScreen() {
   const { recipe }: { recipe: string } = useLocalSearchParams();
 
   const parsedRecipe: RecipeDB = JSON.parse(recipe);
-  const { id, uid, recipe_name, cooking_time, ingredients, nutrition, cooking_steps, image_uri } =
+  const { id, recipe_name, cooking_time, ingredients, nutrition, cooking_steps, image_uri } =
     parsedRecipe;
 
   const parsedIngredients: Recipe['ingredients'] = JSON.parse(ingredients);
