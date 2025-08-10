@@ -8,6 +8,7 @@ const selectAll = async (): Promise<IIngredient[]> =>
   sendDBError(
     async () => {
       const userId = useUserStore.getState().id;
+      if (!userId) return;
 
       const { data, error } = await supabase
         .from('selected_ingredient')

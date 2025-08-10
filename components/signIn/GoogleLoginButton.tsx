@@ -42,7 +42,6 @@ export default function GoogleLoginButton() {
               setUser({
                 id: user.id,
                 email: user.email,
-                name: user.name,
                 avatar_url: user.avatar_url,
                 provider: user.provider,
                 created_at: user.created_at,

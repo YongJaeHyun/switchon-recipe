@@ -9,7 +9,6 @@ interface UserState extends UserDB {
 export const useUserStore = create<UserState>()((set) => ({
   id: '',
   email: '',
-  name: '',
   provider: '',
   created_at: '',
   start_date: '',
@@ -25,7 +24,6 @@ export const useUserStore = create<UserState>()((set) => ({
       set({
         id: '',
         email: '',
-        name: '',
         provider: '',
         created_at: '',
         start_date: '',
