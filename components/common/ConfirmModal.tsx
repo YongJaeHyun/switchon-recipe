@@ -1,10 +1,10 @@
 // components/ConfirmModal.tsx
-import { MaterialIcons } from '@expo/vector-icons';
 import { Text } from 'components/common/Text';
 import { Modal, TouchableOpacity, View } from 'react-native';
-import colors from 'tailwindcss/colors';
 
-type Props = {
+type ConfirmModalProps = {
+  type: 'create' | 'delete';
+  iconElement: React.ReactNode;
   visible: boolean;
   title: string;
   message: string;
@@ -14,25 +14,22 @@ type Props = {
 };
 
 export default function ConfirmModal({
+  type,
+  iconElement: Icon,
   visible,
   title,
   message,
   onConfirm,
   onCancel,
   disabled,
-}: Props) {
+}: ConfirmModalProps) {
   return (
     <Modal animationType="fade" transparent visible={visible} onRequestClose={onCancel}>
       <View className="flex-1 items-center justify-center bg-black/40">
         <View className="w-2/3 justify-between rounded-2xl bg-white p-6">
           <View>
-            <MaterialIcons
-              name="check-circle-outline"
-              size={60}
-              color={colors.green[600]}
-              className="mb-2 text-center"
-            />
-            <Text className="mb-2 text-center text-xl font-semibold">{title}</Text>
+            <View style={{ alignItems: 'center', marginBottom: 4 }}>{Icon}</View>
+            <Text className="mb-2 text-center text-xl font-bold">{title}</Text>
           </View>
           <Text className="mb-8 text-center text-gray-600">{message}</Text>
 
@@ -45,7 +42,7 @@ export default function ConfirmModal({
             </TouchableOpacity>
 
             <TouchableOpacity
-              className="flex-1 rounded-xl bg-green-600 py-3"
+              className={`flex-1 rounded-xl py-3 ${type === 'create' ? 'bg-green-600' : 'bg-red-600'}`}
               onPress={onConfirm}
               disabled={disabled}>
               <Text className="text-center font-medium text-white">네</Text>

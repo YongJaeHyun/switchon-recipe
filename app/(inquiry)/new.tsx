@@ -10,6 +10,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { FlatList, ScrollView, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import colors from 'tailwindcss/colors';
 import { InquiryCategory, InquiryDB } from 'types/database';
 
 type InquiryError = Pick<InquiryDB, 'title' | 'message'>;
@@ -130,6 +131,10 @@ export default function NewInquiryScreen() {
       </RippleButton>
 
       <ConfirmModal
+        type="create"
+        iconElement={
+          <MaterialIcons name="check-circle-outline" size={60} color={colors.green[600]} />
+        }
         visible={isModalVisible}
         title="이대로 제출하시겠어요?"
         message="제출 후, 확인하기까지 최대 24시간이 소요될 수 있어요!"
