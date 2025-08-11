@@ -41,6 +41,10 @@ jobs:
       - name: EAS Submit (Android)
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_PUBLIC_KAKAO_API_KEY: ${{ secrets.EXPO_PUBLIC_KAKAO_API_KEY }}
+          EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
         run: eas submit --platform android --non-interactive
 
       - name: Update Supabase version
