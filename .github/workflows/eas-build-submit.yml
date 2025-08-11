@@ -8,7 +8,7 @@ on:
 jobs:
   build_submit_update_android:
     runs-on: ubuntu-latest
-
+    environment: github_action
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -17,25 +17,35 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 20
+          
+      - name: 🏗 Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          packager: npm
+          expo-version: latest
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Install dependencies
         run: npm install
 
-      - name: Install EAS CLI
-        run: npm install -g eas-cli
-
-      - name: Login to Expo
+      - name: EAS Build (Android)
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: eas login --token $EXPO_TOKEN
-
-      - name: EAS Build (Android)
+          EXPO_PUBLIC_KAKAO_API_KEY: ${{ secrets.EXPO_PUBLIC_KAKAO_API_KEY }}
+          EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
         run: eas build --platform android --non-interactive
 
       - name: EAS Submit (Android)
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: eas submit --platform android --non-interactive
+          EXPO_PUBLIC_KAKAO_API_KEY: ${{ secrets.EXPO_PUBLIC_KAKAO_API_KEY }}
+          EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+        run: eas submit --platform android --latest --non-interactive
 
       - name: Update Supabase version
         env:
