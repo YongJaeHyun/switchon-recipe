@@ -49,7 +49,10 @@ export default function RecipeCreationScreen() {
     const ingredients = selectedIngredients.map((ingredients) => ingredients.name).join(', ');
     const week = getUserWeek();
 
-    const command = `다음 재료들만 이용해서 스위치온 ${week}주차에 먹을 수 있는 음식의 레시피를 만들어줘. 하지만, 모든 재료를 이용할 필요는 없어. 소스나 조미료는 자유롭게 활용해도 돼. \n재료: ${ingredients}`;
+    const command =
+      selectedIngredients.length === 0
+        ? `스위치온 ${week}주차에 먹을 수 있는 가장 맛있는 저탄수식 레시피를 만들어줘. 소스나 조미료는 자유롭게 활용해도 돼.`
+        : `다음 재료들만 이용해서 스위치온 ${week}주차에 먹을 수 있는 음식의 레시피를 만들어줘. 하지만, 모든 재료를 이용할 필요는 없어. 소스나 조미료는 자유롭게 활용해도 돼. \n재료: ${ingredients}`;
 
     controller.current = new AbortController();
 
