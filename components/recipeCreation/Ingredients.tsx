@@ -13,7 +13,7 @@ import Ingredient from './Ingredient';
 export interface IngredientsProps {
   title: string;
   week: number;
-  ingredientList: Omit<IIngredient, 'week'>[];
+  ingredientList: IIngredient[];
 }
 
 export default function Ingredients({ title, week, ingredientList }: IngredientsProps) {
@@ -38,9 +38,9 @@ export default function Ingredients({ title, week, ingredientList }: Ingredients
                 key={ingredient.name}
                 image={ingredient.image}
                 name={ingredient.name}
-                week={week}
+                week={ingredient.week}
                 isSelected={selectedIngredients.some((i) => i.name === ingredient.name)}
-                disabled={week > userWeek}
+                disabled={ingredient.week > userWeek}
               />
             ))}
           </View>
