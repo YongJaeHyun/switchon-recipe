@@ -38,7 +38,7 @@ export default function SavedRecipes({ refreshing }: { refreshing: boolean }) {
         <FlatList
           className="h-52"
           data={recipes}
-          contentContainerClassName={'gap-5'}
+          contentContainerClassName={`gap-5 flex-grow ${recipes.length === 0 ? 'justify-center' : 'justify-start'}`}
           keyExtractor={(item) => 'SavedRecipes' + item.id.toString()}
           renderItem={({ item }) => <RecipeCard {...item} />}
           ListEmptyComponent={
