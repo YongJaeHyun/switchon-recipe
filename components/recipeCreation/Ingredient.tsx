@@ -1,9 +1,11 @@
 import { Text } from 'components/common/Text';
 import { Image } from 'expo-image';
+import { useLastPathname } from 'hooks/useLastPathname';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import React from 'react';
 import { TouchableHighlight, View } from 'react-native';
 import colors from 'tailwindcss/colors';
+import { SelectedIngredientType } from 'types/database';
 import { IIngredient } from 'types/recipe';
 
 interface IngredientProps extends IIngredient {
@@ -12,7 +14,8 @@ interface IngredientProps extends IIngredient {
 }
 
 function Ingredient({ name, image, week, isSelected, disabled }: IngredientProps) {
-  const { toggleIngredient } = useSelectedIngredients();
+  const type = useLastPathname() as SelectedIngredientType;
+  const { toggleIngredient } = useSelectedIngredients({ type });
 
   const toggleSelect = () => {
     toggleIngredient({ name, image, week });

@@ -6,6 +6,7 @@ import Ingredients from 'components/recipeCreation/Ingredients';
 import SelectedIngredient from 'components/recipeCreation/SelectedIngredient';
 import { allIngredients } from 'const/ingredients';
 import { router } from 'expo-router';
+import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -21,14 +22,13 @@ import { useRecipeStore } from 'stores/recipeStore';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { getWeekAndDay } from 'utils/date';
-import { useSelectedIngredients } from '../hooks/useSelectedIngredients';
 
-export default function RecipeCreationScreen() {
+export default function LowRecipeCreationScreen() {
   const {
     selectedIngredients,
     resetIngredients,
     isLoading: isIngredientsLoading,
-  } = useSelectedIngredients();
+  } = useSelectedIngredients({ type: 'low' });
 
   const setRecentRecipes = useRecipeStore((state) => state.setRecentRecipes);
 
@@ -52,7 +52,7 @@ export default function RecipeCreationScreen() {
     const command =
       selectedIngredients.length === 0
         ? `스위치온 ${week}주차에 먹을 수 있는 가장 맛있는 저탄수식 레시피를 만들어줘. 소스나 조미료는 자유롭게 활용해도 돼.`
-        : `다음 재료들만 이용해서 스위치온 ${week}주차에 먹을 수 있는 음식의 레시피를 만들어줘. 하지만, 모든 재료를 이용할 필요는 없어. 소스나 조미료는 자유롭게 활용해도 돼. \n재료: ${ingredients}`;
+        : `다음 재료들만 이용해서 스위치온 ${week}주차에 먹을 수 있는 저탄수식 레시피를 만들어줘. 하지만, 모든 재료를 이용할 필요는 없어. 소스나 조미료는 자유롭게 활용해도 돼. \n재료: ${ingredients}`;
 
     controller.current = new AbortController();
 

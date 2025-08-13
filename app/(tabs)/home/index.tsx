@@ -25,7 +25,10 @@ export default function HomeScreen() {
   const bottomSheetRef = useRef<BottomSheet>(null);
   const inset = useSafeAreaInsets();
 
-  const { selectedIngredients, upsertIngredients } = useSelectedIngredients();
+  const { selectedIngredients: lowIngredients, upsertIngredients: upsertLowIngredients } =
+    useSelectedIngredients({ type: 'low' });
+  const { selectedIngredients: zeroIngredients, upsertIngredients: upsertZeroIngredients } =
+    useSelectedIngredients({ type: 'zero' });
 
   const [refreshing, setRefreshing] = useState(false);
   const setRecentRecipes = useRecipeStore((state) => state.setRecentRecipes);
@@ -44,8 +47,15 @@ export default function HomeScreen() {
   const updateStartDate = async () => {
     const { week } = getWeekAndDay(selectedDate);
 
-    const filteredIngredients = selectedIngredients.filter((ingredient) => ingredient.week <= week);
-    upsertIngredients(filteredIngredients);
+    const filteredLowIngredients = lowIngredients.filter((ingredient) => ingredient.week <= week);
+    if (lowIngredients.length !== filteredLowIngredients.length) {
+      upsertLowIngredients(filteredLowIngredients);
+    }
+
+    const filteredZeroIngredients = zeroIngredients.filter((ingredient) => ingredient.week <= week);
+    if (zeroIngredients.length !== filteredZeroIngredients.length) {
+      upsertZeroIngredients(filteredZeroIngredients);
+    }
 
     await updateStartDateToDB(selectedDate);
 
@@ -76,7 +86,18 @@ export default function HomeScreen() {
         <View className="my-6 border-b-2 border-neutral-300" />
 
         <View className="mb-10 gap-10">
-          <RecipeCreation />
+          <View className="flex-row gap-4">
+            <RecipeCreation
+              href={'/home/recipeCreation/zero'}
+              title="무탄수"
+              subtitle="단백질 & 채소로만 건강하게!"
+            />
+            <RecipeCreation
+              href={'/home/recipeCreation/low'}
+              title="저탄수"
+              subtitle="탄수화물 추가로 포만감 있게!"
+            />
+          </View>
           <SavedRecipes refreshing={refreshing} />
           <RecentRecipes refreshing={refreshing} />
         </View>
