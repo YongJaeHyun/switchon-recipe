@@ -26,6 +26,7 @@ import {
   egg,
   eggplant,
   garlic,
+  ggwari,
   gim,
   gochu,
   gochuPaste,
@@ -199,6 +200,10 @@ export const firstWeekIngredients: Omit<IIngredient, 'week'>[] = [
   {
     name: '고추',
     image: gochu,
+  },
+  {
+    name: '꽈리고추',
+    image: ggwari,
   },
   {
     name: '고춧가루',
