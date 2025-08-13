@@ -15,7 +15,7 @@ import useKoreanToday from 'hooks/useKoreanToday';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { useCallback, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { getWeekAndDay } from 'utils/date';
@@ -23,6 +23,7 @@ import { useRecipeStore } from '../../../stores/recipeStore';
 
 export default function HomeScreen() {
   const bottomSheetRef = useRef<BottomSheet>(null);
+  const inset = useSafeAreaInsets();
 
   const { selectedIngredients, upsertIngredients } = useSelectedIngredients();
 
@@ -65,17 +66,14 @@ export default function HomeScreen() {
   }, [setRecentRecipes, setSavedRecipes]);
 
   return (
-    <SafeAreaView className="flex-1 bg-neutral-100 px-5">
+    <SafeAreaView className="flex-1 bg-neutral-50 px-5">
       <ScrollView
         contentContainerStyle={{ flexGrow: 1 }}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
         <HomeHeader bottomSheetRef={bottomSheetRef} />
 
-        <View
-          className="my-6"
-          style={{ borderBottomWidth: 2, borderBottomColor: colors.neutral[400] }}
-        />
+        <View className="my-6 border-b-2 border-neutral-300" />
 
         <View className="mb-10 gap-10">
           <RecipeCreation />
@@ -84,7 +82,13 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
 
-      <BottomSheet ref={bottomSheetRef} index={-1} snapPoints={['70%']} enablePanDownToClose>
+      <BottomSheet
+        style={{ borderTopWidth: 2, borderColor: colors.neutral[100] }}
+        handleIndicatorStyle={{ backgroundColor: colors.neutral[500] }}
+        bottomInset={inset.bottom}
+        ref={bottomSheetRef}
+        index={-1}
+        enablePanDownToClose>
         <BottomSheetView className="px-5">
           <View className="flex-row items-center justify-between">
             <Text className="mb-2 text-2xl font-bold">시작 날짜 재설정</Text>
@@ -100,7 +104,10 @@ export default function HomeScreen() {
             selectedDate={selectedDate}
             setSelectedDate={setSelectedDate}
           />
-          <RippleButton className="w-full bg-green-600 py-4" onPress={updateStartDate}>
+          <RippleButton
+            outerClassName="mb-10"
+            className="w-full bg-green-600 py-4"
+            onPress={updateStartDate}>
             <Text className="text-lg font-semibold text-white">날짜 재설정하기</Text>
           </RippleButton>
         </BottomSheetView>
