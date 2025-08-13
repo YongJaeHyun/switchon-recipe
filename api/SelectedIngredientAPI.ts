@@ -1,14 +1,14 @@
 import { supabase } from 'lib/supabase';
 import { useUserStore } from 'stores/userStore';
-import { SelectedIngredientDB } from 'types/database';
+import { SelectedIngredientDB, SelectedIngredientType } from 'types/database';
 import { IIngredient } from 'types/recipe';
 import { sendDBError } from 'utils/sendError';
 
-const selectAll = async (): Promise<IIngredient[]> =>
+const selectAll = async (type: SelectedIngredientType): Promise<IIngredient[]> =>
   sendDBError(
     async () => {
       const userId = useUserStore.getState().id;
-      if (!userId) return;
+      if (!userId) return [];
 
       const { data, error } = await supabase
         .from('selected_ingredient')
@@ -17,15 +17,39 @@ const selectAll = async (): Promise<IIngredient[]> =>
         .maybeSingle<SelectedIngredientDB>();
 
       if (error) throw error;
+      if (!data) return [];
 
-      return data ? JSON.parse(data.ingredients) : [];
+      const ingredients = type === 'zero' ? data.zero_ingredients : data.ingredients;
+      return JSON.parse(ingredients);
     },
     {
       errorReturnValue: [],
     }
   );
 
-const upsert = async (ingredients: IIngredient[]) =>
+const upsert = async (type: SelectedIngredientType, ingredients: IIngredient[]) => {
+  if (type === 'zero') return await upsertZeroIngredients(ingredients);
+  else if (type === 'low') return await upsertLowIngredients(ingredients);
+  else return [];
+};
+
+const upsertZeroIngredients = async (ingredients: IIngredient[]) =>
+  sendDBError(async () => {
+    const userId = useUserStore.getState().id;
+
+    const { error } = await supabase
+      .from('selected_ingredient')
+      .upsert(
+        { zero_ingredients: JSON.stringify(ingredients), uid: userId },
+        { onConflict: 'uid' }
+      );
+
+    if (error) throw error;
+
+    return ingredients;
+  });
+
+const upsertLowIngredients = async (ingredients: IIngredient[]) =>
   sendDBError(async () => {
     const userId = useUserStore.getState().id;
 
@@ -38,9 +62,9 @@ const upsert = async (ingredients: IIngredient[]) =>
     return ingredients;
   });
 
-const reset = async () =>
+const reset = async (type: SelectedIngredientType) =>
   sendDBError(async () => {
-    await upsert([]);
+    await upsert(type, []);
   });
 
 export const SelectedIngredientAPI = {

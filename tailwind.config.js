@@ -24,6 +24,8 @@ module.exports = {
     'rounded-xl',
     'rounded-full',
     'font-bold',
+    'bg-green-600',
+    'bg-amber-500',
   ],
   presets: [require('nativewind/preset')],
   theme: {
