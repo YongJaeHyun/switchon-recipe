@@ -56,7 +56,12 @@ export default function LowRecipeCreationScreen() {
 
     controller.current = new AbortController();
 
-    const recipe = await createRecipe({ command, week, signal: controller.current.signal });
+    const recipe = await createRecipe({
+      command,
+      week,
+      isZeroCarb: false,
+      signal: controller.current.signal,
+    });
     if (!recipe) return null;
 
     const recentRecipes = await selectRecentRecipeFromDB();

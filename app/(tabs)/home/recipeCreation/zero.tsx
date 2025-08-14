@@ -56,7 +56,12 @@ export default function ZeroRecipeCreationScreen() {
 
     controller.current = new AbortController();
 
-    const recipe = await createRecipe({ command, week, signal: controller.current.signal });
+    const recipe = await createRecipe({
+      command,
+      week,
+      isZeroCarb: true,
+      signal: controller.current.signal,
+    });
     if (!recipe) return null;
 
     const recentRecipes = await selectRecentRecipeFromDB();

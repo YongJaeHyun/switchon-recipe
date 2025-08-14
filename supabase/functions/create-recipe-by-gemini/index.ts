@@ -35,7 +35,7 @@ serve(async (req: Request) => {
   );
 
   try {
-    const { command, week } = await req.json();
+    const { command, week, is_zero_carb } = await req.json();
 
     const {
       data: { user },
@@ -105,7 +105,7 @@ serve(async (req: Request) => {
           system_instruction: {
             parts: [
               {
-                text: '너는 스위치온 다이어트 요리 레시피를 생성하는 데 특화된 AI 어시스턴트야. 사용자가 레시피를 요청하면, 그에 맞는 레시피를 생성해줘. 응답은 항상 한국어로 해야해. 재료가 적혀있지 않으면, 해당 스위치온 주차에 먹을 수 있는 가장 맛있는 저탄수식 레시피를 만들어줘',
+                text: '너는 스위치온 다이어트 요리 레시피를 생성하는 데 특화된 AI 어시스턴트야. 사용자가 레시피를 요청하면, 그에 맞는 레시피를 생성해줘. 응답은 항상 한국어로 해야해.',
               },
             ],
           },
@@ -206,6 +206,7 @@ name: ${validated.recipeName}`,
         cooking_time: validated.cookingTime,
         recipe_name: validated.recipeName,
         image_uri: validated.imageUri,
+        is_zero_carb,
         week,
       })
       .select()
