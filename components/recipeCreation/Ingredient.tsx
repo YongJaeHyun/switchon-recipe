@@ -17,6 +17,9 @@ function Ingredient({ name, image, week, isSelected, disabled }: IngredientProps
   const type = useLastPathname() as SelectedIngredientType;
   const { toggleIngredient } = useSelectedIngredients({ type });
 
+  const isSelectedLow = isSelected && type === 'low';
+  const isSelectedZero = isSelected && type === 'zero';
+
   const toggleSelect = () => {
     toggleIngredient({ name, image, week });
   };
@@ -28,7 +31,10 @@ function Ingredient({ name, image, week, isSelected, disabled }: IngredientProps
       disabled={disabled}>
       <View className="items-center gap-1.5">
         <View
-          className={`h-20 w-20 overflow-hidden rounded-full ${isSelected ? 'border-[5px] border-green-700/80' : 'border-2 border-neutral-200'}`}>
+          className={`h-20 w-20 overflow-hidden rounded-full 
+          ${isSelectedZero && 'border-[5px] border-green-700/80'} 
+          ${isSelectedLow && 'border-[5px] border-amber-600'} 
+          ${!isSelected && 'border-2 border-neutral-200'}`}>
           <Image style={{ width: '100%', height: '100%', objectFit: 'cover' }} source={image} />
         </View>
         <Text className={`h-6 w-full ${isSelected ? 'font-bold' : 'font-semibold'}`}>{name}</Text>

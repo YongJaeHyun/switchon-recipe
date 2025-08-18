@@ -18,14 +18,15 @@ export default function SelectedIngredient({ ingredient }: SelectedIngredientPro
     <Pressable
       key={ingredient.name}
       onPress={() => toggleIngredient(ingredient)}
-      className="flex-row items-center gap-2 rounded-full border border-green-600 px-3 py-2">
+      className={`flex-row items-center gap-2 rounded-full border px-3 py-2 ${type === 'zero' ? 'border-green-600' : 'border-amber-500'}`}>
       <Text>{ingredient.name}</Text>
       <View>
         <Feather name="x" size={16} color="black" />
       </View>
     </Pressable>
   ) : (
-    <Pressable className="flex-row items-center gap-2 rounded-full border border-green-600 px-3 py-2">
+    <Pressable
+      className={`flex-row items-center gap-2 rounded-full border px-3 py-2 ${type === 'zero' ? 'border-green-600' : 'border-amber-500'}`}>
       <Text>선택된 재료 표시</Text>
     </Pressable>
   );

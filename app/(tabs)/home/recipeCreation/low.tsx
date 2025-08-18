@@ -135,14 +135,14 @@ export default function LowRecipeCreationScreen() {
       />
       <View className="mb-8 mt-4 w-full flex-row gap-2">
         <TouchableOpacity
-          className="flex-[3.5] items-center justify-center rounded-lg border border-green-600 py-4"
+          className="flex-[3.5] items-center justify-center rounded-lg border border-amber-500 py-4"
           onPress={handleReset}
           disabled={isRecipeLoading}>
-          <Text className="text-lg font-semibold text-green-600">재료 리셋</Text>
+          <Text className="text-lg font-semibold text-amber-500">재료 리셋</Text>
         </TouchableOpacity>
         <TouchableHighlight
-          className="flex-[6.5] items-center justify-center rounded-lg bg-green-600 py-4"
-          underlayColor="#379237"
+          className="flex-[6.5] items-center justify-center rounded-lg bg-amber-500 py-4"
+          underlayColor={colors.amber[500]}
           onPress={handleCreateRecipe}
           disabled={isRecipeLoading}>
           <Text className="text-lg font-semibold text-white">
