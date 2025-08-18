@@ -22,11 +22,11 @@ export default function RecipeCreation({ title, subtitle, href }: RecipeCreation
   return (
     <Link href={href} asChild>
       <RippleButton
-        outerClassName={`flex-1 h-48 shadow-lg bg-white border ${borderColor}`}
-        className="bg-transparent"
+        outerClassName={`relative flex-1 h-48 shadow-lg bg-white border ${borderColor}`}
+        className="w-full flex-1 flex-row items-center justify-between bg-transparent"
         rippleColor={colors.neutral[400]}
         rounded="xl">
-        <View className="relative flex-1 px-6 py-5">
+        <View className="flex-1 px-6 py-5">
           <View className="z-10 flex-1 justify-between">
             <View>
               <Text className={`text-2xl font-bold ${textColor}`}>{title}</Text>
