@@ -42,13 +42,17 @@ export default function RecipeCard(recipe: RecipeDB) {
           elevation: 2,
         }}>
         <View className="relative h-full w-full flex-[5]">
-          <View className={`absolute left-2 top-2 z-50 rounded-full bg-white px-2 py-1`}>
-            <Text className={`${getWeekColor(recipe.week)}`}>
-              {recipe.week}주차{recipe.week === 3 && '+'}
-            </Text>
-          </View>
-          <View className={`absolute left-[4.2rem] top-2 z-50 rounded-full bg-white px-2 py-1`}>
-            <Text className="text-neutral-500">{recipe.is_zero_carb ? '무탄수' : '저탄수'}</Text>
+          <View className="absolute left-2 top-2 z-50 flex-row gap-1.5">
+            <View className={`rounded-full bg-white px-2 py-1`}>
+              <Text className={`text-sm ${getWeekColor(recipe.week)}`}>
+                {recipe.week}주차{recipe.week === 3 && '+'}
+              </Text>
+            </View>
+            <View className={`rounded-full bg-white px-2 py-1`}>
+              <Text className="text-sm text-neutral-500">
+                {recipe.is_zero_carb ? '무탄수' : '저탄수'}
+              </Text>
+            </View>
           </View>
 
           <Image source={{ uri: recipe.image_uri }} style={{ width: '100%', height: '100%' }} />
