@@ -5,7 +5,7 @@ import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import React from 'react';
 import { TouchableHighlight, View } from 'react-native';
 import colors from 'tailwindcss/colors';
-import { SelectedIngredientType } from 'types/database';
+import { RecipeType } from 'types/database';
 import { IIngredient } from 'types/recipe';
 
 interface IngredientProps extends IIngredient {
@@ -14,7 +14,7 @@ interface IngredientProps extends IIngredient {
 }
 
 function Ingredient({ name, image, week, isSelected, disabled }: IngredientProps) {
-  const type = useLastPathname() as SelectedIngredientType;
+  const type = useLastPathname() as RecipeType;
   const { toggleIngredient } = useSelectedIngredients({ type });
 
   const isSelectedLow = isSelected && type === 'low';

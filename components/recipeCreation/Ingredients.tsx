@@ -3,7 +3,7 @@ import { useLastPathname } from 'hooks/useLastPathname';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { FlatList, View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
-import { SelectedIngredientType } from 'types/database';
+import { RecipeType } from 'types/database';
 import { IIngredient } from 'types/recipe';
 import { chunkArray } from 'utils/chunkArray';
 import { getWeekAndDay } from 'utils/date';
@@ -17,7 +17,7 @@ export interface IngredientsProps {
 }
 
 export default function Ingredients({ title, week, ingredientList }: IngredientsProps) {
-  const type = useLastPathname() as SelectedIngredientType;
+  const type = useLastPathname() as RecipeType;
   const startDate = useUserStore((state) => state.start_date);
   const { week: userWeek } = getWeekAndDay(startDate);
 
