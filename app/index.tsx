@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { checkIsLoggedIn } from 'api/supabaseAPI';
+import { UserAPI } from 'api/UserAPI';
 import { FIRST_LAUNCH_KEY } from 'const/const';
 import { Redirect, SplashScreen, useRootNavigationState } from 'expo-router';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
@@ -30,7 +30,7 @@ export default function Index() {
     };
 
     const checkCurrentLogin = async () => {
-      const isLoggedIn = await checkIsLoggedIn();
+      const isLoggedIn = await UserAPI.checkIsLoggedIn();
       setIsLoggedIn(isLoggedIn);
 
       if (isLoggedIn) {

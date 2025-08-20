@@ -1,5 +1,5 @@
 import Feather from '@expo/vector-icons/Feather';
-import { updateOnboardingToDB } from 'api/supabaseAPI';
+import { UserAPI } from 'api/UserAPI';
 import AnimatedTextView from 'components/common/AnimatedTextView';
 import CustomCalendar from 'components/common/CustomCalendar';
 import { Text } from 'components/common/Text';
@@ -31,7 +31,7 @@ export default function OnboardingScreen() {
   };
 
   const completeOnboarding = async () => {
-    await updateOnboardingToDB(selectedDate);
+    await UserAPI.updateOnboarding(selectedDate);
     router.replace('/(tabs)/home');
   };
   return (

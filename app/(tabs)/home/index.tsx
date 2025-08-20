@@ -1,9 +1,6 @@
 import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
-import {
-  selectRecentRecipeFromDB,
-  selectSavedRecipeFromDB,
-  updateStartDateToDB,
-} from 'api/supabaseAPI';
+
+import { selectRecentRecipeFromDB, selectSavedRecipeFromDB } from 'api/supabaseAPI';
 import CustomCalendar from 'components/common/CustomCalendar';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
@@ -19,6 +16,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { getWeekAndDay } from 'utils/date';
+import { UserAPI } from '../../../api/UserAPI';
 import { useRecipeStore } from '../../../stores/recipeStore';
 
 export default function HomeScreen() {
@@ -57,7 +55,7 @@ export default function HomeScreen() {
       upsertZeroIngredients(filteredZeroIngredients);
     }
 
-    await updateStartDateToDB(selectedDate);
+    await UserAPI.updateStartDate(selectedDate);
 
     if (bottomSheetRef) {
       bottomSheetRef.current.close();

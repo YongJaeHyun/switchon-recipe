@@ -2,7 +2,7 @@ import * as Sentry from '@sentry/react-native';
 import axios, { isCancel } from 'axios';
 import { RecipeDB } from 'types/database';
 import { showErrorToast } from 'utils/showToast';
-import { getSession } from './supabaseAPI';
+import { UserAPI } from './UserAPI';
 
 interface CreateRecipeProps {
   command: string;
@@ -18,7 +18,7 @@ export const createRecipe = async ({
   signal,
 }: CreateRecipeProps): Promise<RecipeDB | undefined> => {
   try {
-    const session = await getSession();
+    const session = await UserAPI.getSession();
     const response = await axios.post<RecipeDB>(
       `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/create-recipe-by-gemini`,
       { command, week, is_zero_carb },

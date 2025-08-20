@@ -1,5 +1,5 @@
 import { login } from '@react-native-kakao/user';
-import { selectUserFromDB } from 'api/supabaseAPI';
+import { UserAPI } from 'api/UserAPI';
 import { kakaoIcon } from 'const/assets';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
@@ -23,7 +23,7 @@ export default function KakaoLoginButton() {
           console.error('Kakao login error:', error);
         }
         if (data.user.email) {
-          const user = await selectUserFromDB(data.user.id);
+          const user = await UserAPI.selectOne(data.user.id);
           setUser({
             id: user.id,
             email: user.email,

@@ -3,11 +3,11 @@ import {
   GoogleSigninButton,
   statusCodes,
 } from '@react-native-google-signin/google-signin';
-import { selectUserFromDB } from 'api/supabaseAPI';
 import { router } from 'expo-router';
 import { useEffect } from 'react';
 import { useUserStore } from 'stores/userStore';
 import { captureError } from 'utils/sendError';
+import { UserAPI } from '../../api/UserAPI';
 import { supabase } from '../../lib/supabase';
 
 export default function GoogleLoginButton() {
@@ -38,7 +38,7 @@ export default function GoogleLoginButton() {
               throw new Error(`Supabase sign-in error: ${error.message}`);
             }
             if (data.user.email) {
-              const user = await selectUserFromDB(data.user.id);
+              const user = await UserAPI.selectOne(data.user.id);
               setUser({
                 id: user.id,
                 email: user.email,
