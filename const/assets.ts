@@ -6,6 +6,8 @@ export const kakaoIconSmall = require('../assets/images/kakaotalk_icon_small.png
 export const onboardQuestionImage = require('../assets/images/onboard_question.png');
 export const recipeButtonBG = require('../assets/images/recipe_button_bg.png');
 export const selectIngredientPhoneImage = require('../assets/images/select_ingredient_phone.png');
+export const zeroRecipeImage = require('../assets/images/zero_recipe.png');
+export const lowRecipeImage = require('../assets/images/low_recipe.png');
 
 export const allulose = require('../assets/images/ingredients/allulose.jpg');
 export const avocado = require('../assets/images/ingredients/avocado.jpg');

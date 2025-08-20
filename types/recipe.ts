@@ -23,4 +23,12 @@ const RecipeSchema = z.object({
 });
 type Recipe = z.infer<typeof RecipeSchema>;
 
-export { IIngredient, Recipe, RecipeSchema };
+type RecipeCategory = '한식' | '중식' | '일식' | '양식';
+type RecipeMethod = '샐러드류' | '구이류' | '볶음류' | '덮밥류' | '탕/국류' | '찜류';
+
+interface RecipeOptions {
+  category: RecipeCategory | null;
+  method: RecipeMethod | null;
+}
+
+export { IIngredient, Recipe, RecipeCategory, RecipeMethod, RecipeOptions, RecipeSchema };

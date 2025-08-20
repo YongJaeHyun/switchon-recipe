@@ -33,7 +33,7 @@ export default function ListEmptyText({ emptyListName, href }: ListEmptyTextProp
     }
   };
   return (
-    <View className="min-w-full items-center justify-center gap-6">
+    <View className="items-center justify-center gap-6">
       <Text className="text-neutral-500">{getListEmptyText()}</Text>
       <Link href={href} className="" asChild>
         <RippleButton

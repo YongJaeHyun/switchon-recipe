@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { checkIsLoggedIn } from 'api/supabaseAPI';
+import { UserAPI } from 'api/UserAPI';
 import { FIRST_LAUNCH_KEY } from 'const/const';
 import { Redirect, SplashScreen, useRootNavigationState } from 'expo-router';
+import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { useEffect, useState } from 'react';
 import { useUserStore } from 'stores/userStore';
 
@@ -10,6 +11,8 @@ SplashScreen.preventAutoHideAsync();
 export default function Index() {
   const navigation = useRootNavigationState();
   const isOnboarded = useUserStore((state) => state.is_onboarded);
+  const { prefetch: zeroIngredientsPrefetch } = useSelectedIngredients({ type: 'zero' });
+  const { prefetch: lowIngredientsPrefetch } = useSelectedIngredients({ type: 'low' });
 
   const [isReady, setIsReady] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -27,8 +30,12 @@ export default function Index() {
     };
 
     const checkCurrentLogin = async () => {
-      const isLoggedIn = await checkIsLoggedIn();
+      const isLoggedIn = await UserAPI.checkIsLoggedIn();
       setIsLoggedIn(isLoggedIn);
+
+      if (isLoggedIn) {
+        await Promise.all([zeroIngredientsPrefetch(), lowIngredientsPrefetch()]);
+      }
     };
 
     const init = async () => {
@@ -40,7 +47,7 @@ export default function Index() {
     };
 
     init();
-  }, [navigation?.key]);
+  }, [lowIngredientsPrefetch, navigation?.key, zeroIngredientsPrefetch]);
 
   if (!isReady) return null;
   if (isFirstLaunch) return <Redirect href={'/(greet)'} />;

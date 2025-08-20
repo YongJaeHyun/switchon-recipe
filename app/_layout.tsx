@@ -64,13 +64,6 @@ function RootLayout() {
             <Stack.Screen name="(tabs)/home" options={{ headerShown: false }} />
             <Stack.Screen name="profile" options={{ headerShown: false }} />
             <Stack.Screen name="kakaolink" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="recipeCreation"
-              options={{
-                title: '레시피 제작',
-                headerTitleStyle: { fontSize: 20 },
-              }}
-            />
           </Stack>
         </GestureHandlerRootView>
         <Toast config={toastConfig} />

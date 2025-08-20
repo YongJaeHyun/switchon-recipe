@@ -1,30 +1,27 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { RecipeDB } from 'types/database';
+import { RecipeCategory, RecipeMethod, RecipeOptions } from 'types/recipe';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-interface RecipeState {
-  savedRecipes: RecipeDB[];
-  setSavedRecipes: (recipes: RecipeDB[]) => void;
-  recentRecipes: RecipeDB[];
-  setRecentRecipes: (recipes: RecipeDB[]) => void;
+interface RecipeOptionStore extends RecipeOptions {
+  setCategory: (category: RecipeCategory) => void;
+  setMethod: (method: RecipeMethod) => void;
 }
 
-export const useRecipeStore = create<RecipeState>()(
+const initialValue = {
+  category: null,
+  method: null,
+};
+
+export const useRecipeOptionStore = create<RecipeOptionStore>()(
   persist(
     (set) => ({
-      savedRecipes: [],
-      setSavedRecipes: (recipes) => {
-        set({ savedRecipes: recipes });
-      },
-
-      recentRecipes: [],
-      setRecentRecipes: (recipes) => {
-        set({ recentRecipes: recipes });
-      },
+      ...initialValue,
+      setCategory: (category) => set({ category }),
+      setMethod: (method) => set({ method }),
     }),
     {
-      name: 'recipeStore',
+      name: 'recipeOptionStore',
       storage: {
         getItem: async (name: string) => {
           const value = await AsyncStorage.getItem(name);

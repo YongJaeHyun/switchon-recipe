@@ -1,4 +1,5 @@
 import { IngredientsProps } from 'components/recipeCreation/Ingredients';
+import { IIngredient } from 'types/recipe';
 import {
   allulose,
   avocado,
@@ -11,12 +12,10 @@ import {
   carrot,
   cheese,
   cherryTomato,
-  chestnut,
   chicken,
   chickenStock,
   chives,
   clam,
-  crammy,
   cucumber,
   curcuma,
   dasima,
@@ -37,17 +36,14 @@ import {
   lemonJuice,
   lettuce,
   mackerel,
-  memilMyun,
   milk,
   minari,
-  mixedRice,
   muk,
   myungran,
   nakji,
   natto,
   nutari,
   nuts,
-  oatmeal,
   octopus,
   onion,
   orientalSauce,
@@ -60,12 +56,8 @@ import {
   perillaOil,
   pork,
   pyogo,
-  quinoa,
   radish,
   redPepperPowder,
-  rice,
-  ricecake,
-  ricepaper,
   saesongi,
   salmon,
   sangchu,
@@ -78,8 +70,6 @@ import {
   spinach,
   squid,
   sukju,
-  sweetPotato,
-  sweetPumpkin,
   tofu,
   tofuMyun,
   tomato,
@@ -89,73 +79,9 @@ import {
   wasabi,
   yogurt,
   zucchini,
-} from 'const/assets';
-import { IIngredient } from 'types/recipe';
+} from './assets';
 
-export const carbohydrateIngredients: IIngredient[] = [
-  {
-    name: '현미잡곡밥',
-    image: mixedRice,
-    week: 1,
-  },
-  {
-    name: '흰쌀밥',
-    image: rice,
-    week: 1,
-  },
-  {
-    name: '오트밀',
-    image: oatmeal,
-    week: 2,
-  },
-  {
-    name: '라이스페이퍼',
-    image: ricepaper,
-    week: 2,
-  },
-  {
-    name: '퀴노아',
-    image: quinoa,
-    week: 2,
-  },
-  {
-    name: '메밀면',
-    image: memilMyun,
-    week: 2,
-  },
-  {
-    name: '떡국떡',
-    image: ricecake,
-    week: 3,
-  },
-  {
-    name: '단호박',
-    image: sweetPumpkin,
-    week: 3,
-  },
-  {
-    name: '고구마',
-    image: sweetPotato,
-    week: 3,
-  },
-  {
-    name: '밤',
-    image: chestnut,
-    week: 3,
-  },
-];
-
-export const firstWeekIngredients: IIngredient[] = [
-  {
-    name: '현미잡곡밥',
-    image: mixedRice,
-    week: 1,
-  },
-  {
-    name: '흰쌀밥',
-    image: rice,
-    week: 1,
-  },
+export const firstWeekZeroIngredients: IIngredient[] = [
   {
     name: '두부면',
     image: tofuMyun,
@@ -232,7 +158,7 @@ export const firstWeekIngredients: IIngredient[] = [
     week: 1,
   },
   {
-    name: '생연어',
+    name: '연어',
     image: salmon,
     week: 1,
   },
@@ -483,27 +409,7 @@ export const firstWeekIngredients: IIngredient[] = [
   },
 ];
 
-export const secondWeekIngredients: IIngredient[] = [
-  {
-    name: '오트밀',
-    image: oatmeal,
-    week: 2,
-  },
-  {
-    name: '라이스페이퍼',
-    image: ricepaper,
-    week: 2,
-  },
-  {
-    name: '퀴노아',
-    image: quinoa,
-    week: 2,
-  },
-  {
-    name: '메밀면',
-    image: memilMyun,
-    week: 2,
-  },
+export const secondWeekZeroIngredients: IIngredient[] = [
   {
     name: '콩류',
     image: beans,
@@ -517,11 +423,6 @@ export const secondWeekIngredients: IIngredient[] = [
   {
     name: '명란젓',
     image: myungran,
-    week: 2,
-  },
-  {
-    name: '게맛살',
-    image: crammy,
     week: 2,
   },
   {
@@ -546,27 +447,7 @@ export const secondWeekIngredients: IIngredient[] = [
   },
 ];
 
-export const thirdWeekIngredients: IIngredient[] = [
-  {
-    name: '떡국떡',
-    image: ricecake,
-    week: 3,
-  },
-  {
-    name: '단호박',
-    image: sweetPumpkin,
-    week: 3,
-  },
-  {
-    name: '고구마',
-    image: sweetPotato,
-    week: 3,
-  },
-  {
-    name: '밤',
-    image: chestnut,
-    week: 3,
-  },
+export const thirdWeekZeroIngredients: IIngredient[] = [
   {
     name: '버터',
     image: butter,
@@ -599,25 +480,20 @@ export const thirdWeekIngredients: IIngredient[] = [
   },
 ];
 
-export const allIngredients: IngredientsProps[] = [
-  {
-    title: '탄수화물',
-    week: 4,
-    ingredientList: carbohydrateIngredients,
-  },
+export const allZeroIngredients: IngredientsProps[] = [
   {
     title: '1주차',
     week: 1,
-    ingredientList: firstWeekIngredients,
+    ingredientList: firstWeekZeroIngredients,
   },
   {
     title: '2주차',
     week: 2,
-    ingredientList: secondWeekIngredients,
+    ingredientList: secondWeekZeroIngredients,
   },
   {
     title: '3주차 +',
     week: 3,
-    ingredientList: thirdWeekIngredients,
+    ingredientList: thirdWeekZeroIngredients,
   },
 ];

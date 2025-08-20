@@ -2,7 +2,6 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { unlink } from '@react-native-kakao/user';
 import { QueryClient } from '@tanstack/react-query';
-import { deleteUserFromDB, logout } from 'api/supabaseAPI';
 import ConfirmModal from 'components/common/ConfirmModal';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
@@ -13,6 +12,7 @@ import { useState } from 'react';
 import { TouchableOpacity, View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
+import { UserAPI } from '../api/UserAPI';
 
 export default function Profile() {
   const { avatar_url, email, provider } = useUserStore((state) => state);
@@ -20,7 +20,7 @@ export default function Profile() {
   const [isModalVisible, setModalVisible] = useState(false);
 
   const handleConfirm = async () => {
-    await deleteUserFromDB();
+    await UserAPI.deleteOne();
 
     if (provider === 'google') await GoogleSignin.signOut();
     if (provider === 'kakao') await unlink();
@@ -65,7 +65,7 @@ export default function Profile() {
             </RippleButton>
           </Link>
           <RippleButton
-            onPress={logout}
+            onPress={UserAPI.logout}
             rippleColor={colors.neutral[300]}
             className="w-full items-center rounded-xl bg-neutral-100 py-4">
             <Text className="text-lg text-neutral-600">로그아웃</Text>

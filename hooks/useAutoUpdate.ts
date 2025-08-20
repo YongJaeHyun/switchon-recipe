@@ -21,8 +21,9 @@ export const useAutoUpdate = () => {
       const appVersion = Constants.expoConfig?.version;
       const latestVersion = await VersionAPI.selectLatestVersion();
 
-      const isOutdated = semver.lt(appVersion, latestVersion);
-      if (isOutdated) {
+      const currentMajor = semver.major(appVersion);
+      const latestMajor = semver.major(latestVersion);
+      if (latestMajor > currentMajor) {
         Alert.alert(
           '업데이트 알림',
           '새로운 버전이 출시되었어요. 업데이트를 진행해주세요.',

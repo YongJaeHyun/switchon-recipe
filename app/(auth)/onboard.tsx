@@ -1,5 +1,5 @@
 import Feather from '@expo/vector-icons/Feather';
-import { updateOnboardingToDB } from 'api/supabaseAPI';
+import { UserAPI } from 'api/UserAPI';
 import AnimatedTextView from 'components/common/AnimatedTextView';
 import CustomCalendar from 'components/common/CustomCalendar';
 import { Text } from 'components/common/Text';
@@ -31,12 +31,12 @@ export default function OnboardingScreen() {
   };
 
   const completeOnboarding = async () => {
-    await updateOnboardingToDB(selectedDate);
+    await UserAPI.updateOnboarding(selectedDate);
     router.replace('/(tabs)/home');
   };
   return (
     <SafeAreaView className="flex-1 bg-white px-5">
-      <View className="flex-[1.5] items-end justify-center gap-3">
+      <View className="flex-[1.3] items-end justify-center gap-3">
         {step < totalSteps && <ProgressBar progress={(step - 1) / (totalSteps - 1)} />}
       </View>
       <View className="flex-[10] justify-between">
@@ -106,7 +106,9 @@ export default function OnboardingScreen() {
             <View className="gap-10">
               <AnimatedTextView delay={500}>
                 <Text className="text-3xl font-bold leading-snug">
-                  <Text className="text-green-600">다이어터</Text>님은{' '}
+                  <Text className="text-green-600">다이어터</Text>님은...
+                </Text>
+                <Text className="text-3xl font-bold leading-snug">
                   <Text className={getWeekColor(week)}>{week}주차</Text> {day}일{' '}
                   {week >= 5 && '(유지기)'}부터 시작해요!
                 </Text>
@@ -130,7 +132,7 @@ export default function OnboardingScreen() {
           </>
         )}
       </View>
-      <View className="flex-1" />
+      <View className="flex-[0.5]" />
     </SafeAreaView>
   );
 }

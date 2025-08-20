@@ -1,7 +1,9 @@
 import { Text } from 'components/common/Text';
+import { useLastPathname } from 'hooks/useLastPathname';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { FlatList, View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
+import { RecipeType } from 'types/database';
 import { IIngredient } from 'types/recipe';
 import { chunkArray } from 'utils/chunkArray';
 import { getWeekAndDay } from 'utils/date';
@@ -11,14 +13,15 @@ import Ingredient from './Ingredient';
 export interface IngredientsProps {
   title: string;
   week: number;
-  ingredientList: Omit<IIngredient, 'week'>[];
+  ingredientList: IIngredient[];
 }
 
 export default function Ingredients({ title, week, ingredientList }: IngredientsProps) {
+  const type = useLastPathname() as RecipeType;
   const startDate = useUserStore((state) => state.start_date);
   const { week: userWeek } = getWeekAndDay(startDate);
 
-  const { selectedIngredients } = useSelectedIngredients();
+  const { selectedIngredients } = useSelectedIngredients({ type });
   const chunkedList = chunkArray(ingredientList, week === 1 ? 3 : 2);
 
   return (
@@ -35,9 +38,9 @@ export default function Ingredients({ title, week, ingredientList }: Ingredients
                 key={ingredient.name}
                 image={ingredient.image}
                 name={ingredient.name}
-                week={week}
+                week={ingredient.week}
                 isSelected={selectedIngredients.some((i) => i.name === ingredient.name)}
-                disabled={week > userWeek}
+                disabled={ingredient.week > userWeek}
               />
             ))}
           </View>

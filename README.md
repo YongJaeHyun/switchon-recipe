@@ -53,14 +53,14 @@ AI로 현재 스위치온 주차에 따라 레시피를 생성할 수 있고, �
 ## 🔐 소셜 로그인  
 - **카카오톡 로그인**과 **구글 로그인** 지원  
 - 클릭 한 번으로 간편하게 시작하세요!
-  
+
 <table width="100%">
   <tr align="center">
     <td>
       <img src="https://github.com/user-attachments/assets/c4ac1210-c9e4-4640-9da8-ff23dae92f63" width="50%" />
     </td>
     <td>
-      <img src="https://github.com/user-attachments/assets/4d46b266-7e15-4012-9bdb-642e8712116c" width="50%" />
+      <img src="https://github.com/user-attachments/assets/bab1a610-1fd6-44d3-bc7d-97b6f17cf8ac" width="50%" />
     </td>
   </tr>
   <tr>
@@ -83,15 +83,21 @@ AI로 현재 스위치온 주차에 따라 레시피를 생성할 수 있고, �
 <table width="100%">
   <tr align="center">
     <td>
-      <img src="https://github.com/user-attachments/assets/75b87f65-58e9-429e-bc29-8ed1235bd52b" width="50%" />
+      <img src="https://github.com/user-attachments/assets/a0fe61f3-23eb-4ec5-a73c-9f41480e681e" width="75%" />
     </td>
     <td>
-      <img src="https://github.com/user-attachments/assets/5faac487-b285-48d5-8cb6-80fd16a23be6" width="50%" />
+      <img src="https://github.com/user-attachments/assets/51fd0dda-cbb9-44f0-9220-82584f175ba7" width="75%" />
+    </td>
+    <td>
+      <img src="https://github.com/user-attachments/assets/5faac487-b285-48d5-8cb6-80fd16a23be6" width="75%" />
     </td>
   </tr>
   <tr>
     <td width="25%" align="center">
-      레시피 재료 선택
+      무탄수 레시피 제작
+    </td>
+    <td width="25%" align="center">
+      저탄수 레시피 제작
     </td>
     <td width="25%" align="center">
       레시피 상세
@@ -108,7 +114,7 @@ AI로 현재 스위치온 주차에 따라 레시피를 생성할 수 있고, �
 <table width="100%">
   <tr align="center">
     <td>
-      <img src="https://github.com/user-attachments/assets/640575d3-714f-4bc1-b634-7aeb46c683be" width="25%" />
+      <img src="https://github.com/user-attachments/assets/a781393d-a9ac-4aed-a5c8-b7e027a3025b" width="25%" />
     </td>
   </tr>
   <tr>

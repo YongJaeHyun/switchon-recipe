@@ -1,10 +1,10 @@
 import * as Sentry from '@sentry/react-native';
-import { checkIsLoggedIn } from 'api/supabaseAPI';
 import { useLinkingURL } from 'expo-linking';
 import { Href, Redirect, SplashScreen } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import colors from 'tailwindcss/colors';
+import { UserAPI } from '../api/UserAPI';
 
 export default function RedirectKakaoLink() {
   const linkingUrl = useLinkingURL();
@@ -19,7 +19,7 @@ export default function RedirectKakaoLink() {
         const recipe = url.searchParams.get('recipe');
 
         if (host === 'kakaolink' && recipe) {
-          const isLoggedIn = await checkIsLoggedIn();
+          const isLoggedIn = await UserAPI.checkIsLoggedIn();
           setTargetHref(isLoggedIn ? `/(tabs)/home/recipeDetail?recipe=${recipe}` : '/(auth)');
         } else {
           setTargetHref('/(auth)');

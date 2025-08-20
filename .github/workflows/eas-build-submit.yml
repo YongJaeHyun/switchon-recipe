@@ -17,6 +17,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 20
+          cache: npm
           
       - name: 🏗 Setup EAS
         uses: expo/expo-github-action@v8
@@ -29,23 +30,23 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: EAS Build (Android)
+      - name: Expo Prebuild (Android)
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EXPO_PUBLIC_KAKAO_API_KEY: ${{ secrets.EXPO_PUBLIC_KAKAO_API_KEY }}
           EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
           EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
-        run: eas build --platform android --non-interactive
+        run: expo prebuild --platform android
 
-      - name: EAS Submit (Android)
+      - name: EAS Build And Submit (Android)
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EXPO_PUBLIC_KAKAO_API_KEY: ${{ secrets.EXPO_PUBLIC_KAKAO_API_KEY }}
           EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
           EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
-        run: eas submit --platform android --latest --non-interactive
+        run: eas build --platform android --non-interactive --auto-submit
 
       - name: Update Supabase version
         env:

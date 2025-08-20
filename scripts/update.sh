@@ -1,0 +1,1 @@
+eas update --channel production --platform android
