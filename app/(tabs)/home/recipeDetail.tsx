@@ -5,7 +5,6 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { shareCustomTemplate } from '@react-native-kakao/share';
 import { useQuery } from '@tanstack/react-query';
-import { checkIsSavedRecipe } from 'api/supabaseAPI';
 import { Text } from 'components/common/Text';
 import { logo } from 'const/assets';
 import { Image } from 'expo-image';
@@ -23,6 +22,7 @@ import Animated, {
 import colors from 'tailwindcss/colors';
 import { RecipeDB } from 'types/database';
 import { Recipe } from 'types/recipe';
+import { RecipeAPI } from '../../../api/RecipeAPI';
 
 export default function RecipeDetailScreen() {
   const { recipe }: { recipe: string } = useLocalSearchParams();
@@ -37,7 +37,7 @@ export default function RecipeDetailScreen() {
 
   const { data: isSaved = false } = useQuery({
     queryKey: ['savedRecipe', id],
-    queryFn: () => checkIsSavedRecipe(id),
+    queryFn: () => RecipeAPI.checkIsSavedRecipe(id),
   });
   const { toggleIsSaved } = useToggleSaveRecipe({ id });
 
@@ -169,7 +169,7 @@ export default function RecipeDetailScreen() {
                 <View className="mr-4 h-6 w-6 items-center justify-center rounded-full bg-green-600">
                   <Text className="text-center text-white">{index + 1}</Text>
                 </View>
-                <Text className="text-medium flex-1 leading-6 tracking-wide">{step}</Text>
+                <Text className="flex-1 text-medium leading-6 tracking-wide">{step}</Text>
               </View>
             ))}
           </View>

@@ -1,6 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { deleteSavedRecipeFromDB, insertSavedRecipeToDB } from 'api/supabaseAPI';
 import { Text } from 'components/common/Text';
 import { Image } from 'expo-image';
 import { Link } from 'expo-router';
@@ -9,6 +8,7 @@ import { Pressable, View } from 'react-native';
 import colors from 'tailwindcss/colors';
 import { RecipeDB } from 'types/database';
 import { getWeekColor } from 'utils/getWeekColor';
+import { RecipeAPI } from '../../api/RecipeAPI';
 
 export default function RecipeCard(recipe: RecipeDB) {
   const [isSaved, setIsSaved] = useState<boolean>(recipe?.is_saved ?? false);
@@ -22,9 +22,9 @@ export default function RecipeCard(recipe: RecipeDB) {
 
     timer.current = setTimeout(async () => {
       if (next) {
-        await insertSavedRecipeToDB(recipe.id);
+        await RecipeAPI.insertSaved(recipe.id);
       } else {
-        await deleteSavedRecipeFromDB(recipe.id);
+        await RecipeAPI.deleteSaved(recipe.id);
       }
       timer.current = null;
     }, 500);

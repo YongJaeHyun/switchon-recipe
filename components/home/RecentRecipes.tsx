@@ -1,10 +1,10 @@
-import { selectRecentRecipeFromDB } from 'api/supabaseAPI';
 import ListEmptyText from 'components/common/ListEmptyText';
 import { Text } from 'components/common/Text';
 import { useEffect } from 'react';
 import { ActivityIndicator, FlatList, View } from 'react-native';
 import { useRecipeStore } from 'stores/recipeStore';
 import colors from 'tailwindcss/colors';
+import { RecipeAPI } from '../../api/RecipeAPI';
 import RecipeCard from './RecipeCard';
 
 export default function RecentRecipes({ refreshing }: { refreshing: boolean }) {
@@ -13,7 +13,7 @@ export default function RecentRecipes({ refreshing }: { refreshing: boolean }) {
 
   useEffect(() => {
     (async () => {
-      const recipes = await selectRecentRecipeFromDB();
+      const recipes = await RecipeAPI.selectAllRecent();
       setRecentRecipes(recipes);
     })();
   }, [setRecentRecipes]);

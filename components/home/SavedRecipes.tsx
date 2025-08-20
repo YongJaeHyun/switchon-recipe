@@ -1,5 +1,4 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { selectSavedRecipeFromDB } from 'api/supabaseAPI';
 import ListEmptyText from 'components/common/ListEmptyText';
 import { Text } from 'components/common/Text';
 import { Link } from 'expo-router';
@@ -7,6 +6,7 @@ import { useEffect } from 'react';
 import { ActivityIndicator, FlatList, View } from 'react-native';
 import { useRecipeStore } from 'stores/recipeStore';
 import colors from 'tailwindcss/colors';
+import { RecipeAPI } from '../../api/RecipeAPI';
 import RecipeCard from './RecipeCard';
 
 export default function SavedRecipes({ refreshing }: { refreshing: boolean }) {
@@ -15,7 +15,7 @@ export default function SavedRecipes({ refreshing }: { refreshing: boolean }) {
 
   useEffect(() => {
     (async () => {
-      const recipes = await selectSavedRecipeFromDB();
+      const recipes = await RecipeAPI.selectAllSaved();
       setSavedRecipes(recipes);
     })();
   }, [setSavedRecipes]);

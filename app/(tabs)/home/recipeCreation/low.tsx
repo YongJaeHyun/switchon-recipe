@@ -1,6 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { createRecipe } from 'api/gemini';
-import { selectRecentRecipeFromDB } from 'api/supabaseAPI';
 import { CustomSelect } from 'components/common/CustomSelect';
 import { Text } from 'components/common/Text';
 import Ingredients from 'components/recipeCreation/Ingredients';
@@ -25,6 +24,7 @@ import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { RecipeCategory, RecipeMethod } from 'types/recipe';
 import { getWeekAndDay } from 'utils/date';
+import { RecipeAPI } from '../../../../api/RecipeAPI';
 
 export default function LowRecipeCreationScreen() {
   const {
@@ -70,7 +70,7 @@ export default function LowRecipeCreationScreen() {
     });
     if (!recipe) return null;
 
-    const recentRecipes = await selectRecentRecipeFromDB();
+    const recentRecipes = await RecipeAPI.selectAllRecent();
     setRecentRecipes(recentRecipes);
 
     return recipe;

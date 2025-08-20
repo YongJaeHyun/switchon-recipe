@@ -1,6 +1,4 @@
 import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
-
-import { selectRecentRecipeFromDB, selectSavedRecipeFromDB } from 'api/supabaseAPI';
 import CustomCalendar from 'components/common/CustomCalendar';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
@@ -16,6 +14,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { getWeekAndDay } from 'utils/date';
+import { RecipeAPI } from '../../../api/RecipeAPI';
 import { UserAPI } from '../../../api/UserAPI';
 import { useRecipeStore } from '../../../stores/recipeStore';
 
@@ -65,8 +64,8 @@ export default function HomeScreen() {
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     const [recentRecipes, savedRecipes] = await Promise.all([
-      selectRecentRecipeFromDB(),
-      selectSavedRecipeFromDB(),
+      RecipeAPI.selectAllRecent(),
+      RecipeAPI.selectAllSaved(),
     ]);
     setRecentRecipes(recentRecipes);
     setSavedRecipes(savedRecipes);

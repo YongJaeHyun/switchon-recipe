@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { selectSavedRecipeByWeekFromDB } from 'api/supabaseAPI';
+import { RecipeAPI } from 'api/RecipeAPI';
 import ListEmptyText from 'components/common/ListEmptyText';
 import RecipeCard from 'components/home/RecipeCard';
 import { useState } from 'react';
@@ -19,7 +19,7 @@ export default function SavedRecipes() {
     isLoading,
     refetch,
   } = useQuery({
-    queryFn: async () => await selectSavedRecipeByWeekFromDB(parseInt(selectedWeek[0])),
+    queryFn: async () => await RecipeAPI.selectAllSavedByWeek(parseInt(selectedWeek[0])),
     queryKey: [`savedRecipes-${selectedWeek}`],
   });
 
@@ -58,7 +58,7 @@ export default function SavedRecipes() {
           numColumns={2}
           className="mb-10 rounded-xl bg-white"
           ListEmptyComponent={
-            <ListEmptyText emptyListName="savedRecipes" href={'/recipeCreation'} />
+            <ListEmptyText emptyListName="savedRecipes" href={'/(tabs)/home/recipeCreation/low'} />
           }
           contentContainerClassName={`items-start gap-4 py-4 flex-grow mx-auto ${recipes.length === 0 ? 'justify-center' : 'justify-start'}`}
           columnWrapperClassName="justify-start gap-4"
