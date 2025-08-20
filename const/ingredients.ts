@@ -232,7 +232,7 @@ export const firstWeekIngredients: IIngredient[] = [
     week: 1,
   },
   {
-    name: '연어',
+    name: '생연어',
     image: salmon,
     week: 1,
   },
