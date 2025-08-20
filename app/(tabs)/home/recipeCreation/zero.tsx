@@ -1,11 +1,13 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { createRecipe } from 'api/gemini';
 import { selectRecentRecipeFromDB } from 'api/supabaseAPI';
+import { CustomSelect } from 'components/common/CustomSelect';
 import { Text } from 'components/common/Text';
 import Ingredients from 'components/recipeCreation/Ingredients';
 import SelectedIngredient from 'components/recipeCreation/SelectedIngredient';
 import { allZeroIngredients } from 'const/zeroIngredients';
 import { router } from 'expo-router';
+import { useSelect } from 'hooks/useSelect';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -21,6 +23,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRecipeStore } from 'stores/recipeStore';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
+import { RecipeCategory, RecipeMethod } from 'types/recipe';
 import { getWeekAndDay } from 'utils/date';
 
 export default function ZeroRecipeCreationScreen() {
@@ -31,6 +34,9 @@ export default function ZeroRecipeCreationScreen() {
   } = useSelectedIngredients({ type: 'zero' });
 
   const setRecentRecipes = useRecipeStore((state) => state.setRecentRecipes);
+
+  const [category, toggleCategory] = useSelect<RecipeCategory>(null);
+  const [method, toggleMethod] = useSelect<RecipeMethod>(null);
 
   const [keyword, setKeyword] = useState('');
   const [isRecipeLoading, setIsRecipeLoading] = useState(false);
@@ -133,22 +139,39 @@ export default function ZeroRecipeCreationScreen() {
           />
         )}
       />
-      <View className="mb-8 mt-4 w-full flex-row gap-2">
-        <TouchableOpacity
-          className="flex-[3.5] items-center justify-center rounded-lg border border-green-600 py-4"
-          onPress={handleReset}
-          disabled={isRecipeLoading}>
-          <Text className="text-lg font-semibold text-green-600">재료 리셋</Text>
-        </TouchableOpacity>
-        <TouchableHighlight
-          className="flex-[6.5] items-center justify-center rounded-lg bg-green-600 py-4"
-          underlayColor="#379237"
-          onPress={handleCreateRecipe}
-          disabled={isRecipeLoading}>
-          <Text className="text-lg font-semibold text-white">
-            {selectedIngredients.length > 0 ? '레시피 제작' : `랜덤 레시피 제작`}
-          </Text>
-        </TouchableHighlight>
+      <View className="mb-8 gap-4">
+        <View className="flex-row gap-3">
+          <CustomSelect
+            title="요리 카테고리"
+            options={['한식', '양식', '중식', '일식']}
+            onSelect={toggleCategory}
+            selectedValue={category}
+          />
+          <CustomSelect
+            title="요리 방식"
+            options={['샐러드류', '구이류', '볶음류', '덮밥류', '탕/국류', '찜류']}
+            onSelect={toggleMethod}
+            selectedValue={method}
+          />
+        </View>
+
+        <View className="w-full flex-row gap-2">
+          <TouchableOpacity
+            className="flex-[3.5] items-center justify-center rounded-lg border border-green-600 py-4"
+            onPress={handleReset}
+            disabled={isRecipeLoading}>
+            <Text className="text-lg font-semibold text-green-600">재료 리셋</Text>
+          </TouchableOpacity>
+          <TouchableHighlight
+            className="flex-[6.5] items-center justify-center rounded-lg bg-green-600 py-4"
+            underlayColor="#379237"
+            onPress={handleCreateRecipe}
+            disabled={isRecipeLoading}>
+            <Text className="text-lg font-semibold text-white">
+              {selectedIngredients.length > 0 ? '레시피 제작' : `랜덤 레시피 제작`}
+            </Text>
+          </TouchableHighlight>
+        </View>
       </View>
 
       {(isIngredientsLoading || isRecipeLoading) && (

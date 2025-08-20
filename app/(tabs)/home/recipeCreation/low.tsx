@@ -1,11 +1,13 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { createRecipe } from 'api/gemini';
 import { selectRecentRecipeFromDB } from 'api/supabaseAPI';
+import { CustomSelect } from 'components/common/CustomSelect';
 import { Text } from 'components/common/Text';
 import Ingredients from 'components/recipeCreation/Ingredients';
 import SelectedIngredient from 'components/recipeCreation/SelectedIngredient';
 import { allIngredients } from 'const/ingredients';
 import { router } from 'expo-router';
+import { useSelect } from 'hooks/useSelect';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -21,6 +23,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRecipeStore } from 'stores/recipeStore';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
+import { RecipeCategory, RecipeMethod } from 'types/recipe';
 import { getWeekAndDay } from 'utils/date';
 
 export default function LowRecipeCreationScreen() {
@@ -31,6 +34,9 @@ export default function LowRecipeCreationScreen() {
   } = useSelectedIngredients({ type: 'low' });
 
   const setRecentRecipes = useRecipeStore((state) => state.setRecentRecipes);
+
+  const [category, toggleCategory] = useSelect<RecipeCategory>(null);
+  const [method, toggleMethod] = useSelect<RecipeMethod>(null);
 
   const [keyword, setKeyword] = useState('');
   const [isRecipeLoading, setIsRecipeLoading] = useState(false);
@@ -51,8 +57,8 @@ export default function LowRecipeCreationScreen() {
 
     const command =
       selectedIngredients.length === 0
-        ? `스위치온 ${week}주차에 먹을 수 있는 가장 맛있는 저탄수식 레시피를 만들어줘. 소스나 조미료는 자유롭게 활용해도 돼.`
-        : `다음 재료들만 이용해서 스위치온 ${week}주차에 먹을 수 있는 저탄수식 레시피를 만들어줘. 하지만, 모든 재료를 이용할 필요는 없어. 소스나 조미료는 자유롭게 활용해도 돼. \n재료: ${ingredients}`;
+        ? `다음 정보를 참고해서, 스위치온 ${week}주차에 먹을 수 있는 가장 맛있는 저탄수식 레시피를 만들어줘. 소스나 조미료는 자유롭게 활용해도 돼. ${category && `\n요리 카테고리: ${category}`} ${method && `\n요리 방식: ${method}`}`
+        : `다음 정보를 참고해서, 스위치온 ${week}주차에 먹을 수 있는 저탄수식 레시피를 만들어줘. 재료는 아래에 적혀있는 재료만 사용해야해. 하지만, 모든 재료를 이용할 필요는 없어. 소스나 조미료는 자유롭게 활용해도 돼. \n재료: ${ingredients} ${category && `\n요리 카테고리: ${category}`} ${method && `\n요리 방식: ${method}`}`;
 
     controller.current = new AbortController();
 
@@ -133,22 +139,50 @@ export default function LowRecipeCreationScreen() {
           />
         )}
       />
-      <View className="mb-8 mt-4 w-full flex-row gap-2">
-        <TouchableOpacity
-          className="flex-[3.5] items-center justify-center rounded-lg border border-amber-500 py-4"
-          onPress={handleReset}
-          disabled={isRecipeLoading}>
-          <Text className="text-lg font-semibold text-amber-500">재료 리셋</Text>
-        </TouchableOpacity>
-        <TouchableHighlight
-          className="flex-[6.5] items-center justify-center rounded-lg bg-amber-500 py-4"
-          underlayColor={colors.amber[500]}
-          onPress={handleCreateRecipe}
-          disabled={isRecipeLoading}>
-          <Text className="text-lg font-semibold text-white">
-            {selectedIngredients.length > 0 ? '레시피 제작' : `랜덤 레시피 제작`}
-          </Text>
-        </TouchableHighlight>
+
+      <View className="mb-8 gap-4">
+        <View className="flex-row gap-3">
+          <CustomSelect
+            title="요리 카테고리"
+            options={['한식', '양식', '중식', '일식']}
+            onSelect={toggleCategory}
+            selectedValue={category}
+            itemBgColor="bg-amber-50"
+            bgColor="bg-amber-500"
+            itemTextColor="text-amber-500"
+            borderColor="border-amber-500"
+            rippleColor={colors.amber[600]}
+          />
+          <CustomSelect
+            title="요리 방식"
+            options={['샐러드류', '구이류', '볶음류', '덮밥류', '탕/국류', '찜류']}
+            onSelect={toggleMethod}
+            selectedValue={method}
+            itemBgColor="bg-amber-50"
+            bgColor="bg-amber-500"
+            itemTextColor="text-amber-500"
+            borderColor="border-amber-500"
+            rippleColor={colors.amber[600]}
+          />
+        </View>
+
+        <View className="w-full flex-row gap-2">
+          <TouchableOpacity
+            className="flex-[3.5] items-center justify-center rounded-lg border border-amber-500 py-4"
+            onPress={handleReset}
+            disabled={isRecipeLoading}>
+            <Text className="text-lg font-semibold text-amber-500">재료 리셋</Text>
+          </TouchableOpacity>
+          <TouchableHighlight
+            className="flex-[6.5] items-center justify-center rounded-lg bg-amber-500 py-4"
+            underlayColor={colors.amber[600]}
+            onPress={handleCreateRecipe}
+            disabled={isRecipeLoading}>
+            <Text className="text-lg font-semibold text-white">
+              {selectedIngredients.length > 0 ? '레시피 제작' : `랜덤 레시피 제작`}
+            </Text>
+          </TouchableHighlight>
+        </View>
       </View>
 
       {(isIngredientsLoading || isRecipeLoading) && (
