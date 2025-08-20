@@ -3,14 +3,14 @@ import { RecipeDB } from 'types/database';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-interface UserState {
+interface RecipeState {
   savedRecipes: RecipeDB[];
   setSavedRecipes: (recipes: RecipeDB[]) => void;
   recentRecipes: RecipeDB[];
   setRecentRecipes: (recipes: RecipeDB[]) => void;
 }
 
-export const useRecipeStore = create<UserState>()(
+export const useRecipeStore = create<RecipeState>()(
   persist(
     (set) => ({
       savedRecipes: [],
