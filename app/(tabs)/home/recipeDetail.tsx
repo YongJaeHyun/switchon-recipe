@@ -165,7 +165,7 @@ export default function RecipeDetailScreen() {
             </View>
             <View className="mb-10 mt-2 border border-neutral-300" />
             {parsedCookingSteps.map((step, index) => (
-              <View key={index} className="mb-8 w-full flex-row">
+              <View key={index} className="mb-4 w-full flex-row rounded-lg bg-green-50 p-4">
                 <View className="mr-4 h-6 w-6 items-center justify-center rounded-full bg-green-600">
                   <Text className="text-center text-white">{index + 1}</Text>
                 </View>
