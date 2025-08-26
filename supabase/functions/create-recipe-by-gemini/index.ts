@@ -17,6 +17,7 @@ const RecipeSchema = z.object({
   ingredients: z.array(
     z.object({
       name: z.string(),
+      isOptional: z.boolean(),
       amount: z.string(),
     })
   ),
@@ -99,6 +100,9 @@ serve(async (req: Request) => {
                     properties: {
                       name: {
                         type: 'STRING',
+                      },
+                      isOptional: {
+                        type: 'BOOLEAN',
                       },
                       amount: {
                         type: 'STRING',

@@ -7,12 +7,15 @@ interface IIngredient {
   image: ImageSource;
 }
 
+const IngredientSchema = z.object({
+  name: z.string(),
+  isOptional: z.boolean(),
+  amount: z.string(),
+});
+
 const RecipeSchema = z.object({
   recipeName: z.string(),
-  imageUri: z.string().nullish(),
   cookingTime: z.number(),
-  ingredients: z.array(z.string()),
-  cookingSteps: z.array(z.string()),
   nutrition: z.object({
     carbohydrates: z.number(),
     protein: z.number(),
@@ -20,6 +23,9 @@ const RecipeSchema = z.object({
     fiber: z.number(),
     sugar: z.number(),
   }),
+  ingredients: z.array(IngredientSchema),
+  cookingSteps: z.array(z.string()),
+  imageUri: z.string().nullish(),
 });
 type Recipe = z.infer<typeof RecipeSchema>;
 
@@ -31,4 +37,12 @@ interface RecipeOptions {
   method: RecipeMethod | null;
 }
 
-export { IIngredient, Recipe, RecipeCategory, RecipeMethod, RecipeOptions, RecipeSchema };
+export {
+  IIngredient,
+  IngredientSchema,
+  Recipe,
+  RecipeCategory,
+  RecipeMethod,
+  RecipeOptions,
+  RecipeSchema,
+};
