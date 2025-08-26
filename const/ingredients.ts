@@ -16,7 +16,9 @@ import {
   chickenStock,
   chives,
   clam,
+  cod,
   crammy,
+  creamCheese,
   cucumber,
   curcuma,
   dasima,
@@ -229,6 +231,11 @@ export const firstWeekIngredients: IIngredient[] = [
   {
     name: '고등어',
     image: mackerel,
+    week: 1,
+  },
+  {
+    name: '대구살',
+    image: cod,
     week: 1,
   },
   {
@@ -565,6 +572,11 @@ export const thirdWeekIngredients: IIngredient[] = [
   {
     name: '밤',
     image: chestnut,
+    week: 3,
+  },
+  {
+    name: '크림치즈',
+    image: creamCheese,
     week: 3,
   },
   {

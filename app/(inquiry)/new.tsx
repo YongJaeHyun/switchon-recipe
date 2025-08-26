@@ -30,7 +30,10 @@ export default function NewInquiryScreen() {
   const { mutate: insertInquiry, isPending } = useMutation({
     mutationFn: InquiryAPI.insert,
     onSuccess: (newData) => {
-      queryClient.setQueryData<InquiryDB[]>([QueryKey.inquiries], (old) => [...newData, ...old]);
+      queryClient.setQueryData<InquiryDB[]>([QueryKey.inquiries], (old) => [newData, ...old]);
+    },
+    onError: () => {
+      setModalVisible(false);
     },
   });
 
@@ -124,7 +127,7 @@ export default function NewInquiryScreen() {
       </ScrollView>
 
       <RippleButton
-        className="w-full bg-green-600 py-6"
+        className="w-full bg-green-600 py-5"
         onPress={validateAndShowModal}
         rounded="xl">
         <Text className="text-lg font-medium text-white">제출하기</Text>
