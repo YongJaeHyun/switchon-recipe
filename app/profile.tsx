@@ -1,3 +1,4 @@
+import { FontAwesome5 } from '@expo/vector-icons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { unlink } from '@react-native-kakao/user';
@@ -6,6 +7,7 @@ import ConfirmModal from 'components/common/ConfirmModal';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import { baseProfile, googleIcon, kakaoIconSmall } from 'const/assets';
+import Constants from 'expo-constants';
 import { Image } from 'expo-image';
 import { Link, router } from 'expo-router';
 import { useState } from 'react';
@@ -60,24 +62,37 @@ export default function Profile() {
             <RippleButton
               onPress={() => {}}
               rippleColor={colors.neutral[300]}
-              className="w-full items-center rounded-xl bg-neutral-100 py-4">
-              <Text className="text-lg text-neutral-600">문의사항</Text>
+              className="w-full flex-row items-center !justify-between rounded-xl bg-neutral-100 p-5">
+              <View className="flex-row items-center gap-5">
+                <FontAwesome5 name="question-circle" size={24} color={colors.neutral[600]} />
+                <Text className="text-lg text-neutral-600">문의사항</Text>
+              </View>
+              <MaterialIcons name="navigate-next" size={24} color={colors.neutral[600]} />
             </RippleButton>
           </Link>
           <RippleButton
             onPress={UserAPI.logout}
             rippleColor={colors.neutral[300]}
-            className="w-full items-center rounded-xl bg-neutral-100 py-4">
-            <Text className="text-lg text-neutral-600">로그아웃</Text>
+            className="w-full flex-row !justify-start rounded-xl bg-neutral-100 p-5">
+            <View className="flex-row items-center gap-5">
+              <MaterialIcons name="power-settings-new" size={24} color={colors.neutral[600]} />
+              <Text className="text-lg text-neutral-600">로그아웃</Text>
+            </View>
           </RippleButton>
         </View>
-        <View className="mb-24">
+        <View className="mb-20 w-full flex-row items-end justify-between">
           <RippleButton
-            outerClassName="self-start border border-red-400"
+            outerClassName="border border-red-400"
             className="px-4 py-2"
             onPress={() => setModalVisible(true)}>
             <Text className="text-red-400">회원탈퇴</Text>
           </RippleButton>
+          <View className="flex-row items-center gap-1">
+            <MaterialIcons name="info-outline" size={16} color={colors.neutral[400]} />
+            <Text className="text-neutral-400">
+              버전 정보: <Text>{Constants.expoConfig?.version}</Text>
+            </Text>
+          </View>
         </View>
       </View>
 
