@@ -23,12 +23,12 @@ jobs:
         uses: expo/expo-github-action@v8
         with:
           packager: npm
-          expo-version: 53.0.20
-          eas-version: 16.16.0
+          expo-version: latest
+          eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci --no-cache
 
       - name: Expo Prebuild (Android)
         env:
