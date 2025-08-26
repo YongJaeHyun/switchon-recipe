@@ -16,15 +16,15 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 20
+          node-version: 22.11.0
           cache: npm
           
       - name: 🏗 Setup EAS
         uses: expo/expo-github-action@v8
         with:
           packager: npm
-          expo-version: latest
-          eas-version: latest
+          expo-version: 53.0.20
+          eas-version: 16.16.0
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Install dependencies
