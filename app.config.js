@@ -6,7 +6,7 @@ export default {
   expo: {
     name: appEnv === 'development' ? '스위치온 레시피 개발용' : '스위치온 레시피',
     slug: 'switchon-recipe',
-    version: '1.1.0',
+    version: '1.2.0',
     scheme: 'switchon-recipe',
     githubUrl: 'https://github.com/YongJaeHyun/switchon-recipe',
     experiments: {
