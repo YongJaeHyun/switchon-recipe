@@ -21,8 +21,11 @@ import Animated, {
 } from 'react-native-reanimated';
 import colors from 'tailwindcss/colors';
 import { RecipeDB } from 'types/database';
-import { Recipe } from 'types/recipe';
+import { IngredientSchema, Recipe } from 'types/recipe';
+import { z } from 'zod';
 import { RecipeAPI } from '../../../api/RecipeAPI';
+
+type RecipeIngredient = string | z.infer<typeof IngredientSchema>;
 
 export default function RecipeDetailScreen() {
   const { recipe }: { recipe: string } = useLocalSearchParams();
@@ -31,7 +34,13 @@ export default function RecipeDetailScreen() {
   const { id, recipe_name, cooking_time, ingredients, nutrition, cooking_steps, image_uri } =
     parsedRecipe;
 
-  const parsedIngredients: Recipe['ingredients'] = JSON.parse(ingredients);
+  const parsedIngredients: RecipeIngredient[] = JSON.parse(ingredients);
+  parsedIngredients.sort((a: RecipeIngredient, b: RecipeIngredient) => {
+    if (typeof a === 'string' || typeof b === 'string') return 0;
+    if (a.isOptional === b.isOptional) return 0;
+    return a.isOptional ? 1 : -1;
+  });
+
   const parsedNutrition: Recipe['nutrition'] = JSON.parse(nutrition);
   const parsedCookingSteps: Recipe['cookingSteps'] = JSON.parse(cooking_steps);
 
@@ -147,16 +156,32 @@ export default function RecipeDetailScreen() {
           <View>
             <Text className="text-2xl font-bold">재료 요약</Text>
             <View className="mb-10 mt-2 border border-neutral-300" />
-            {parsedIngredients.map((item) => {
-              const lastSpace = item.lastIndexOf(' ');
-              const ingredient = item.slice(0, lastSpace);
-              const amount = item.slice(lastSpace);
-              return (
-                <View key={item} className="mb-8 flex-row items-center justify-between">
-                  <Text className="text-medium font-bold tracking-wide">{ingredient}</Text>
-                  <Text className="text-medium font-semibold tracking-wide">{amount}</Text>
-                </View>
-              );
+            {parsedIngredients.map((item: RecipeIngredient) => {
+              const ingredient = IngredientSchema.safeParse(item);
+
+              if (ingredient.success) {
+                const { name, isOptional, amount } = ingredient.data;
+                return (
+                  <View key={name} className="mb-8 flex-row items-center justify-between">
+                    <View className="flex-row items-center gap-4">
+                      <Text className="text-medium font-bold tracking-wide">{name}</Text>
+                      {isOptional && (
+                        <View className="rounded-full bg-neutral-200 px-3 py-1.5">
+                          <Text className="text-sm">선택</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text className="text-medium font-semibold tracking-wide">{amount}</Text>
+                  </View>
+                );
+              } else if (typeof item === 'string') {
+                return (
+                  <View key={item} className="mb-8 flex-row items-center">
+                    <View className="mr-4 h-2 w-2 rounded-full bg-green-500" />
+                    <Text className="text-medium font-semibold tracking-wide">{item}</Text>
+                  </View>
+                );
+              }
             })}
           </View>
 
