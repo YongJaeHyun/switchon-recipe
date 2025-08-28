@@ -3,7 +3,7 @@ import Toast from 'react-native-toast-message';
 interface ToastTextProps {
   text1: string;
   text2: string;
-  error?: Error;
+  error: Error;
 }
 
 const showSuccessToast = ({ text1, text2 }: Omit<ToastTextProps, 'error'>) => {
@@ -20,7 +20,7 @@ const showErrorToast = ({ text1, text2 }: ToastTextProps) => {
     text2,
   });
 };
-const showInfoToast = ({ text1, text2 }: ToastTextProps) => {
+const showInfoToast = ({ text1, text2 }: Omit<ToastTextProps, 'error'>) => {
   Toast.show({
     type: 'info',
     text1,
