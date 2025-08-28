@@ -123,6 +123,9 @@ export default function LowRecipeCreationScreen() {
           horizontal
           showsHorizontalScrollIndicator={false}
         />
+        <Text className="ml-1 text-sm">
+          <Text className="font-bold text-amber-500">최대 10개</Text>까지 재료를 선택할 수 있어요!
+        </Text>
       </View>
       <FlatList
         className="mb-4 flex-1"

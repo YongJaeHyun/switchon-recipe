@@ -3,6 +3,7 @@ import { SelectedIngredientAPI } from 'api/SelectedIngredientAPI';
 import { QueryKey } from 'const/queryKey';
 import { RecipeType } from 'types/database';
 import { IIngredient } from 'types/recipe';
+import { showInfoToast } from 'utils/showToast';
 
 interface UseSelectedIngredientsProps {
   type: RecipeType;
@@ -73,7 +74,14 @@ export const useSelectedIngredients = ({ type }: UseSelectedIngredientsProps) =>
       ? selectedIngredients.filter((i) => i.name !== ingredient.name)
       : [...selectedIngredients, ingredient];
 
-    upsertIngredients(updatedIngredients);
+    if (selectedIngredients.length < 10 || (selectedIngredients.length === 10 && isSelected)) {
+      upsertIngredients(updatedIngredients);
+    } else {
+      showInfoToast({
+        text1: '최대 선택 갯수 초과',
+        text2: '재료는 최대 10개까지 선택할 수 있어요!',
+      });
+    }
   };
 
   return {
