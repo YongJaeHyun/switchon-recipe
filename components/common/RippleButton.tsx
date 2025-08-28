@@ -15,8 +15,8 @@ const RippleButton = React.forwardRef<React.ComponentRef<typeof Pressable>, Ripp
   (
     {
       children,
-      className,
-      outerClassName,
+      className = '',
+      outerClassName = '',
       rippleColor = outerClassName ? colors.white : colors.green[700],
       rounded = 'xl',
       ...rest
@@ -42,10 +42,8 @@ const RippleButton = React.forwardRef<React.ComponentRef<typeof Pressable>, Ripp
     };
 
     const getRoundedClassName = (rounded: Rounded) => {
-      if (rounded === 'lg') return 'rounded-lg';
-      else if (rounded === 'xl') return 'rounded-xl';
-      else if (rounded === 'full') return 'rounded-full';
-      else return '';
+      if (!rounded) return '';
+      return `rounded-${rounded}`;
     };
 
     return (
@@ -59,7 +57,7 @@ const RippleButton = React.forwardRef<React.ComponentRef<typeof Pressable>, Ripp
           onPressIn={handlePressIn}
           onPressOut={handlePressOut}
           android_ripple={{ color: rippleColor, foreground: true }}
-          className={`items-center justify-center ${className}`}
+          className={`items-center justify-center overflow-hidden ${className}`}
           {...rest}>
           {children}
         </Pressable>
