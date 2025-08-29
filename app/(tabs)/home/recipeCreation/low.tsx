@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { createRecipe } from 'api/gemini';
 import { CustomSelect } from 'components/common/CustomSelect';
 import { Text } from 'components/common/Text';
+import { IngredientRequest } from 'components/recipeCreation/IngredientRequest';
 import Ingredients from 'components/recipeCreation/Ingredients';
 import SelectedIngredient from 'components/recipeCreation/SelectedIngredient';
 import { allIngredients } from 'const/ingredients';
@@ -129,9 +130,10 @@ export default function LowRecipeCreationScreen() {
       </View>
       <FlatList
         className="mb-4 flex-1"
-        contentContainerStyle={{ gap: 48 }}
+        contentContainerClassName="gap-6"
         data={allIngredients}
         extraData={resetTrigger ? 'reset-1' : 'reset-0'}
+        ListHeaderComponent={() => <IngredientRequest />}
         renderItem={({ item }) => (
           <Ingredients
             title={item.title}
