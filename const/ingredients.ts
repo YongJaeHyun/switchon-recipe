@@ -611,6 +611,8 @@ export const thirdWeekIngredients: IIngredient[] = [
   },
 ];
 
+export const newIngredientNames = ['크림치즈', '대구살'];
+
 export const allIngredients: IngredientsProps[] = [
   {
     title: '탄수화물',

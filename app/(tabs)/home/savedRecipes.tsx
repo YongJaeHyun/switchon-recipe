@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { RecipeAPI } from 'api/RecipeAPI';
 import ListEmptyText from 'components/common/ListEmptyText';
+import { Text } from 'components/common/Text';
 import RecipeCard from 'components/home/RecipeCard';
 import { useState } from 'react';
-import { ActivityIndicator, FlatList, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import colors from 'tailwindcss/colors';
 import { RecipeDB } from 'types/database';

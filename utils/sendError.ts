@@ -27,11 +27,7 @@ const sendDBError = async <T>(callback: () => Promise<T>, options?: OptionsProps
   } catch (error) {
     captureError({ error, prefix: '[Supabase]: ', level: 'fatal' });
 
-    showErrorToast({
-      text1: 'DB 에러 발생',
-      text2: '에러 정보가 관리자에게 전달되었습니다. 빠른 시일 내에 조치하겠습니다.',
-      error,
-    });
+    showErrorToast({ textType: 'DB_REQUEST_ERROR' });
     return options?.errorReturnValue;
   }
 };

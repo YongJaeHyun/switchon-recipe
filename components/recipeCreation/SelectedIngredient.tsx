@@ -1,7 +1,8 @@
 import Feather from '@expo/vector-icons/Feather';
+import { Text } from 'components/common/Text';
 import { useLastPathname } from 'hooks/useLastPathname';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { RecipeType } from 'types/database';
 import { IIngredient } from 'types/recipe';
 

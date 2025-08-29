@@ -3,6 +3,7 @@ import { SelectedIngredientAPI } from 'api/SelectedIngredientAPI';
 import { QueryKey } from 'const/queryKey';
 import { RecipeType } from 'types/database';
 import { IIngredient } from 'types/recipe';
+import { showInfoToast } from 'utils/showToast';
 
 interface UseSelectedIngredientsProps {
   type: RecipeType;
@@ -73,7 +74,11 @@ export const useSelectedIngredients = ({ type }: UseSelectedIngredientsProps) =>
       ? selectedIngredients.filter((i) => i.name !== ingredient.name)
       : [...selectedIngredients, ingredient];
 
-    upsertIngredients(updatedIngredients);
+    if (selectedIngredients.length < 10 || (selectedIngredients.length === 10 && isSelected)) {
+      upsertIngredients(updatedIngredients);
+    } else {
+      showInfoToast({ textType: 'EXCEED_MAXIMUM_INGREDIENT_SELECTED' });
+    }
   };
 
   return {

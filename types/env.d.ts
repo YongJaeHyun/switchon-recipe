@@ -5,5 +5,6 @@ namespace NodeJS {
     EXPO_PUBLIC_SUPABASE_ANON_KEY: string;
     EXPO_PUBLIC_KAKAO_API_KEY: string;
     EXPO_PUBLIC_SENTRY_DSN: string;
+    EXPO_PUBLIC_SLACK_WEBHOOK_URL: string;
   }
 }

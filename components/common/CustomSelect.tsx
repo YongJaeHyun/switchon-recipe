@@ -1,9 +1,10 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import RippleButton from 'components/common/RippleButton';
 import { useState } from 'react';
-import { FlatList, Modal, Text, TouchableWithoutFeedback, View } from 'react-native';
+import { FlatList, Modal, TouchableWithoutFeedback, View } from 'react-native';
 import colors from 'tailwindcss/colors';
 import { RecipeCategory, RecipeMethod } from 'types/recipe';
+import { Text } from './Text';
 
 interface CustomSelectProps {
   title: string;

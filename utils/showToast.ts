@@ -1,30 +1,46 @@
+import { ErrorToastText, InfoToastText, SuccessToastText } from 'const/toastText';
 import Toast from 'react-native-toast-message';
+import { ErrorToastTextProps, InfoToastTextProps, SuccessToastTextProps } from 'types/toast';
 
-interface ToastTextProps {
-  text1: string;
-  text2: string;
-  error: Error;
-}
+const showSuccessToast = ({ title, subtitle, textType }: SuccessToastTextProps) => {
+  if (textType !== 'CUSTOM') {
+    const { title: templateTitle, subtitle: templateSubtitle } = SuccessToastText[textType];
+    title = templateTitle;
+    subtitle = templateSubtitle;
+  }
 
-const showSuccessToast = ({ text1, text2 }: Omit<ToastTextProps, 'error'>) => {
   Toast.show({
     type: 'success',
-    text1,
-    text2,
+    text1: title,
+    text2: subtitle,
   });
 };
-const showErrorToast = ({ text1, text2 }: ToastTextProps) => {
+
+const showErrorToast = ({ title, subtitle, textType }: ErrorToastTextProps) => {
+  if (textType !== 'CUSTOM') {
+    const { title: templateTitle, subtitle: templateSubtitle } = ErrorToastText[textType];
+    title = templateTitle;
+    subtitle = templateSubtitle;
+  }
+
   Toast.show({
     type: 'error',
-    text1,
-    text2,
+    text1: title,
+    text2: subtitle,
   });
 };
-const showInfoToast = ({ text1, text2 }: ToastTextProps) => {
+
+const showInfoToast = ({ title, subtitle, textType }: InfoToastTextProps) => {
+  if (textType !== 'CUSTOM') {
+    const { title: templateTitle, subtitle: templateSubtitle } = InfoToastText[textType];
+    title = templateTitle;
+    subtitle = templateSubtitle;
+  }
+
   Toast.show({
     type: 'info',
-    text1,
-    text2,
+    text1: title,
+    text2: subtitle,
   });
 };
 

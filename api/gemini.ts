@@ -34,18 +34,10 @@ export const createRecipe = async ({
     return response.data;
   } catch (error: unknown) {
     if (isCancel(error)) {
-      showErrorToast({
-        text1: '레시피 생성 취소',
-        text2: '레시피 생성 요청이 취소되었습니다.',
-        error: error as Error,
-      });
+      showErrorToast({ textType: 'RECIPE_CREATION_CANCELED' });
     } else {
       Sentry.captureException(error, { level: 'warning' });
-      showErrorToast({
-        text1: '일시적인 에러 발생',
-        text2: '레시피 생성에 실패했습니다. 다시 시도해주세요.',
-        error: error as Error,
-      });
+      showErrorToast({ textType: 'RECIPE_CREATION_TEMPORARY_ERROR' });
     }
   }
 };

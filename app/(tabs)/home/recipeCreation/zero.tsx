@@ -1,10 +1,13 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { createRecipe } from 'api/gemini';
+import { RecipeAPI } from 'api/RecipeAPI';
 import { CustomSelect } from 'components/common/CustomSelect';
 import { Text } from 'components/common/Text';
-import Ingredients from 'components/recipeCreation/Ingredients';
+import { IngredientRequest } from 'components/recipeCreation/IngredientRequest';
+import Ingredients, { IngredientsProps } from 'components/recipeCreation/Ingredients';
 import SelectedIngredient from 'components/recipeCreation/SelectedIngredient';
 import { allZeroIngredients } from 'const/zeroIngredients';
+import { getChoseong } from 'es-hangul';
 import { router } from 'expo-router';
 import { useSelect } from 'hooks/useSelect';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
@@ -24,7 +27,6 @@ import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { RecipeCategory, RecipeMethod } from 'types/recipe';
 import { getWeekAndDay } from 'utils/date';
-import { RecipeAPI } from '../../../../api/RecipeAPI';
 
 export default function ZeroRecipeCreationScreen() {
   const {
@@ -51,6 +53,15 @@ export default function ZeroRecipeCreationScreen() {
     return userWeek;
   };
 
+  const getSearchedIngredients = (item: IngredientsProps) =>
+    item.ingredientList.filter((ingredient) => {
+      const ingredientChoseong = getChoseong(ingredient.name);
+      const keywordChoseong = getChoseong(keyword);
+
+      const isIncludeChoseong = ingredientChoseong.includes(keywordChoseong);
+      return isIncludeChoseong;
+    });
+
   const createRecipeWithAI = async () => {
     const ingredients = selectedIngredients.map((ingredients) => ingredients.name).join(', ');
     const week = getUserWeek();
@@ -58,7 +69,7 @@ export default function ZeroRecipeCreationScreen() {
     const command =
       selectedIngredients.length === 0
         ? `다음 정보를 참고해서, 스위치온 ${week}주차에 먹을 수 있는 가장 맛있는 무탄수식 레시피를 만들어줘. 소스나 조미료는 자유롭게 활용해도 돼. ${category ? `\n요리 카테고리: ${category}` : ''} ${method ? `\n요리 방식: ${method}` : ''}`
-        : `다음 정보를 참고해서, 스위치온 ${week}주차에 먹을 수 있는 무탄수식 레시피를 만들어줘. 재료는 아래에 적혀있는 재료만 사용해야해. 재료가 많다면, 모든 재료를 이용할 필요는 없어. 소스나 조미료는 자유롭게 활용해도 돼. \n재료: ${ingredients} ${category ? `\n요리 카테고리: ${category}` : ''} ${method ? `\n요리 방식: ${method}` : ''}`;
+        : `다음 정보를 참고해서, 스위치온 ${week}주차에 먹을 수 있는 무탄수식 레시피를 만들어줘. 가능하다면, 모든 재료를 사용해야해. 재료가 많다면, 모든 재료를 이용할 필요는 없어. 소스나 조미료는 자유롭게 활용해도 돼. \n재료: ${ingredients} ${category ? `\n요리 카테고리: ${category}` : ''} ${method ? `\n요리 방식: ${method}` : ''}`;
 
     controller.current = new AbortController();
 
@@ -123,19 +134,21 @@ export default function ZeroRecipeCreationScreen() {
           horizontal
           showsHorizontalScrollIndicator={false}
         />
+        <Text className="ml-1 text-sm">
+          <Text className="font-bold text-green-600">최대 10개</Text>까지 재료를 선택할 수 있어요!
+        </Text>
       </View>
       <FlatList
         className="mb-4 flex-1"
-        contentContainerStyle={{ gap: 48 }}
+        contentContainerClassName="gap-6"
         data={allZeroIngredients}
         extraData={resetTrigger ? 'reset-1' : 'reset-0'}
+        ListHeaderComponent={() => <IngredientRequest />}
         renderItem={({ item }) => (
           <Ingredients
             title={item.title}
             week={item.week}
-            ingredientList={item.ingredientList.filter((ingredient) =>
-              ingredient.name.includes(keyword)
-            )}
+            ingredientList={getSearchedIngredients(item)}
           />
         )}
       />
