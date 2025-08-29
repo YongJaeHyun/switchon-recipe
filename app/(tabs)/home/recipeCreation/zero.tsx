@@ -1,11 +1,13 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { createRecipe } from 'api/gemini';
+import { RecipeAPI } from 'api/RecipeAPI';
 import { CustomSelect } from 'components/common/CustomSelect';
 import { Text } from 'components/common/Text';
 import { IngredientRequest } from 'components/recipeCreation/IngredientRequest';
-import Ingredients from 'components/recipeCreation/Ingredients';
+import Ingredients, { IngredientsProps } from 'components/recipeCreation/Ingredients';
 import SelectedIngredient from 'components/recipeCreation/SelectedIngredient';
 import { allZeroIngredients } from 'const/zeroIngredients';
+import { getChoseong } from 'es-hangul';
 import { router } from 'expo-router';
 import { useSelect } from 'hooks/useSelect';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
@@ -25,7 +27,6 @@ import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { RecipeCategory, RecipeMethod } from 'types/recipe';
 import { getWeekAndDay } from 'utils/date';
-import { RecipeAPI } from '../../../../api/RecipeAPI';
 
 export default function ZeroRecipeCreationScreen() {
   const {
@@ -51,6 +52,15 @@ export default function ZeroRecipeCreationScreen() {
 
     return userWeek;
   };
+
+  const getSearchedIngredients = (item: IngredientsProps) =>
+    item.ingredientList.filter((ingredient) => {
+      const ingredientChoseong = getChoseong(ingredient.name);
+      const keywordChoseong = getChoseong(keyword);
+
+      const isIncludeChoseong = ingredientChoseong.includes(keywordChoseong);
+      return isIncludeChoseong;
+    });
 
   const createRecipeWithAI = async () => {
     const ingredients = selectedIngredients.map((ingredients) => ingredients.name).join(', ');
@@ -138,9 +148,7 @@ export default function ZeroRecipeCreationScreen() {
           <Ingredients
             title={item.title}
             week={item.week}
-            ingredientList={item.ingredientList.filter((ingredient) =>
-              ingredient.name.includes(keyword)
-            )}
+            ingredientList={getSearchedIngredients(item)}
           />
         )}
       />
