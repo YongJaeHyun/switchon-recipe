@@ -1,11 +1,10 @@
 import { VersionAPI } from 'api/VersionAPI';
+import { STORE_URL } from 'const/const';
 import Constants from 'expo-constants';
 import * as Updates from 'expo-updates';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, AppState, Linking } from 'react-native';
 import semver from 'semver';
-
-const STORE_URL = 'https://play.google.com/store/apps/details?id=com.dltjrrbs2020.switchonrecipe';
 
 export const useAutoUpdate = () => {
   const appState = useRef(AppState.currentState);
