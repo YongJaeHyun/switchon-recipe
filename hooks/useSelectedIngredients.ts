@@ -77,10 +77,7 @@ export const useSelectedIngredients = ({ type }: UseSelectedIngredientsProps) =>
     if (selectedIngredients.length < 10 || (selectedIngredients.length === 10 && isSelected)) {
       upsertIngredients(updatedIngredients);
     } else {
-      showInfoToast({
-        text1: '최대 선택 갯수 초과',
-        text2: '재료는 최대 10개까지 선택할 수 있어요!',
-      });
+      showInfoToast({ textType: 'EXCEED_MAXIMUM_INGREDIENT_SELECTED' });
     }
   };
 

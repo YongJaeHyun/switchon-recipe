@@ -79,8 +79,9 @@ const updateStartDate = async (start_date: string) =>
 
     setUser(data);
     showSuccessToast({
-      text1: '시작날짜 재설정 성공',
-      text2: `${start_date}일로 정상적으로 변경되었습니다`,
+      textType: 'CUSTOM',
+      title: '시작날짜 재설정 성공',
+      subtitle: `${start_date}일로 정상적으로 변경되었습니다`,
     });
   });
 
@@ -93,10 +94,7 @@ const deleteOne = async () =>
 
     if (error) throw error;
 
-    showSuccessToast({
-      text1: '회원탈퇴 성공',
-      text2: '다시 오실 날을 기다리고 있을게요 :)',
-    });
+    showSuccessToast({ textType: 'DELETE_ACCOUNT_SUCCESS' });
   });
 
 export const UserAPI = {

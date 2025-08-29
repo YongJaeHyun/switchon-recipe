@@ -29,10 +29,7 @@ const insert = async (inquiry: Partial<InquiryDB>) =>
 
     if (error) throw error;
 
-    showSuccessToast({
-      text1: '문의사항이 등록되었습니다.',
-      text2: '문의 남겨주셔서 감사합니다 :)',
-    });
+    showSuccessToast({ textType: 'MAKE_INQUIRY_SUCCESS' });
 
     return data;
   });
