@@ -84,8 +84,8 @@ export default function HomeScreen() {
         <View className="my-6 border-b-2 border-neutral-300" />
 
         <View className="mb-10 gap-10">
-          <View className="gap-3">
-            <View className="w-full rounded-xl border border-green-600 px-3 py-2">
+          <View className="gap-5">
+            <View className="w-full rounded-full border border-neutral-400 px-3 py-2">
               <Text className="text-neutral-600">
                 🥗 재료 업데이트: {newIngredientNames.join(', ')} 추가
               </Text>
