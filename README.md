@@ -6,7 +6,7 @@
 AI로 현재 스위치온 주차에 따라 레시피를 생성할 수 있고, 이를 저장하거나 공유할 수 있어요.
 
 #### 다운로드 링크
-[![Get it on Google Play](https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg)](https://play.google.com/store/apps/details?id=com.dltjrrbs2020.switchon-recipe)
+[![Get it on Google Play](https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg)](https://play.google.com/store/apps/details?id=com.dltjrrbs2020.switchonrecipe)
 
 ---
 
