@@ -6,6 +6,7 @@ import HomeHeader from 'components/home/HomeHeader';
 import RecentRecipes from 'components/home/RecentRecipes';
 import RecipeCreation from 'components/home/RecipeCreation';
 import SavedRecipes from 'components/home/SavedRecipes';
+import { newIngredientNames } from 'const/ingredients';
 import useKoreanToday from 'hooks/useKoreanToday';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { useCallback, useRef, useState } from 'react';
@@ -83,17 +84,24 @@ export default function HomeScreen() {
         <View className="my-6 border-b-2 border-neutral-300" />
 
         <View className="mb-10 gap-10">
-          <View className="flex-row gap-4">
-            <RecipeCreation
-              href={'/home/recipeCreation/zero'}
-              title="무탄수"
-              subtitle="단백질 & 채소로만 건강하게!"
-            />
-            <RecipeCreation
-              href={'/home/recipeCreation/low'}
-              title="저탄수"
-              subtitle="탄수화물 추가로 포만감 있게!"
-            />
+          <View className="gap-3">
+            <View className="w-full rounded-xl border border-green-600 px-3 py-2">
+              <Text className="text-neutral-600">
+                🥗 재료 업데이트: {newIngredientNames.join(', ')} 추가
+              </Text>
+            </View>
+            <View className="flex-row gap-4">
+              <RecipeCreation
+                href={'/home/recipeCreation/zero'}
+                title="무탄수"
+                subtitle="단백질 & 채소로만 건강하게!"
+              />
+              <RecipeCreation
+                href={'/home/recipeCreation/low'}
+                title="저탄수"
+                subtitle="탄수화물 추가로 포만감 있게!"
+              />
+            </View>
           </View>
           <SavedRecipes refreshing={refreshing} />
           <RecentRecipes refreshing={refreshing} />
