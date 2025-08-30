@@ -6,7 +6,8 @@ import HomeHeader from 'components/home/HomeHeader';
 import RecentRecipes from 'components/home/RecentRecipes';
 import RecipeCreation from 'components/home/RecipeCreation';
 import SavedRecipes from 'components/home/SavedRecipes';
-import { newIngredientNames } from 'const/ingredients';
+import { newIngredients } from 'const/ingredients';
+import { seosusa } from 'es-hangul';
 import useKoreanToday from 'hooks/useKoreanToday';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { useCallback, useRef, useState } from 'react';
@@ -18,6 +19,8 @@ import { getWeekAndDay } from 'utils/date';
 import { RecipeAPI } from '../../../api/RecipeAPI';
 import { UserAPI } from '../../../api/UserAPI';
 import { useRecipeStore } from '../../../stores/recipeStore';
+
+const { month, week, names } = newIngredients;
 
 export default function HomeScreen() {
   const bottomSheetRef = useRef<BottomSheet>(null);
@@ -87,7 +90,7 @@ export default function HomeScreen() {
           <View className="gap-5">
             <View className="w-full rounded-full border border-neutral-400 px-3 py-2">
               <Text className="text-neutral-600">
-                🥗 재료 업데이트: {newIngredientNames.join(', ')} 추가
+                🥗 [{month}월 {seosusa(week)}주 재료 업데이트] {names.join(', ')} 추가
               </Text>
             </View>
             <View className="flex-row gap-4">
