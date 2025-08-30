@@ -30,6 +30,7 @@ export const crammy = require('../assets/images/ingredients/crammy.jpg');
 export const creamCheese = require('../assets/images/ingredients/cream_cheese.jpg');
 export const cucumber = require('../assets/images/ingredients/cucumber.jpg');
 export const curcuma = require('../assets/images/ingredients/curcuma.jpg');
+export const dakbal = require('../assets/images/ingredients/dakbal.jpg');
 export const dasima = require('../assets/images/ingredients/dasima.jpg');
 export const driedTofu = require('../assets/images/ingredients/dried_tofu.jpg');
 export const duck = require('../assets/images/ingredients/duck.jpg');

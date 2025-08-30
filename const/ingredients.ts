@@ -21,6 +21,7 @@ import {
   creamCheese,
   cucumber,
   curcuma,
+  dakbal,
   dasima,
   driedTofu,
   duck,
@@ -522,6 +523,11 @@ export const secondWeekIngredients: IIngredient[] = [
     week: 2,
   },
   {
+    name: '닭발',
+    image: dakbal,
+    week: 2,
+  },
+  {
     name: '명란젓',
     image: myungran,
     week: 2,
@@ -611,7 +617,7 @@ export const thirdWeekIngredients: IIngredient[] = [
   },
 ];
 
-export const newIngredientNames = ['크림치즈', '대구살'];
+export const newIngredientNames = ['크림치즈', '대구살', '닭발'];
 
 export const allIngredients: IngredientsProps[] = [
   {
