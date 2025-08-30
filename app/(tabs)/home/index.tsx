@@ -89,8 +89,8 @@ export default function HomeScreen() {
         <View className="mb-10 gap-10">
           <View className="gap-5">
             <View className="w-full rounded-full border border-neutral-400 px-3 py-2">
-              <Text className="text-neutral-600">
-                🥗 [{month}월 {seosusa(week)}주 재료 업데이트] {names.join(', ')} 추가
+              <Text className="text-sm text-neutral-600">
+                🥗 [{month}월 {seosusa(week)}주 재료 업데이트] - {names.join(', ')} 추가
               </Text>
             </View>
             <View className="flex-row gap-4">

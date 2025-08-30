@@ -619,7 +619,7 @@ export const thirdWeekIngredients: IIngredient[] = [
 
 export const newIngredients = {
   month: 8,
-  week: 4,
+  week: 5,
   names: ['크림치즈', '대구살', '닭발'],
 };
 
