@@ -7,7 +7,7 @@ import { IngredientRequest } from 'components/recipeCreation/IngredientRequest';
 import Ingredients, { IngredientsProps } from 'components/recipeCreation/Ingredients';
 import SelectedIngredient from 'components/recipeCreation/SelectedIngredient';
 import { allZeroIngredients } from 'const/zeroIngredients';
-import { getChoseong } from 'es-hangul';
+import { disassemble } from 'es-hangul';
 import { router } from 'expo-router';
 import { useSelect } from 'hooks/useSelect';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
@@ -27,6 +27,7 @@ import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { RecipeCategory, RecipeMethod } from 'types/recipe';
 import { getWeekAndDay } from 'utils/date';
+import { isCompletedHangul } from 'utils/hangul';
 
 export default function ZeroRecipeCreationScreen() {
   const {
@@ -55,11 +56,15 @@ export default function ZeroRecipeCreationScreen() {
 
   const getSearchedIngredients = (item: IngredientsProps) =>
     item.ingredientList.filter((ingredient) => {
-      const ingredientChoseong = getChoseong(ingredient.name);
-      const keywordChoseong = getChoseong(keyword);
+      if (isCompletedHangul(keyword)) {
+        return ingredient.name.includes(keyword);
+      }
 
-      const isIncludeChoseong = ingredientChoseong.includes(keywordChoseong);
-      return isIncludeChoseong;
+      const disassembledIngredient = disassemble(ingredient.name);
+      const disassembledKeyword = disassemble(keyword);
+
+      const isIncludeKeyword = disassembledIngredient.includes(disassembledKeyword);
+      return isIncludeKeyword;
     });
 
   const createRecipeWithAI = async () => {
