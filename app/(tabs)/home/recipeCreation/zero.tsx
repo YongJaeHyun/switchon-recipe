@@ -56,11 +56,18 @@ export default function ZeroRecipeCreationScreen() {
 
   const getSearchedIngredients = (item: IngredientsProps) =>
     item.ingredientList.filter((ingredient) => {
-      if (isCompletedHangul(keyword)) {
-        return ingredient.name.includes(keyword);
+      const { name: ingredientName, subKeywords: ingredientSubKeywords } = ingredient;
+      const trimmedKeyword = keyword.trim();
+
+      if (isCompletedHangul(trimmedKeyword)) {
+        const isIncludeKeyword = ingredientName.includes(trimmedKeyword);
+        const isIncludeSubKeyword = ingredientSubKeywords?.some(
+          (ingredientKeyword) => ingredientKeyword === trimmedKeyword
+        );
+        return isIncludeKeyword || isIncludeSubKeyword;
       }
 
-      const disassembledIngredient = disassemble(ingredient.name);
+      const disassembledIngredient = disassemble(ingredientName);
       const disassembledKeyword = disassemble(keyword);
 
       const isIncludeKeyword = disassembledIngredient.includes(disassembledKeyword);

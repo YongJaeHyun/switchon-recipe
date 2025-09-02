@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 interface IIngredient {
   name: string;
+  subKeywords?: string[];
   week: number;
   image: ImageSource;
 }

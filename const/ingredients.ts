@@ -185,7 +185,8 @@ export const firstWeekIngredients: IIngredient[] = [
     week: 1,
   },
   {
-    name: '달걀',
+    name: '계란',
+    subKeywords: ['달걀'],
     image: egg,
     week: 1,
   },
