@@ -8,12 +8,13 @@ import { ActivityIndicator, FlatList, TouchableOpacity, View } from 'react-nativ
 import { SafeAreaView } from 'react-native-safe-area-context';
 import colors from 'tailwindcss/colors';
 import { RecipeDB } from 'types/database';
+import { Week } from 'types/week';
 import { getWeekColor } from 'utils/getWeekColor';
 
-const weekTabs = ['1주차', '2주차', '3주차+'];
+const weekTabs = ['1주차', '2주차', '3주차+'] satisfies Week[];
 
 export default function SavedRecipes() {
-  const [selectedWeek, setSelectedWeek] = useState<'1주차' | '2주차' | '3주차+'>('1주차');
+  const [selectedWeek, setSelectedWeek] = useState<Week>('1주차');
 
   const {
     data: recipes = [],
@@ -29,7 +30,7 @@ export default function SavedRecipes() {
     filledRecipes.push({ ...recipes[0], isDummy: true });
   }
 
-  const changeSelectedWeek = async (week: typeof selectedWeek) => {
+  const changeSelectedWeek = async (week: Week) => {
     setSelectedWeek(week);
     await refetch();
   };
@@ -37,7 +38,7 @@ export default function SavedRecipes() {
   return (
     <SafeAreaView className="relative flex-1 gap-5 px-5">
       <View className="flex-row justify-around rounded-xl bg-white px-4 py-3">
-        {weekTabs.map((week: typeof selectedWeek) => (
+        {weekTabs.map((week: Week) => (
           <TouchableOpacity key={week} onPress={() => changeSelectedWeek(week)}>
             <Text
               className={`text-lg font-semibold ${

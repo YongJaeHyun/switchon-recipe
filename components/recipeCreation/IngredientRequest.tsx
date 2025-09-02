@@ -17,7 +17,7 @@ export function IngredientRequest() {
 
   const [visible, setVisible] = useState(false);
   const [name, setName] = useState('');
-  const [errors, setErrors] = useState<IngredientRequestError>(null);
+  const [errors, setErrors] = useState<IngredientRequestError | null>(null);
 
   const open = () => setVisible(true);
   const close = () => {

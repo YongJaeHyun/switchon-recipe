@@ -1,13 +1,14 @@
 import { useState } from 'react';
+import { RecipeOption } from 'types/recipe';
 
-export function useSelect<T>(initialValue: T | null) {
-  const [state, setState] = useState<T>(initialValue);
+export function useSelect<Option extends RecipeOption>(initialValue: Option | null) {
+  const [state, setState] = useState<Option | null>(initialValue);
 
-  const toggleState = (newState: T) => {
-    if (state === newState) {
+  const toggleState = (newOption: Option) => {
+    if (state === newOption) {
       setState(null);
     } else {
-      setState(newState);
+      setState(newOption);
     }
   };
 

@@ -3,22 +3,22 @@ import RippleButton from 'components/common/RippleButton';
 import { useState } from 'react';
 import { FlatList, Modal, TouchableWithoutFeedback, View } from 'react-native';
 import colors from 'tailwindcss/colors';
-import { RecipeCategory, RecipeMethod } from 'types/recipe';
+import { RecipeOption } from 'types/recipe';
 import { Text } from './Text';
 
-interface CustomSelectProps {
+interface CustomSelectProps<Option> {
   title: string;
-  options: (RecipeCategory | RecipeMethod)[];
+  options: Option[];
   itemBgColor?: string;
   itemTextColor?: string;
   borderColor?: string;
   bgColor?: string;
   rippleColor?: string;
-  selectedValue?: RecipeCategory | RecipeMethod;
-  onSelect?: (option: RecipeCategory | RecipeMethod) => void;
+  selectedValue: Option | null;
+  onSelect?: (option: Option) => void;
 }
 
-export function CustomSelect({
+export function CustomSelect<Option extends RecipeOption>({
   title,
   options,
   selectedValue,
@@ -28,13 +28,13 @@ export function CustomSelect({
   borderColor = 'border-green-600',
   bgColor = 'bg-green-600',
   rippleColor = 'bg-green-700',
-}: CustomSelectProps) {
+}: CustomSelectProps<Option>) {
   const [visible, setVisible] = useState(false);
 
   const handleOpen = () => setVisible(true);
   const handleClose = () => setVisible(false);
 
-  const handleSelect = (option: RecipeCategory | RecipeMethod) => {
+  const handleSelect = (option: Option) => {
     onSelect?.(option);
     setVisible(false);
   };

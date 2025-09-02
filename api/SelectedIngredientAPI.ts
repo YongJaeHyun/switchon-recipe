@@ -4,8 +4,8 @@ import { RecipeType, SelectedIngredientDB } from 'types/database';
 import { IIngredient } from 'types/recipe';
 import { sendDBError } from 'utils/sendError';
 
-const selectAll = async (type: RecipeType): Promise<IIngredient[]> =>
-  sendDBError(
+const selectAll = async (type: RecipeType) =>
+  sendDBError<IIngredient[]>(
     async () => {
       const userId = useUserStore.getState().id;
       if (!userId) return [];
@@ -20,7 +20,7 @@ const selectAll = async (type: RecipeType): Promise<IIngredient[]> =>
       if (!data) return [];
 
       const ingredients = type === 'zero' ? data.zero_ingredients : data.ingredients;
-      return JSON.parse(ingredients);
+      return ingredients ? JSON.parse(ingredients) : [];
     },
     {
       errorReturnValue: [],

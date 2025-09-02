@@ -31,7 +31,7 @@ export default function Index() {
 
     const checkCurrentLogin = async () => {
       const isLoggedIn = await UserAPI.checkIsLoggedIn();
-      setIsLoggedIn(isLoggedIn);
+      setIsLoggedIn(!!isLoggedIn);
 
       if (isLoggedIn) {
         await Promise.all([zeroIngredientsPrefetch(), lowIngredientsPrefetch()]);

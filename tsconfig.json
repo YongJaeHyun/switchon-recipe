@@ -1,6 +1,7 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
+    "strict": true,
     "typeRoots": ["./types"],
     "baseUrl": ".",
     "paths": {
@@ -15,5 +16,5 @@
     "nativewind-env.d.ts",
     "supabase/functions/tsconfig.json"
   ],
-  "exclude": ["supabase"]
+  "exclude": ["supabase", "node_modules"]
 }

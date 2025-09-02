@@ -24,7 +24,7 @@ export const createRecipe = async ({
       { command, week, is_zero_carb },
       {
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${session?.access_token}`,
           'Content-Type': 'application/json',
         },
         signal,

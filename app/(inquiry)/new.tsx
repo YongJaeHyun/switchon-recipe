@@ -30,7 +30,12 @@ export default function NewInquiryScreen() {
   const { mutate: insertInquiry, isPending } = useMutation({
     mutationFn: InquiryAPI.insert,
     onSuccess: (newData) => {
-      queryClient.setQueryData<InquiryDB[]>([QueryKey.inquiries], (old) => [newData, ...old]);
+      if (newData) {
+        queryClient.setQueryData<InquiryDB[]>([QueryKey.inquiries], (old = []) => [
+          newData,
+          ...old,
+        ]);
+      }
     },
     onError: () => {
       setModalVisible(false);

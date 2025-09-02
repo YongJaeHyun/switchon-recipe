@@ -21,7 +21,10 @@ const checkIsLoggedIn = async () =>
       if (session?.access_token) {
         const setUser = useUserStore.getState().setUser;
         const user = await selectOne(session.user.id);
-        await setUser(user);
+
+        if (user) {
+          await setUser(user);
+        }
       }
 
       return session?.access_token ? true : false;

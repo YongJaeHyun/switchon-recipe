@@ -61,7 +61,7 @@ export default function HomeScreen() {
     await UserAPI.updateStartDate(selectedDate);
 
     if (bottomSheetRef) {
-      bottomSheetRef.current.close();
+      bottomSheetRef.current?.close();
     }
   };
 

@@ -27,7 +27,7 @@ export default function Profile() {
     if (provider === 'google') await GoogleSignin.signOut();
     if (provider === 'kakao') await unlink();
 
-    if (router.canDismiss) router.dismissAll();
+    if (router.canDismiss()) router.dismissAll();
     router.replace('/(auth)');
 
     const queryClient = new QueryClient();

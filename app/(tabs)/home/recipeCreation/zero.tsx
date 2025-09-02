@@ -48,8 +48,9 @@ export default function ZeroRecipeCreationScreen() {
   const [resetTrigger, setResetTrigger] = useState(false);
 
   const getUserWeek = () => {
+    const today = new Date().toISOString();
     const startDate = useUserStore.getState().start_date;
-    const { week: userWeek } = getWeekAndDay(startDate);
+    const { week: userWeek } = getWeekAndDay(startDate ?? today);
 
     return userWeek;
   };

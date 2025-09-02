@@ -4,10 +4,10 @@ import { useUserStore } from 'stores/userStore';
 import { RecipeDB, SavedRecipeDB } from 'types/database';
 import { sendDBError } from 'utils/sendError';
 
-const selectAllRecent = async (): Promise<RecipeDB[]> =>
-  sendDBError(async () => {
+const selectAllRecent = async () =>
+  sendDBError<RecipeDB[]>(async () => {
     const userId = useUserStore.getState().id;
-    if (!userId) return;
+    if (!userId) throw new Error('userId가 존재하지 않습니다.');
 
     const { data, error } = await supabase
       .from('recipe_with_is_saved')
@@ -22,8 +22,8 @@ const selectAllRecent = async (): Promise<RecipeDB[]> =>
   });
 
 // SAVED_RECIPE
-const checkIsSavedRecipe = async (recipeId: number): Promise<boolean> =>
-  sendDBError(
+const checkIsSavedRecipe = async (recipeId: number) =>
+  sendDBError<boolean>(
     async () => {
       const { data, error } = await supabase
         .from('saved_recipe')
@@ -38,8 +38,8 @@ const checkIsSavedRecipe = async (recipeId: number): Promise<boolean> =>
     { errorReturnValue: false }
   );
 
-const selectAllSavedByWeek = async (week: number): Promise<RecipeDB[]> =>
-  sendDBError(async () => {
+const selectAllSavedByWeek = async (week: number) =>
+  sendDBError<RecipeDB[]>(async () => {
     const { data, error } = await supabase
       .from('recipe_with_is_saved')
       .select('*')
@@ -52,10 +52,10 @@ const selectAllSavedByWeek = async (week: number): Promise<RecipeDB[]> =>
     return data;
   });
 
-const selectAllSaved = async (): Promise<RecipeDB[]> =>
-  sendDBError(async () => {
+const selectAllSaved = async () =>
+  sendDBError<RecipeDB[]>(async () => {
     const userId = useUserStore.getState().id;
-    if (!userId) return;
+    if (!userId) throw new Error('userId가 존재하지 않습니다.');
 
     const { data, error } = await supabase
       .from('recipe_with_is_saved')
@@ -84,7 +84,7 @@ const insertSaved = async (recipeId: number) =>
       if (error) throw error;
 
       const savedRecipes = await selectAllSaved();
-      setSavedRecipes(savedRecipes);
+      setSavedRecipes(savedRecipes ?? []);
     }
   });
 
@@ -104,8 +104,8 @@ const deleteSaved = async (recipeId: number) =>
         selectAllRecent(),
       ]);
 
-      setSavedRecipes(savedRecipes);
-      setRecentRecipes(recentRecipes);
+      setSavedRecipes(savedRecipes ?? []);
+      setRecentRecipes(recentRecipes ?? []);
     }
   });
 
