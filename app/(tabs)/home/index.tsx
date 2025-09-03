@@ -1,4 +1,5 @@
 import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
+import { CustomBottomSheet } from 'components/common/CustomBottomSheet';
 import CustomCalendar from 'components/common/CustomCalendar';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
@@ -11,9 +12,8 @@ import useKoreanToday from 'hooks/useKoreanToday';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { useCallback, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUserStore } from 'stores/userStore';
-import colors from 'tailwindcss/colors';
 import { getWeekAndDay } from 'utils/date';
 import { RecipeAPI } from '../../../api/RecipeAPI';
 import { UserAPI } from '../../../api/UserAPI';
@@ -22,7 +22,6 @@ import { useRecipeStore } from '../../../stores/recipeStore';
 
 export default function HomeScreen() {
   const bottomSheetRef = useRef<BottomSheet>(null);
-  const inset = useSafeAreaInsets();
 
   const { selectedIngredients: lowIngredients, upsertIngredients: upsertLowIngredients } =
     useSelectedIngredients({ type: 'low' });
@@ -105,13 +104,7 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
 
-      <BottomSheet
-        style={{ borderTopWidth: 2, borderColor: colors.neutral[100] }}
-        handleIndicatorStyle={{ backgroundColor: colors.neutral[500] }}
-        bottomInset={inset.bottom}
-        ref={bottomSheetRef}
-        index={-1}
-        enablePanDownToClose>
+      <CustomBottomSheet ref={bottomSheetRef}>
         <BottomSheetView className="px-5">
           <View className="flex-row items-center justify-between">
             <Text className="mb-2 text-2xl font-bold">시작 날짜 재설정</Text>
@@ -134,7 +127,7 @@ export default function HomeScreen() {
             <Text className="text-lg font-semibold text-white">날짜 재설정하기</Text>
           </RippleButton>
         </BottomSheetView>
-      </BottomSheet>
+      </CustomBottomSheet>
     </SafeAreaView>
   );
 }

@@ -1,3 +1,4 @@
+import { PortalProvider } from '@gorhom/portal';
 import { initializeKakaoSDK } from '@react-native-kakao/core';
 import * as Sentry from '@sentry/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -56,15 +57,17 @@ function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
-          <Stack>
-            <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen name="(greet)" options={{ headerShown: false }} />
-            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-            <Stack.Screen name="(inquiry)" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)/home" options={{ headerShown: false }} />
-            <Stack.Screen name="profile" options={{ headerShown: false }} />
-            <Stack.Screen name="kakaolink" options={{ headerShown: false }} />
-          </Stack>
+          <PortalProvider>
+            <Stack>
+              <Stack.Screen name="index" options={{ headerShown: false }} />
+              <Stack.Screen name="(greet)" options={{ headerShown: false }} />
+              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+              <Stack.Screen name="(inquiry)" options={{ headerShown: false }} />
+              <Stack.Screen name="(tabs)/home" options={{ headerShown: false }} />
+              <Stack.Screen name="profile" options={{ headerShown: false }} />
+              <Stack.Screen name="kakaolink" options={{ headerShown: false }} />
+            </Stack>
+          </PortalProvider>
         </GestureHandlerRootView>
         <Toast config={toastConfig} />
         <StatusBar style="dark" />
