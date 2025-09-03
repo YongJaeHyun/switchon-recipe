@@ -81,7 +81,7 @@ export default function LowRecipeCreationScreen() {
 
     const command =
       selectedIngredients.length === 0
-        ? `다음 정보를 참고해서, 스위치온 ${week}주차에 먹을 수 있는 가장 맛있는 저탄수식 레시피를 만들어줘. 소스나 조미료는 자유롭게 활용해도 돼. ${category ? `\n요리 카테고리: ${category}` : ''} ${method ? `\n요리 방식: ${method}` : ''}`
+        ? `다음 정보를 참고해서, 스위치온 ${week}주차에 먹을 수 있는 맛있는 저탄수식 레시피를 인터넷에서 찾아줘. 소스나 조미료는 자유롭게 활용해도 돼. ${category ? `\n요리 카테고리: ${category}` : ''} ${method ? `\n요리 방식: ${method}` : ''}`
         : `다음 정보를 참고해서, 스위치온 ${week}주차에 먹을 수 있는 저탄수식 레시피를 만들어줘. 재료는 아래에 적혀있는 재료만 사용해야해. 가능하다면, 모든 재료를 사용해야해. 소스나 조미료는 자유롭게 활용해도 돼. \n재료: ${ingredients} ${category ? `\n요리 카테고리: ${category}` : ''} ${method ? `\n요리 방식: ${method}` : ''}`;
 
     controller.current = new AbortController();
@@ -95,7 +95,7 @@ export default function LowRecipeCreationScreen() {
     if (!recipe) return null;
 
     const recentRecipes = await RecipeAPI.selectAllRecent();
-    setRecentRecipes(recentRecipes);
+    setRecentRecipes(recentRecipes ?? []);
 
     return recipe;
   };
