@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import path from 'path';
+import { pathToFileURL } from 'url';
 
 dotenv.config();
 
@@ -19,7 +20,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 async function updateVersion() {
   try {
     const appConfigPath = path.resolve(process.cwd(), 'app.config.js');
-    const appConfigModule = await import(appConfigPath);
+    const appConfigModule = await import(pathToFileURL(appConfigPath).href);
 
     const config = appConfigModule.default;
 

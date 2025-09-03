@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import semver from 'semver';
-import { APP_VERSION } from './const/const.ts';
+import { APP_VERSION } from './const/const.js';
 
 const APP_MAJOR_VERSION = `v${semver.major(APP_VERSION)}`;
 
