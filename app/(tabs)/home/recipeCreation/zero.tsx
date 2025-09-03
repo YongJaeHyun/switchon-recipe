@@ -77,18 +77,21 @@ export default function ZeroRecipeCreationScreen() {
 
   const createRecipeWithAI = async () => {
     const ingredients = selectedIngredients.map((ingredients) => ingredients.name).join(', ');
-    const week = getUserWeek();
+
+    const userWeek = getUserWeek();
+    const availableWeek = Math.min(userWeek, 4);
+    const recipeWeek = Math.min(userWeek, 3);
 
     const command =
       selectedIngredients.length === 0
-        ? `다음 정보를 참고해서, 스위치온 ${week}주차에 먹을 수 있는 맛있는 무탄수식 레시피를 인터넷에서 찾아줘. 소스나 조미료는 자유롭게 활용해도 돼. ${category ? `\n요리 카테고리: ${category}` : ''} ${method ? `\n요리 방식: ${method}` : ''}`
-        : `다음 정보를 참고해서, 스위치온 ${week}주차에 먹을 수 있는 무탄수식 레시피를 만들어줘. 가능하다면, 모든 재료를 사용해야해. 재료가 많다면, 모든 재료를 이용할 필요는 없어. 소스나 조미료는 자유롭게 활용해도 돼. \n재료: ${ingredients} ${category ? `\n요리 카테고리: ${category}` : ''} ${method ? `\n요리 방식: ${method}` : ''}`;
+        ? `다음 정보를 참고해서, 스위치온 ${availableWeek}주차에 먹을 수 있는 맛있는 무탄수식 레시피를 인터넷에서 찾아줘. 소스나 조미료는 자유롭게 활용해도 돼. ${category ? `\n요리 카테고리: ${category}` : ''} ${method ? `\n요리 방식: ${method}` : ''}`
+        : `다음 정보를 참고해서, 스위치온 ${availableWeek}주차에 먹을 수 있는 무탄수식 레시피를 만들어줘. 가능하다면, 모든 재료를 사용해야해. 재료가 많다면, 모든 재료를 이용할 필요는 없어. 소스나 조미료는 자유롭게 활용해도 돼. \n재료: ${ingredients} ${category ? `\n요리 카테고리: ${category}` : ''} ${method ? `\n요리 방식: ${method}` : ''}`;
 
     controller.current = new AbortController();
 
     const recipe = await createRecipe({
       command,
-      week,
+      week: Math.min(recipeWeek, 3),
       isZeroCarb: true,
       signal: controller.current.signal,
     });
