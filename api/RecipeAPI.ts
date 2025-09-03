@@ -1,8 +1,11 @@
+import { QueryKey } from 'const/queryKey';
+import { queryClient } from 'lib/queryClient';
 import { supabase } from 'lib/supabase';
 import { useRecipeStore } from 'stores/recipeStore';
 import { useUserStore } from 'stores/userStore';
 import { RecipeDB, SavedRecipeDB } from 'types/database';
 import { sendError } from 'utils/sendError';
+import { useSavedRecipeStore } from '../stores/savedRecipeStore';
 
 const selectAllRecent = async () =>
   sendError<RecipeDB[]>(async () => {
@@ -37,12 +40,32 @@ const checkIsSavedRecipe = async (recipeId: number) =>
 
 const selectAllSavedByWeek = async (week: number) =>
   sendError<RecipeDB[]>(async () => {
-    const { data, error } = await supabase
+    const { sort, filter } = useSavedRecipeStore.getState();
+
+    let query = supabase
       .from('recipe_with_is_saved')
       .select('*')
       .eq('week', week)
-      .eq('is_saved', true)
-      .order('saved_at', { ascending: false });
+      .eq('is_saved', true);
+
+    switch (filter) {
+      case '무탄수':
+        query = query.eq('is_zero_carb', true);
+        break;
+      case '저탄수':
+        query = query.eq('is_zero_carb', false);
+        break;
+    }
+
+    switch (sort) {
+      case '조리시간순':
+        query = query.order('cooking_time', { ascending: true });
+      case '최신순':
+      default:
+        query = query.order('saved_at', { ascending: false });
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
 
@@ -82,6 +105,8 @@ const insertSaved = async (recipeId: number) =>
 
       const savedRecipes = await selectAllSaved();
       setSavedRecipes(savedRecipes ?? []);
+
+      queryClient.invalidateQueries({ queryKey: [QueryKey.savedRecipes] });
     }
   });
 
@@ -103,6 +128,8 @@ const deleteSaved = async (recipeId: number) =>
 
       setSavedRecipes(savedRecipes ?? []);
       setRecentRecipes(recentRecipes ?? []);
+
+      queryClient.removeQueries({ queryKey: [QueryKey.savedRecipes] });
     }
   });
 
