@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import semver from 'semver';
+import { APP_VERSION } from './const/const.ts';
 
-const APP_VERSION = '2.0.0';
 const APP_MAJOR_VERSION = `v${semver.major(APP_VERSION)}`;
 
 const appEnv = process.env.APP_ENV || 'production';

@@ -7,7 +7,7 @@ import ConfirmModal from 'components/common/ConfirmModal';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import { baseProfile, googleIcon, kakaoIconSmall } from 'const/assets';
-import Constants from 'expo-constants';
+import { APP_VERSION } from 'const/const';
 import { Image } from 'expo-image';
 import { Link, router } from 'expo-router';
 import { useState } from 'react';
@@ -90,7 +90,7 @@ export default function Profile() {
           <View className="flex-row items-center gap-1">
             <MaterialIcons name="info-outline" size={16} color={colors.neutral[400]} />
             <Text className="text-neutral-400">
-              버전 정보: <Text>{Constants.expoConfig?.version}</Text>
+              버전 정보: <Text>{APP_VERSION}</Text>
             </Text>
           </View>
         </View>

@@ -1,3 +1,5 @@
+export const APP_VERSION = '2.0.1';
+
 export const FIRST_LAUNCH_KEY = 'is_first_launch';
 
 export const STORE_URL =
