@@ -3,7 +3,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Text } from 'components/common/Text';
 import { Image } from 'expo-image';
 import { Link } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import colors from 'tailwindcss/colors';
 import { RecipeDB } from 'types/database';
@@ -11,7 +11,7 @@ import { getWeekColor } from 'utils/getWeekColor';
 import { RecipeAPI } from '../../api/RecipeAPI';
 
 export default function RecipeCard(recipe: RecipeDB) {
-  const [isSaved, setIsSaved] = useState<boolean>(recipe.is_saved);
+  const [isSaved, setIsSaved] = useState<boolean>(false);
   const timer = useRef<NodeJS.Timeout>(null);
 
   const toggleIsSaved = () => {
@@ -29,6 +29,10 @@ export default function RecipeCard(recipe: RecipeDB) {
       timer.current = null;
     }, 500);
   };
+
+  useEffect(() => {
+    setIsSaved(recipe.is_saved);
+  }, [recipe]);
   return (
     <Link
       href={`/(tabs)/home/recipeDetail?recipe=${JSON.stringify({ ...recipe, isSaved })}`}
