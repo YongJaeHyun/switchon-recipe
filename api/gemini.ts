@@ -1,6 +1,6 @@
-import * as Sentry from '@sentry/react-native';
 import axios, { isCancel } from 'axios';
 import { RecipeDB } from 'types/database';
+import { isNetworkError } from 'utils/sendError';
 import { showErrorToast } from 'utils/showToast';
 import { UserAPI } from './UserAPI';
 
@@ -32,11 +32,12 @@ export const createRecipe = async ({
     );
 
     return response.data;
-  } catch (error: unknown) {
-    if (isCancel(error)) {
+  } catch (error) {
+    if (isNetworkError(error)) {
+      showErrorToast({ textType: 'NETWORK_ERROR' });
+    } else if (isCancel(error)) {
       showErrorToast({ textType: 'RECIPE_CREATION_CANCELED' });
     } else {
-      Sentry.captureException(error, { level: 'warning' });
       showErrorToast({ textType: 'RECIPE_CREATION_TEMPORARY_ERROR' });
     }
   }

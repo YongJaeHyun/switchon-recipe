@@ -2,30 +2,25 @@ import { supabase } from 'lib/supabase';
 import { useUserStore } from 'stores/userStore';
 import { RecipeType, SelectedIngredientDB } from 'types/database';
 import { IIngredient } from 'types/recipe';
-import { sendDBError } from 'utils/sendError';
+import { sendError } from 'utils/sendError';
 
 const selectAll = async (type: RecipeType) =>
-  sendDBError<IIngredient[]>(
-    async () => {
-      const userId = useUserStore.getState().id;
-      if (!userId) return [];
+  sendError<IIngredient[]>(async () => {
+    const userId = useUserStore.getState().id;
+    if (!userId) return [];
 
-      const { data, error } = await supabase
-        .from('selected_ingredient')
-        .select('*')
-        .eq('uid', userId)
-        .maybeSingle<SelectedIngredientDB>();
+    const { data, error } = await supabase
+      .from('selected_ingredient')
+      .select('*')
+      .eq('uid', userId)
+      .maybeSingle<SelectedIngredientDB>();
 
-      if (error) throw error;
-      if (!data) return [];
+    if (error) throw error;
+    if (!data) return [];
 
-      const ingredients = type === 'zero' ? data.zero_ingredients : data.ingredients;
-      return ingredients ? JSON.parse(ingredients) : [];
-    },
-    {
-      errorReturnValue: [],
-    }
-  );
+    const ingredients = type === 'zero' ? data.zero_ingredients : data.ingredients;
+    return ingredients ? JSON.parse(ingredients) : [];
+  });
 
 const upsert = async (type: RecipeType, ingredients: IIngredient[]) => {
   if (type === 'zero') return await upsertZeroIngredients(ingredients);
@@ -34,7 +29,7 @@ const upsert = async (type: RecipeType, ingredients: IIngredient[]) => {
 };
 
 const upsertZeroIngredients = async (ingredients: IIngredient[]) =>
-  sendDBError(async () => {
+  sendError(async () => {
     const userId = useUserStore.getState().id;
 
     const { error } = await supabase
@@ -50,7 +45,7 @@ const upsertZeroIngredients = async (ingredients: IIngredient[]) =>
   });
 
 const upsertLowIngredients = async (ingredients: IIngredient[]) =>
-  sendDBError(async () => {
+  sendError(async () => {
     const userId = useUserStore.getState().id;
 
     const { error } = await supabase
@@ -63,7 +58,7 @@ const upsertLowIngredients = async (ingredients: IIngredient[]) =>
   });
 
 const reset = async (type: RecipeType) =>
-  sendDBError(async () => {
+  sendError(async () => {
     await upsert(type, []);
   });
 

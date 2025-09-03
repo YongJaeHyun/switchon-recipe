@@ -1,11 +1,11 @@
 import { supabase } from 'lib/supabase';
 import { useUserStore } from 'stores/userStore';
 import { InquiryDB } from 'types/database';
-import { sendDBError } from 'utils/sendError';
+import { sendError } from 'utils/sendError';
 import { showSuccessToast } from 'utils/showToast';
 
 const selectAll = async () =>
-  sendDBError<InquiryDB[]>(async () => {
+  sendError<InquiryDB[]>(async () => {
     const userId = useUserStore.getState().id;
 
     const { data, error } = await supabase
@@ -20,7 +20,7 @@ const selectAll = async () =>
   });
 
 const insert = async (inquiry: Partial<InquiryDB>) =>
-  sendDBError<InquiryDB>(async () => {
+  sendError<InquiryDB>(async () => {
     const { data, error } = await supabase
       .from('inquiry')
       .insert({ ...inquiry })

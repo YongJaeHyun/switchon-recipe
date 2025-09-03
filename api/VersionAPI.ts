@@ -1,20 +1,15 @@
 import { supabase } from 'lib/supabase';
 import { VersionDB } from 'types/database';
-import { sendDBError } from 'utils/sendError';
+import { sendError } from 'utils/sendError';
 
 const selectLatestVersion = async () =>
-  sendDBError(
-    async () => {
-      const { data, error } = await supabase.from('version').select('*').single<VersionDB>();
+  sendError(async () => {
+    const { data, error } = await supabase.from('version').select('*').single<VersionDB>();
 
-      if (error) throw new Error(`[Supabase] ${error.message}`);
+    if (error) throw new Error(`[Supabase] ${error.message}`);
 
-      return data.latest_version;
-    },
-    {
-      errorReturnValue: '1.0.0',
-    }
-  );
+    return data.latest_version;
+  });
 
 export const VersionAPI = {
   selectLatestVersion,

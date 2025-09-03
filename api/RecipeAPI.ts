@@ -2,10 +2,10 @@ import { supabase } from 'lib/supabase';
 import { useRecipeStore } from 'stores/recipeStore';
 import { useUserStore } from 'stores/userStore';
 import { RecipeDB, SavedRecipeDB } from 'types/database';
-import { sendDBError } from 'utils/sendError';
+import { sendError } from 'utils/sendError';
 
 const selectAllRecent = async () =>
-  sendDBError<RecipeDB[]>(async () => {
+  sendError<RecipeDB[]>(async () => {
     const userId = useUserStore.getState().id;
     if (!userId) throw new Error('userId가 존재하지 않습니다.');
 
@@ -23,23 +23,20 @@ const selectAllRecent = async () =>
 
 // SAVED_RECIPE
 const checkIsSavedRecipe = async (recipeId: number) =>
-  sendDBError<boolean>(
-    async () => {
-      const { data, error } = await supabase
-        .from('saved_recipe')
-        .select('id')
-        .eq('recipe_id', recipeId)
-        .limit(1);
+  sendError<boolean>(async () => {
+    const { data, error } = await supabase
+      .from('saved_recipe')
+      .select('id')
+      .eq('recipe_id', recipeId)
+      .limit(1);
 
-      if (error) throw error;
+    if (error) throw error;
 
-      return !!data?.length;
-    },
-    { errorReturnValue: false }
-  );
+    return !!data?.length;
+  });
 
 const selectAllSavedByWeek = async (week: number) =>
-  sendDBError<RecipeDB[]>(async () => {
+  sendError<RecipeDB[]>(async () => {
     const { data, error } = await supabase
       .from('recipe_with_is_saved')
       .select('*')
@@ -53,7 +50,7 @@ const selectAllSavedByWeek = async (week: number) =>
   });
 
 const selectAllSaved = async () =>
-  sendDBError<RecipeDB[]>(async () => {
+  sendError<RecipeDB[]>(async () => {
     const userId = useUserStore.getState().id;
     if (!userId) throw new Error('userId가 존재하지 않습니다.');
 
@@ -70,7 +67,7 @@ const selectAllSaved = async () =>
   });
 
 const insertSaved = async (recipeId: number) =>
-  sendDBError(async () => {
+  sendError(async () => {
     const userId = useUserStore.getState().id;
     const setSavedRecipes = useRecipeStore.getState().setSavedRecipes;
     const isSavedRecipe = await checkIsSavedRecipe(recipeId);
@@ -89,7 +86,7 @@ const insertSaved = async (recipeId: number) =>
   });
 
 const deleteSaved = async (recipeId: number) =>
-  sendDBError(async () => {
+  sendError(async () => {
     const setSavedRecipes = useRecipeStore.getState().setSavedRecipes;
     const setRecentRecipes = useRecipeStore.getState().setRecentRecipes;
     const isSavedRecipe = await checkIsSavedRecipe(recipeId);

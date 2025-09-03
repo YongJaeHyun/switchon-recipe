@@ -6,24 +6,28 @@ import { router } from 'expo-router';
 import { supabase } from 'lib/supabase';
 import { TouchableHighlight } from 'react-native';
 import { useUserStore } from 'stores/userStore';
+import { sendError } from 'utils/sendError';
 
 export default function KakaoLoginButton() {
   const setUser = useUserStore((state) => state.setUser);
 
-  async function signInWithKakao() {
-    try {
-      const response = await login();
-      if (response?.idToken) {
+  const signInWithKakao = () =>
+    sendError(
+      async () => {
+        const response = await login();
+        if (!response?.idToken) throw new Error('no ID token present!');
+
         const { data, error } = await supabase.auth.signInWithIdToken({
           provider: 'kakao',
           token: response.idToken,
         });
 
-        if (error) {
-          console.error('Kakao login error:', error);
-        }
-        if (data.user.email) {
+        if (error) throw new Error(error.message);
+
+        if (data.user?.email) {
           const user = await UserAPI.selectOne(data.user.id);
+          if (!user) return;
+
           setUser({
             id: user.id,
             email: user.email,
@@ -40,12 +44,12 @@ export default function KakaoLoginButton() {
             router.replace('/(auth)/onboard');
           }
         }
+      },
+      {
+        prefix: '[Kakao Login Error]: ',
+        textType: 'LOGIN_ERROR',
       }
-    } catch (error: any) {
-      console.error('Kakao login failed:', error);
-    }
-  }
-
+    );
   return (
     <TouchableHighlight onPress={signInWithKakao} className="rounded-lg">
       <Image style={{ width: 310, height: 44 }} source={kakaoIcon} />
