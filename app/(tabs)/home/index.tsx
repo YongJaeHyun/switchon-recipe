@@ -6,8 +6,7 @@ import HomeHeader from 'components/home/HomeHeader';
 import RecentRecipes from 'components/home/RecentRecipes';
 import RecipeCreation from 'components/home/RecipeCreation';
 import SavedRecipes from 'components/home/SavedRecipes';
-import { newIngredients } from 'const/ingredients';
-import { seosusa } from 'es-hangul';
+import { notices } from 'const/notices';
 import useKoreanToday from 'hooks/useKoreanToday';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { useCallback, useRef, useState } from 'react';
@@ -18,9 +17,8 @@ import colors from 'tailwindcss/colors';
 import { getWeekAndDay } from 'utils/date';
 import { RecipeAPI } from '../../../api/RecipeAPI';
 import { UserAPI } from '../../../api/UserAPI';
+import { Notice } from '../../../components/home/Notice';
 import { useRecipeStore } from '../../../stores/recipeStore';
-
-const { month, week, names } = newIngredients;
 
 export default function HomeScreen() {
   const bottomSheetRef = useRef<BottomSheet>(null);
@@ -71,8 +69,8 @@ export default function HomeScreen() {
       RecipeAPI.selectAllRecent(),
       RecipeAPI.selectAllSaved(),
     ]);
-    setRecentRecipes(recentRecipes);
-    setSavedRecipes(savedRecipes);
+    setRecentRecipes(recentRecipes ?? []);
+    setSavedRecipes(savedRecipes ?? []);
     setRefreshing(false);
   }, [setRecentRecipes, setSavedRecipes]);
 
@@ -88,11 +86,7 @@ export default function HomeScreen() {
 
         <View className="mb-10 gap-10">
           <View className="gap-5">
-            <View className="w-full rounded-full border border-neutral-400 px-3 py-2">
-              <Text className="text-sm text-neutral-600">
-                🥗 [{month}월 {seosusa(week)}주 재료 업데이트] - {names.join(', ')} 추가
-              </Text>
-            </View>
+            <Notice notices={notices} />
             <View className="flex-row gap-4">
               <RecipeCreation
                 href={'/home/recipeCreation/zero'}
