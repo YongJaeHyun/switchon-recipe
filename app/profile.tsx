@@ -2,7 +2,6 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { unlink } from '@react-native-kakao/user';
-import { QueryClient } from '@tanstack/react-query';
 import ConfirmModal from 'components/common/ConfirmModal';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
@@ -10,6 +9,7 @@ import { baseProfile, googleIcon, kakaoIconSmall } from 'const/assets';
 import { APP_VERSION } from 'const/const';
 import { Image } from 'expo-image';
 import { Link, router } from 'expo-router';
+import { queryClient } from 'lib/queryClient';
 import { useState } from 'react';
 import { TouchableOpacity, View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
@@ -30,7 +30,6 @@ export default function Profile() {
     if (router.canDismiss()) router.dismissAll();
     router.replace('/(auth)');
 
-    const queryClient = new QueryClient();
     queryClient.clear();
   };
 

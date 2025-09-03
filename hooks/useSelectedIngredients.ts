@@ -1,6 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { SelectedIngredientAPI } from 'api/SelectedIngredientAPI';
 import { QueryKey } from 'const/queryKey';
+import { queryClient } from 'lib/queryClient';
 import { RecipeType } from 'types/database';
 import { IIngredient } from 'types/recipe';
 import { showInfoToast } from 'utils/showToast';
@@ -10,8 +11,6 @@ interface UseSelectedIngredientsProps {
 }
 
 export const useSelectedIngredients = ({ type }: UseSelectedIngredientsProps) => {
-  const queryClient = useQueryClient();
-
   const { data: selectedIngredients = [], isLoading } = useQuery({
     queryKey: [QueryKey.selectedIngredients, type],
     queryFn: () => SelectedIngredientAPI.selectAll(type),

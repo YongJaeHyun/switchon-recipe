@@ -1,5 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { InquiryAPI } from 'api/InquiryAPI';
 import ConfirmModal from 'components/common/ConfirmModal';
 import RippleButton from 'components/common/RippleButton';
@@ -7,6 +7,7 @@ import { Text } from 'components/common/Text';
 import CategoryButton from 'components/inquiry/CategoryButton';
 import { QueryKey } from 'const/queryKey';
 import { router } from 'expo-router';
+import { queryClient } from 'lib/queryClient';
 import { useState } from 'react';
 import { FlatList, ScrollView, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,8 +19,6 @@ type InquiryError = Pick<InquiryDB, 'title' | 'message'>;
 const categories: InquiryCategory[] = ['일반 문의', '버그 신고', '기능 요청'];
 
 export default function NewInquiryScreen() {
-  const queryClient = useQueryClient();
-
   const [isModalVisible, setModalVisible] = useState(false);
 
   const [title, setTitle] = useState('');
