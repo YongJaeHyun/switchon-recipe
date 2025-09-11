@@ -5,6 +5,7 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { shareCustomTemplate } from '@react-native-kakao/share';
 import { useQuery } from '@tanstack/react-query';
+import { RecipeAPI } from 'api/RecipeAPI';
 import { Text } from 'components/common/Text';
 import { logo } from 'const/assets';
 import { Image } from 'expo-image';
@@ -23,7 +24,6 @@ import colors from 'tailwindcss/colors';
 import { RecipeDB } from 'types/database';
 import { IngredientSchema, Recipe } from 'types/recipe';
 import { z } from 'zod';
-import { RecipeAPI } from '../../../api/RecipeAPI';
 
 type RecipeIngredient = string | z.infer<typeof IngredientSchema>;
 
@@ -92,7 +92,7 @@ export default function RecipeDetailScreen() {
         title: recipe_name ?? '',
         image_uri: image_uri ?? '',
         recipe,
-        description: `탄수화물 🍚 ${parsedNutrition.carbohydrates}g  |  단백질 🍗 ${parsedNutrition.protein}g  |  지방 🧀 ${parsedNutrition.fat}g`,
+        description: `🕒 ${cooking_time}분`,
       },
     });
   };
