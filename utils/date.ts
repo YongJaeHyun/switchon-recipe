@@ -35,8 +35,8 @@ const getKoreanDateWeeksAgo = (weeksAgo: number) => {
   return weeksAgoDate.toISOString().split('T')[0];
 };
 
-export function formatKoreanDate(utcString: string): string {
-  const date = new Date(utcString);
+export function formatKoreanDate(utcString: string | undefined): string {
+  const date = utcString ? new Date(utcString) : new Date();
 
   const koreanDate = convertToKoreanDate(date);
   return koreanDate.toLocaleDateString('ko-KR', {
