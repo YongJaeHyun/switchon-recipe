@@ -1,11 +1,11 @@
 import { VersionAPI } from 'api/VersionAPI';
+import { STORE_URL } from 'const/const';
 import Constants from 'expo-constants';
 import * as Updates from 'expo-updates';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, AppState, Linking } from 'react-native';
 import semver from 'semver';
-
-const STORE_URL = 'https://play.google.com/store/apps/details?id=com.dltjrrbs2020.switchonrecipe';
+import { captureError } from 'utils/sendError';
 
 export const useAutoUpdate = () => {
   const appState = useRef(AppState.currentState);
@@ -18,23 +18,29 @@ export const useAutoUpdate = () => {
 
   useEffect(() => {
     const checkCurrentVersion = async () => {
-      const appVersion = Constants.expoConfig?.version;
-      const latestVersion = await VersionAPI.selectLatestVersion();
+      try {
+        const appVersion = Constants.expoConfig?.version;
+        const latestVersion = (await VersionAPI.selectLatestVersion()) ?? '1.0.0';
 
-      const currentMajor = semver.major(appVersion);
-      const latestMajor = semver.major(latestVersion);
-      if (latestMajor > currentMajor) {
-        Alert.alert(
-          '업데이트 알림',
-          '새로운 버전이 출시되었어요. 업데이트를 진행해주세요.',
-          [
-            {
-              text: '업데이트하기',
-              onPress: redirectToStore,
-            },
-          ],
-          { cancelable: false }
-        );
+        if (!appVersion) throw new Error('appVersion을 찾을 수 없습니다.');
+
+        const currentMajor = semver.major(appVersion);
+        const latestMajor = semver.major(latestVersion);
+        if (latestMajor > currentMajor) {
+          Alert.alert(
+            '업데이트 알림',
+            '새로운 버전이 출시되었어요. 업데이트를 진행해주세요.',
+            [
+              {
+                text: '업데이트하기',
+                onPress: redirectToStore,
+              },
+            ],
+            { cancelable: false }
+          );
+        }
+      } catch (error) {
+        captureError({ error, prefix: '[useAutoUpdate]: ', level: 'fatal' });
       }
     };
 

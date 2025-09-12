@@ -13,9 +13,17 @@ const MAKE_INQUIRY_SUCCESS: ToastTextProps = {
   subtitle: '문의 남겨주셔서 감사합니다 :)',
 };
 
+const LOGIN_ERROR: ToastTextProps = {
+  title: '로그인 실패',
+  subtitle: '로그인에 실패했습니다.',
+};
 const DB_REQUEST_ERROR: ToastTextProps = {
   title: 'DB 에러 발생',
   subtitle: '에러 정보가 관리자에게 전달되었습니다. 빠른 시일 내에 조치하겠습니다.',
+};
+const NETWORK_ERROR: ToastTextProps = {
+  title: '네트워크 에러 발생',
+  subtitle: '인터넷 연결 상태를 확인해주세요.',
 };
 const INGREDIENT_REQUEST_ERROR: ToastTextProps = {
   title: '요청 에러 발생',
@@ -45,5 +53,7 @@ export const ErrorToastText = {
   INGREDIENT_REQUEST_ERROR,
   RECIPE_CREATION_TEMPORARY_ERROR,
   RECIPE_CREATION_CANCELED,
+  NETWORK_ERROR,
+  LOGIN_ERROR,
 };
 export const InfoToastText = { EXCEED_MAXIMUM_INGREDIENT_SELECTED };

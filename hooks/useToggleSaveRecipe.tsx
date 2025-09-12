@@ -1,9 +1,8 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { RecipeAPI } from 'api/RecipeAPI';
+import { queryClient } from 'lib/queryClient';
 
 export function useToggleSaveRecipe({ id }: { id: number }) {
-  const queryClient = useQueryClient();
-
   const optimisticUpdate = (next: boolean) => {
     queryClient.setQueryData(['savedRecipe', id], next);
   };

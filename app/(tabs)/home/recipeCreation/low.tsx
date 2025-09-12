@@ -6,7 +6,7 @@ import { IngredientRequest } from 'components/recipeCreation/IngredientRequest';
 import Ingredients, { IngredientsProps } from 'components/recipeCreation/Ingredients';
 import SelectedIngredient from 'components/recipeCreation/SelectedIngredient';
 import { allIngredients } from 'const/ingredients';
-import { getChoseong } from 'es-hangul';
+import { disassemble } from 'es-hangul';
 import { router } from 'expo-router';
 import { useSelect } from 'hooks/useSelect';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
@@ -26,6 +26,7 @@ import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { RecipeCategory, RecipeMethod } from 'types/recipe';
 import { getWeekAndDay } from 'utils/date';
+import { isCompletedHangul } from 'utils/hangul';
 import { RecipeAPI } from '../../../../api/RecipeAPI';
 
 export default function LowRecipeCreationScreen() {
@@ -47,42 +48,57 @@ export default function LowRecipeCreationScreen() {
   const [resetTrigger, setResetTrigger] = useState(false);
 
   const getUserWeek = () => {
+    const today = new Date().toISOString();
     const startDate = useUserStore.getState().start_date;
-    const { week: userWeek } = getWeekAndDay(startDate);
+    const { week: userWeek } = getWeekAndDay(startDate ?? today);
 
     return userWeek;
   };
 
   const getSearchedIngredients = (item: IngredientsProps) =>
     item.ingredientList.filter((ingredient) => {
-      const ingredientChoseong = getChoseong(ingredient.name);
-      const keywordChoseong = getChoseong(keyword);
+      const { name: ingredientName, subKeywords: ingredientSubKeywords } = ingredient;
+      const trimmedKeyword = keyword.trim();
 
-      const isIncludeChoseong = ingredientChoseong.includes(keywordChoseong);
-      return isIncludeChoseong;
+      if (isCompletedHangul(trimmedKeyword)) {
+        const isIncludeKeyword = ingredientName.includes(trimmedKeyword);
+        const isIncludeSubKeyword = ingredientSubKeywords?.some(
+          (ingredientKeyword) => ingredientKeyword === trimmedKeyword
+        );
+        return isIncludeKeyword || isIncludeSubKeyword;
+      }
+
+      const disassembledIngredient = disassemble(ingredientName);
+      const disassembledKeyword = disassemble(keyword);
+
+      const isIncludeKeyword = disassembledIngredient.includes(disassembledKeyword);
+      return isIncludeKeyword;
     });
 
   const createRecipeWithAI = async () => {
     const ingredients = selectedIngredients.map((ingredients) => ingredients.name).join(', ');
-    const week = getUserWeek();
+
+    const userWeek = getUserWeek();
+    const availableWeek = Math.min(userWeek, 4);
+    const recipeWeek = Math.min(userWeek, 3);
 
     const command =
       selectedIngredients.length === 0
-        ? `다음 정보를 참고해서, 스위치온 ${week}주차에 먹을 수 있는 가장 맛있는 저탄수식 레시피를 만들어줘. 소스나 조미료는 자유롭게 활용해도 돼. ${category ? `\n요리 카테고리: ${category}` : ''} ${method ? `\n요리 방식: ${method}` : ''}`
-        : `다음 정보를 참고해서, 스위치온 ${week}주차에 먹을 수 있는 저탄수식 레시피를 만들어줘. 재료는 아래에 적혀있는 재료만 사용해야해. 가능하다면, 모든 재료를 사용해야해. 소스나 조미료는 자유롭게 활용해도 돼. \n재료: ${ingredients} ${category ? `\n요리 카테고리: ${category}` : ''} ${method ? `\n요리 방식: ${method}` : ''}`;
+        ? `다음 정보를 참고해서, 스위치온 ${availableWeek}주차에 먹을 수 있는 맛있는 저탄수식 레시피를 인터넷에서 찾아줘. 소스나 조미료는 자유롭게 활용해도 돼. ${category ? `\n요리 카테고리: ${category}` : ''} ${method ? `\n요리 방식: ${method}` : ''}`
+        : `다음 정보를 참고해서, 스위치온 ${availableWeek}주차에 먹을 수 있는 저탄수식 레시피를 만들어줘. 재료는 아래에 적혀있는 재료만 사용해야해. 가능하다면, 모든 재료를 사용해야해. 소스나 조미료는 자유롭게 활용해도 돼. \n재료: ${ingredients} ${category ? `\n요리 카테고리: ${category}` : ''} ${method ? `\n요리 방식: ${method}` : ''}`;
 
     controller.current = new AbortController();
 
     const recipe = await createRecipe({
       command,
-      week,
+      week: recipeWeek,
       isZeroCarb: false,
       signal: controller.current.signal,
     });
     if (!recipe) return null;
 
     const recentRecipes = await RecipeAPI.selectAllRecent();
-    setRecentRecipes(recentRecipes);
+    setRecentRecipes(recentRecipes ?? []);
 
     return recipe;
   };

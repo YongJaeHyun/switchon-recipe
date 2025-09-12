@@ -1,9 +1,9 @@
-import * as Sentry from '@sentry/react-native';
 import { useLinkingURL } from 'expo-linking';
 import { Href, Redirect, SplashScreen } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import colors from 'tailwindcss/colors';
+import { captureError } from 'utils/sendError';
 import { UserAPI } from '../api/UserAPI';
 
 export default function RedirectKakaoLink() {
@@ -14,6 +14,8 @@ export default function RedirectKakaoLink() {
   useEffect(() => {
     const handleUrl = async () => {
       try {
+        if (!linkingUrl) throw new Error('linkingUrl이 없습니다.');
+
         const url = new URL(linkingUrl, 'switchon-recipe://');
         const host = url.hostname;
         const recipe = url.searchParams.get('recipe');
@@ -25,7 +27,7 @@ export default function RedirectKakaoLink() {
           setTargetHref('/(auth)');
         }
       } catch (error) {
-        Sentry.captureException(error);
+        captureError({ error, prefix: '[kakaolink]: ', level: 'fatal' });
         setTargetHref('/(auth)');
       } finally {
         SplashScreen.hideAsync();

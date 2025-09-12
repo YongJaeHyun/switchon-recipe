@@ -1,4 +1,8 @@
 import 'dotenv/config';
+import semver from 'semver';
+import { APP_VERSION } from './const/const.js';
+
+const APP_MAJOR_VERSION = `v${semver.major(APP_VERSION)}`;
 
 const appEnv = process.env.APP_ENV || 'production';
 
@@ -6,7 +10,8 @@ export default {
   expo: {
     name: appEnv === 'development' ? '스위치온 레시피 개발용' : '스위치온 레시피',
     slug: 'switchon-recipe',
-    version: '1.3.0',
+    version: APP_VERSION,
+    runtimeVersion: APP_MAJOR_VERSION,
     scheme: 'switchon-recipe',
     githubUrl: 'https://github.com/YongJaeHyun/switchon-recipe',
     experiments: {
@@ -90,9 +95,6 @@ export default {
       },
     },
     owner: 'dltjrrbs2020',
-    runtimeVersion: {
-      policy: 'appVersion',
-    },
     updates: {
       url: 'https://u.expo.dev/6e4add71-7b1c-405b-845c-0cc15fa653e7',
     },

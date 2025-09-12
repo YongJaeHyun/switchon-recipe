@@ -1,12 +1,14 @@
+import { PortalProvider } from '@gorhom/portal';
 import { initializeKakaoSDK } from '@react-native-kakao/core';
 import * as Sentry from '@sentry/react-native';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { toastConfig } from 'config/toastConfig';
 import { isRunningInExpoGo } from 'expo';
 import { Stack, useNavigationContainerRef } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useAutoUpdate } from 'hooks/useAutoUpdate';
+import { queryClient } from 'lib/queryClient';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -17,8 +19,6 @@ import '../global.css';
 import '../utils/polyfills';
 
 initializeKakaoSDK(process.env.EXPO_PUBLIC_KAKAO_API_KEY);
-
-const queryClient = new QueryClient();
 
 SplashScreen.preventAutoHideAsync();
 SplashScreen.setOptions({
@@ -56,15 +56,17 @@ function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
-          <Stack>
-            <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen name="(greet)" options={{ headerShown: false }} />
-            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-            <Stack.Screen name="(inquiry)" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)/home" options={{ headerShown: false }} />
-            <Stack.Screen name="profile" options={{ headerShown: false }} />
-            <Stack.Screen name="kakaolink" options={{ headerShown: false }} />
-          </Stack>
+          <PortalProvider>
+            <Stack>
+              <Stack.Screen name="index" options={{ headerShown: false }} />
+              <Stack.Screen name="(greet)" options={{ headerShown: false }} />
+              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+              <Stack.Screen name="(inquiry)" options={{ headerShown: false }} />
+              <Stack.Screen name="(tabs)/home" options={{ headerShown: false }} />
+              <Stack.Screen name="profile" options={{ headerShown: false }} />
+              <Stack.Screen name="kakaolink" options={{ headerShown: false }} />
+            </Stack>
+          </PortalProvider>
         </GestureHandlerRootView>
         <Toast config={toastConfig} />
         <StatusBar style="dark" />

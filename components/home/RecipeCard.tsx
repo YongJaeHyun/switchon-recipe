@@ -3,7 +3,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Text } from 'components/common/Text';
 import { Image } from 'expo-image';
 import { Link } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import colors from 'tailwindcss/colors';
 import { RecipeDB } from 'types/database';
@@ -11,7 +11,7 @@ import { getWeekColor } from 'utils/getWeekColor';
 import { RecipeAPI } from '../../api/RecipeAPI';
 
 export default function RecipeCard(recipe: RecipeDB) {
-  const [isSaved, setIsSaved] = useState<boolean>(recipe?.is_saved ?? false);
+  const [isSaved, setIsSaved] = useState<boolean>(false);
   const timer = useRef<NodeJS.Timeout>(null);
 
   const toggleIsSaved = () => {
@@ -29,6 +29,10 @@ export default function RecipeCard(recipe: RecipeDB) {
       timer.current = null;
     }, 500);
   };
+
+  useEffect(() => {
+    setIsSaved(recipe.is_saved);
+  }, [recipe]);
   return (
     <Link
       href={`/(tabs)/home/recipeDetail?recipe=${JSON.stringify({ ...recipe, isSaved })}`}
@@ -43,11 +47,13 @@ export default function RecipeCard(recipe: RecipeDB) {
         }}>
         <View className="relative h-full w-full flex-[5]">
           <View className="absolute left-2 top-2 z-50 flex-row gap-1.5">
-            <View className={`rounded-full bg-white px-2 py-1`}>
-              <Text className={`text-sm ${getWeekColor(recipe.week)}`}>
-                {recipe.week}주차{recipe.week === 3 && '+'}
-              </Text>
-            </View>
+            {recipe.week && (
+              <View className={`rounded-full bg-white px-2 py-1`}>
+                <Text className={`text-sm ${getWeekColor(recipe.week)}`}>
+                  {recipe.week}주차{recipe.week === 3 && '+'}
+                </Text>
+              </View>
+            )}
             <View className={`rounded-full bg-white px-2 py-1`}>
               <Text className="text-sm text-neutral-500">
                 {recipe.is_zero_carb ? '무탄수' : '저탄수'}
@@ -55,7 +61,9 @@ export default function RecipeCard(recipe: RecipeDB) {
             </View>
           </View>
 
-          <Image source={{ uri: recipe.image_uri }} style={{ width: '100%', height: '100%' }} />
+          {recipe.image_uri && (
+            <Image source={{ uri: recipe.image_uri }} style={{ width: '100%', height: '100%' }} />
+          )}
 
           <Pressable
             onPress={toggleIsSaved}

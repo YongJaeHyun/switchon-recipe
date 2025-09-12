@@ -1,4 +1,5 @@
 import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
+import { CustomBottomSheet } from 'components/common/CustomBottomSheet';
 import CustomCalendar from 'components/common/CustomCalendar';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
@@ -6,22 +7,21 @@ import HomeHeader from 'components/home/HomeHeader';
 import RecentRecipes from 'components/home/RecentRecipes';
 import RecipeCreation from 'components/home/RecipeCreation';
 import SavedRecipes from 'components/home/SavedRecipes';
-import { newIngredientNames } from 'const/ingredients';
+import { notices } from 'const/notices';
 import useKoreanToday from 'hooks/useKoreanToday';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { useCallback, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUserStore } from 'stores/userStore';
-import colors from 'tailwindcss/colors';
 import { getWeekAndDay } from 'utils/date';
 import { RecipeAPI } from '../../../api/RecipeAPI';
 import { UserAPI } from '../../../api/UserAPI';
+import { Notice } from '../../../components/home/Notice';
 import { useRecipeStore } from '../../../stores/recipeStore';
 
 export default function HomeScreen() {
   const bottomSheetRef = useRef<BottomSheet>(null);
-  const inset = useSafeAreaInsets();
 
   const { selectedIngredients: lowIngredients, upsertIngredients: upsertLowIngredients } =
     useSelectedIngredients({ type: 'low' });
@@ -58,7 +58,7 @@ export default function HomeScreen() {
     await UserAPI.updateStartDate(selectedDate);
 
     if (bottomSheetRef) {
-      bottomSheetRef.current.close();
+      bottomSheetRef.current?.close();
     }
   };
 
@@ -68,8 +68,8 @@ export default function HomeScreen() {
       RecipeAPI.selectAllRecent(),
       RecipeAPI.selectAllSaved(),
     ]);
-    setRecentRecipes(recentRecipes);
-    setSavedRecipes(savedRecipes);
+    setRecentRecipes(recentRecipes ?? []);
+    setSavedRecipes(savedRecipes ?? []);
     setRefreshing(false);
   }, [setRecentRecipes, setSavedRecipes]);
 
@@ -84,12 +84,8 @@ export default function HomeScreen() {
         <View className="my-6 border-b-2 border-neutral-300" />
 
         <View className="mb-10 gap-10">
-          <View className="gap-3">
-            <View className="w-full rounded-xl border border-green-600 px-3 py-2">
-              <Text className="text-neutral-600">
-                🥗 재료 업데이트: {newIngredientNames.join(', ')} 추가
-              </Text>
-            </View>
+          <View className="gap-5">
+            <Notice notices={notices} />
             <View className="flex-row gap-4">
               <RecipeCreation
                 href={'/home/recipeCreation/zero'}
@@ -108,13 +104,7 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
 
-      <BottomSheet
-        style={{ borderTopWidth: 2, borderColor: colors.neutral[100] }}
-        handleIndicatorStyle={{ backgroundColor: colors.neutral[500] }}
-        bottomInset={inset.bottom}
-        ref={bottomSheetRef}
-        index={-1}
-        enablePanDownToClose>
+      <CustomBottomSheet ref={bottomSheetRef}>
         <BottomSheetView className="px-5">
           <View className="flex-row items-center justify-between">
             <Text className="mb-2 text-2xl font-bold">시작 날짜 재설정</Text>
@@ -137,7 +127,7 @@ export default function HomeScreen() {
             <Text className="text-lg font-semibold text-white">날짜 재설정하기</Text>
           </RippleButton>
         </BottomSheetView>
-      </BottomSheet>
+      </CustomBottomSheet>
     </SafeAreaView>
   );
 }

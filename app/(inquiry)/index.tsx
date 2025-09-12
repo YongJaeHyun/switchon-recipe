@@ -4,7 +4,7 @@ import { InquiryAPI } from 'api/InquiryAPI';
 import ListEmptyText from 'components/common/ListEmptyText';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
-import AnswerToggle from 'components/inquiry/AnswerToggle';
+import InquiryItem from 'components/inquiry/InquiryItem';
 import { QueryKey } from 'const/queryKey';
 import { Link, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
@@ -18,7 +18,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import colors from 'tailwindcss/colors';
-import { InquiryDB } from 'types/database';
 
 export default function InquiriesMainScreen() {
   const router = useRouter();
@@ -28,7 +27,7 @@ export default function InquiriesMainScreen() {
     data: inquiries = [],
     refetch,
     isLoading,
-  } = useQuery<InquiryDB[]>({
+  } = useQuery({
     queryKey: [QueryKey.inquiries],
     queryFn: InquiryAPI.selectAll,
   });
@@ -77,7 +76,7 @@ export default function InquiriesMainScreen() {
           className="mt-2"
           contentContainerClassName={`flex-grow items-stretch gap-1 px-5 ${inquiries.length === 0 ? 'justify-center mb-20' : 'justify-start'}`}
           ListEmptyComponent={<ListEmptyText emptyListName="inquiry" href={'/(inquiry)/new'} />}
-          renderItem={({ item }) => <AnswerToggle inquiry={item} />}
+          renderItem={({ item }) => <InquiryItem inquiry={item} />}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         />
       )}

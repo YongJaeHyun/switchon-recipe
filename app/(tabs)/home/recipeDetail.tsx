@@ -5,6 +5,7 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { shareCustomTemplate } from '@react-native-kakao/share';
 import { useQuery } from '@tanstack/react-query';
+import { RecipeAPI } from 'api/RecipeAPI';
 import { Text } from 'components/common/Text';
 import { logo } from 'const/assets';
 import { Image } from 'expo-image';
@@ -23,7 +24,6 @@ import colors from 'tailwindcss/colors';
 import { RecipeDB } from 'types/database';
 import { IngredientSchema, Recipe } from 'types/recipe';
 import { z } from 'zod';
-import { RecipeAPI } from '../../../api/RecipeAPI';
 
 type RecipeIngredient = string | z.infer<typeof IngredientSchema>;
 
@@ -34,15 +34,15 @@ export default function RecipeDetailScreen() {
   const { id, recipe_name, cooking_time, ingredients, nutrition, cooking_steps, image_uri } =
     parsedRecipe;
 
-  const parsedIngredients: RecipeIngredient[] = JSON.parse(ingredients);
+  const parsedIngredients: RecipeIngredient[] = JSON.parse(ingredients ?? '');
   parsedIngredients.sort((a: RecipeIngredient, b: RecipeIngredient) => {
     if (typeof a === 'string' || typeof b === 'string') return 0;
     if (a.isOptional === b.isOptional) return 0;
     return a.isOptional ? 1 : -1;
   });
 
-  const parsedNutrition: Recipe['nutrition'] = JSON.parse(nutrition);
-  const parsedCookingSteps: Recipe['cookingSteps'] = JSON.parse(cooking_steps);
+  const parsedNutrition: Recipe['nutrition'] = JSON.parse(nutrition ?? '');
+  const parsedCookingSteps: Recipe['cookingSteps'] = JSON.parse(cooking_steps ?? '');
 
   const { data: isSaved = false } = useQuery({
     queryKey: ['savedRecipe', id],
@@ -89,10 +89,10 @@ export default function RecipeDetailScreen() {
     await shareCustomTemplate({
       templateId: 122968,
       templateArgs: {
-        title: recipe_name,
-        image_uri,
+        title: recipe_name ?? '',
+        image_uri: image_uri ?? '',
         recipe,
-        description: `탄수화물 🍚 ${parsedNutrition.carbohydrates}g  |  단백질 🍗 ${parsedNutrition.protein}g  |  지방 🧀 ${parsedNutrition.fat}g`,
+        description: `🕒 ${cooking_time}분`,
       },
     });
   };

@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 interface IIngredient {
   name: string;
+  subKeywords?: string[];
   week: number;
   image: ImageSource;
 }
@@ -31,6 +32,7 @@ type Recipe = z.infer<typeof RecipeSchema>;
 
 type RecipeCategory = '한식' | '중식' | '일식' | '양식';
 type RecipeMethod = '샐러드류' | '구이류' | '볶음류' | '덮밥류' | '탕/국류' | '찜류';
+type RecipeOption = RecipeCategory | RecipeMethod;
 
 interface RecipeOptions {
   category: RecipeCategory | null;
@@ -43,6 +45,7 @@ export {
   Recipe,
   RecipeCategory,
   RecipeMethod,
+  RecipeOption,
   RecipeOptions,
   RecipeSchema,
 };

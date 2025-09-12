@@ -2,14 +2,14 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { unlink } from '@react-native-kakao/user';
-import { QueryClient } from '@tanstack/react-query';
 import ConfirmModal from 'components/common/ConfirmModal';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import { baseProfile, googleIcon, kakaoIconSmall } from 'const/assets';
-import Constants from 'expo-constants';
+import { APP_VERSION } from 'const/const';
 import { Image } from 'expo-image';
 import { Link, router } from 'expo-router';
+import { queryClient } from 'lib/queryClient';
 import { useState } from 'react';
 import { TouchableOpacity, View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
@@ -27,10 +27,9 @@ export default function Profile() {
     if (provider === 'google') await GoogleSignin.signOut();
     if (provider === 'kakao') await unlink();
 
-    if (router.canDismiss) router.dismissAll();
+    if (router.canDismiss()) router.dismissAll();
     router.replace('/(auth)');
 
-    const queryClient = new QueryClient();
     queryClient.clear();
   };
 
@@ -90,7 +89,7 @@ export default function Profile() {
           <View className="flex-row items-center gap-1">
             <MaterialIcons name="info-outline" size={16} color={colors.neutral[400]} />
             <Text className="text-neutral-400">
-              버전 정보: <Text>{Constants.expoConfig?.version}</Text>
+              버전 정보: <Text>{APP_VERSION}</Text>
             </Text>
           </View>
         </View>

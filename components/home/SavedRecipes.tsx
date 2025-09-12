@@ -16,7 +16,7 @@ export default function SavedRecipes({ refreshing }: { refreshing: boolean }) {
   useEffect(() => {
     (async () => {
       const recipes = await RecipeAPI.selectAllSaved();
-      setSavedRecipes(recipes);
+      setSavedRecipes(recipes ?? []);
     })();
   }, [setSavedRecipes]);
 

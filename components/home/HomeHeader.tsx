@@ -13,7 +13,7 @@ import { getWeekAndDay } from 'utils/date';
 import { getWeekBGColor, getWeekBorderColor, getWeekColor } from 'utils/getWeekColor';
 
 interface HomeHeaderProps {
-  bottomSheetRef: React.RefObject<BottomSheetMethods>;
+  bottomSheetRef: React.RefObject<BottomSheetMethods | null>;
 }
 
 export default function HomeHeader({ bottomSheetRef }: HomeHeaderProps) {

@@ -14,7 +14,7 @@ export default function RecentRecipes({ refreshing }: { refreshing: boolean }) {
   useEffect(() => {
     (async () => {
       const recipes = await RecipeAPI.selectAllRecent();
-      setRecentRecipes(recipes);
+      setRecentRecipes(recipes ?? []);
     })();
   }, [setRecentRecipes]);
 

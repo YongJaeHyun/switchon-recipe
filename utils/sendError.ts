@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/react-native';
+import { ErrorToastTextProps } from 'types/toast';
 import { showErrorToast } from './showToast';
 
 interface CaptureErrorProps {
@@ -7,9 +8,16 @@ interface CaptureErrorProps {
   level?: Sentry.SeverityLevel;
 }
 
-interface OptionsProps<T> {
-  errorReturnValue?: T;
+interface OptionsProps extends ErrorToastTextProps {
+  prefix?: string;
 }
+
+const isNetworkError = (error: unknown) => {
+  if (error instanceof Error) {
+    return error.message.includes('Network request failed');
+  }
+  return false;
+};
 
 const captureError = ({ error, prefix, level = 'error' }: CaptureErrorProps) => {
   if (error instanceof Error) {
@@ -19,17 +27,24 @@ const captureError = ({ error, prefix, level = 'error' }: CaptureErrorProps) => 
   }
 };
 
-const sendDBError = async <T>(callback: () => Promise<T>, options?: OptionsProps<T>) => {
+const sendError = async <Response>(callback: () => Promise<Response>, options?: OptionsProps) => {
   try {
     const result = await callback();
 
     return result;
   } catch (error) {
-    captureError({ error, prefix: '[Supabase]: ', level: 'fatal' });
+    if (isNetworkError(error)) {
+      showErrorToast({ textType: 'NETWORK_ERROR' });
+    } else {
+      if (options?.textType === 'CUSTOM') {
+        showErrorToast({ textType: 'CUSTOM', title: options?.title, subtitle: options?.subtitle });
+      } else {
+        showErrorToast({ textType: options?.textType ?? 'DB_REQUEST_ERROR' });
+      }
 
-    showErrorToast({ textType: 'DB_REQUEST_ERROR' });
-    return options?.errorReturnValue;
+      captureError({ error, prefix: options?.prefix ?? '[Supabase]: ', level: 'fatal' });
+    }
   }
 };
 
-export { captureError, sendDBError };
+export { captureError, isNetworkError, sendError };
