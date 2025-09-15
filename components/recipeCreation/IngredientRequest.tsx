@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { Modal, TextInput, TouchableWithoutFeedback, View } from 'react-native';
 import colors from 'tailwindcss/colors';
 import { RecipeType } from 'types/database';
+import { isCompletedHangul } from 'utils/hangul';
 
 interface IngredientRequestError {
   name?: string;
@@ -31,8 +32,12 @@ export function IngredientRequest() {
   };
 
   const validate = () => {
+    const trimmedName = name.trim();
     const newErrors: IngredientRequestError = {};
-    if (!name.trim()) newErrors.name = '재료명을 입력해주세요.';
+
+    if (!trimmedName) newErrors.name = '재료명을 입력해주세요.';
+    else if (!isCompletedHangul(trimmedName))
+      newErrors.name = '재료명은 중간에 자음이나 모음이 단독으로 올 수 없어요.';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
