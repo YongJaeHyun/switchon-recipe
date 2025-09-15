@@ -19,6 +19,13 @@ const isNetworkError = (error: unknown) => {
   return false;
 };
 
+const isGatewayTimeoutError = (error: any) => {
+  if ('code' in error && error.code === '504') {
+    return true;
+  }
+  return false;
+};
+
 const captureError = ({ error, prefix, level = 'error' }: CaptureErrorProps) => {
   if (error instanceof Error) {
     Sentry.captureException(error, { level });
@@ -35,6 +42,9 @@ const sendError = async <Response>(callback: () => Promise<Response>, options?: 
   } catch (error) {
     if (isNetworkError(error)) {
       showErrorToast({ textType: 'NETWORK_ERROR' });
+    } else if (isGatewayTimeoutError(error)) {
+      showErrorToast({ textType: 'GATEWAY_TIMEOUT_ERROR' });
+      captureError({ error, prefix: '[Gateway Timeout 504]: ' });
     } else {
       if (options?.textType === 'CUSTOM') {
         showErrorToast({ textType: 'CUSTOM', title: options?.title, subtitle: options?.subtitle });
