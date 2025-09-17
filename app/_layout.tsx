@@ -32,9 +32,11 @@ const navigationIntegration = Sentry.reactNavigationIntegration({
 Sentry.init({
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
   sendDefaultPii: true,
-  tracesSampleRate: 1.0,
-  profilesSampleRate: 1.0,
-  integrations: [navigationIntegration],
+  tracesSampleRate: process.env.APP_ENV === 'production' ? 0.1 : 1.0,
+  profilesSampleRate: process.env.APP_ENV === 'production' ? 0.1 : 1.0,
+  replaysSessionSampleRate: process.env.APP_ENV === 'production' ? 0.1 : 1.0,
+  replaysOnErrorSampleRate: 1.0,
+  integrations: [navigationIntegration, Sentry.mobileReplayIntegration()],
   enableNativeFramesTracking: !isRunningInExpoGo(),
 });
 
