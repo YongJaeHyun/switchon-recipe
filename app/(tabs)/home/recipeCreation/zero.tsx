@@ -84,8 +84,8 @@ export default function ZeroRecipeCreationScreen() {
 
     const command =
       selectedIngredients.length === 0
-        ? `다음 정보를 참고해서, 스위치온 ${availableWeek}주차에 먹을 수 있는 맛있는 무탄수식 레시피를 인터넷에서 찾아줘. 소스나 조미료는 자유롭게 활용해도 돼. ${category ? `\n요리 카테고리: ${category}` : ''} ${method ? `\n요리 방식: ${method}` : ''}`
-        : `다음 정보를 참고해서, 스위치온 ${availableWeek}주차에 먹을 수 있는 무탄수식 레시피를 만들어줘. 가능하다면, 모든 재료를 사용해야해. 재료가 많다면, 모든 재료를 이용할 필요는 없어. 소스나 조미료는 자유롭게 활용해도 돼. \n재료: ${ingredients} ${category ? `\n요리 카테고리: ${category}` : ''} ${method ? `\n요리 방식: ${method}` : ''}`;
+        ? `Based on the following information, please find a delicious zero-carb recipe that can be eaten during Switch-On week ${availableWeek}. ${category ? `\nCooking category: ${category}` : ''} ${method ? `\nCooking method: ${method}` : ''}`
+        : `Based on the following information, please create a zero-carb recipe that can be eaten during Switch-On week ${availableWeek}. You must use only the ingredients listed below, and if possible, use all of them. You may freely use sauces or seasonings. \nIngredients: ${ingredients} ${category ? `\nCooking category: ${category}` : ''} ${method ? `\nCooking method: ${method}` : ''}`;
 
     controller.current = new AbortController();
 
