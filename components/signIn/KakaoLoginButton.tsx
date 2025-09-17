@@ -15,14 +15,14 @@ export default function KakaoLoginButton() {
     sendError(
       async () => {
         const response = await login();
-        if (!response?.idToken) throw new Error('no ID token present!');
+        if (!response?.idToken) return;
 
         const { data, error } = await supabase.auth.signInWithIdToken({
           provider: 'kakao',
           token: response.idToken,
         });
 
-        if (error) throw new Error(error.message);
+        if (error) throw error;
 
         if (data.user?.email) {
           const user = await UserAPI.selectOne(data.user.id);
