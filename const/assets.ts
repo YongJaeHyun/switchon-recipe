@@ -1,3 +1,4 @@
+/* 공통 */
 export const logo = require('../assets/icon.png');
 export const baseProfile = require('../assets/images/base_profile.png');
 export const googleIcon = require('../assets/images/android_google_icon.png');
@@ -9,6 +10,10 @@ export const selectIngredientPhoneImage = require('../assets/images/select_ingre
 export const zeroRecipeImage = require('../assets/images/zero_recipe.png');
 export const lowRecipeImage = require('../assets/images/low_recipe.png');
 
+/* 애니메이션 */
+export const loadingLottie = require('../assets/animations/loading.json');
+
+/* 레시피 재료 */
 export const allulose = require('../assets/images/ingredients/allulose.jpg');
 export const avocado = require('../assets/images/ingredients/avocado.jpg');
 export const beans = require('../assets/images/ingredients/beans.jpg');

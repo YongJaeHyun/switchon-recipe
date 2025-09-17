@@ -4,6 +4,7 @@ import { CustomSelect } from 'components/common/CustomSelect';
 import { Text } from 'components/common/Text';
 import { IngredientRequest } from 'components/recipeCreation/IngredientRequest';
 import Ingredients, { IngredientsProps } from 'components/recipeCreation/Ingredients';
+import Loading from 'components/recipeCreation/Loading';
 import SelectedIngredient from 'components/recipeCreation/SelectedIngredient';
 import { allIngredients } from 'const/ingredients';
 import { disassemble } from 'es-hangul';
@@ -12,7 +13,6 @@ import { useSelect } from 'hooks/useSelect';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Pressable,
   TextInput,
@@ -217,7 +217,7 @@ export default function LowRecipeCreationScreen() {
       {(isIngredientsLoading || isRecipeLoading) && (
         <View className="absolute inset-0 z-50 items-center justify-center">
           <View className="absolute inset-0 bg-black/30" />
-          <ActivityIndicator className="-translate-y-20" size={56} color={colors.emerald[300]} />
+          <Loading />
         </View>
       )}
     </SafeAreaView>
