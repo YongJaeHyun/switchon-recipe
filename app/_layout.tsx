@@ -2,6 +2,7 @@ import { PortalProvider } from '@gorhom/portal';
 import { initializeKakaoSDK } from '@react-native-kakao/core';
 import * as Sentry from '@sentry/react-native';
 import { QueryClientProvider } from '@tanstack/react-query';
+import { WeekCompletePopup } from 'components/common/WeekCompletePopup';
 import { toastConfig } from 'config/toastConfig';
 import { isRunningInExpoGo } from 'expo';
 import { Stack, useNavigationContainerRef } from 'expo-router';
@@ -71,6 +72,7 @@ function RootLayout() {
           </PortalProvider>
         </GestureHandlerRootView>
         <Toast config={toastConfig} />
+        <WeekCompletePopup />
         <StatusBar style="dark" />
       </SafeAreaProvider>
     </QueryClientProvider>
