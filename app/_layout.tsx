@@ -36,7 +36,7 @@ Sentry.init({
   tracesSampleRate: process.env.APP_ENV === 'production' ? 0.1 : 1.0,
   profilesSampleRate: process.env.APP_ENV === 'production' ? 0.1 : 1.0,
   replaysSessionSampleRate: process.env.APP_ENV === 'production' ? 0.1 : 1.0,
-  replaysOnErrorSampleRate: 1.0,
+  replaysOnErrorSampleRate: process.env.APP_ENV === 'production' ? 1.0 : 0,
   integrations: [navigationIntegration, Sentry.mobileReplayIntegration()],
   enableNativeFramesTracking: !isRunningInExpoGo(),
 });
