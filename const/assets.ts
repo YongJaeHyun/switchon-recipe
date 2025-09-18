@@ -12,6 +12,7 @@ export const lowRecipeImage = require('../assets/images/low_recipe.png');
 
 /* 애니메이션 */
 export const loadingLottie = require('../assets/animations/loading.json');
+export const weekCompleteLottie = require('../assets/animations/week_complete.json');
 
 /* 레시피 재료 */
 export const allulose = require('../assets/images/ingredients/allulose.jpg');
