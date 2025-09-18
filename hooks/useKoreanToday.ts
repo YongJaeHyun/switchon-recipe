@@ -1,8 +1,26 @@
 import { useEffect, useState } from 'react';
-import { getKoreanToday } from 'utils/date';
+import { useUserStore } from 'stores/userStore';
+import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
+import { getKoreanToday, getWeekAndDay } from 'utils/date';
 
 export default function useKoreanToday() {
+  const startDate = useUserStore((state) => state.start_date);
+  const { open, setWeek } = useWeekCompletePopupStore();
+
   const [today, setToday] = useState(getKoreanToday());
+  const { week: prevWeek } = getWeekAndDay(startDate ?? today);
+
+  const revalidateToday = () => {
+    const newDay = getKoreanToday();
+    const { week } = getWeekAndDay(newDay);
+
+    setToday(newDay);
+
+    if (prevWeek < week) {
+      if (week < 5) open();
+      setWeek(week);
+    }
+  };
 
   useEffect(() => {
     const now = new Date();
@@ -10,14 +28,9 @@ export default function useKoreanToday() {
     const timeoutMs = nextMidnight.getTime() - now.getTime();
 
     const timeoutId = setTimeout(() => {
-      setToday(getKoreanToday());
+      revalidateToday();
 
-      const intervalId = setInterval(
-        () => {
-          setToday(getKoreanToday());
-        },
-        24 * 60 * 60 * 1000
-      );
+      const intervalId = setInterval(() => revalidateToday(), 24 * 60 * 60 * 1000);
 
       return () => clearInterval(intervalId);
     }, timeoutMs);
