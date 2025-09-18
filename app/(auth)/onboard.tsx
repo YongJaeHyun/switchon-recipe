@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
 import colors from 'tailwindcss/colors';
 import { getKoreanDateWeeksAgo, getKoreanToday, getWeekAndDay } from 'utils/date';
 import { getWeekColor } from 'utils/getWeekColor';
@@ -20,6 +21,7 @@ const totalSteps = 4;
 
 export default function OnboardingScreen() {
   const { step, goLastStep, goNextStep } = useSteps(totalSteps);
+  const { setWeek } = useWeekCompletePopupStore();
 
   const today = getKoreanToday();
   const [selectedDate, setSelectedDate] = useState(today);
@@ -31,6 +33,7 @@ export default function OnboardingScreen() {
   };
 
   const completeOnboarding = async () => {
+    setWeek(week);
     await UserAPI.updateOnboarding(selectedDate);
     router.replace('/(tabs)/home');
   };
