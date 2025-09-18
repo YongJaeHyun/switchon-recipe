@@ -14,6 +14,7 @@ import { useCallback, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUserStore } from 'stores/userStore';
+import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
 import { getWeekAndDay } from 'utils/date';
 import { RecipeAPI } from '../../../api/RecipeAPI';
 import { UserAPI } from '../../../api/UserAPI';
@@ -43,7 +44,9 @@ export default function HomeScreen() {
   };
 
   const updateStartDate = async () => {
+    const { week: prevWeek, open, setWeek } = useWeekCompletePopupStore.getState();
     const { week } = getWeekAndDay(selectedDate);
+    setWeek(week);
 
     const filteredLowIngredients = lowIngredients.filter((ingredient) => ingredient.week <= week);
     if (lowIngredients.length !== filteredLowIngredients.length) {
@@ -59,6 +62,10 @@ export default function HomeScreen() {
 
     if (bottomSheetRef) {
       bottomSheetRef.current?.close();
+    }
+
+    if (week < 5 && prevWeek < week) {
+      open();
     }
   };
 
