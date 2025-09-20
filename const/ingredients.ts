@@ -34,6 +34,7 @@ import {
   gochu,
   gochuPaste,
   greenOnion,
+  hyunmiRice,
   kimchi,
   kongdambaek,
   kongnamul,
@@ -89,6 +90,7 @@ import {
   tofuMyun,
   tomato,
   tomatoSauce,
+  tuna,
   tunaCan,
   vinegar,
   wasabi,
@@ -152,13 +154,18 @@ export const carbohydrateIngredients: IIngredient[] = [
 
 export const firstWeekIngredients: IIngredient[] = [
   {
-    name: '현미잡곡밥',
-    image: mixedRice,
+    name: '흰쌀밥',
+    image: rice,
     week: 1,
   },
   {
-    name: '흰쌀밥',
-    image: rice,
+    name: '현미밥',
+    image: hyunmiRice,
+    week: 1,
+  },
+  {
+    name: '잡곡밥',
+    image: mixedRice,
     week: 1,
   },
   {
@@ -250,6 +257,16 @@ export const firstWeekIngredients: IIngredient[] = [
     week: 1,
   },
   {
+    name: '참치',
+    image: tuna,
+    week: 1,
+  },
+  {
+    name: '참치캔',
+    image: tunaCan,
+    week: 1,
+  },
+  {
     name: '조개',
     image: clam,
     week: 1,
@@ -257,11 +274,6 @@ export const firstWeekIngredients: IIngredient[] = [
   {
     name: '굴',
     image: oyster,
-    week: 1,
-  },
-  {
-    name: '참치캔',
-    image: tunaCan,
     week: 1,
   },
   {
@@ -636,8 +648,8 @@ export const thirdWeekIngredients: IIngredient[] = [
 
 export const newIngredients = {
   month: 9,
-  week: 3,
-  names: ['파채', '감자'],
+  week: 4,
+  names: ['현미밥', '참치'],
 };
 
 export const allIngredients: IngredientsProps[] = [
