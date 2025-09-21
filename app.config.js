@@ -66,6 +66,7 @@ export default {
       ],
       'expo-font',
       'expo-build-properties',
+      'expo-notifications',
     ],
     orientation: 'portrait',
     icon: './assets/icon.png',
@@ -86,6 +87,7 @@ export default {
         foregroundImage: './assets/icon.png',
         backgroundColor: '#ffffff',
       },
+      googleServicesFile: './google-services.json',
       edgeToEdgeEnabled: true,
     },
     extra: {
