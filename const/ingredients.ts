@@ -101,13 +101,18 @@ import { IIngredient } from 'types/recipe';
 
 export const carbohydrateIngredients: IIngredient[] = [
   {
-    name: '현미잡곡밥',
-    image: mixedRice,
+    name: '흰쌀밥',
+    image: rice,
     week: 1,
   },
   {
-    name: '흰쌀밥',
-    image: rice,
+    name: '현미밥',
+    image: hyunmiRice,
+    week: 1,
+  },
+  {
+    name: '잡곡밥',
+    image: mixedRice,
     week: 1,
   },
   {
