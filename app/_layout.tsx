@@ -2,6 +2,7 @@ import { PortalProvider } from '@gorhom/portal';
 import { initializeKakaoSDK } from '@react-native-kakao/core';
 import * as Sentry from '@sentry/react-native';
 import { QueryClientProvider } from '@tanstack/react-query';
+import { WeekCompletePopup } from 'components/common/WeekCompletePopup';
 import { toastConfig } from 'config/toastConfig';
 import { isRunningInExpoGo } from 'expo';
 import { Stack, useNavigationContainerRef } from 'expo-router';
@@ -32,9 +33,11 @@ const navigationIntegration = Sentry.reactNavigationIntegration({
 Sentry.init({
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
   sendDefaultPii: true,
-  tracesSampleRate: 1.0,
-  profilesSampleRate: 1.0,
-  integrations: [navigationIntegration],
+  tracesSampleRate: process.env.APP_ENV === 'production' ? 0.1 : 1.0,
+  profilesSampleRate: process.env.APP_ENV === 'production' ? 0.1 : 1.0,
+  replaysSessionSampleRate: process.env.APP_ENV === 'production' ? 0.1 : 1.0,
+  replaysOnErrorSampleRate: process.env.APP_ENV === 'production' ? 1.0 : 0,
+  integrations: [navigationIntegration, Sentry.mobileReplayIntegration()],
   enableNativeFramesTracking: !isRunningInExpoGo(),
 });
 
@@ -69,6 +72,7 @@ function RootLayout() {
           </PortalProvider>
         </GestureHandlerRootView>
         <Toast config={toastConfig} />
+        <WeekCompletePopup />
         <StatusBar style="dark" />
       </SafeAreaProvider>
     </QueryClientProvider>

@@ -69,7 +69,7 @@ export const useAutoUpdate = () => {
           await Updates.reloadAsync();
         }
       } catch (error) {
-        console.error('OTA 업데이트 실패:', error);
+        captureError({ error, prefix: '[OTA 업데이트 실패]: ', level: 'fatal' });
       } finally {
         setIsUpdated(true);
       }

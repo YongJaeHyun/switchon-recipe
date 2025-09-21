@@ -1,10 +1,13 @@
 import { router, Stack } from 'expo-router';
+import { useNotificationObserver } from 'hooks/useNotificationObserver';
 import { supabase } from 'lib/supabase';
 import { useEffect } from 'react';
 import { useUserStore } from 'stores/userStore';
 
 export default function HomeLayout() {
   const resetUser = useUserStore((state) => state.resetUser);
+
+  useNotificationObserver();
 
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {

@@ -59,7 +59,7 @@ AI로 현재 스위치온 주차에 따라 레시피를 생성할 수 있고, �
       <img src="https://github.com/user-attachments/assets/c4ac1210-c9e4-4640-9da8-ff23dae92f63" width="50%" />
     </td>
     <td>
-      <img src="https://github.com/user-attachments/assets/bab1a610-1fd6-44d3-bc7d-97b6f17cf8ac" width="50%" />
+      <img src="https://github.com/user-attachments/assets/16a1bbb2-f1ed-4861-9500-0b9dab3b1600" width="50%" />
     </td>
   </tr>
   <tr>
@@ -82,13 +82,13 @@ AI로 현재 스위치온 주차에 따라 레시피를 생성할 수 있고, �
 <table width="100%">
   <tr align="center">
     <td>
-      <img src="https://github.com/user-attachments/assets/a0fe61f3-23eb-4ec5-a73c-9f41480e681e" width="75%" />
+      <img src="https://github.com/user-attachments/assets/dd8b6a3f-0db6-4d7d-9a3d-8e7655c02c2d" width="75%" />
     </td>
     <td>
-      <img src="https://github.com/user-attachments/assets/51fd0dda-cbb9-44f0-9220-82584f175ba7" width="75%" />
+      <img src="https://github.com/user-attachments/assets/97067a35-3dc5-4116-9fc1-b5d230f33081"" width="75%" />
     </td>
     <td>
-      <img src="https://github.com/user-attachments/assets/5faac487-b285-48d5-8cb6-80fd16a23be6" width="75%" />
+      <img src="https://github.com/user-attachments/assets/8d1b1ee9-d4ae-4d82-901e-e6f837d74617" width="75%" />
     </td>
   </tr>
   <tr>
@@ -128,11 +128,12 @@ AI로 현재 스위치온 주차에 따라 레시피를 생성할 수 있고, �
 ## 💾 레시피 저장  
 - 마음에 드는 레시피는 **저장**할 수 있어요.
 - 또, 저장한 레시피는 홈에서 "모두보기" 버튼을 통해 **주차별로 나눠서** 볼 수도 있어요!
+- 필터와 정렬 기능을 활용해 원하는 레시피를 쉽게 찾아볼 수 있어요!
 
 <table width="100%">
   <tr align="center">
     <td>
-      <img src="https://github.com/user-attachments/assets/27158376-8498-4afb-b5c2-6304cc762249" width="25%" />
+      <img src="https://github.com/user-attachments/assets/de0552b8-7b81-4bd3-9d2d-caeadaba30c8" width="25%" />
     </td>
   </tr>
   <tr>
@@ -151,10 +152,10 @@ AI로 현재 스위치온 주차에 따라 레시피를 생성할 수 있고, �
 <table width="100%">
   <tr align="center">
     <td>
-      <img src="https://github.com/user-attachments/assets/815fd6c1-4b6e-4618-8c5d-c4a1da19df01" width="50%" />
+      <img src="https://github.com/user-attachments/assets/cdf7fc1c-ff1a-4451-84f2-a4781a904608" width="50%" />
     </td>
     <td>
-      <img src="https://github.com/user-attachments/assets/6f46c645-ed31-488c-81a2-5303186f8efd" width="80%" />
+      <img src="https://github.com/user-attachments/assets/3b50e74c-f14d-43d7-9d11-98550190de0c" width="80%" />
     </td>
   </tr>
   <tr>

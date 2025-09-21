@@ -5,6 +5,7 @@ import ConfirmModal from 'components/common/ConfirmModal';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import CategoryButton from 'components/inquiry/CategoryButton';
+import { CHANNELS } from 'const/channels';
 import { QueryKey } from 'const/queryKey';
 import { router } from 'expo-router';
 import { queryClient } from 'lib/queryClient';
@@ -13,6 +14,7 @@ import { FlatList, ScrollView, TextInput, TouchableOpacity, View } from 'react-n
 import { SafeAreaView } from 'react-native-safe-area-context';
 import colors from 'tailwindcss/colors';
 import { InquiryCategory, InquiryDB } from 'types/database';
+import { registerForPushNotificationsAsync } from 'utils/notifications';
 
 type InquiryError = Pick<InquiryDB, 'title' | 'message'>;
 
@@ -62,13 +64,15 @@ export default function NewInquiryScreen() {
     setModalVisible(true);
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     insertInquiry({ title, message, category });
 
     router.back();
 
     resetInquiry();
     setModalVisible(false);
+
+    await registerForPushNotificationsAsync(CHANNELS.INQUIRY);
   };
 
   return (

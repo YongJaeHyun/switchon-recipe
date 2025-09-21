@@ -4,6 +4,7 @@ import { CustomSelect } from 'components/common/CustomSelect';
 import { Text } from 'components/common/Text';
 import { IngredientRequest } from 'components/recipeCreation/IngredientRequest';
 import Ingredients, { IngredientsProps } from 'components/recipeCreation/Ingredients';
+import Loading from 'components/recipeCreation/Loading';
 import SelectedIngredient from 'components/recipeCreation/SelectedIngredient';
 import { allIngredients } from 'const/ingredients';
 import { disassemble } from 'es-hangul';
@@ -12,7 +13,6 @@ import { useSelect } from 'hooks/useSelect';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Pressable,
   TextInput,
@@ -84,8 +84,8 @@ export default function LowRecipeCreationScreen() {
 
     const command =
       selectedIngredients.length === 0
-        ? `다음 정보를 참고해서, 스위치온 ${availableWeek}주차에 먹을 수 있는 맛있는 저탄수식 레시피를 인터넷에서 찾아줘. 소스나 조미료는 자유롭게 활용해도 돼. ${category ? `\n요리 카테고리: ${category}` : ''} ${method ? `\n요리 방식: ${method}` : ''}`
-        : `다음 정보를 참고해서, 스위치온 ${availableWeek}주차에 먹을 수 있는 저탄수식 레시피를 만들어줘. 재료는 아래에 적혀있는 재료만 사용해야해. 가능하다면, 모든 재료를 사용해야해. 소스나 조미료는 자유롭게 활용해도 돼. \n재료: ${ingredients} ${category ? `\n요리 카테고리: ${category}` : ''} ${method ? `\n요리 방식: ${method}` : ''}`;
+        ? `Based on the following information, please find a delicious low-carb recipe that can be eaten during Switch-On week ${availableWeek}. You may freely use sauces or seasonings. ${category ? `\nCooking category: ${category}` : ''} ${method ? `\nCooking method: ${method}` : ''}`
+        : `Based on the following information, please create a low-carb recipe that can be eaten during Switch-On week ${availableWeek}. You must use only the ingredients listed below, and if possible, use all of them. You may freely use sauces or seasonings. \nIngredients: ${ingredients} ${category ? `\nCooking category: ${category}` : ''} ${method ? `\nCooking method: ${method}` : ''}`;
 
     controller.current = new AbortController();
 
@@ -217,7 +217,7 @@ export default function LowRecipeCreationScreen() {
       {(isIngredientsLoading || isRecipeLoading) && (
         <View className="absolute inset-0 z-50 items-center justify-center">
           <View className="absolute inset-0 bg-black/30" />
-          <ActivityIndicator className="-translate-y-20" size={56} color={colors.emerald[300]} />
+          <Loading />
         </View>
       )}
     </SafeAreaView>

@@ -33,6 +33,8 @@ import {
   gim,
   gochu,
   gochuPaste,
+  greenOnion,
+  hyunmiRice,
   kimchi,
   kongdambaek,
   kongnamul,
@@ -62,6 +64,7 @@ import {
   perilla,
   perillaOil,
   pork,
+  potato,
   pyogo,
   quinoa,
   radish,
@@ -87,6 +90,7 @@ import {
   tofuMyun,
   tomato,
   tomatoSauce,
+  tuna,
   tunaCan,
   vinegar,
   wasabi,
@@ -150,13 +154,18 @@ export const carbohydrateIngredients: IIngredient[] = [
 
 export const firstWeekIngredients: IIngredient[] = [
   {
-    name: '현미잡곡밥',
-    image: mixedRice,
+    name: '흰쌀밥',
+    image: rice,
     week: 1,
   },
   {
-    name: '흰쌀밥',
-    image: rice,
+    name: '현미밥',
+    image: hyunmiRice,
+    week: 1,
+  },
+  {
+    name: '잡곡밥',
+    image: mixedRice,
     week: 1,
   },
   {
@@ -192,11 +201,13 @@ export const firstWeekIngredients: IIngredient[] = [
   },
   {
     name: '닭고기',
+    subKeywords: ['닭가슴살'],
     image: chicken,
     week: 1,
   },
   {
     name: '돼지고기',
+    subKeywords: ['목살', '삼겹살'],
     image: pork,
     week: 1,
   },
@@ -246,6 +257,16 @@ export const firstWeekIngredients: IIngredient[] = [
     week: 1,
   },
   {
+    name: '참치',
+    image: tuna,
+    week: 1,
+  },
+  {
+    name: '참치캔',
+    image: tunaCan,
+    week: 1,
+  },
+  {
     name: '조개',
     image: clam,
     week: 1,
@@ -256,11 +277,6 @@ export const firstWeekIngredients: IIngredient[] = [
     week: 1,
   },
   {
-    name: '참치캔',
-    image: tunaCan,
-    week: 1,
-  },
-  {
     name: '묵',
     image: muk,
     week: 1,
@@ -268,6 +284,11 @@ export const firstWeekIngredients: IIngredient[] = [
   {
     name: '대파',
     image: leek,
+    week: 1,
+  },
+  {
+    name: '파채',
+    image: greenOnion,
     week: 1,
   },
   {
@@ -535,11 +556,13 @@ export const secondWeekIngredients: IIngredient[] = [
   },
   {
     name: '게맛살',
+    subKeywords: ['크래미', '크레미'],
     image: crammy,
     week: 2,
   },
   {
     name: '견과류',
+    subKeywords: ['땅콩', '콩'],
     image: nuts,
     week: 2,
   },
@@ -569,6 +592,11 @@ export const thirdWeekIngredients: IIngredient[] = [
   {
     name: '단호박',
     image: sweetPumpkin,
+    week: 3,
+  },
+  {
+    name: '감자',
+    image: potato,
     week: 3,
   },
   {
@@ -619,9 +647,9 @@ export const thirdWeekIngredients: IIngredient[] = [
 ];
 
 export const newIngredients = {
-  month: 8,
-  week: 5,
-  names: ['크림치즈', '대구살', '닭발'],
+  month: 9,
+  week: 4,
+  names: ['현미밥', '참치'],
 };
 
 export const allIngredients: IngredientsProps[] = [

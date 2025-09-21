@@ -1,3 +1,4 @@
+/* 공통 */
 export const logo = require('../assets/icon.png');
 export const baseProfile = require('../assets/images/base_profile.png');
 export const googleIcon = require('../assets/images/android_google_icon.png');
@@ -9,6 +10,11 @@ export const selectIngredientPhoneImage = require('../assets/images/select_ingre
 export const zeroRecipeImage = require('../assets/images/zero_recipe.png');
 export const lowRecipeImage = require('../assets/images/low_recipe.png');
 
+/* 애니메이션 */
+export const loadingLottie = require('../assets/animations/loading.json');
+export const weekCompleteLottie = require('../assets/animations/week_complete.json');
+
+/* 레시피 재료 */
 export const allulose = require('../assets/images/ingredients/allulose.jpg');
 export const avocado = require('../assets/images/ingredients/avocado.jpg');
 export const beans = require('../assets/images/ingredients/beans.jpg');
@@ -42,6 +48,8 @@ export const ggwari = require('../assets/images/ingredients/ggwari.jpg');
 export const gim = require('../assets/images/ingredients/gim.jpg');
 export const gochu = require('../assets/images/ingredients/gochu.jpg');
 export const gochuPaste = require('../assets/images/ingredients/gochu_paste.jpg');
+export const greenOnion = require('../assets/images/ingredients/green_onion.jpg');
+export const hyunmiRice = require('../assets/images/ingredients/hyunmi_rice.jpg');
 export const kimchi = require('../assets/images/ingredients/kimchi.jpg');
 export const kongdambaek = require('../assets/images/ingredients/kongdambaek.jpg');
 export const kongnamul = require('../assets/images/ingredients/kongnamul.jpg');
@@ -71,6 +79,7 @@ export const peanutButter = require('../assets/images/ingredients/peanut_butter.
 export const perilla = require('../assets/images/ingredients/perilla.jpg');
 export const perillaOil = require('../assets/images/ingredients/perilla_oil.jpg');
 export const pork = require('../assets/images/ingredients/pork.jpg');
+export const potato = require('../assets/images/ingredients/potato.jpg');
 export const pyogo = require('../assets/images/ingredients/pyogo.jpg');
 export const quinoa = require('../assets/images/ingredients/quinoa.jpg');
 export const radish = require('../assets/images/ingredients/radish.jpg');
@@ -96,6 +105,7 @@ export const tofu = require('../assets/images/ingredients/tofu.jpg');
 export const tofuMyun = require('../assets/images/ingredients/tofu_myun.jpg');
 export const tomato = require('../assets/images/ingredients/tomato.jpg');
 export const tomatoSauce = require('../assets/images/ingredients/tomato_sauce.jpg');
+export const tuna = require('../assets/images/ingredients/tuna.jpg');
 export const tunaCan = require('../assets/images/ingredients/tuna_can.jpg');
 export const vinegar = require('../assets/images/ingredients/vinegar.jpg');
 export const wasabi = require('../assets/images/ingredients/wasabi.jpg');

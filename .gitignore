@@ -41,6 +41,8 @@ app-example
 
 # service account key
 gen-lang-client-*.json
+fcm.json
+google-services.json
 
 # android
 android

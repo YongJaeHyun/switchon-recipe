@@ -38,14 +38,14 @@ export default function GoogleLoginButton() {
       await GoogleSignin.hasPlayServices();
 
       const userInfo = await GoogleSignin.signIn();
-      if (!userInfo.data?.idToken) throw new Error('no ID token present!');
+      if (!userInfo.data?.idToken) return;
 
       const { data, error } = await supabase.auth.signInWithIdToken({
         provider: 'google',
         token: userInfo.data.idToken,
       });
 
-      if (error) throw new Error(error.message);
+      if (error) throw error;
 
       if (data.user.email) {
         const user = await UserAPI.selectOne(data.user.id);
