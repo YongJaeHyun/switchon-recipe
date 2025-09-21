@@ -7,7 +7,7 @@ import HomeHeader from 'components/home/HomeHeader';
 import RecentRecipes from 'components/home/RecentRecipes';
 import RecipeCreation from 'components/home/RecipeCreation';
 import SavedRecipes from 'components/home/SavedRecipes';
-import { notices } from 'const/notices';
+import { latestNotices } from 'const/notices';
 import useKoreanToday from 'hooks/useKoreanToday';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { useCallback, useRef, useState } from 'react';
@@ -18,7 +18,7 @@ import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
 import { getWeekAndDay } from 'utils/date';
 import { RecipeAPI } from '../../../api/RecipeAPI';
 import { UserAPI } from '../../../api/UserAPI';
-import { Notice } from '../../../components/home/Notice';
+import { LatestNotice } from '../../../components/home/LatestNotice';
 import { useRecipeStore } from '../../../stores/recipeStore';
 
 export default function HomeScreen() {
@@ -92,7 +92,7 @@ export default function HomeScreen() {
 
         <View className="mb-10 gap-10">
           <View className="gap-5">
-            <Notice notices={notices} />
+            <LatestNotice notices={latestNotices} />
             <View className="flex-row gap-4">
               <RecipeCreation
                 href={'/home/recipeCreation/zero'}
