@@ -83,6 +83,23 @@ const updateStartDate = async (start_date: string) =>
     });
   });
 
+const updatePushToken = async (pushToken: string) =>
+  sendError(async () => {
+    const setUser = useUserStore.getState().setUser;
+    const userId = useUserStore.getState().id;
+
+    const { data, error } = await supabase
+      .from('user')
+      .update({ push_token: pushToken })
+      .eq('id', userId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    setUser(data);
+  });
+
 const deleteOne = async () =>
   sendError(async () => {
     const userId = useUserStore.getState().id;
@@ -103,4 +120,5 @@ export const UserAPI = {
   updateStartDate,
   checkIsLoggedIn,
   getSession,
+  updatePushToken,
 };
