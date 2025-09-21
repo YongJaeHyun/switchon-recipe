@@ -62,7 +62,9 @@
     "semver": "^7.7.2",
     "zod": "^4.0.8",
     "zustand": "^5.0.6",
-    "lottie-react-native": "7.2.2"
+    "lottie-react-native": "7.2.2",
+    "expo-notifications": "~0.31.4",
+    "expo-device": "~7.1.4"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
