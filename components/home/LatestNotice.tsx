@@ -92,24 +92,11 @@ export function LatestNotice({ notices }: LatestNoticeProps) {
   if (notices.length === 0) return null;
 
   return (
-    <View className="relative h-10 w-full overflow-hidden rounded-full border border-neutral-400 px-3 py-2">
-      <Pressable className="flex-1 justify-center" onPress={openModal}>
-        <Animated.View
-          style={[
-            {
-              position: 'absolute',
-              width: '100%',
-              height: '100%',
-              justifyContent: 'center',
-            },
-            animatedCurrent,
-          ]}>
-          <Text className="text-sm text-neutral-600" numberOfLines={1}>
-            {notices[currentIndex]}
-          </Text>
-        </Animated.View>
-
-        {notices.length > 1 && (
+    <>
+      <Pressable
+        className="relative h-10 w-full overflow-hidden rounded-full border border-neutral-400 px-3 py-2"
+        onPress={openModal}>
+        <View className="flex-1 justify-center">
           <Animated.View
             style={[
               {
@@ -118,16 +105,33 @@ export function LatestNotice({ notices }: LatestNoticeProps) {
                 height: '100%',
                 justifyContent: 'center',
               },
-              animatedNext,
+              animatedCurrent,
             ]}>
             <Text className="text-sm text-neutral-600" numberOfLines={1}>
-              {notices[nextIndex]}
+              {notices[currentIndex]}
             </Text>
           </Animated.View>
-        )}
+
+          {notices.length > 1 && (
+            <Animated.View
+              style={[
+                {
+                  position: 'absolute',
+                  width: '100%',
+                  height: '100%',
+                  justifyContent: 'center',
+                },
+                animatedNext,
+              ]}>
+              <Text className="text-sm text-neutral-600" numberOfLines={1}>
+                {notices[nextIndex]}
+              </Text>
+            </Animated.View>
+          )}
+        </View>
       </Pressable>
 
       <AllNoticesModal visible={visible} onClose={closeModal} />
-    </View>
+    </>
   );
 }
