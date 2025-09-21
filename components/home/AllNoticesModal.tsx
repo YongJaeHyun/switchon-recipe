@@ -13,7 +13,7 @@ export default function AllNoticesModal({ visible, onClose }: ConfirmModalProps)
   return (
     <Modal animationType="fade" transparent visible={visible} onRequestClose={onClose}>
       <View className="flex-1 items-center justify-center bg-black/40">
-        <View className="max-h-[80%] w-3/4 rounded-2xl bg-white p-6">
+        <View className="max-h-[80%] w-4/5 rounded-2xl bg-white p-6">
           <Text className="mb-4 text-xl font-bold">업데이트 내역</Text>
 
           <FlatList
