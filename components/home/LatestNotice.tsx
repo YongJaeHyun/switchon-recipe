@@ -1,29 +1,35 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import Animated, {
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import AllNoticesModal from './AllNoticesModal';
 
-interface NoticeProps {
+interface LatestNoticeProps {
   notices: string[];
 }
 
 const INTERVAL = 5000;
 
-export function Notice({ notices }: NoticeProps) {
+export function LatestNotice({ notices }: LatestNoticeProps) {
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const isActiveRef = useRef(true);
+
+  const [visible, setVisible] = useState(false);
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const nextIndex = (currentIndex + 1) % notices.length;
+
+  const [, startTransition] = useTransition();
 
   const translateY = useSharedValue(0);
   const opacity = useSharedValue(1);
 
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const isActiveRef = useRef(true);
-
-  const [, startTransition] = useTransition();
+  const openModal = () => setVisible(true);
+  const closeModal = () => setVisible(false);
 
   const animatedCurrent = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
@@ -87,7 +93,7 @@ export function Notice({ notices }: NoticeProps) {
 
   return (
     <View className="relative h-10 w-full overflow-hidden rounded-full border border-neutral-400 px-3 py-2">
-      <View className="flex-1 justify-center">
+      <Pressable className="flex-1 justify-center" onPress={openModal}>
         <Animated.View
           style={[
             {
@@ -119,7 +125,9 @@ export function Notice({ notices }: NoticeProps) {
             </Text>
           </Animated.View>
         )}
-      </View>
+      </Pressable>
+
+      <AllNoticesModal visible={visible} onClose={closeModal} />
     </View>
   );
 }
