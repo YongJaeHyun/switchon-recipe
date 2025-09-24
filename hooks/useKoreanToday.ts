@@ -5,7 +5,7 @@ import { getKoreanToday, getWeekAndDay } from 'utils/date';
 
 export default function useKoreanToday() {
   const startDate = useUserStore((state) => state.start_date);
-  const { open, setWeek } = useWeekCompletePopupStore();
+  const { open, setWeek, isChecked } = useWeekCompletePopupStore();
 
   const [today, setToday] = useState(getKoreanToday());
   const { week: prevWeek } = getWeekAndDay(startDate ?? today);
@@ -16,8 +16,8 @@ export default function useKoreanToday() {
 
     setToday(newDay);
 
-    if (prevWeek < week) {
-      if (week < 5) open();
+    if (prevWeek < week && week < 5) {
+      if (!isChecked) open();
       setWeek(week);
     }
   };
