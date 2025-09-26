@@ -19,16 +19,16 @@ AI로 현재 스위치온 주차에 따라 레시피를 생성할 수 있고, �
 <table width="100%">
   <tr align="center">
     <td>
-      <img src="https://github.com/user-attachments/assets/16fc5d0e-8834-4eb0-b334-83bd69d8ba83" width="100%" />
+      <img src="https://github.com/user-attachments/assets/5572145c-130e-4d54-a87b-aedf6b9ac674" width="100%" />
     </td>
     <td>
-      <img src="https://github.com/user-attachments/assets/8c1e4148-925f-4807-b593-89548cfe8094" width="100%" />
+      <img src="https://github.com/user-attachments/assets/917fd6b5-081d-4dc5-92be-95381e9e334a" width="100%" />
     </td>
     <td>
-      <img src="https://github.com/user-attachments/assets/a53f99e5-e36a-47d4-b0f4-25990774182d" width="100%" />
+      <img src="https://github.com/user-attachments/assets/8f128129-2743-45e1-a9f3-6b812a6be399" width="100%" />
     </td>
     <td>
-      <img src="https://github.com/user-attachments/assets/7268a752-e711-44b6-946a-8b062665cdf6" width="100%" />
+      <img src="https://github.com/user-attachments/assets/1bcb1547-7936-40c8-97bb-ce5f3694fd34" width="100%" />
     </td>
   </tr>
   <tr>
