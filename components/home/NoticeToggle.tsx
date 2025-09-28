@@ -23,17 +23,13 @@ export default function NoticeToggle({
   const [visible, setVisible] = useState(false);
   const [contentHeight, setContentHeight] = useState(0);
 
-  const height = useSharedValue(0);
-  const opacity = useSharedValue(0);
-  const marginTop = useSharedValue(0);
+  const progress = useSharedValue(0);
 
-  const openLatestNotice = (measuredHeight: number) => {
+  const openLatestNotice = () => {
     if (timer.current) clearTimeout(timer.current);
 
     timer.current = setTimeout(() => {
-      height.value = measuredHeight;
-      opacity.value = 1;
-      marginTop.value = 16;
+      progress.value = 1;
       setIsInit(true);
       setVisible(true);
     }, 50);
@@ -44,7 +40,7 @@ export default function NoticeToggle({
     setContentHeight(measuredHeight);
 
     if (!isInit && defaultOpen) {
-      openLatestNotice(measuredHeight);
+      openLatestNotice();
     }
   };
 
@@ -52,15 +48,13 @@ export default function NoticeToggle({
     const toVisible = !visible;
     setVisible(toVisible);
 
-    height.value = withTiming(toVisible ? contentHeight : 0, { duration: 300 });
-    opacity.value = withTiming(toVisible ? 1 : 0, { duration: 300 });
-    marginTop.value = withTiming(toVisible ? 16 : 0, { duration: 300 });
+    progress.value = withTiming(toVisible ? 1 : 0, { duration: 300 });
   };
 
   const animatedStyle = useAnimatedStyle(() => ({
-    height: height.value,
-    opacity: opacity.value,
-    marginTop: marginTop.value,
+    height: progress.value * contentHeight,
+    opacity: progress.value,
+    marginTop: progress.value * 16,
     overflow: 'hidden',
   }));
 
