@@ -1,5 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { LayoutChangeEvent, Pressable, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import colors from 'tailwindcss/colors';
@@ -8,9 +8,18 @@ interface NoticeToggleProps {
   version: string;
   changes: string[];
   updatedAt: string;
+  defaultOpen?: boolean;
 }
 
-export default function NoticeToggle({ version, changes, updatedAt }: NoticeToggleProps) {
+export default function NoticeToggle({
+  version,
+  changes,
+  updatedAt,
+  defaultOpen = false,
+}: NoticeToggleProps) {
+  let timer = useRef<NodeJS.Timeout | null>(null);
+
+  const [isInit, setIsInit] = useState(false);
   const [visible, setVisible] = useState(false);
   const [contentHeight, setContentHeight] = useState(0);
 
@@ -18,9 +27,25 @@ export default function NoticeToggle({ version, changes, updatedAt }: NoticeTogg
   const opacity = useSharedValue(0);
   const marginTop = useSharedValue(0);
 
+  const openLatestNotice = (measuredHeight: number) => {
+    if (timer.current) clearTimeout(timer.current);
+
+    timer.current = setTimeout(() => {
+      height.value = measuredHeight;
+      opacity.value = 1;
+      marginTop.value = 16;
+      setIsInit(true);
+      setVisible(true);
+    }, 50);
+  };
+
   const onLayout = (event: LayoutChangeEvent) => {
-    const { height } = event.nativeEvent.layout;
-    setContentHeight(height);
+    const { height: measuredHeight } = event.nativeEvent.layout;
+    setContentHeight(measuredHeight);
+
+    if (!isInit && defaultOpen) {
+      openLatestNotice(measuredHeight);
+    }
   };
 
   const toggleAnswer = () => {

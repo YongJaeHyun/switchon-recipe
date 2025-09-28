@@ -19,8 +19,13 @@ export default function AllNoticesModal({ visible, onClose }: ConfirmModalProps)
           <FlatList
             contentContainerClassName="gap-3"
             data={allNotices}
-            renderItem={({ item: { version, changes, updatedAt } }) => (
-              <NoticeToggle version={version} changes={changes} updatedAt={updatedAt} />
+            renderItem={({ item: { version, changes, updatedAt }, index }) => (
+              <NoticeToggle
+                version={version}
+                changes={changes}
+                updatedAt={updatedAt}
+                defaultOpen={index === 0}
+              />
             )}
           />
 
