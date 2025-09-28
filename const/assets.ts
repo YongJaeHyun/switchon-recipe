@@ -38,6 +38,7 @@ export const cucumber = require('../assets/images/ingredients/cucumber.jpg');
 export const curcuma = require('../assets/images/ingredients/curcuma.jpg');
 export const dakbal = require('../assets/images/ingredients/dakbal.jpg');
 export const dasima = require('../assets/images/ingredients/dasima.jpg');
+export const doyuMyun = require('../assets/images/ingredients/doyu_myun.jpg');
 export const driedTofu = require('../assets/images/ingredients/dried_tofu.jpg');
 export const duck = require('../assets/images/ingredients/duck.jpg');
 export const eastCabbage = require('../assets/images/ingredients/east_cabbage.jpg');

@@ -23,6 +23,7 @@ import {
   curcuma,
   dakbal,
   dasima,
+  doyuMyun,
   driedTofu,
   duck,
   eastCabbage,
@@ -176,11 +177,6 @@ export const firstWeekIngredients: IIngredient[] = [
   {
     name: '두부면',
     image: tofuMyun,
-    week: 1,
-  },
-  {
-    name: '콩담백면',
-    image: kongdambaek,
     week: 1,
   },
   {
@@ -520,6 +516,21 @@ export const firstWeekIngredients: IIngredient[] = [
 
 export const secondWeekIngredients: IIngredient[] = [
   {
+    name: '콩담백면',
+    image: kongdambaek,
+    week: 2,
+  },
+  {
+    name: '두유면',
+    image: doyuMyun,
+    week: 2,
+  },
+  {
+    name: '메밀면',
+    image: memilMyun,
+    week: 2,
+  },
+  {
     name: '오트밀',
     image: oatmeal,
     week: 2,
@@ -532,11 +543,6 @@ export const secondWeekIngredients: IIngredient[] = [
   {
     name: '퀴노아',
     image: quinoa,
-    week: 2,
-  },
-  {
-    name: '메밀면',
-    image: memilMyun,
     week: 2,
   },
   {
@@ -653,8 +659,8 @@ export const thirdWeekIngredients: IIngredient[] = [
 
 export const newIngredients = {
   month: 9,
-  week: 4,
-  names: ['현미밥', '참치'],
+  week: 5,
+  names: ['두유면'],
 };
 
 export const allIngredients: IngredientsProps[] = [
