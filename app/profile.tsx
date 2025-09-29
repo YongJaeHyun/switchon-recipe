@@ -10,7 +10,7 @@ import { APP_VERSION } from 'const/const';
 import { Image } from 'expo-image';
 import { Link, router } from 'expo-router';
 import { queryClient } from 'lib/queryClient';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { TouchableOpacity, View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
@@ -32,6 +32,12 @@ export default function Profile() {
 
     queryClient.clear();
   };
+
+  useEffect(() => {
+    GoogleSignin.configure({
+      webClientId: '122886446696-o8aeohmp226otako4jklaqb0thm25qtu.apps.googleusercontent.com',
+    });
+  }, []);
 
   return (
     <View className="flex-1 bg-white">
