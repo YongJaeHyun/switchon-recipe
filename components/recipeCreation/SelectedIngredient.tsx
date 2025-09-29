@@ -1,7 +1,9 @@
 import Feather from '@expo/vector-icons/Feather';
 import { Text } from 'components/common/Text';
+import { allIngredients } from 'const/ingredients';
 import { useLastPathname } from 'hooks/useLastPathname';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
+import { useEffect } from 'react';
 import { Pressable, View } from 'react-native';
 import { RecipeType } from 'types/database';
 import { IIngredient } from 'types/recipe';
@@ -14,6 +16,17 @@ export default function SelectedIngredient({ ingredient }: SelectedIngredientPro
   const type = useLastPathname() as RecipeType;
 
   const { toggleIngredient } = useSelectedIngredients({ type });
+
+  const isValidIngredient = () =>
+    allIngredients.some((ingredientCategory) =>
+      ingredientCategory.ingredientList.some((ing) => ing.name === ingredient?.name)
+    );
+
+  useEffect(() => {
+    if (ingredient && !isValidIngredient()) {
+      toggleIngredient(ingredient);
+    }
+  }, []);
 
   return ingredient ? (
     <Pressable
