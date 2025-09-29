@@ -1,14 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useUserStore } from 'stores/userStore';
 import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
 import { getKoreanToday, getWeekAndDay } from 'utils/date';
 
 export default function useKoreanToday() {
-  const startDate = useUserStore((state) => state.start_date);
-  const { open, setWeek, isChecked } = useWeekCompletePopupStore();
+  const { open, week: prevWeek, setWeek, isChecked } = useWeekCompletePopupStore();
 
   const [today, setToday] = useState(getKoreanToday());
-  const { week: prevWeek } = getWeekAndDay(startDate ?? today);
 
   const revalidateToday = () => {
     const newDay = getKoreanToday();
