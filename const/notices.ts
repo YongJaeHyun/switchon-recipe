@@ -6,7 +6,7 @@ const { month, week, names } = newIngredients;
 
 export const latestNotices = [
   `🚀 [v${APP_VERSION} 업데이트] - 구글 로그아웃 시 발생하던 오류 수정, 백그라운드에서 주차가 넘어간 경우, 주차 완료 팝업이 표시되지 않던 버그 수정`,
-  `🥗 [${month}월 ${seosusa(week)}주 재료 업데이트] - ${names.join(', ')} 추가, 콩담백면 1주차 -> 2주차로 수정`,
+  `🥗 [${month}월 ${seosusa(week)}주 재료 업데이트] - ${names.join(', ')} 추가`,
 ];
 
 export const allNotices = [
@@ -16,6 +16,7 @@ export const allNotices = [
       '🐛 구글 로그아웃 시 발생하던 오류 수정',
       '🐛 백그라운드에서 주차가 넘어간 경우, 주차 완료 팝업이 표시되지 않던 버그 수정',
       '🐛 선택했던 재료가 현재 사라진 재료임에도 남아있던 버그 수정',
+      '🍱 파로, 고기순대, 간장, 커피 추가',
     ],
     updatedAt: '2024.09.30',
   },

@@ -17,6 +17,7 @@ import {
   chives,
   clam,
   cod,
+  coffee,
   crammy,
   creamCheese,
   cucumber,
@@ -29,11 +30,13 @@ import {
   eastCabbage,
   egg,
   eggplant,
+  emmer,
   garlic,
   ggwari,
   gim,
   gochu,
   gochuPaste,
+  gogiSundae,
   greenOnion,
   hyunmiRice,
   kimchi,
@@ -82,6 +85,7 @@ import {
   shrimp,
   softTofu,
   soybeanPaste,
+  soySauce,
   spinach,
   squid,
   sukju,
@@ -493,6 +497,11 @@ export const firstWeekIngredients: IIngredient[] = [
     week: 1,
   },
   {
+    name: '간장',
+    image: soySauce,
+    week: 1,
+  },
+  {
     name: '된장',
     image: soybeanPaste,
     week: 1,
@@ -541,6 +550,11 @@ export const secondWeekIngredients: IIngredient[] = [
     week: 2,
   },
   {
+    name: '파로',
+    image: emmer,
+    week: 2,
+  },
+  {
     name: '퀴노아',
     image: quinoa,
     week: 2,
@@ -575,6 +589,11 @@ export const secondWeekIngredients: IIngredient[] = [
     name: '견과류',
     subKeywords: ['땅콩', '콩'],
     image: nuts,
+    week: 2,
+  },
+  {
+    name: '커피',
+    image: coffee,
     week: 2,
   },
   {
@@ -621,6 +640,11 @@ export const thirdWeekIngredients: IIngredient[] = [
     week: 3,
   },
   {
+    name: '고기순대',
+    image: gogiSundae,
+    week: 3,
+  },
+  {
     name: '크림치즈',
     image: creamCheese,
     week: 3,
@@ -658,9 +682,9 @@ export const thirdWeekIngredients: IIngredient[] = [
 ];
 
 export const newIngredients = {
-  month: 9,
-  week: 5,
-  names: ['두유면'],
+  month: 10,
+  week: 2,
+  names: ['파로', '고기순대', '간장', '커피'],
 };
 
 export const allIngredients: IngredientsProps[] = [
