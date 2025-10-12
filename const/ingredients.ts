@@ -69,6 +69,7 @@ import {
   perillaOil,
   pork,
   potato,
+  proteinPowder,
   pyogo,
   quinoa,
   radish,
@@ -196,6 +197,12 @@ export const firstWeekIngredients: IIngredient[] = [
   {
     name: '포두부',
     image: driedTofu,
+    week: 1,
+  },
+  {
+    name: '단백질쉐이크',
+    subKeywords: ['프로틴쉐이크', '프로틴', '단백질 보충제'],
+    image: proteinPowder,
     week: 1,
   },
   {
@@ -683,8 +690,8 @@ export const thirdWeekIngredients: IIngredient[] = [
 
 export const newIngredients = {
   month: 10,
-  week: 2,
-  names: ['파로', '고기순대', '간장', '커피'],
+  week: 3,
+  names: ['단백질쉐이크'],
 };
 
 export const allIngredients: IngredientsProps[] = [

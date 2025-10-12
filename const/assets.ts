@@ -84,6 +84,7 @@ export const perilla = require('../assets/images/ingredients/perilla.jpg');
 export const perillaOil = require('../assets/images/ingredients/perilla_oil.jpg');
 export const pork = require('../assets/images/ingredients/pork.jpg');
 export const potato = require('../assets/images/ingredients/potato.jpg');
+export const proteinPowder = require('../assets/images/ingredients/protein_powder.jpg');
 export const pyogo = require('../assets/images/ingredients/pyogo.jpg');
 export const quinoa = require('../assets/images/ingredients/quinoa.jpg');
 export const radish = require('../assets/images/ingredients/radish.jpg');
