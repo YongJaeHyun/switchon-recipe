@@ -7,7 +7,7 @@ import Ingredients, { IngredientsProps } from 'components/recipeCreation/Ingredi
 import Loading from 'components/recipeCreation/Loading';
 import SelectedIngredient from 'components/recipeCreation/SelectedIngredient';
 import { allIngredients } from 'const/ingredients';
-import { disassemble } from 'es-hangul';
+import { disassemble, getChoseong } from 'es-hangul';
 import { router } from 'expo-router';
 import { useSelect } from 'hooks/useSelect';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
@@ -60,19 +60,22 @@ export default function LowRecipeCreationScreen() {
       const { name: ingredientName, subKeywords: ingredientSubKeywords } = ingredient;
       const trimmedKeyword = keyword.trim();
 
+      const disassembledIngredient = disassemble(ingredientName);
+      const disassembledKeyword = disassemble(trimmedKeyword);
+      const isIncludeKeyword = disassembledIngredient.includes(disassembledKeyword);
+
       if (isCompletedHangul(trimmedKeyword)) {
-        const isIncludeKeyword = ingredientName.includes(trimmedKeyword);
         const isIncludeSubKeyword = ingredientSubKeywords?.some(
           (ingredientKeyword) => ingredientKeyword === trimmedKeyword
         );
         return isIncludeKeyword || isIncludeSubKeyword;
+      } else {
+        const ingredientChoseong = getChoseong(ingredientName);
+        const keywordChoseong = getChoseong(trimmedKeyword);
+        const isIncludeChoseong = ingredientChoseong.includes(keywordChoseong);
+
+        return isIncludeKeyword || isIncludeChoseong;
       }
-
-      const disassembledIngredient = disassemble(ingredientName);
-      const disassembledKeyword = disassemble(keyword);
-
-      const isIncludeKeyword = disassembledIngredient.includes(disassembledKeyword);
-      return isIncludeKeyword;
     });
 
   const createRecipeWithAI = async () => {
