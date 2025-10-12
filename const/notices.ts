@@ -5,16 +5,24 @@ import { newIngredients } from './ingredients';
 const { month, week, names } = newIngredients;
 
 export const latestNotices = [
-  `🚀 [v${APP_VERSION} 업데이트] - 구글 로그아웃 시 발생하던 오류 수정, 백그라운드에서 주차가 넘어간 경우, 주차 완료 팝업이 표시되지 않던 버그 수정`,
+  `🚀 [v${APP_VERSION} 업데이트] - 재료 초성 검색이 정상적으로 되지 않던 버그 수정, 재료 검색 시 일시적으로 재료 이미지가 누락되는 버그 수정`,
   `🥗 [${month}월 ${seosusa(week)}주 재료 업데이트] - ${names.join(', ')} 추가`,
 ];
 
 export const allNotices = [
   {
+    version: 'v3.0.2',
+    changes: [
+      '🐛 재료 초성 검색이 정상적으로 되지 않던 버그 수정',
+      '🐛 검색 시, 일시적으로 재료 이미지가 누락되는 버그 수정',
+      '🐛 백그라운드에서 주차가 넘어간 경우, 주차 완료 팝업이 표시되지 않던 버그 수정',
+    ],
+    updatedAt: '2024.10.13',
+  },
+  {
     version: 'v3.0.1',
     changes: [
       '🐛 구글 로그아웃 시 발생하던 오류 수정',
-      '🐛 백그라운드에서 주차가 넘어간 경우, 주차 완료 팝업이 표시되지 않던 버그 수정',
       '🐛 선택했던 재료가 현재 사라진 재료임에도 남아있던 버그 수정',
       '🍱 파로, 고기순대, 간장, 커피, 단백질쉐이크 추가',
     ],
