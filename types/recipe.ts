@@ -6,6 +6,7 @@ interface IIngredient {
   subKeywords?: string[];
   week: number;
   image: ImageSource;
+  isCarbohydrate?: boolean;
 }
 
 const IngredientSchema = z.object({

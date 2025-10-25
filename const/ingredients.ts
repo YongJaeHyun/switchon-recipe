@@ -213,89 +213,24 @@ export const ingredientImages = [
   zucchini,
 ];
 
-export const carbohydrateIngredients: IIngredient[] = [
-  {
-    name: '흰쌀밥',
-    image: rice,
-    week: 1,
-  },
-  {
-    name: '현미밥',
-    image: hyunmiRice,
-    week: 1,
-  },
-  {
-    name: '잡곡밥',
-    image: mixedRice,
-    week: 1,
-  },
-  {
-    name: '오트밀',
-    image: oatmeal,
-    week: 2,
-  },
-  {
-    name: '라이스페이퍼',
-    image: ricepaper,
-    week: 2,
-  },
-  {
-    name: '파로',
-    image: emmer,
-    week: 2,
-  },
-  {
-    name: '차조',
-    image: chajo,
-    week: 2,
-  },
-  {
-    name: '퀴노아',
-    image: quinoa,
-    week: 2,
-  },
-  {
-    name: '메밀면',
-    image: memilMyun,
-    week: 2,
-  },
-  {
-    name: '떡국떡',
-    image: ricecake,
-    week: 3,
-  },
-  {
-    name: '단호박',
-    image: sweetPumpkin,
-    week: 3,
-  },
-  {
-    name: '고구마',
-    image: sweetPotato,
-    week: 3,
-  },
-  {
-    name: '밤',
-    image: chestnut,
-    week: 3,
-  },
-];
-
 export const firstWeekIngredients: IIngredient[] = [
   {
     name: '흰쌀밥',
     image: rice,
     week: 1,
+    isCarbohydrate: true,
   },
   {
     name: '현미밥',
     image: hyunmiRice,
     week: 1,
+    isCarbohydrate: true,
   },
   {
     name: '잡곡밥',
     image: mixedRice,
     week: 1,
+    isCarbohydrate: true,
   },
   {
     name: '두부면',
@@ -673,31 +608,37 @@ export const secondWeekIngredients: IIngredient[] = [
     name: '메밀면',
     image: memilMyun,
     week: 2,
+    isCarbohydrate: true,
   },
   {
     name: '오트밀',
     image: oatmeal,
     week: 2,
+    isCarbohydrate: true,
   },
   {
     name: '라이스페이퍼',
     image: ricepaper,
     week: 2,
+    isCarbohydrate: true,
   },
   {
     name: '파로',
     image: emmer,
     week: 2,
+    isCarbohydrate: true,
   },
   {
     name: '차조',
     image: chajo,
     week: 2,
+    isCarbohydrate: true,
   },
   {
     name: '퀴노아',
     image: quinoa,
     week: 2,
+    isCarbohydrate: true,
   },
   {
     name: '콩류',
@@ -758,26 +699,31 @@ export const thirdWeekIngredients: IIngredient[] = [
     name: '떡국떡',
     image: ricecake,
     week: 3,
+    isCarbohydrate: true,
   },
   {
     name: '단호박',
     image: sweetPumpkin,
     week: 3,
+    isCarbohydrate: true,
   },
   {
     name: '감자',
     image: potato,
     week: 3,
+    isCarbohydrate: true,
   },
   {
     name: '고구마',
     image: sweetPotato,
     week: 3,
+    isCarbohydrate: true,
   },
   {
     name: '밤',
     image: chestnut,
     week: 3,
+    isCarbohydrate: true,
   },
   {
     name: '고기순대',
@@ -820,6 +766,12 @@ export const thirdWeekIngredients: IIngredient[] = [
     week: 3,
   },
 ];
+
+export const carbohydrateIngredients: IIngredient[] = [
+  ...firstWeekIngredients,
+  ...secondWeekIngredients,
+  ...thirdWeekIngredients,
+].filter((i) => i.isCarbohydrate);
 
 export const newIngredients = {
   month: 10,
