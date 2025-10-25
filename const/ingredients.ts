@@ -9,6 +9,7 @@ import {
   butter,
   cabbage,
   carrot,
+  chajo,
   cheese,
   cherryTomato,
   chestnut,
@@ -38,6 +39,7 @@ import {
   gochuPaste,
   gogiSundae,
   greenOnion,
+  gwanja,
   hyunmiRice,
   kimchi,
   kongdambaek,
@@ -98,6 +100,7 @@ import {
   tomatoSauce,
   tuna,
   tunaCan,
+  vegetableMix,
   vinegar,
   wasabi,
   yogurt,
@@ -234,6 +237,16 @@ export const carbohydrateIngredients: IIngredient[] = [
   {
     name: '라이스페이퍼',
     image: ricepaper,
+    week: 2,
+  },
+  {
+    name: '파로',
+    image: emmer,
+    week: 2,
+  },
+  {
+    name: '차조',
+    image: chajo,
     week: 2,
   },
   {
@@ -389,6 +402,11 @@ export const firstWeekIngredients: IIngredient[] = [
     week: 1,
   },
   {
+    name: '관자',
+    image: gwanja,
+    week: 1,
+  },
+  {
     name: '굴',
     image: oyster,
     week: 1,
@@ -441,6 +459,11 @@ export const firstWeekIngredients: IIngredient[] = [
   {
     name: '강황',
     image: curcuma,
+    week: 1,
+  },
+  {
+    name: '야채믹스',
+    image: vegetableMix,
     week: 1,
   },
   {
@@ -667,6 +690,11 @@ export const secondWeekIngredients: IIngredient[] = [
     week: 2,
   },
   {
+    name: '차조',
+    image: chajo,
+    week: 2,
+  },
+  {
     name: '퀴노아',
     image: quinoa,
     week: 2,
@@ -795,8 +823,8 @@ export const thirdWeekIngredients: IIngredient[] = [
 
 export const newIngredients = {
   month: 10,
-  week: 3,
-  names: ['단백질쉐이크'],
+  week: 5,
+  names: ['차조', '관자', '야채믹스'],
 };
 
 export const allIngredients: IngredientsProps[] = [
