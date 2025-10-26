@@ -10,10 +10,7 @@ function TabLayout() {
         tabBarActiveTintColor: colors.green[600],
         headerShown: false,
       }}>
-      <Tabs.Screen
-        name="index"
-        options={{ href: null }} // 👈 탭에 표시되지 않도록
-      />
+      <Tabs.Screen name="index" options={{ href: null }} />
       <Tabs.Screen
         name="home"
         options={{
