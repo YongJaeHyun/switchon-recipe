@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { RecipeAPI } from 'api/RecipeAPI';
 import ListEmptyText from 'components/common/ListEmptyText';
 import RippleButton from 'components/common/RippleButton';
+import { SafeAreaViewWithNav } from 'components/common/SafeAreaViewWithNav';
 import { Text } from 'components/common/Text';
 import RecipeCard from 'components/home/RecipeCard';
 import { SavedRecipeFilter, savedRecipeFilters } from 'const/filter';
@@ -9,7 +10,6 @@ import { QueryKey } from 'const/queryKey';
 import { SavedRecipeSort, savedRecipeSorts } from 'const/sort';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSavedRecipeStore } from 'stores/savedRecipeStore';
 import colors from 'tailwindcss/colors';
 import { RecipeDB } from 'types/database';
@@ -61,7 +61,7 @@ export default function SavedRecipes() {
   }, [refetch]);
 
   return (
-    <SafeAreaView className="relative flex-1 gap-5 px-5">
+    <SafeAreaViewWithNav className="relative flex-1 gap-5 px-5">
       <View className="flex-row justify-around rounded-xl bg-white px-4 py-3">
         {weekTabs.map((week: Week, index: number) => (
           <View
@@ -122,6 +122,6 @@ export default function SavedRecipes() {
           />
         )}
       </View>
-    </SafeAreaView>
+    </SafeAreaViewWithNav>
   );
 }

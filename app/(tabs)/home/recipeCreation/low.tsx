@@ -1,6 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { createRecipe } from 'api/gemini';
 import { CustomSelect } from 'components/common/CustomSelect';
+import { SafeAreaViewWithNav } from 'components/common/SafeAreaViewWithNav';
 import { Text } from 'components/common/Text';
 import { IngredientRequest } from 'components/recipeCreation/IngredientRequest';
 import Ingredients, { IngredientsProps } from 'components/recipeCreation/Ingredients';
@@ -20,7 +21,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRecipeStore } from 'stores/recipeStore';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
@@ -127,7 +127,7 @@ export default function LowRecipeCreationScreen() {
   }, []);
 
   return (
-    <SafeAreaView className="relative flex-1 bg-white px-5">
+    <SafeAreaViewWithNav className="relative flex-1 bg-white px-5">
       <View className="mb-8 w-full gap-3">
         <View className="relative">
           <TextInput
@@ -223,6 +223,6 @@ export default function LowRecipeCreationScreen() {
           <Loading />
         </View>
       )}
-    </SafeAreaView>
+    </SafeAreaViewWithNav>
   );
 }

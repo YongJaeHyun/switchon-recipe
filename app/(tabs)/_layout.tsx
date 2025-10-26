@@ -6,7 +6,7 @@ function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        animation: 'shift',
+        animation: 'fade',
         tabBarActiveTintColor: colors.green[600],
         headerShown: false,
       }}>

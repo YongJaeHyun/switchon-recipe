@@ -1,5 +1,5 @@
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaViewWithNav } from 'components/common/SafeAreaViewWithNav';
 
 export default function ExploreScreen() {
-  return <SafeAreaView className="flex-1 bg-neutral-50 px-5"></SafeAreaView>;
+  return <SafeAreaViewWithNav className="flex-1 bg-neutral-50 px-5"></SafeAreaViewWithNav>;
 }

@@ -1,4 +1,5 @@
 import BottomSheet from '@gorhom/bottom-sheet';
+import { SafeAreaViewWithNav } from 'components/common/SafeAreaViewWithNav';
 import HomeHeader from 'components/home/HomeHeader';
 import RecentRecipes from 'components/home/RecentRecipes';
 import RecipeCreation from 'components/home/RecipeCreation';
@@ -7,7 +8,6 @@ import { StartDateBottomSheet } from 'components/home/StartDateBottomSheet';
 import { latestNotices } from 'const/notices';
 import { useCallback, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { RecipeAPI } from '../../../api/RecipeAPI';
 import { LatestNotice } from '../../../components/home/LatestNotice';
 import { useRecipeStore } from '../../../stores/recipeStore';
@@ -31,7 +31,7 @@ export default function HomeScreen() {
   }, [setRecentRecipes, setSavedRecipes]);
 
   return (
-    <SafeAreaView className="flex-1 bg-neutral-50 px-5">
+    <SafeAreaViewWithNav className="flex-1 bg-neutral-50 px-5">
       <ScrollView
         contentContainerStyle={{ flexGrow: 1 }}
         showsVerticalScrollIndicator={false}
@@ -62,6 +62,6 @@ export default function HomeScreen() {
       </ScrollView>
 
       <StartDateBottomSheet bottomSheetRef={bottomSheetRef} />
-    </SafeAreaView>
+    </SafeAreaViewWithNav>
   );
 }
