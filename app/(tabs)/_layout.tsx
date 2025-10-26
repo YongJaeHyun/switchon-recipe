@@ -1,0 +1,35 @@
+import { MaterialIcons } from '@expo/vector-icons';
+import { Tabs } from 'expo-router';
+import colors from 'tailwindcss/colors';
+
+function TabLayout() {
+  return (
+    <Tabs
+      screenOptions={{
+        animation: 'shift',
+        tabBarActiveTintColor: colors.green[600],
+        headerShown: false,
+      }}>
+      <Tabs.Screen
+        name="index"
+        options={{ href: null }} // 👈 탭에 표시되지 않도록
+      />
+      <Tabs.Screen
+        name="home"
+        options={{
+          title: '홈',
+          tabBarIcon: ({ color }) => <MaterialIcons name="home" size={28} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="explore"
+        options={{
+          title: '탐색',
+          tabBarIcon: ({ color }) => <MaterialIcons name="explore" size={28} color={color} />,
+        }}
+      />
+    </Tabs>
+  );
+}
+
+export default TabLayout;
