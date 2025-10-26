@@ -8,7 +8,9 @@ import { isRunningInExpoGo } from 'expo';
 import { Stack, useNavigationContainerRef } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
+import { useAuthStateObserver } from 'hooks/useAuthStateObserver';
 import { useAutoUpdate } from 'hooks/useAutoUpdate';
+import { useNotificationObserver } from 'hooks/useNotificationObserver';
 import { queryClient } from 'lib/queryClient';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -46,15 +48,16 @@ function RootLayout() {
 
   const updated = useAutoUpdate();
 
+  useNotificationObserver();
+  useAuthStateObserver();
+
   useEffect(() => {
     if (ref) {
       navigationIntegration.registerNavigationContainer(ref);
     }
   }, [ref]);
 
-  if (!updated) {
-    return null;
-  }
+  if (!updated) return null;
   return (
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
