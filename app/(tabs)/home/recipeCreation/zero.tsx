@@ -148,7 +148,7 @@ export default function ZeroRecipeCreationScreen() {
           />
         )}
       />
-      <View className="mb-8 gap-4">
+      <View className="mb-4 gap-4">
         <View className="flex-row gap-3">
           <CustomSelect
             title="요리 카테고리"
