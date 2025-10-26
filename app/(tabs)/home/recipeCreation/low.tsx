@@ -1,7 +1,7 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { createRecipe } from 'api/gemini';
 import { CustomSelect } from 'components/common/CustomSelect';
 import { SafeAreaViewWithNav } from 'components/common/SafeAreaViewWithNav';
+import { SearchInput } from 'components/common/SearchInput';
 import { Text } from 'components/common/Text';
 import { IngredientRequest } from 'components/recipeCreation/IngredientRequest';
 import Ingredients, { IngredientsProps } from 'components/recipeCreation/Ingredients';
@@ -13,14 +13,7 @@ import { router } from 'expo-router';
 import { useSelect } from 'hooks/useSelect';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { useEffect, useRef, useState } from 'react';
-import {
-  FlatList,
-  Pressable,
-  TextInput,
-  TouchableHighlight,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { FlatList, TouchableHighlight, TouchableOpacity, View } from 'react-native';
 import { useRecipeStore } from 'stores/recipeStore';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
@@ -129,22 +122,7 @@ export default function LowRecipeCreationScreen() {
   return (
     <SafeAreaViewWithNav className="relative flex-1 bg-white px-5">
       <View className="mb-8 w-full gap-3">
-        <View className="relative">
-          <TextInput
-            className="w-full rounded-lg border border-neutral-400 px-3 py-2.5 pr-10"
-            onChangeText={setKeyword}
-            value={keyword}
-            placeholder="재료를 검색하세요!"
-          />
-          {keyword.length > 0 && (
-            <Pressable
-              onPress={() => setKeyword('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2"
-              hitSlop={10}>
-              <Ionicons name="close-circle" size={20} color="#888" />
-            </Pressable>
-          )}
-        </View>
+        <SearchInput keyword={keyword} onChangeText={setKeyword} placeholder="재료를 검색하세요!" />
         <FlatList
           contentContainerClassName="gap-2"
           ListEmptyComponent={<SelectedIngredient />}
