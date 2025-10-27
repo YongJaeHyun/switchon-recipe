@@ -22,7 +22,7 @@ export default function RedirectKakaoLink() {
 
         if (host === 'kakaolink' && recipe) {
           const isLoggedIn = await UserAPI.checkIsLoggedIn();
-          setTargetHref(isLoggedIn ? `/(tabs)/home/recipeDetail?recipe=${recipe}` : '/(auth)');
+          setTargetHref(isLoggedIn ? `/recipeDetail?recipe=${recipe}` : '/(auth)');
         } else {
           setTargetHref('/(auth)');
         }

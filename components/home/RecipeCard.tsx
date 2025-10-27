@@ -10,7 +10,7 @@ import { RecipeDB } from 'types/database';
 import { getWeekColor } from 'utils/getWeekColor';
 import { RecipeAPI } from '../../api/RecipeAPI';
 
-export default function RecipeCard(recipe: RecipeDB) {
+export function RecipeCard(recipe: RecipeDB) {
   const [isSaved, setIsSaved] = useState<boolean>(false);
   const timer = useRef<NodeJS.Timeout>(null);
 
@@ -35,7 +35,7 @@ export default function RecipeCard(recipe: RecipeDB) {
   }, [recipe]);
   return (
     <Link
-      href={`/(tabs)/home/recipeDetail?recipe=${JSON.stringify({ ...recipe, isSaved })}`}
+      href={`/recipeDetail?recipe=${JSON.stringify({ ...recipe, isSaved })}`}
       className="h-48 w-48">
       <View
         className="w-full flex-1 overflow-hidden rounded-xl"
@@ -67,13 +67,14 @@ export default function RecipeCard(recipe: RecipeDB) {
 
           <Pressable
             onPress={toggleIsSaved}
-            className="absolute right-2 top-2 z-50 h-10 w-10 items-center justify-center">
-            <View className="absolute left-0 top-0 h-full w-full rounded-full bg-black/30" />
-            <MaterialIcons
-              name={isSaved ? 'star' : 'star-outline'}
-              size={30}
-              color={colors.yellow[500]}
-            />
+            className="absolute right-2 top-2 z-50 items-center justify-center">
+            <View className="flex-1 flex-row items-center justify-center gap-1 rounded-full bg-black/30 p-1">
+              <MaterialIcons
+                name={isSaved ? 'star' : 'star-outline'}
+                size={28}
+                color={colors.yellow[500]}
+              />
+            </View>
           </Pressable>
         </View>
         <View className="flex-[3] justify-evenly bg-white px-3">

@@ -104,7 +104,7 @@ export default function LowRecipeCreationScreen() {
 
     const recipe = await createRecipeWithAI();
     if (recipe) {
-      router.push(`/(tabs)/home/recipeDetail?recipe=${JSON.stringify(recipe)}`);
+      router.push(`/recipeDetail?recipe=${JSON.stringify(recipe)}`);
     }
 
     setIsRecipeLoading(false);

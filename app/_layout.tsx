@@ -69,6 +69,7 @@ function RootLayout() {
               <Stack.Screen name="(greet)" options={{ headerShown: false }} />
               <Stack.Screen name="(auth)" options={{ headerShown: false }} />
               <Stack.Screen name="(inquiry)" options={{ headerShown: false }} />
+              <Stack.Screen name="recipeDetail" options={{ headerShown: false }} />
               <Stack.Screen name="profile" options={{ headerShown: false }} />
               <Stack.Screen name="kakaolink" options={{ headerShown: false }} />
             </Stack>
