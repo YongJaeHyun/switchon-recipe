@@ -5,7 +5,7 @@ import { ActivityIndicator, FlatList, View } from 'react-native';
 import { useRecipeStore } from 'stores/recipeStore';
 import colors from 'tailwindcss/colors';
 import { RecipeAPI } from '../../api/RecipeAPI';
-import RecipeCard from './RecipeCard';
+import { RecipeCard } from './RecipeCard';
 
 export default function RecentRecipes({ refreshing }: { refreshing: boolean }) {
   const recipes = useRecipeStore((state) => state.recentRecipes);

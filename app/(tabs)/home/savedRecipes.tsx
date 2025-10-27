@@ -4,7 +4,7 @@ import ListEmptyText from 'components/common/ListEmptyText';
 import RippleButton from 'components/common/RippleButton';
 import { SafeAreaViewWithNav } from 'components/common/SafeAreaViewWithNav';
 import { Text } from 'components/common/Text';
-import RecipeCard from 'components/home/RecipeCard';
+import { RecipeCard } from 'components/home/RecipeCard';
 import { SavedRecipeFilter, savedRecipeFilters } from 'const/filter';
 import { QueryKey } from 'const/queryKey';
 import { SavedRecipeSort, savedRecipeSorts } from 'const/sort';
