@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { RecipeAPI } from 'api/RecipeAPI';
+import { Filter } from 'components/common/Filter';
 import ListEmptyText from 'components/common/ListEmptyText';
 import { SafeAreaViewWithNav } from 'components/common/SafeAreaViewWithNav';
 import { Text } from 'components/common/Text';
@@ -15,7 +16,6 @@ import { RecipeDB } from 'types/database';
 import { Week } from 'types/week';
 import { getWeekColor } from 'utils/getWeekColor';
 import { Sort } from '../../../components/common/Sort';
-import RippleButton from 'components/common/RippleButton';
 
 const weekTabs = ['1주차', '2주차', '3주차+'] satisfies Week[];
 
@@ -83,19 +83,7 @@ export default function SavedRecipes() {
 
       <View className="mb-10 flex-1 rounded-xl bg-white p-4">
         <View className="mb-4 flex-row items-center justify-between">
-          <View className="flex-row items-center gap-3">
-            {RECIPE_FILTERS.map((filterName) => {
-              const isActive = filter === filterName;
-              return (
-                <RippleButton
-                  key={filterName}
-                  onPress={() => changeFilter(filterName)}
-                  className={`px-3 py-2 ${isActive ? 'bg-green-600' : 'bg-neutral-200'}`}>
-                  <Text className={isActive ? 'text-white' : 'text-neutral-500'}>{filterName}</Text>
-                </RippleButton>
-              );
-            })}
-          </View>
+          <Filter currentOption={filter} onOptionPress={changeFilter} options={RECIPE_FILTERS} />
           <Sort currentOption={sort} onOptionPress={changeSort} options={RECIPE_SORTS} />
         </View>
 
