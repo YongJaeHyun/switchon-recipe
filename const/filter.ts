@@ -1,5 +1,5 @@
-const savedRecipeFilters = ['전체', '무탄수', '저탄수'] as const;
+const RECIPE_FILTERS = ['전체', '무탄수', '저탄수'] as const;
 
-type SavedRecipeFilter = (typeof savedRecipeFilters)[number];
+type RecipeFilterType = (typeof RECIPE_FILTERS)[number];
 
-export { SavedRecipeFilter, savedRecipeFilters };
+export { RECIPE_FILTERS, RecipeFilterType };

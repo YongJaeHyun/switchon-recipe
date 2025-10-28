@@ -1,15 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { SavedRecipeFilter } from 'const/filter';
-import { SavedRecipeSort } from 'const/sort';
+import { RecipeFilterType } from 'const/filter';
+import { RecipeSortType } from 'const/sort';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 interface SavedRecipeState {
-  sort: SavedRecipeSort;
-  setSort: (sort: SavedRecipeSort) => void;
+  sort: RecipeSortType;
+  setSort: (sort: RecipeSortType) => void;
 
-  filter: SavedRecipeFilter;
-  setFilter: (filter: SavedRecipeFilter) => void;
+  filter: RecipeFilterType;
+  setFilter: (filter: RecipeFilterType) => void;
 }
 
 export const useSavedRecipeStore = create<SavedRecipeState>()(

@@ -1,13 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { RecipeAPI } from 'api/RecipeAPI';
 import ListEmptyText from 'components/common/ListEmptyText';
-import RippleButton from 'components/common/RippleButton';
 import { SafeAreaViewWithNav } from 'components/common/SafeAreaViewWithNav';
 import { Text } from 'components/common/Text';
 import { RecipeCard } from 'components/home/RecipeCard';
-import { SavedRecipeFilter, savedRecipeFilters } from 'const/filter';
+import { RECIPE_FILTERS, RecipeFilterType } from 'const/filter';
 import { QueryKey } from 'const/queryKey';
-import { SavedRecipeSort, savedRecipeSorts } from 'const/sort';
+import { RECIPE_SORTS, RecipeSortType } from 'const/sort';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, TouchableOpacity, View } from 'react-native';
 import { useSavedRecipeStore } from 'stores/savedRecipeStore';
@@ -16,6 +15,7 @@ import { RecipeDB } from 'types/database';
 import { Week } from 'types/week';
 import { getWeekColor } from 'utils/getWeekColor';
 import { Sort } from '../../../components/common/Sort';
+import RippleButton from 'components/common/RippleButton';
 
 const weekTabs = ['1주차', '2주차', '3주차+'] satisfies Week[];
 
@@ -47,10 +47,10 @@ export default function SavedRecipes() {
     setSelectedWeek(week);
   };
 
-  const changeFilter = async (filter: SavedRecipeFilter) => {
+  const changeFilter = async (filter: RecipeFilterType) => {
     setFilter(filter);
   };
-  const changeSort = async (sort: SavedRecipeSort) => {
+  const changeSort = async (sort: RecipeSortType) => {
     setSort(sort);
   };
 
@@ -84,7 +84,7 @@ export default function SavedRecipes() {
       <View className="mb-10 flex-1 rounded-xl bg-white p-4">
         <View className="mb-4 flex-row items-center justify-between">
           <View className="flex-row items-center gap-3">
-            {savedRecipeFilters.map((filterName) => {
+            {RECIPE_FILTERS.map((filterName) => {
               const isActive = filter === filterName;
               return (
                 <RippleButton
@@ -96,7 +96,7 @@ export default function SavedRecipes() {
               );
             })}
           </View>
-          <Sort currentOption={sort} onOptionPress={changeSort} options={savedRecipeSorts} />
+          <Sort currentOption={sort} onOptionPress={changeSort} options={RECIPE_SORTS} />
         </View>
 
         {isLoading ? (
