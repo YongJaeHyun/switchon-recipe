@@ -1,5 +1,4 @@
 import { createRecipe } from 'api/gemini';
-import { RecipeAPI } from 'api/RecipeAPI';
 import { CustomSelect } from 'components/common/CustomSelect';
 import { SafeAreaViewWithNav } from 'components/common/SafeAreaViewWithNav';
 import { SearchInput } from 'components/common/SearchInput';
@@ -8,14 +7,15 @@ import { IngredientRequest } from 'components/recipeCreation/IngredientRequest';
 import Ingredients, { IngredientsProps } from 'components/recipeCreation/Ingredients';
 import Loading from 'components/recipeCreation/Loading';
 import SelectedIngredient from 'components/recipeCreation/SelectedIngredient';
+import { QueryKey } from 'const/queryKey';
 import { allZeroIngredients } from 'const/zeroIngredients';
 import { disassemble, getChoseong } from 'es-hangul';
 import { router } from 'expo-router';
 import { useSelect } from 'hooks/useSelect';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
+import { queryClient } from 'lib/queryClient';
 import { useEffect, useRef, useState } from 'react';
 import { FlatList, TouchableHighlight, TouchableOpacity, View } from 'react-native';
-import { useRecipeStore } from 'stores/recipeStore';
 import { useUserStore } from 'stores/userStore';
 import { RecipeCategory, RecipeMethod } from 'types/recipe';
 import { getWeekAndDay } from 'utils/date';
@@ -27,8 +27,6 @@ export default function ZeroRecipeCreationScreen() {
     resetIngredients,
     isLoading: isIngredientsLoading,
   } = useSelectedIngredients({ type: 'zero' });
-
-  const setRecentRecipes = useRecipeStore((state) => state.setRecentRecipes);
 
   const [category, toggleCategory] = useSelect<RecipeCategory>(null);
   const [method, toggleMethod] = useSelect<RecipeMethod>(null);
@@ -92,9 +90,7 @@ export default function ZeroRecipeCreationScreen() {
     });
     if (!recipe) return null;
 
-    const recentRecipes = await RecipeAPI.selectAllRecent();
-    setRecentRecipes(recentRecipes ?? []);
-
+    queryClient.removeQueries({ queryKey: [QueryKey.recentRecipes] });
     return recipe;
   };
 

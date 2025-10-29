@@ -1,23 +1,16 @@
 import ListEmptyText from 'components/common/ListEmptyText';
 import { Text } from 'components/common/Text';
-import { useEffect } from 'react';
 import { ActivityIndicator, FlatList, View } from 'react-native';
-import { useRecipeStore } from 'stores/recipeStore';
 import colors from 'tailwindcss/colors';
-import { RecipeAPI } from '../../api/RecipeAPI';
+import { RecipeDB } from 'types/database';
 import { RecipeCard } from './RecipeCard';
 
-export default function RecentRecipes({ refreshing }: { refreshing: boolean }) {
-  const recipes = useRecipeStore((state) => state.recentRecipes);
-  const setRecentRecipes = useRecipeStore((state) => state.setRecentRecipes);
+interface RecentRecipesProps {
+  recipes: RecipeDB[];
+  refreshing: boolean;
+}
 
-  useEffect(() => {
-    (async () => {
-      const recipes = await RecipeAPI.selectAllRecent();
-      setRecentRecipes(recipes ?? []);
-    })();
-  }, [setRecentRecipes]);
-
+export default function RecentRecipes({ recipes, refreshing }: RecentRecipesProps) {
   return (
     <View className="">
       <Text className="mb-1 text-2xl font-bold">최근 만든 레시피</Text>

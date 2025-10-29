@@ -1,4 +1,5 @@
 import BottomSheet from '@gorhom/bottom-sheet';
+import { useQuery } from '@tanstack/react-query';
 import { SafeAreaViewWithNav } from 'components/common/SafeAreaViewWithNav';
 import HomeHeader from 'components/home/HomeHeader';
 import RecentRecipes from 'components/home/RecentRecipes';
@@ -6,29 +7,41 @@ import RecipeCreation from 'components/home/RecipeCreation';
 import SavedRecipes from 'components/home/SavedRecipes';
 import { StartDateBottomSheet } from 'components/home/StartDateBottomSheet';
 import { latestNotices } from 'const/notices';
+import { QueryKey } from 'const/queryKey';
 import { useCallback, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
+import { useRecipeStore } from 'stores/recipeStore';
 import { RecipeAPI } from '../../../api/RecipeAPI';
 import { LatestNotice } from '../../../components/home/LatestNotice';
-import { useRecipeStore } from '../../../stores/recipeStore';
 
 export default function HomeScreen() {
+  const initIsSavedMap = useRecipeStore((state) => state.initIsSavedMap);
+
   const bottomSheetRef = useRef<BottomSheet>(null);
 
   const [refreshing, setRefreshing] = useState(false);
-  const setRecentRecipes = useRecipeStore((state) => state.setRecentRecipes);
-  const setSavedRecipes = useRecipeStore((state) => state.setSavedRecipes);
+
+  const { data: recentRecipes, refetch: refetchRecentRecipes } = useQuery({
+    queryKey: [QueryKey.recentRecipes],
+    queryFn: async () => {
+      const recipes = (await RecipeAPI.selectAllRecent()) ?? [];
+      return recipes;
+    },
+  });
+  const { data: savedRecipes, refetch: refetchSavedRecipes } = useQuery({
+    queryKey: [QueryKey.savedRecipes],
+    queryFn: async () => {
+      const recipes = (await RecipeAPI.selectAllSaved()) ?? [];
+      initIsSavedMap(recipes);
+      return recipes;
+    },
+  });
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    const [recentRecipes, savedRecipes] = await Promise.all([
-      RecipeAPI.selectAllRecent(),
-      RecipeAPI.selectAllSaved(),
-    ]);
-    setRecentRecipes(recentRecipes ?? []);
-    setSavedRecipes(savedRecipes ?? []);
+    await Promise.all([refetchRecentRecipes(), refetchSavedRecipes()]);
     setRefreshing(false);
-  }, [setRecentRecipes, setSavedRecipes]);
+  }, [refetchRecentRecipes, refetchSavedRecipes]);
 
   return (
     <SafeAreaViewWithNav className="flex-1 bg-neutral-50 px-5">
@@ -56,8 +69,8 @@ export default function HomeScreen() {
               />
             </View>
           </View>
-          <SavedRecipes refreshing={refreshing} />
-          <RecentRecipes refreshing={refreshing} />
+          <SavedRecipes recipes={savedRecipes ?? []} refreshing={refreshing} />
+          <RecentRecipes recipes={recentRecipes ?? []} refreshing={refreshing} />
         </View>
       </ScrollView>
 

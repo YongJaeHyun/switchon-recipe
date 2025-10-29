@@ -8,19 +8,19 @@ import Ingredients, { IngredientsProps } from 'components/recipeCreation/Ingredi
 import Loading from 'components/recipeCreation/Loading';
 import SelectedIngredient from 'components/recipeCreation/SelectedIngredient';
 import { allIngredients } from 'const/ingredients';
+import { QueryKey } from 'const/queryKey';
 import { disassemble, getChoseong } from 'es-hangul';
 import { router } from 'expo-router';
 import { useSelect } from 'hooks/useSelect';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
+import { queryClient } from 'lib/queryClient';
 import { useEffect, useRef, useState } from 'react';
 import { FlatList, TouchableHighlight, TouchableOpacity, View } from 'react-native';
-import { useRecipeStore } from 'stores/recipeStore';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { RecipeCategory, RecipeMethod } from 'types/recipe';
 import { getWeekAndDay } from 'utils/date';
 import { isCompletedHangul } from 'utils/hangul';
-import { RecipeAPI } from '../../../../api/RecipeAPI';
 
 export default function LowRecipeCreationScreen() {
   const {
@@ -28,8 +28,6 @@ export default function LowRecipeCreationScreen() {
     resetIngredients,
     isLoading: isIngredientsLoading,
   } = useSelectedIngredients({ type: 'low' });
-
-  const setRecentRecipes = useRecipeStore((state) => state.setRecentRecipes);
 
   const [category, toggleCategory] = useSelect<RecipeCategory>(null);
   const [method, toggleMethod] = useSelect<RecipeMethod>(null);
@@ -93,9 +91,7 @@ export default function LowRecipeCreationScreen() {
     });
     if (!recipe) return null;
 
-    const recentRecipes = await RecipeAPI.selectAllRecent();
-    setRecentRecipes(recentRecipes ?? []);
-
+    queryClient.removeQueries({ queryKey: [QueryKey.recentRecipes] });
     return recipe;
   };
 
