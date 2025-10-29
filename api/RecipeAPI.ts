@@ -1,12 +1,14 @@
+import { RecipeFilterType } from 'const/filter';
 import { QueryKey } from 'const/queryKey';
+import { RecipeSortType } from 'const/sort';
 import { queryClient } from 'lib/queryClient';
 import { supabase } from 'lib/supabase';
-import { useRecipeStore } from 'stores/recipeStore';
 import { useUserStore } from 'stores/userStore';
 import { RecipeDB, SavedRecipeDB } from 'types/database';
 import { sendError } from 'utils/sendError';
 import { useSavedRecipeStore } from '../stores/savedRecipeStore';
 
+// RECENT_RECIPE
 const selectAllRecent = async () =>
   sendError<RecipeDB[]>(async () => {
     const userId = useUserStore.getState().id;
@@ -27,10 +29,12 @@ const selectAllRecent = async () =>
 // SAVED_RECIPE
 const checkIsSavedRecipe = async (recipeId: number) =>
   sendError<boolean>(async () => {
+    const userId = useUserStore.getState().id;
     const { data, error } = await supabase
       .from('saved_recipe')
       .select('id')
       .eq('recipe_id', recipeId)
+      .eq('uid', userId)
       .limit(1);
 
     if (error) throw error;
@@ -42,30 +46,11 @@ const selectAllSavedByWeek = async (week: number) =>
   sendError<RecipeDB[]>(async () => {
     const { sort, filter } = useSavedRecipeStore.getState();
 
-    let query = supabase
-      .from('recipe_with_is_saved')
-      .select('*')
-      .eq('week', week)
-      .eq('is_saved', true);
-
-    switch (filter) {
-      case '무탄수':
-        query = query.eq('is_zero_carb', true);
-        break;
-      case '저탄수':
-        query = query.eq('is_zero_carb', false);
-        break;
-    }
-
-    switch (sort) {
-      case '조리시간순':
-        query = query.order('cooking_time', { ascending: true });
-      case '최신순':
-      default:
-        query = query.order('saved_at', { ascending: false });
-    }
-
-    const { data, error } = await query;
+    const { data, error } = await supabase.rpc('search_saved_recipes', {
+      filter_type: filter,
+      sort_type: sort,
+      week_input: week,
+    });
 
     if (error) throw error;
 
@@ -89,10 +74,30 @@ const selectAllSaved = async () =>
     return data;
   });
 
+const selectAllByWeekWithPagination = async (
+  week: number,
+  currentPage: number,
+  sortType: RecipeSortType = '최신순',
+  filterType: RecipeFilterType = '전체',
+  pageSize: number = 10
+) =>
+  sendError<RecipeDB[]>(async () => {
+    const { data, error } = await supabase
+      .rpc('search_recipes', {
+        filter_type: filterType,
+        sort_type: sortType,
+        week_input: week,
+      })
+      .range(currentPage, currentPage + pageSize - 1);
+
+    if (error) throw error;
+
+    return data;
+  });
+
 const insertSaved = async (recipeId: number) =>
   sendError(async () => {
     const userId = useUserStore.getState().id;
-    const setSavedRecipes = useRecipeStore.getState().setSavedRecipes;
     const isSavedRecipe = await checkIsSavedRecipe(recipeId);
 
     if (!isSavedRecipe) {
@@ -103,17 +108,12 @@ const insertSaved = async (recipeId: number) =>
 
       if (error) throw error;
 
-      const savedRecipes = await selectAllSaved();
-      setSavedRecipes(savedRecipes ?? []);
-
-      queryClient.invalidateQueries({ queryKey: [QueryKey.savedRecipes] });
+      queryClient.removeQueries({ queryKey: [QueryKey.savedRecipes, QueryKey.recipeCards] });
     }
   });
 
 const deleteSaved = async (recipeId: number) =>
   sendError(async () => {
-    const setSavedRecipes = useRecipeStore.getState().setSavedRecipes;
-    const setRecentRecipes = useRecipeStore.getState().setRecentRecipes;
     const isSavedRecipe = await checkIsSavedRecipe(recipeId);
 
     if (isSavedRecipe) {
@@ -121,15 +121,7 @@ const deleteSaved = async (recipeId: number) =>
 
       if (error) throw error;
 
-      const [savedRecipes, recentRecipes] = await Promise.all([
-        selectAllSaved(),
-        selectAllRecent(),
-      ]);
-
-      setSavedRecipes(savedRecipes ?? []);
-      setRecentRecipes(recentRecipes ?? []);
-
-      queryClient.removeQueries({ queryKey: [QueryKey.savedRecipes] });
+      queryClient.removeQueries({ queryKey: [QueryKey.savedRecipes, QueryKey.recipeCards] });
     }
   });
 
@@ -140,4 +132,5 @@ export const RecipeAPI = {
   deleteSaved,
   selectAllSaved,
   checkIsSavedRecipe,
+  selectAllByWeekWithPagination,
 };
