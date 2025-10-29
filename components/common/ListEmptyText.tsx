@@ -6,10 +6,10 @@ import RippleButton from './RippleButton';
 
 interface ListEmptyTextProps {
   emptyListName: EmptyListName;
-  href: Href;
+  href?: Href;
 }
 
-type EmptyListName = 'savedRecipes' | 'recentRecipes' | 'inquiry';
+type EmptyListName = 'savedRecipes' | 'recentRecipes' | 'inquiry' | 'searchResults';
 
 export default function ListEmptyText({ emptyListName, href }: ListEmptyTextProps) {
   const getListEmptyText = () => {
@@ -20,6 +20,8 @@ export default function ListEmptyText({ emptyListName, href }: ListEmptyTextProp
         return '아직 저장한 레시피가 없어요...';
       case 'inquiry':
         return '내 문의사항이 없어요...';
+      case 'searchResults':
+        return '검색 결과가 없어요...';
     }
   };
 
@@ -35,14 +37,16 @@ export default function ListEmptyText({ emptyListName, href }: ListEmptyTextProp
   return (
     <View className="items-center justify-center gap-6">
       <Text className="text-neutral-500">{getListEmptyText()}</Text>
-      <Link href={href} className="" asChild>
-        <RippleButton
-          className="bg-green-600 px-5 py-3"
-          rounded="full"
-          rippleColor={colors.green[700]}>
-          <Text className="text-white">{getButtonText()}</Text>
-        </RippleButton>
-      </Link>
+      {href && (
+        <Link href={href} className="" asChild>
+          <RippleButton
+            className="bg-green-600 px-5 py-3"
+            rounded="full"
+            rippleColor={colors.green[700]}>
+            <Text className="text-white">{getButtonText()}</Text>
+          </RippleButton>
+        </Link>
+      )}
     </View>
   );
 }
