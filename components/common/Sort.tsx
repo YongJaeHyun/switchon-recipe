@@ -1,6 +1,6 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { View } from 'react-native';
 import colors from 'tailwindcss/colors';
 import { CustomBottomSheet } from './CustomBottomSheet';
@@ -27,6 +27,10 @@ export function Sort<SortOption extends string>({
     onOptionPress(option);
     close();
   };
+
+  useEffect(() => {
+    return () => close();
+  });
 
   return (
     <View className="relative">
