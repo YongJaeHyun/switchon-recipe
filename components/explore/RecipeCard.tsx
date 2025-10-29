@@ -12,10 +12,15 @@ import { RecipeDB } from 'types/database';
 import { IngredientSchema } from 'types/recipe';
 import { getWeekColor } from 'utils/getWeekColor';
 import { z } from 'zod';
+import { HighlightText } from './HighlightText';
 
 type RecipeIngredient = string | z.infer<typeof IngredientSchema>;
 
-export const RecipeCard = React.memo((recipe: RecipeDB) => {
+interface RecipeCardProps extends RecipeDB {
+  keyword?: string;
+}
+
+export const RecipeCard = React.memo(({ keyword, ...recipe }: RecipeCardProps) => {
   const { isSavedMap, toggleIsSaved } = useRecipeStore();
   const isSaved = !!isSavedMap[recipe.id];
 
@@ -69,7 +74,11 @@ export const RecipeCard = React.memo((recipe: RecipeDB) => {
           </Pressable>
         </View>
         <View className="justify-evenly gap-3 bg-white p-3">
-          <Text className="line-clamp-1 text-lg font-bold">{recipe.recipe_name}</Text>
+          <HighlightText
+            className="text-lg font-bold"
+            text={recipe.recipe_name ?? ''}
+            keyword={keyword}
+          />
 
           <View className="flex-row flex-wrap gap-2">
             {parsedIngredients.map((item: RecipeIngredient) => {
@@ -81,20 +90,28 @@ export const RecipeCard = React.memo((recipe: RecipeDB) => {
                   <View
                     key={`${recipe.recipe_name}-${ingredientName}`}
                     className="rounded-full bg-neutral-200 px-3 py-1 opacity-60">
-                    <Text className="text-sm font-semibold">{ingredientName}</Text>
+                    <HighlightText
+                      className="text-sm font-semibold"
+                      text={ingredientName}
+                      keyword={keyword}
+                    />
                   </View>
                 );
               } else {
                 return (
                   <Link
                     key={`${recipe.recipe_name}-${ingredientName}`}
-                    href={`/(tabs)/explore/searchResult?keyword=${ingredientName}`}
+                    href={`/(tabs)/explore/searchResult?keyword=${ingredientName}&week=${recipe.week}`}
                     asChild>
                     <RippleButton
                       rippleColor={colors.neutral[300]}
                       className="bg-neutral-200 px-3 py-1"
                       rounded="full">
-                      <Text className="text-sm font-semibold">{ingredientName}</Text>
+                      <HighlightText
+                        className="text-sm font-semibold"
+                        text={ingredientName}
+                        keyword={keyword}
+                      />
                     </RippleButton>
                   </Link>
                 );

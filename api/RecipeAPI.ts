@@ -74,19 +74,29 @@ const selectAllSaved = async () =>
     return data;
   });
 
-const selectAllByWeekWithPagination = async (
-  week: number,
-  currentPage: number,
-  sortType: RecipeSortType = '최신순',
-  filterType: RecipeFilterType = '전체',
-  pageSize: number = 10
-) =>
+interface selectAllByWeekWithPaginationProps {
+  week: number;
+  currentPage: number;
+  keyword?: string;
+  sortType?: RecipeSortType;
+  filterType?: RecipeFilterType;
+  pageSize?: number;
+}
+const selectAllByWeekWithPagination = async ({
+  week,
+  keyword,
+  currentPage,
+  sortType = '최신순',
+  filterType = '전체',
+  pageSize = 10,
+}: selectAllByWeekWithPaginationProps) =>
   sendError<RecipeDB[]>(async () => {
     const { data, error } = await supabase
       .rpc('search_recipes', {
         filter_type: filterType,
         sort_type: sortType,
         week_input: week,
+        keyword_input: keyword,
       })
       .range(currentPage, currentPage + pageSize - 1);
 
