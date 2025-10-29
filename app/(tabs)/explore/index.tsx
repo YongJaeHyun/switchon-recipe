@@ -4,8 +4,8 @@ import { SafeAreaViewWithNav } from 'components/common/SafeAreaViewWithNav';
 import { SearchInput } from 'components/common/SearchInput';
 import { Sort } from 'components/common/Sort';
 import { Text } from 'components/common/Text';
-import { CategoryTab } from 'components/explore/CategoryTab';
 import { RecipeCard } from 'components/explore/RecipeCard';
+import { Tabs } from 'components/explore/Tabs';
 import { RECIPE_FILTERS, RecipeFilterType } from 'const/filter';
 import { RECIPE_SORTS, RecipeSortType } from 'const/sort';
 import { Link } from 'expo-router';
@@ -14,7 +14,6 @@ import { useMemo, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import colors from 'tailwindcss/colors';
 import { RecipeDB } from 'types/database';
-import { getWeekBGColor } from 'utils/getWeekColor';
 
 const TABS = ['1주차', '2주차', '3주차+'] as const;
 
@@ -23,12 +22,12 @@ const renderRecipeItem = ({ item }: { item: RecipeDB }) => {
 };
 
 export default function ExploreScreen() {
-  const [currentTab, setCurrentTab] = useState<(typeof TABS)[number]>('1주차');
+  const [tabIndex, setTabIndex] = useState(0);
   const [keyword, setKeyword] = useState('');
   const [filter, setFilter] = useState<RecipeFilterType>('전체');
   const [sort, setSort] = useState<RecipeSortType>('최신순');
 
-  const week = Number(currentTab[0]);
+  const week = tabIndex + 1;
 
   const {
     data: recipes,
@@ -36,7 +35,7 @@ export default function ExploreScreen() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useInfiniteRecipeCards(week, sort, filter);
+  } = useInfiniteRecipeCards({ week, sortType: sort, filterType: filter });
 
   const flattenedRecipes = useMemo(() => recipes?.pages.flatMap((page) => page) ?? [], [recipes]);
 
@@ -56,19 +55,11 @@ export default function ExploreScreen() {
         </View>
       </Link>
 
-      <View className="flex-row gap-3 border-y border-neutral-200 px-4 py-3">
-        {TABS.map((tabName) => (
-          <CategoryTab
-            key={tabName}
-            name={tabName}
-            activeColor={getWeekBGColor(week)}
-            isActive={currentTab === tabName}
-            onPress={() => setCurrentTab(tabName)}
-          />
-        ))}
+      <View className="h-14 px-5">
+        <Tabs tabItems={TABS} onSelect={setTabIndex} selectedIndex={tabIndex} />
       </View>
 
-      <View className="flex-row items-center justify-between px-5 py-4">
+      <View className="flex-row items-center justify-between px-5 py-3">
         <Filter currentOption={filter} onOptionPress={setFilter} options={RECIPE_FILTERS} />
         <Sort currentOption={sort} onOptionPress={setSort} options={RECIPE_SORTS} />
       </View>
