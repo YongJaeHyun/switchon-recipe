@@ -70,7 +70,7 @@ export default function ExploreScreen() {
         </View>
       ) : (
         <FlashList
-          contentContainerStyle={{ paddingHorizontal: 20 }}
+          contentContainerStyle={{ padding: 20 }}
           ItemSeparatorComponent={() => <View style={{ height: 20 }} />}
           data={flattenedRecipes}
           ListFooterComponent={
