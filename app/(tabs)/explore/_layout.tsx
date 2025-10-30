@@ -5,6 +5,7 @@ export default function ExploreLayout() {
     <Stack>
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="search" options={{ headerShown: false }} />
+      <Stack.Screen name="searchResult" options={{ headerShown: false }} />
     </Stack>
   );
 }
