@@ -32,6 +32,5 @@ export function useInfiniteRecipeCards({
       })) ?? [],
     getNextPageParam: (lastPage, allPages) =>
       lastPage.length < pageSize ? undefined : allPages.length * pageSize,
-    refetchInterval: 5 * 60 * 1000,
   });
 }
