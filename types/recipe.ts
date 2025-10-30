@@ -14,6 +14,7 @@ const IngredientSchema = z.object({
   isOptional: z.boolean(),
   amount: z.string(),
 });
+type RecipeIngredient = string | z.infer<typeof IngredientSchema>;
 
 const RecipeSchema = z.object({
   recipeName: z.string(),
@@ -45,6 +46,7 @@ export {
   IngredientSchema,
   Recipe,
   RecipeCategory,
+  RecipeIngredient,
   RecipeMethod,
   RecipeOption,
   RecipeOptions,
