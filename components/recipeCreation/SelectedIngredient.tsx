@@ -1,10 +1,11 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Chip } from 'components/common/Chip';
 import { Text } from 'components/common/Text';
 import { allIngredients } from 'const/ingredients';
 import { useLastPathname } from 'hooks/useLastPathname';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { useEffect } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable } from 'react-native';
+import colors from 'tailwindcss/colors';
 import { RecipeType } from 'types/database';
 import { IIngredient } from 'types/recipe';
 
@@ -29,15 +30,13 @@ export default function SelectedIngredient({ ingredient }: SelectedIngredientPro
   }, []);
 
   return ingredient ? (
-    <Pressable
+    <Chip
       key={ingredient.name}
+      value={ingredient.name}
+      rippleColor={colors.transparent}
+      outerClassName={type === 'zero' ? 'border-green-600' : 'border-amber-500'}
       onPress={() => toggleIngredient(ingredient)}
-      className={`flex-row items-center gap-2 rounded-full border px-3 py-2 ${type === 'zero' ? 'border-green-600' : 'border-amber-500'}`}>
-      <Text>{ingredient.name}</Text>
-      <View>
-        <Feather name="x" size={16} color="black" />
-      </View>
-    </Pressable>
+    />
   ) : (
     <Pressable
       className={`flex-row items-center gap-2 rounded-full border px-3 py-2 ${type === 'zero' ? 'border-green-600' : 'border-amber-500'}`}>
