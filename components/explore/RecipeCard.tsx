@@ -1,6 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import { Image } from 'expo-image';
 import { Link } from 'expo-router';
@@ -9,12 +8,10 @@ import { Pressable, View } from 'react-native';
 import { useRecipeStore } from 'stores/recipeStore';
 import colors from 'tailwindcss/colors';
 import { RecipeDB } from 'types/database';
-import { IngredientSchema } from 'types/recipe';
+import { RecipeIngredient } from 'types/recipe';
 import { getWeekColor } from 'utils/getWeekColor';
-import { z } from 'zod';
+import { Category } from './Category';
 import { HighlightText } from './HighlightText';
-
-type RecipeIngredient = string | z.infer<typeof IngredientSchema>;
 
 interface RecipeCardProps extends RecipeDB {
   keyword?: string;
@@ -81,41 +78,16 @@ export const RecipeCard = React.memo(({ keyword, ...recipe }: RecipeCardProps) =
           />
 
           <View className="flex-row flex-wrap gap-2">
-            {parsedIngredients.map((item: RecipeIngredient) => {
-              const isOldVersion = typeof item === 'string';
-              const ingredientName = isOldVersion ? item : item.name;
-
-              if (isOldVersion || !ingredientName.length) {
-                return (
-                  <View
-                    key={`${recipe.recipe_name}-${ingredientName}`}
-                    className="rounded-full bg-neutral-200 px-3 py-1 opacity-60">
-                    <HighlightText
-                      className="text-sm font-semibold"
-                      text={ingredientName}
-                      keyword={keyword}
-                    />
-                  </View>
-                );
-              } else {
-                return (
-                  <Link
-                    key={`${recipe.recipe_name}-${ingredientName}`}
-                    href={`/(tabs)/explore/searchResult?keyword=${ingredientName}&week=${recipe.week}`}
-                    asChild>
-                    <RippleButton
-                      rippleColor={colors.neutral[300]}
-                      className="bg-neutral-200 px-3 py-1"
-                      rounded="full">
-                      <HighlightText
-                        className="text-sm font-semibold"
-                        text={ingredientName}
-                        keyword={keyword}
-                      />
-                    </RippleButton>
-                  </Link>
-                );
-              }
+            {parsedIngredients.map((ingredient: RecipeIngredient) => {
+              const isOldVersion = typeof ingredient === 'string';
+              return (
+                <Category
+                  key={`${recipe.id}-${isOldVersion ? ingredient : ingredient.name}`}
+                  recipe={recipe}
+                  ingredient={ingredient}
+                  keyword={keyword}
+                />
+              );
             })}
           </View>
 
