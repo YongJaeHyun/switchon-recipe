@@ -4,4 +4,6 @@ export const QueryKey = {
   recentRecipes: 'recentRecipes',
   savedRecipes: 'savedRecipes',
   recipeCards: 'recipeCards',
+  recentKeywords: 'recentKeywords',
+  popularCategories: 'popularCategories',
 };
