@@ -7,6 +7,7 @@ import { IngredientRequest } from 'components/recipeCreation/IngredientRequest';
 import Ingredients, { IngredientsProps } from 'components/recipeCreation/Ingredients';
 import Loading from 'components/recipeCreation/Loading';
 import SelectedIngredient from 'components/recipeCreation/SelectedIngredient';
+import { Tip } from 'components/recipeCreation/Tip';
 import { allIngredients } from 'const/ingredients';
 import { QueryKey } from 'const/queryKey';
 import { disassemble, getChoseong } from 'es-hangul';
@@ -194,7 +195,10 @@ export default function LowRecipeCreationScreen() {
       {(isIngredientsLoading || isRecipeLoading) && (
         <View className="absolute inset-0 z-50 items-center justify-center">
           <View className="absolute inset-0 bg-black/30" />
-          <Loading />
+          <View className="translate-y-4">
+            <Loading />
+            <Tip />
+          </View>
         </View>
       )}
     </SafeAreaViewWithNav>
