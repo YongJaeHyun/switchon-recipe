@@ -5,11 +5,20 @@ import { newIngredients } from './ingredients';
 const { month, week, names } = newIngredients;
 
 export const latestNotices = [
-  `🚀 [v${APP_VERSION} 업데이트] - 재료 초성 검색이 정상적으로 되지 않던 버그 수정, 재료 검색 시 일시적으로 재료 이미지가 누락되는 버그 수정`,
+  `🚀 [v${APP_VERSION} 업데이트] - 다른 레시피들을 둘러볼 수 있는 "탐색 탭" 추가, 레시피 검색 및 레시피 카테고리 검색 기능 추가`,
   `🥗 [${month}월 ${seosusa(week)}주 재료 업데이트] - ${names.join(', ')} 추가`,
 ];
 
 export const allNotices = [
+  {
+    version: 'v4.0.0',
+    changes: [
+      '✨ 다른 레시피들을 둘러볼 수 있는 "탐색 탭" 추가',
+      '✨ 레시피 검색 및 레시피 카테고리 검색 기능 추가',
+      '👀 레시피 생성 중에도, 탐색 탭을 통해 다른 레시피들을 둘러볼 수 있어요!',
+    ],
+    updatedAt: '2025.10.31',
+  },
   {
     version: 'v3.0.2',
     changes: [
@@ -18,7 +27,17 @@ export const allNotices = [
       '🐛 백그라운드에서 주차가 넘어간 경우, 주차 완료 팝업이 표시되지 않던 버그 수정',
       '🍱 차조, 관자, 야채믹스 추가',
     ],
-    updatedAt: '2024.10.13',
+    updatedAt: '2025.10.13',
+  },
+  {
+    version: 'v3.0.2',
+    changes: [
+      '🐛 재료 초성 검색이 정상적으로 되지 않던 버그 수정',
+      '🐛 검색 시, 일시적으로 재료 이미지가 누락되는 버그 수정',
+      '🐛 백그라운드에서 주차가 넘어간 경우, 주차 완료 팝업이 표시되지 않던 버그 수정',
+      '🍱 차조, 관자, 야채믹스 추가',
+    ],
+    updatedAt: '2025.10.13',
   },
   {
     version: 'v3.0.1',
@@ -27,7 +46,7 @@ export const allNotices = [
       '🐛 선택했던 재료가 현재 사라진 재료임에도 남아있던 버그 수정',
       '🍱 파로, 고기순대, 간장, 커피, 단백질쉐이크 추가',
     ],
-    updatedAt: '2024.09.30',
+    updatedAt: '2025.09.30',
   },
   {
     version: 'v3.0.0',
@@ -39,7 +58,7 @@ export const allNotices = [
       '🍱 현미밥, 참치, 두유면 추가',
       '🍱 콩담백면 1주차 -> 2주차로 수정',
     ],
-    updatedAt: '2024.09.22',
+    updatedAt: '2025.09.22',
   },
   {
     version: 'v2.1.1',
@@ -49,7 +68,7 @@ export const allNotices = [
       '🐛 문의사항 날짜가 실제와 다르게 나오던 버그 수정',
       '🐛 구글 플레이 서비스 버전이 낮을 때, 로그인 에러가 발생하던 버그 수정',
     ],
-    updatedAt: '2024.09.12',
+    updatedAt: '2025.09.12',
   },
   {
     version: 'v2.1.0',
@@ -57,7 +76,7 @@ export const allNotices = [
       '✨ 저장한 레시피 필터링 및 정렬 기능 추가',
       '🐛 레시피 저장 후 삭제 시, 최근 만든 레시피가 갱신되지 않는 버그 수정',
     ],
-    updatedAt: '2024.09.03',
+    updatedAt: '2025.09.03',
   },
   {
     version: 'v2.0.1',
@@ -69,7 +88,7 @@ export const allNotices = [
       '🐛 단어로 검색해도 초성으로만 검색되던 버그 수정',
       '🐛 사용자 주차가 레시피 주차에 그대로 반영되던 버그 수정',
     ],
-    updatedAt: '2024.09.03',
+    updatedAt: '2025.09.03',
   },
   {
     version: 'v2.0.0',
@@ -80,7 +99,7 @@ export const allNotices = [
       '⚡️ 초성으로도 검색이 가능하도록, 재료 검색 기능 개선',
       '🐛 일부 UI에 폰트가 적용되지 않던 버그 수정',
     ],
-    updatedAt: '2024.08.29',
+    updatedAt: '2025.08.29',
   },
   {
     version: 'v1.2.0',
@@ -91,7 +110,7 @@ export const allNotices = [
       '🍱 크림치즈, 대구살 추가',
       '🐛 문의사항 추가 후, UI에 바로 반영되지 않던 버그 수정',
     ],
-    updatedAt: '2024.08.26',
+    updatedAt: '2025.08.26',
   },
   {
     version: 'v1.1.0',
@@ -100,7 +119,7 @@ export const allNotices = [
       '✨ 레시피 생성 시, 상세 옵션 설정 기능 추가',
       '✨ 저장하지 않은 레시피 한 달 후 자동 삭제 기능 추가',
     ],
-    updatedAt: '2024.08.20',
+    updatedAt: '2025.08.20',
   },
   {
     version: 'v1.0.4',
