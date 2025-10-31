@@ -1,5 +1,6 @@
 import { createRecipe } from 'api/gemini';
 import { CustomSelect } from 'components/common/CustomSelect';
+import RippleButton from 'components/common/RippleButton';
 import { SafeAreaViewWithNav } from 'components/common/SafeAreaViewWithNav';
 import { SearchInput } from 'components/common/SearchInput';
 import { Text } from 'components/common/Text';
@@ -11,7 +12,7 @@ import { Tip } from 'components/recipeCreation/Tip';
 import { QueryKey } from 'const/queryKey';
 import { allZeroIngredients } from 'const/zeroIngredients';
 import { disassemble, getChoseong } from 'es-hangul';
-import { router } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { useSelect } from 'hooks/useSelect';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { queryClient } from 'lib/queryClient';
@@ -183,8 +184,13 @@ export default function ZeroRecipeCreationScreen() {
       {(isIngredientsLoading || isRecipeLoading) && (
         <View className="absolute inset-0 z-50 items-center justify-center">
           <View className="absolute inset-0 bg-black/40" />
-          <View className="translate-y-4">
+          <View className="translate-y-8">
             <Loading />
+            <Link href={'/(tabs)/explore'} asChild>
+              <RippleButton outerClassName="bg-white self-center mb-6" className="px-4 py-2.5">
+                <Text className="text-green-600">다른 레시피 둘러보기</Text>
+              </RippleButton>
+            </Link>
             <Tip />
           </View>
         </View>

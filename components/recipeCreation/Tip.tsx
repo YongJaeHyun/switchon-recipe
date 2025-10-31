@@ -42,7 +42,7 @@ export function Tip() {
   return (
     <View className="relative">
       <Text className="text-sm font-bold text-white" onLayout={checkTextWidth}>
-        Tip. 기다리는 동안, 탐색 탭에서 다른 레시피들을 둘러보세요!
+        Tip. 아래 탐색 탭으로도 이동할 수 있어요!
       </Text>
 
       <View
