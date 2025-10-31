@@ -4,7 +4,7 @@ import { QueryKey } from 'const/queryKey';
 import { queryClient } from 'lib/queryClient';
 
 export const useRecentKeywords = () => {
-  const { data } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: [QueryKey.recentKeywords],
     queryFn: SearchHistoryAPI.getRecent,
   });
@@ -30,5 +30,5 @@ export const useRecentKeywords = () => {
     },
   });
 
-  return { data, insertKeyword, deleteKeyword, deleteAllKeywords };
+  return { data, insertKeyword, deleteKeyword, deleteAllKeywords, isLoading };
 };
