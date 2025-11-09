@@ -5,6 +5,7 @@ import {
   beans,
   beef,
   bokChoy,
+  boriRice,
   broccoli,
   butter,
   cabbage,
@@ -15,6 +16,7 @@ import {
   chestnut,
   chicken,
   chickenStock,
+  chiliSauce,
   chives,
   clam,
   cod,
@@ -114,6 +116,7 @@ export const ingredientImages = [
   beans,
   beef,
   bokChoy,
+  boriRice,
   broccoli,
   butter,
   cabbage,
@@ -123,6 +126,7 @@ export const ingredientImages = [
   chestnut,
   chicken,
   chickenStock,
+  chiliSauce,
   chives,
   clam,
   cod,
@@ -223,6 +227,12 @@ export const firstWeekIngredients: IIngredient[] = [
   {
     name: '현미밥',
     image: hyunmiRice,
+    week: 1,
+    isCarbohydrate: true,
+  },
+  {
+    name: '보리밥',
+    image: boriRice,
     week: 1,
     isCarbohydrate: true,
   },
@@ -577,8 +587,13 @@ export const firstWeekIngredients: IIngredient[] = [
     week: 1,
   },
   {
-    name: '굴소스',
+    name: '저당굴소스',
     image: oysterSauce,
+    week: 1,
+  },
+  {
+    name: '저당칠리소스',
+    image: chiliSauce,
     week: 1,
   },
   {
@@ -774,9 +789,9 @@ export const carbohydrateIngredients: IIngredient[] = [
 ].filter((i) => i.isCarbohydrate);
 
 export const newIngredients = {
-  month: 10,
-  week: 5,
-  names: ['차조', '관자', '야채믹스'],
+  month: 11,
+  week: 3,
+  names: ['보리밥', '저당칠리소스'],
 };
 
 export const allIngredients: IngredientsProps[] = [
