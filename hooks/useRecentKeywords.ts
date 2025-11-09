@@ -2,10 +2,13 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { SearchHistoryAPI } from 'api/SearchHistoryAPI';
 import { QueryKey } from 'const/queryKey';
 import { queryClient } from 'lib/queryClient';
+import { useUserStore } from 'stores/userStore';
 
 export const useRecentKeywords = () => {
+  const userId = useUserStore((state) => state.id);
+
   const { data, isLoading } = useQuery({
-    queryKey: [QueryKey.recentKeywords],
+    queryKey: [QueryKey.recentKeywords, userId],
     queryFn: SearchHistoryAPI.getRecent,
   });
 
