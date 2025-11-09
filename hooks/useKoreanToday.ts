@@ -20,7 +20,7 @@ export default function useKoreanToday() {
       if (!isChecked) open();
       setWeek(week);
     }
-  }, []);
+  }, [isChecked, open, prevWeek, setWeek, start_date]);
 
   const revalidateTodayInterval = useCallback(() => {
     const now = new Date();
