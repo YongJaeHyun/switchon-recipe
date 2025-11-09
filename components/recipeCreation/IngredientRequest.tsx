@@ -45,7 +45,10 @@ export function IngredientRequest() {
 
   const submitRequest = async () => {
     if (validate()) {
-      await sendSlackMessage(`🥗 재료 요청 도착!\n\n재료명: ${name}`);
+      const parsedIngredientName = encodeURIComponent(name);
+      await sendSlackMessage(
+        `🥗 재료 요청 도착!\n\n재료명: ${name}\n이미지:https://pixabay.com/ko/photos/search/${parsedIngredientName}/`
+      );
 
       close();
       reset();
