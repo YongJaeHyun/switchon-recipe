@@ -1,6 +1,6 @@
 import { Chip } from 'components/common/Chip';
 import { Text } from 'components/common/Text';
-import { allIngredients } from 'const/ingredients';
+import { allIngredientsList } from 'const/ingredients';
 import { useLastPathname } from 'hooks/useLastPathname';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { useEffect } from 'react';
@@ -19,7 +19,7 @@ export default function SelectedIngredient({ ingredient }: SelectedIngredientPro
   const { toggleIngredient } = useSelectedIngredients({ type });
 
   const isValidIngredient = () =>
-    allIngredients.some((ingredientCategory) =>
+    allIngredientsList.some((ingredientCategory) =>
       ingredientCategory.ingredientList.some((ing) => ing.name === ingredient?.name)
     );
 

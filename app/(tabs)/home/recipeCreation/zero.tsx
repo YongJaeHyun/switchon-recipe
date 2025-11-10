@@ -10,7 +10,7 @@ import Loading from 'components/recipeCreation/Loading';
 import SelectedIngredient from 'components/recipeCreation/SelectedIngredient';
 import { Tip } from 'components/recipeCreation/Tip';
 import { QueryKey } from 'const/queryKey';
-import { allZeroIngredients } from 'const/zeroIngredients';
+import { allZeroIngredientsList } from 'const/zeroIngredients';
 import { disassemble, getChoseong } from 'es-hangul';
 import { Link, router } from 'expo-router';
 import { useSelect } from 'hooks/useSelect';
@@ -135,7 +135,7 @@ export default function ZeroRecipeCreationScreen() {
       <FlatList
         className="mb-4 flex-1"
         contentContainerClassName="gap-6"
-        data={allZeroIngredients}
+        data={allZeroIngredientsList}
         extraData={resetTrigger ? 'reset-1' : 'reset-0'}
         ListHeaderComponent={() => <IngredientRequest />}
         renderItem={({ item }) => (

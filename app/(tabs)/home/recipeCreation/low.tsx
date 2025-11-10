@@ -9,7 +9,7 @@ import Ingredients, { IngredientsProps } from 'components/recipeCreation/Ingredi
 import Loading from 'components/recipeCreation/Loading';
 import SelectedIngredient from 'components/recipeCreation/SelectedIngredient';
 import { Tip } from 'components/recipeCreation/Tip';
-import { allIngredients } from 'const/ingredients';
+import { allIngredientsList } from 'const/ingredients';
 import { QueryKey } from 'const/queryKey';
 import { disassemble, getChoseong } from 'es-hangul';
 import { Link, router } from 'expo-router';
@@ -136,7 +136,7 @@ export default function LowRecipeCreationScreen() {
       <FlatList
         className="mb-4 flex-1"
         contentContainerClassName="gap-6"
-        data={allIngredients}
+        data={allIngredientsList}
         extraData={resetTrigger ? 'reset-1' : 'reset-0'}
         ListHeaderComponent={() => <IngredientRequest />}
         renderItem={({ item }) => (

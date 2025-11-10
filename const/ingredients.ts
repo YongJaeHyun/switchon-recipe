@@ -111,117 +111,6 @@ import {
 } from 'const/assets';
 import { IIngredient } from 'types/recipe';
 
-export const ingredientImages = [
-  allulose,
-  avocado,
-  beans,
-  beef,
-  bokChoy,
-  boriRice,
-  broccoli,
-  butter,
-  cabbage,
-  carrot,
-  chajo,
-  cheese,
-  cherryTomato,
-  chestnut,
-  chicken,
-  chickenStock,
-  chiliSauce,
-  chives,
-  clam,
-  cod,
-  coffee,
-  crammy,
-  creamCheese,
-  cucumber,
-  curcuma,
-  dakbal,
-  dasima,
-  doyuMyun,
-  driedTofu,
-  duck,
-  eastCabbage,
-  egg,
-  eggplant,
-  emmer,
-  garlic,
-  ggwari,
-  gim,
-  gochu,
-  gochuPaste,
-  gogiSundae,
-  greenOnion,
-  gwanja,
-  gwiriRice,
-  hyunmiRice,
-  kimchi,
-  kongdambaek,
-  kongnamul,
-  leek,
-  lemonJuice,
-  lettuce,
-  mackerel,
-  memilMyun,
-  milk,
-  minari,
-  mixedRice,
-  muk,
-  myungran,
-  nakji,
-  natto,
-  nutari,
-  nuts,
-  oatmeal,
-  octopus,
-  onion,
-  orientalSauce,
-  oyster,
-  oysterSauce,
-  pangi,
-  paprika,
-  peanutButter,
-  perilla,
-  perillaOil,
-  pork,
-  potato,
-  proteinPowder,
-  pyogo,
-  quinoa,
-  radish,
-  redPepperPowder,
-  rice,
-  ricecake,
-  ricepaper,
-  saesongi,
-  salmon,
-  sangchu,
-  sanggang,
-  seaweed,
-  sesameOil,
-  shrimp,
-  softTofu,
-  soybeanPaste,
-  soySauce,
-  spinach,
-  squid,
-  sukju,
-  sweetPotato,
-  sweetPumpkin,
-  tofu,
-  tofuMyun,
-  tomato,
-  tomatoSauce,
-  tuna,
-  tunaCan,
-  vegetableMix,
-  vinegar,
-  wasabi,
-  yogurt,
-  zucchini,
-];
-
 export const firstWeekIngredients: IIngredient[] = [
   {
     name: '흰쌀밥',
@@ -793,11 +682,13 @@ export const thirdWeekIngredients: IIngredient[] = [
   },
 ];
 
-export const carbohydrateIngredients: IIngredient[] = [
-  ...firstWeekIngredients,
-  ...secondWeekIngredients,
-  ...thirdWeekIngredients,
-].filter((i) => i.isCarbohydrate);
+const allIngredients = [...firstWeekIngredients, ...secondWeekIngredients, ...thirdWeekIngredients];
+
+export const ingredientImages = allIngredients.map((i) => i.image);
+
+export const carbohydrateIngredients: IIngredient[] = allIngredients.filter(
+  (i) => i.isCarbohydrate
+);
 
 export const newIngredients = {
   month: 11,
@@ -805,7 +696,7 @@ export const newIngredients = {
   names: ['보리밥', '저당칠리소스'],
 };
 
-export const allIngredients: IngredientsProps[] = [
+export const allIngredientsList: IngredientsProps[] = [
   {
     title: '탄수화물',
     week: 4,
