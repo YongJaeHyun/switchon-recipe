@@ -39,7 +39,7 @@ export default function SearchScreen() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useInfiniteRecipeCards({ week, keyword: keywordProp });
+  } = useInfiniteRecipeCards({ week, keyword: keywordProp, sortType: sort, filterType: filter });
   const { insertKeyword } = useRecentKeywords();
 
   const flattenedRecipes = useMemo(() => recipes?.pages.flatMap((page) => page) ?? [], [recipes]);
