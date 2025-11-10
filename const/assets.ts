@@ -57,6 +57,7 @@ export const gochuPaste = require('../assets/images/ingredients/gochu_paste.jpg'
 export const gogiSundae = require('../assets/images/ingredients/gogi_sundae.jpg');
 export const greenOnion = require('../assets/images/ingredients/green_onion.jpg');
 export const gwanja = require('../assets/images/ingredients/gwanja.jpg');
+export const gwiriRice = require('../assets/images/ingredients/gwiri_rice.jpg');
 export const hyunmiRice = require('../assets/images/ingredients/hyunmi_rice.jpg');
 export const kimchi = require('../assets/images/ingredients/kimchi.jpg');
 export const kongdambaek = require('../assets/images/ingredients/kongdambaek.jpg');
