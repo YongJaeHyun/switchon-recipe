@@ -16,9 +16,10 @@ export default function useKoreanToday() {
 
     setToday(newDay);
 
-    if (prevWeek < week && week < 5) {
-      if (!isChecked) open();
+    const isEnteringNewWeek = prevWeek < week && week < 5;
+    if (isEnteringNewWeek && !isChecked) {
       setWeek(week);
+      open();
     }
   }, [isChecked, open, prevWeek, setWeek, start_date]);
 
