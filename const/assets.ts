@@ -49,6 +49,7 @@ export const eastCabbage = require('../assets/images/ingredients/east_cabbage.jp
 export const egg = require('../assets/images/ingredients/egg.jpg');
 export const eggplant = require('../assets/images/ingredients/eggplant.jpg');
 export const emmer = require('../assets/images/ingredients/emmer.jpg');
+export const fuju = require('../assets/images/ingredients/fuju.jpg');
 export const garlic = require('../assets/images/ingredients/garlic.jpg');
 export const ggwari = require('../assets/images/ingredients/ggwari.jpg');
 export const gim = require('../assets/images/ingredients/gim.jpg');

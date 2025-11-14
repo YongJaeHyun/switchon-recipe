@@ -34,6 +34,7 @@ import {
   egg,
   eggplant,
   emmer,
+  fuju,
   garlic,
   ggwari,
   gim,
@@ -160,6 +161,11 @@ export const firstWeekIngredients: IIngredient[] = [
   {
     name: '포두부',
     image: driedTofu,
+    week: 1,
+  },
+  {
+    name: '푸주',
+    image: fuju,
     week: 1,
   },
   {
@@ -693,7 +699,7 @@ export const carbohydrateIngredients: IIngredient[] = allIngredients.filter(
 export const newIngredients = {
   month: 11,
   week: 3,
-  names: ['보리밥', '저당칠리소스'],
+  names: ['보리밥', '귀리밥', '저당칠리소스', '푸주'],
 };
 
 export const allIngredientsList: IngredientsProps[] = [
