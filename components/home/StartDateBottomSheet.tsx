@@ -10,7 +10,6 @@ import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { useState } from 'react';
 import { TouchableOpacity, View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
-import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
 import { getWeekAndDay } from 'utils/date';
 
 interface StartDateBottomSheetProps {
@@ -35,9 +34,7 @@ export function StartDateBottomSheet({ bottomSheetRef }: StartDateBottomSheetPro
   };
 
   const updateStartDate = async () => {
-    const { week: prevWeek, open, setWeek } = useWeekCompletePopupStore.getState();
     const { week } = getWeekAndDay(selectedDate);
-    setWeek(week);
 
     const filteredLowIngredients = lowIngredients.filter((ingredient) => ingredient.week <= week);
     if (lowIngredients.length !== filteredLowIngredients.length) {
@@ -51,13 +48,7 @@ export function StartDateBottomSheet({ bottomSheetRef }: StartDateBottomSheetPro
 
     await UserAPI.updateStartDate(selectedDate);
 
-    if (bottomSheetRef) {
-      bottomSheetRef.current?.close();
-    }
-
-    if (week < 5 && prevWeek < week) {
-      open();
-    }
+    bottomSheetRef.current?.close();
   };
 
   return (

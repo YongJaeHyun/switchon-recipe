@@ -3,26 +3,41 @@ import { AppState } from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
 import { getKoreanToday, getWeekAndDay } from 'utils/date';
+import { useTodos } from './useTodos';
 
 export default function useKoreanToday() {
   const { isHydrated } = useWeekCompletePopupStore();
   const { start_date } = useUserStore();
+  const { resetTodos } = useTodos();
 
   const [today, setToday] = useState(getKoreanToday());
 
   const revalidateToday = useCallback(() => {
-    const { open, week: prevWeek, setWeek, isChecked } = useWeekCompletePopupStore.getState();
+    const {
+      open,
+      week: prevWeek,
+      day: prevDay,
+      setWeek,
+      setDay,
+      isChecked,
+    } = useWeekCompletePopupStore.getState();
     const newDay = getKoreanToday();
-    const { week } = getWeekAndDay(start_date ?? newDay);
+    const { week, day } = getWeekAndDay(start_date ?? newDay);
+    const isEnteringNewWeek = prevWeek < week && week < 5;
 
     setToday(newDay);
 
-    const isEnteringNewWeek = prevWeek < week && week < 5;
-    if (isEnteringNewWeek && !isChecked) {
+    if (week !== prevWeek) {
       setWeek(week);
+    }
+    if (day !== prevDay) {
+      setDay(day);
+      resetTodos();
+    }
+    if (isEnteringNewWeek && !isChecked) {
       open();
     }
-  }, [start_date]);
+  }, [start_date, resetTodos]);
 
   const revalidateTodayInterval = useCallback(() => {
     const now = new Date();
