@@ -5,12 +5,13 @@ import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
 import { getKoreanToday, getWeekAndDay } from 'utils/date';
 
 export default function useKoreanToday() {
-  const { open, week: prevWeek, setWeek, isChecked, isHydrated } = useWeekCompletePopupStore();
+  const { isHydrated } = useWeekCompletePopupStore();
   const { start_date } = useUserStore();
 
   const [today, setToday] = useState(getKoreanToday());
 
   const revalidateToday = useCallback(() => {
+    const { open, week: prevWeek, setWeek, isChecked } = useWeekCompletePopupStore.getState();
     const newDay = getKoreanToday();
     const { week } = getWeekAndDay(start_date ?? newDay);
 
@@ -21,7 +22,7 @@ export default function useKoreanToday() {
       setWeek(week);
       open();
     }
-  }, [isChecked, open, prevWeek, setWeek, start_date]);
+  }, [start_date]);
 
   const revalidateTodayInterval = useCallback(() => {
     const now = new Date();
