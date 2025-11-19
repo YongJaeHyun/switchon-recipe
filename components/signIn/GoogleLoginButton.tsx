@@ -51,15 +51,7 @@ export default function GoogleLoginButton() {
         const user = await UserAPI.selectOne(data.user.id);
         if (!user) return;
 
-        setUser({
-          id: user.id,
-          email: user.email,
-          avatar_url: user.avatar_url,
-          provider: user.provider,
-          created_at: user.created_at,
-          start_date: user.start_date,
-          is_onboarded: user.is_onboarded,
-        });
+        setUser(user);
 
         if (user.is_onboarded) {
           router.replace('/(tabs)/home');
