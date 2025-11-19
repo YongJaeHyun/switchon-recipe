@@ -7,7 +7,9 @@ const convertToKoreanDate = (date: Date) => {
   return koreanDate;
 };
 
-const getWeekAndDay = (startDate: string) => {
+const getWeekAndDay = (startDate: string | null) => {
+  if (!startDate) return { week: 1, day: 1 };
+
   const start = parseISO(startDate);
   const current = parseISO(getKoreanToday());
 
