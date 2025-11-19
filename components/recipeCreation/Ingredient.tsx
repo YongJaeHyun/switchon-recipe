@@ -6,9 +6,9 @@ import React from 'react';
 import { TouchableHighlight, View } from 'react-native';
 import colors from 'tailwindcss/colors';
 import { RecipeType } from 'types/database';
-import { IIngredient } from 'types/recipe';
+import { Ingredient as IngredientType } from 'types/recipe';
 
-interface IngredientProps extends IIngredient {
+interface IngredientProps extends IngredientType {
   isSelected: boolean;
   disabled: boolean;
 }

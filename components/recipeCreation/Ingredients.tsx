@@ -4,7 +4,7 @@ import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { FlatList, View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import { RecipeType } from 'types/database';
-import { IIngredient } from 'types/recipe';
+import { Ingredient as IngredientType } from 'types/recipe';
 import { chunkArray } from 'utils/chunkArray';
 import { getWeekAndDay } from 'utils/date';
 import { getWeekColor } from 'utils/getWeekColor';
@@ -13,7 +13,7 @@ import Ingredient from './Ingredient';
 export interface IngredientsProps {
   title: string;
   week: number;
-  ingredientList: IIngredient[];
+  ingredientList: IngredientType[];
 }
 
 export default function Ingredients({ title, week, ingredientList }: IngredientsProps) {

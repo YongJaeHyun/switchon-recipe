@@ -7,10 +7,10 @@ import { useEffect } from 'react';
 import { Pressable } from 'react-native';
 import colors from 'tailwindcss/colors';
 import { RecipeType } from 'types/database';
-import { IIngredient } from 'types/recipe';
+import { Ingredient } from 'types/recipe';
 
 interface SelectedIngredientProps {
-  ingredient?: IIngredient;
+  ingredient?: Ingredient;
 }
 
 export default function SelectedIngredient({ ingredient }: SelectedIngredientProps) {

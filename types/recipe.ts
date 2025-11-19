@@ -1,11 +1,10 @@
-import { ImageSource } from 'expo-image';
 import { z } from 'zod';
 
-interface IIngredient {
+interface Ingredient {
   name: string;
   subKeywords?: string[];
   week: number;
-  image: ImageSource;
+  image: string;
   isCarbohydrate?: boolean;
 }
 
@@ -42,7 +41,7 @@ interface RecipeOptions {
 }
 
 export {
-  IIngredient,
+  Ingredient,
   IngredientSchema,
   Recipe,
   RecipeCategory,

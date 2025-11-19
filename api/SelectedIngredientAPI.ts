@@ -1,11 +1,11 @@
 import { supabase } from 'lib/supabase';
 import { useUserStore } from 'stores/userStore';
 import { RecipeType, SelectedIngredientDB } from 'types/database';
-import { IIngredient } from 'types/recipe';
+import { Ingredient } from 'types/recipe';
 import { sendError } from 'utils/sendError';
 
 const selectAll = async (type: RecipeType) =>
-  sendError<IIngredient[]>(async () => {
+  sendError<Ingredient[]>(async () => {
     const userId = useUserStore.getState().id;
     if (!userId) return [];
 
@@ -22,13 +22,13 @@ const selectAll = async (type: RecipeType) =>
     return ingredients ? JSON.parse(ingredients) : [];
   });
 
-const upsert = async (type: RecipeType, ingredients: IIngredient[]) => {
+const upsert = async (type: RecipeType, ingredients: Ingredient[]) => {
   if (type === 'zero') return await upsertZeroIngredients(ingredients);
   else if (type === 'low') return await upsertLowIngredients(ingredients);
   else return [];
 };
 
-const upsertZeroIngredients = async (ingredients: IIngredient[]) =>
+const upsertZeroIngredients = async (ingredients: Ingredient[]) =>
   sendError(async () => {
     const userId = useUserStore.getState().id;
 
@@ -44,7 +44,7 @@ const upsertZeroIngredients = async (ingredients: IIngredient[]) =>
     return ingredients;
   });
 
-const upsertLowIngredients = async (ingredients: IIngredient[]) =>
+const upsertLowIngredients = async (ingredients: Ingredient[]) =>
   sendError(async () => {
     const userId = useUserStore.getState().id;
 

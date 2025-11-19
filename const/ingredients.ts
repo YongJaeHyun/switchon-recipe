@@ -110,9 +110,9 @@ import {
   yogurt,
   zucchini,
 } from 'const/assets';
-import { IIngredient } from 'types/recipe';
+import { Ingredient } from 'types/recipe';
 
-export const firstWeekIngredients: IIngredient[] = [
+export const firstWeekIngredients: Ingredient[] = [
   {
     name: '흰쌀밥',
     image: rice,
@@ -514,7 +514,7 @@ export const firstWeekIngredients: IIngredient[] = [
   },
 ];
 
-export const secondWeekIngredients: IIngredient[] = [
+export const secondWeekIngredients: Ingredient[] = [
   {
     name: '콩담백면',
     image: kongdambaek,
@@ -615,7 +615,7 @@ export const secondWeekIngredients: IIngredient[] = [
   },
 ];
 
-export const thirdWeekIngredients: IIngredient[] = [
+export const thirdWeekIngredients: Ingredient[] = [
   {
     name: '떡국떡',
     image: ricecake,
@@ -692,9 +692,7 @@ const allIngredients = [...firstWeekIngredients, ...secondWeekIngredients, ...th
 
 export const ingredientImages = allIngredients.map((i) => i.image);
 
-export const carbohydrateIngredients: IIngredient[] = allIngredients.filter(
-  (i) => i.isCarbohydrate
-);
+export const carbohydrateIngredients: Ingredient[] = allIngredients.filter((i) => i.isCarbohydrate);
 
 export const newIngredients = {
   month: 11,
