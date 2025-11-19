@@ -1,9 +1,10 @@
-export const QueryKey = {
-  inquiries: 'inquiries',
-  selectedIngredients: 'selectedIngredients',
-  recentRecipes: 'recentRecipes',
-  savedRecipes: 'savedRecipes',
-  recipeCards: 'recipeCards',
-  recentKeywords: 'recentKeywords',
-  popularCategories: 'popularCategories',
-};
+export enum QueryKey {
+  inquiries,
+  selectedIngredients,
+  recentRecipes,
+  savedRecipes,
+  recipeCards,
+  recentKeywords,
+  popularCategories,
+  todos,
+}
