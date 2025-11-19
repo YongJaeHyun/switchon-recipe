@@ -14,6 +14,7 @@ export const useUserStore = create<UserState>()((set) => ({
   start_date: '',
   avatar_url: null,
   is_onboarded: false,
+  push_token: '',
   setUser: (user) =>
     new Promise((resolve) => {
       set({ ...user });
