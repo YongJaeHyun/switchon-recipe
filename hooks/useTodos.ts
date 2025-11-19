@@ -1,4 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { StatisticsAPI } from 'api/StatisticsAPI';
 import { TodoAPI } from 'api/TodoAPI';
 import { BASE_TODOS } from 'const/baseTodos';
 import { QueryKey } from 'const/queryKey';
@@ -78,6 +79,9 @@ export const useTodos = () => {
       : [...checkedIds, todoId];
 
     upsertTodo(updatedCheckedIds);
+
+    const completedRate = Math.round((updatedCheckedIds.length / baseTodos.length) * 100);
+    StatisticsAPI.upsert(completedRate);
   };
 
   useEffect(() => {
