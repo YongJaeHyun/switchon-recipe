@@ -25,6 +25,8 @@ import {
   creamCheese,
   cucumber,
   curcuma,
+  curryBlock,
+  curryPowder,
   dakbal,
   dasima,
   doyuMyun,
@@ -613,6 +615,16 @@ export const secondWeekIngredients: IIngredient[] = [
     image: kimchi,
     week: 2,
   },
+  {
+    name: '카레가루',
+    image: curryPowder,
+    week: 2,
+  },
+  {
+    name: '고형카레',
+    image: curryBlock,
+    week: 2,
+  },
 ];
 
 export const thirdWeekIngredients: IIngredient[] = [
@@ -698,8 +710,8 @@ export const carbohydrateIngredients: IIngredient[] = allIngredients.filter(
 
 export const newIngredients = {
   month: 11,
-  week: 3,
-  names: ['보리밥', '귀리밥', '저당칠리소스', '푸주'],
+  week: 5,
+  names: ['카레가루', '고형카레'],
 };
 
 export const allIngredientsList: IngredientsProps[] = [
