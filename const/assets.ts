@@ -76,6 +76,7 @@ export const mixedRice = require('../assets/images/ingredients/mixed_rice.jpg');
 export const muk = require('../assets/images/ingredients/muk.jpg');
 export const myungran = require('../assets/images/ingredients/myungran.jpg');
 export const nakji = require('../assets/images/ingredients/nakji.jpg');
+export const nalchial = require('../assets/images/ingredients/nalchial.jpg');
 export const natto = require('../assets/images/ingredients/natto.jpg');
 export const nutari = require('../assets/images/ingredients/nutari.jpg');
 export const nuts = require('../assets/images/ingredients/nuts.jpg');

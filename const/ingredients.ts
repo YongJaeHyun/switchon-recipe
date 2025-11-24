@@ -61,6 +61,7 @@ import {
   muk,
   myungran,
   nakji,
+  nalchial,
   natto,
   nutari,
   nuts,
@@ -584,6 +585,11 @@ export const secondWeekIngredients: Ingredient[] = [
     week: 2,
   },
   {
+    name: '날치알',
+    image: nalchial,
+    week: 2,
+  },
+  {
     name: '게맛살',
     subKeywords: ['크래미', '크레미'],
     image: crammy,
@@ -709,7 +715,7 @@ export const carbohydrateIngredients: Ingredient[] = allIngredients.filter((i) =
 export const newIngredients = {
   month: 11,
   week: 5,
-  names: ['카레가루', '고형카레'],
+  names: ['카레가루', '고형카레', '날치알'],
 };
 
 export const allIngredientsList: IngredientsProps[] = [
