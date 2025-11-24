@@ -20,6 +20,7 @@ export function Todos() {
   const isFirstStep = week === 1 && day <= 3;
   const isSecondStep = week === 1 && day > 3;
 
+  if (todos.length === 0) return null;
   return (
     <View className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
       <View className={`px-4 py-2 ${getWeekBGColor(week)}`}>

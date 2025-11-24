@@ -14,11 +14,11 @@ export const useTodos = () => {
   const week = useWeekCompletePopupStore((state) => state.week);
   const baseTodos = useMemo(
     () =>
-      BASE_TODOS[week].map((todo, idx) => ({
+      BASE_TODOS[week]?.map((todo, idx) => ({
         id: idx,
         value: todo,
         checked: false,
-      })),
+      })) ?? [],
     [week]
   );
 
