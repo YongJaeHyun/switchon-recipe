@@ -1,17 +1,19 @@
 import { differenceInDays, parseISO } from 'date-fns';
+import { Maybe } from '../types/common';
 
 const convertToKoreanDate = (date: Date) => {
+  const isUTC = date.getTimezoneOffset() === 0;
   const offset = 9 * 60 * 60 * 1000; // 한국은 UTC+9
 
   const koreanDate = new Date(date.getTime() + offset);
-  return koreanDate;
+  return isUTC ? koreanDate : date;
 };
 
 const getWeekAndDay = (startDate: string | null) => {
   if (!startDate) return { week: 1, day: 1 };
 
   const start = parseISO(startDate);
-  const current = parseISO(getKoreanToday());
+  const current = parseISO(getKoreanDateString());
 
   const daysDiff = differenceInDays(current, start);
 
@@ -21,36 +23,36 @@ const getWeekAndDay = (startDate: string | null) => {
   return { week, day };
 };
 
-const getKoreanToday = () => {
+const getKoreanDate = () => {
   const now = new Date();
+  return convertToKoreanDate(now);
+};
 
+const getKoreanDateString = () => {
+  const now = new Date();
   const koreanDate = convertToKoreanDate(now);
   return koreanDate.toISOString().split('T')[0];
 };
 
 const getKoreanDateWeeksAgo = (weeksAgo: number) => {
-  const now = new Date();
-  const koreanDate = convertToKoreanDate(now);
+  const koreanDate = getKoreanDate();
   const msPerWeek = 7 * 24 * 60 * 60 * 1000;
 
   const weeksAgoDate = new Date(koreanDate.getTime() - weeksAgo * msPerWeek);
   return weeksAgoDate.toISOString().split('T')[0];
 };
 
-export function formatKoreanDate(dateString: string | undefined): string {
-  let date = dateString ? new Date(dateString) : new Date();
+export const formatKoreanDate = (dateString: Maybe<string>) => {
+  const date = dateString ? new Date(dateString) : new Date();
+  const koreanDate = convertToKoreanDate(date);
 
-  if (date.getTimezoneOffset() === 0) {
-    date = convertToKoreanDate(date);
-  }
-
-  return date.toLocaleDateString('ko-KR', {
+  return koreanDate.toLocaleDateString('ko-KR', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
   });
-}
+};
 
-export { getKoreanDateWeeksAgo, getKoreanToday, getWeekAndDay };
+export { getKoreanDate, getKoreanDateString, getKoreanDateWeeksAgo, getWeekAndDay };

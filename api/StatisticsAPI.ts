@@ -2,7 +2,7 @@ import { supabase } from 'lib/supabase';
 import { useUserStore } from 'stores/userStore';
 import { StatisticsDB } from 'types/database';
 import { TodoRateStatistic } from 'types/statistics';
-import { getKoreanToday } from 'utils/date';
+import { getKoreanDateString } from 'utils/date';
 import { sendError } from 'utils/sendError';
 
 const selectAllInMonth = async (year: number, month: number) =>
@@ -45,7 +45,7 @@ const selectAllInMonth = async (year: number, month: number) =>
 const upsert = async (todoRate: number) =>
   sendError<StatisticsDB>(async () => {
     const userId = useUserStore.getState().id;
-    const today = getKoreanToday();
+    const today = getKoreanDateString();
 
     const { data, error } = await supabase
       .from('statistics')

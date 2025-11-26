@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
-import { getKoreanToday, getWeekAndDay } from 'utils/date';
+import { getKoreanDateString, getWeekAndDay } from 'utils/date';
 import { useFasting } from './useFasting';
 import { useTodos } from './useTodos';
 
@@ -12,7 +12,7 @@ export default function useKoreanToday() {
   const { resetTodos } = useTodos();
   const { resetFasting } = useFasting();
 
-  const [today, setToday] = useState(getKoreanToday());
+  const [today, setToday] = useState(getKoreanDateString());
 
   const revalidateToday = useCallback(() => {
     const {
@@ -23,7 +23,7 @@ export default function useKoreanToday() {
       setDay,
       isChecked,
     } = useWeekCompletePopupStore.getState();
-    const newDay = getKoreanToday();
+    const newDay = getKoreanDateString();
     const { week, day } = getWeekAndDay(start_date ?? newDay);
     const isEnteringNewWeek = prevWeek < week && week < 5;
 
