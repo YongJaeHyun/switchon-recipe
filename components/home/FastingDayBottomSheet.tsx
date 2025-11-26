@@ -4,7 +4,7 @@ import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import { FASTING_DAYS, FASTING_START_TIMES, FastingDay, FastingTime } from 'const/fastingDays';
 import { useFasting } from 'hooks/useFasting';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FlatList, View } from 'react-native';
 import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
 import { getWeekBorderColor, getWeekColor } from 'utils/getWeekColor';
@@ -17,7 +17,7 @@ interface DayButtonProps {
   disabled: boolean;
   onPress: (day: number) => void;
 }
-interface TimeButtonProps {
+interface StartTimeButtonProps {
   time: FastingTime;
   isSelected: boolean;
   onPress: (time: FastingTime) => void;
@@ -38,7 +38,7 @@ const DayButton = ({ day, isSelected, disabled, onPress }: DayButtonProps) => {
   );
 };
 
-const TimeButton = ({ time, isSelected, onPress }: TimeButtonProps) => {
+const StartTimeButton = ({ time, isSelected, onPress }: StartTimeButtonProps) => {
   return (
     <RippleButton
       rippleColor="transparent"
@@ -91,6 +91,11 @@ export const FastingDayBottomSheet = () => {
   const openSheet = () => {
     bottomSheetRef.current?.expand();
   };
+
+  useEffect(() => {
+    setSelectedDays(days);
+    setSelectedTime(startTime);
+  }, [days, startTime]);
   return (
     <>
       <View className="mt-4 gap-4">
@@ -127,6 +132,7 @@ export const FastingDayBottomSheet = () => {
             <Text className="font-bold text-green-600">단식 요일</Text>
             <FlatList
               data={displayDays}
+              keyExtractor={(item) => `fasting-day-button-${item}`}
               contentContainerClassName="flex-row justify-between"
               renderItem={({ item }) => {
                 const dayIndex = FASTING_DAYS.indexOf(item);
@@ -158,8 +164,8 @@ export const FastingDayBottomSheet = () => {
             <Text className="font-bold text-green-600">단식 시작 시간</Text>
             <View className="w-full flex-row gap-3">
               {FASTING_START_TIMES.map((item) => (
-                <TimeButton
-                  key={item}
+                <StartTimeButton
+                  key={`fasting-start-time-button-${item}`}
                   time={item}
                   onPress={setSelectedTime}
                   isSelected={item === selectedTime}
