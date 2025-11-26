@@ -2,10 +2,10 @@ import { FontAwesome5, MaterialIcons } from '@expo/vector-icons';
 import { Text } from 'components/common/Text';
 import { View } from 'react-native';
 import colors from 'tailwindcss/colors';
-import { InquiryCategory } from 'types/database';
+import { Maybe } from '../../types/common';
 
 interface CategoryBadgeProps {
-  category: InquiryCategory | null;
+  category: Maybe<string>;
   active?: boolean;
 }
 

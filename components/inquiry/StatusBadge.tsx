@@ -2,10 +2,10 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Text } from 'components/common/Text';
 import { View } from 'react-native';
 import colors from 'tailwindcss/colors';
-import { InquiryStatus } from 'types/database';
+import { Maybe } from '../../types/common';
 
 interface StatusBadgeProps {
-  status: InquiryStatus | null;
+  status: Maybe<string>;
 }
 
 export function StatusBadge({ status }: StatusBadgeProps) {
