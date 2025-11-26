@@ -6,7 +6,7 @@ import RecentRecipes from 'components/home/RecentRecipes';
 import RecipeCreation from 'components/home/RecipeCreation';
 import SavedRecipes from 'components/home/SavedRecipes';
 import { StartDateBottomSheet } from 'components/home/StartDateBottomSheet';
-import { Todos } from 'components/home/Todos';
+import { WeekGuide } from 'components/home/Todos';
 import { latestNotices } from 'const/notices';
 import { QueryKey } from 'const/queryKey';
 import { useCallback, useRef, useState } from 'react';
@@ -57,7 +57,7 @@ export default function HomeScreen() {
         <View className="mb-10 gap-10">
           <View className="gap-5">
             <LatestNotice notices={latestNotices} />
-            <Todos />
+            <WeekGuide />
             <View className="flex-row gap-4">
               <RecipeCreation
                 href={'/home/recipeCreation/zero'}

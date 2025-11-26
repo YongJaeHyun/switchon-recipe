@@ -2,16 +2,23 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { StatisticsAPI } from 'api/StatisticsAPI';
 import { TodoAPI } from 'api/TodoAPI';
 import { BASE_TODOS } from 'const/baseTodos';
+import { FASTING_DAYS, FASTING_START_TIMES } from 'const/fastingDays';
 import { QueryKey } from 'const/queryKey';
 import { queryClient } from 'lib/queryClient';
 import { useEffect, useMemo, useState } from 'react';
 import { useUserStore } from 'stores/userStore';
 import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
 import { Todo } from 'types/todo';
+import { useFasting } from './useFasting';
 
 export const useTodos = () => {
   const userId = useUserStore((state) => state.id);
   const week = useWeekCompletePopupStore((state) => state.week);
+  const { days: fastingDays, startTime: fastingStartTime } = useFasting();
+  const fastingNextDays = useMemo(
+    () => fastingDays.map((day) => (day + 1) % FASTING_DAYS.length),
+    [fastingDays]
+  );
   const baseTodos = useMemo(
     () =>
       BASE_TODOS[week]?.map((todo, idx) => ({
@@ -85,7 +92,21 @@ export const useTodos = () => {
   };
 
   useEffect(() => {
-    const checkedTodos = baseTodos.map((todo) =>
+    let todos = [...baseTodos];
+    const currentDay = new Date().getDay();
+
+    if (fastingStartTime) {
+      const startTimeIndex = FASTING_START_TIMES.indexOf(fastingStartTime);
+
+      if (fastingDays.includes(currentDay)) {
+        todos = todos.slice(0, startTimeIndex + 1);
+      }
+      if (fastingNextDays.includes(currentDay)) {
+        todos = todos.slice(startTimeIndex);
+      }
+    }
+
+    const checkedTodos = todos.map((todo) =>
       checkedIds.includes(todo.id) ? { ...todo, checked: true } : todo
     );
 
@@ -95,9 +116,9 @@ export const useTodos = () => {
     });
     setTodos(sortedTodos);
 
-    const completedRate = Math.round((checkedIds.length / baseTodos.length) * 100);
+    const completedRate = Math.round((checkedIds.length / todos.length) * 100);
     setCompletedRate(completedRate);
-  }, [checkedIds, baseTodos]);
+  }, [checkedIds, baseTodos, fastingStartTime, fastingDays, fastingNextDays]);
 
   return {
     todos,

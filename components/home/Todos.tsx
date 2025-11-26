@@ -1,18 +1,23 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { Text } from 'components/common/Text';
+import { useFasting } from 'hooks/useFasting';
 import { useTodos } from 'hooks/useTodos';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, FlatList, View } from 'react-native';
 import AnimatedNumbers from 'react-native-animated-numbers';
 import { Easing } from 'react-native-reanimated';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { getWeekAndDay } from 'utils/date';
 import { getWeekBGColor, getWeekColor, getWeekColorHex } from 'utils/getWeekColor';
+import { FastingDayBottomSheet } from './FastingDayBottomSheet';
 import { Todo } from './Todo';
 
-export function Todos() {
-  const { todos, completedRate, isLoading } = useTodos();
+export function WeekGuide() {
   const startDate = useUserStore((state) => state.start_date);
+
+  const { todos, completedRate, isLoading: isTodosLoading } = useTodos();
+  const { isLoading: isFastingLoading } = useFasting();
+  const isLoading = isTodosLoading || isFastingLoading;
 
   const today = new Date().toISOString();
   const { week, day } = getWeekAndDay(startDate ?? today);
@@ -25,7 +30,7 @@ export function Todos() {
     <View className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
       <View className={`px-4 py-2 ${getWeekBGColor(week)}`}>
         <Text className="text-white">
-          <Text>{week}주차</Text>
+          <Text>{week}주차 가이드</Text>
           {isFirstStep && <Text> (1 ~ 3일) </Text>}
           {isSecondStep && <Text> (4 ~ 7일) </Text>}
         </Text>
@@ -55,7 +60,13 @@ export function Todos() {
         {isLoading ? (
           <ActivityIndicator className="h-48" size="large" color={colors.green[500]} />
         ) : (
-          todos.map((todo) => <Todo key={`todo-${todo.id}`} {...todo} />)
+          <FlatList
+            data={todos}
+            renderItem={({ item }) => <Todo {...item} />}
+            keyExtractor={(item) => `todo-${item.id}`}
+            scrollEnabled={false}
+            ListFooterComponent={<FastingDayBottomSheet />}
+          />
         )}
       </View>
     </View>

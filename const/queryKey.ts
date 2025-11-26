@@ -7,4 +7,5 @@ export enum QueryKey {
   recentKeywords,
   popularCategories,
   todos,
+  fasting,
 }
