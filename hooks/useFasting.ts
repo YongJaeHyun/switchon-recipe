@@ -6,6 +6,7 @@ import { queryClient } from 'lib/queryClient';
 import { useMemo } from 'react';
 import { useUserStore } from 'stores/userStore';
 import { FastingDB } from 'types/database';
+import { cancelAllScheduledNotifications, registerWeeklyFastingAlarms } from 'utils/notifications';
 import { Maybe } from '../types/common';
 
 export const useFasting = () => {
@@ -31,6 +32,9 @@ export const useFasting = () => {
 
       return { previousData };
     },
+    onSuccess: async () => {
+      await cancelAllScheduledNotifications();
+    },
     onError: (err, _, context) => {
       if (context?.previousData) {
         queryClient.setQueryData([QueryKey.fasting, userId], context.previousData);
@@ -45,9 +49,12 @@ export const useFasting = () => {
 
       const previousData = queryClient.getQueryData<FastingDB>([QueryKey.fasting, userId]) || [];
 
-      queryClient.setQueryData([QueryKey.fasting, userId], () => newData);
+      queryClient.setQueryData([QueryKey.fasting, userId], newData);
 
       return { previousData };
+    },
+    onSuccess: async (data) => {
+      await registerWeeklyFastingAlarms(data);
     },
     onError: (err, newData, context) => {
       if (context?.previousData) {
