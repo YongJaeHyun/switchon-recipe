@@ -1,5 +1,6 @@
 import { supabase } from 'lib/supabase';
 import { useUserStore } from 'stores/userStore';
+import { Maybe } from 'types/common';
 import { TodoDB } from 'types/database';
 import { sendError } from 'utils/sendError';
 
@@ -30,21 +31,7 @@ const upsert = async (checkedIds: number[]) =>
     return data;
   });
 
-const reset = async () =>
-  sendError<TodoDB>(async () => {
-    const userId = useUserStore.getState().id;
-
-    const { data, error } = await supabase
-      .from('todo')
-      .upsert({ checked_ids: [], uid: userId }, { onConflict: 'uid' })
-      .eq('uid', userId)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    return data;
-  });
+const reset = async () => sendError<Maybe<TodoDB>>(async () => await upsert([]));
 
 export const TodoAPI = {
   selectOne,
