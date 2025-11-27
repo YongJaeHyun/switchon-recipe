@@ -1,45 +1,66 @@
+import { addDays, format } from 'date-fns';
 import { supabase } from 'lib/supabase';
 import { useUserStore } from 'stores/userStore';
 import { StatisticsDB } from 'types/database';
-import { TodoRateStatistic } from 'types/statistics';
-import { getKoreanDateString } from 'utils/date';
+import { TodoRateStatistics } from 'types/statistics';
+import { convertToKoreanDate, getKoreanDateString } from 'utils/date';
 import { sendError } from 'utils/sendError';
 
-const selectAllInMonth = async (year: number, month: number) =>
-  sendError<TodoRateStatistic[]>(async () => {
-    const userId = useUserStore.getState().id;
+export const getTodoRatesByWeeks = async () =>
+  sendError<TodoRateStatistics>(async () => {
+    const { start_date, id } = useUserStore.getState();
 
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(year, month, 0);
-    const lastDay = endDate.getDate();
+    if (!start_date) {
+      return {
+        weeks: Array.from({ length: 4 }, () => ({
+          todoRatesByWeek: Array(7).fill(0),
+          average: 0,
+        })),
+      };
+    }
 
-    const startDateStr = startDate.toISOString().split('T')[0];
-    const endDateStr = endDate.toISOString().split('T')[0];
+    const start = convertToKoreanDate(start_date);
+    const end = addDays(start, 27); // 총 28일 (4주)
 
     const { data: statistics, error } = await supabase
       .from('statistics')
       .select('*')
-      .eq('uid', userId)
-      .gte('created_at', startDateStr)
-      .lte('created_at', endDateStr);
+      .eq('uid', id)
+      .gte('created_at', format(start, 'yyyy-MM-dd'))
+      .lte('created_at', format(end, 'yyyy-MM-dd'))
+      .order('created_at', { ascending: true });
 
     if (error) throw error;
 
-    const result = Array.from({ length: lastDay }, (_, idx) => {
-      const day = idx + 1;
+    const dateMap = new Map<string, number>();
 
-      const record = statistics?.find((item: StatisticsDB) => {
-        const d = new Date(item.created_at).getDate();
-        return d === day;
-      });
-
-      return {
-        day,
-        todoRate: record?.todo_rate ?? 0,
-      };
+    statistics.forEach((row) => {
+      const dateKey = format(convertToKoreanDate(row.created_at), 'yyyy-MM-dd');
+      dateMap.set(dateKey, row.todo_rate);
     });
 
-    return result;
+    const weeks = [];
+
+    for (let week = 0; week < 4; week++) {
+      let todoRatesByWeek: number[] = [];
+
+      for (let day = 0; day < 7; day++) {
+        const currentDate = addDays(start, week * 7 + day);
+        const key = format(currentDate, 'yyyy-MM-dd');
+        const value = dateMap.get(key) ?? 0;
+        todoRatesByWeek.push(value);
+      }
+
+      const todoRatesSum = todoRatesByWeek.reduce((acc, cur) => acc + cur, 0);
+      const average = Math.round(todoRatesSum / todoRatesByWeek.length);
+
+      weeks.push({
+        todoRatesByWeek,
+        average,
+      });
+    }
+
+    return { weeks };
   });
 
 const upsert = async (todoRate: number) =>
@@ -61,6 +82,6 @@ const upsert = async (todoRate: number) =>
   });
 
 export const StatisticsAPI = {
-  selectAllInMonth,
+  getTodoRatesByWeeks,
   upsert,
 };

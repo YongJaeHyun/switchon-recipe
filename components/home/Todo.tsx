@@ -12,8 +12,7 @@ import { getWeekColorHex } from 'utils/getWeekColor';
 export const Todo = React.memo(({ id, value, checked }: TodoType) => {
   const { toggleChecked } = useTodos();
   const startDate = useUserStore((state) => state.start_date);
-  const today = new Date().toISOString();
-  const { week } = getWeekAndDay(startDate ?? today);
+  const { week } = getWeekAndDay(startDate);
 
   return (
     <Animated.View

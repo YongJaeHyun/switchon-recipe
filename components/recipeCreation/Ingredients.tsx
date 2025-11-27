@@ -19,8 +19,7 @@ export interface IngredientsProps {
 export default function Ingredients({ title, week, ingredientList }: IngredientsProps) {
   const type = useLastPathname() as RecipeType;
   const startDate = useUserStore((state) => state.start_date);
-  const today = new Date().toISOString();
-  const { week: userWeek } = getWeekAndDay(startDate ?? today);
+  const { week: userWeek } = getWeekAndDay(startDate);
 
   const { selectedIngredients } = useSelectedIngredients({ type });
   const chunkedList = chunkArray(ingredientList, week === 1 ? 3 : 2);

@@ -1,6 +1,7 @@
 import { supabase } from 'lib/supabase';
 import { useUserStore } from 'stores/userStore';
 import { SearchHistoryDB } from 'types/database';
+import { getKoreanDate } from 'utils/date';
 import { sendError } from 'utils/sendError';
 
 const getRecent = async () =>
@@ -23,7 +24,7 @@ const insert = async (keyword: string) =>
     const userId = useUserStore.getState().id;
     const { data, error } = await supabase
       .from('user_search_history')
-      .upsert({ value: keyword, uid: userId, created_at: new Date() }, { onConflict: 'uid,value' })
+      .upsert({ value: keyword, uid: userId, created_at: getKoreanDate() }, { onConflict: 'uid,value' })
       .select()
       .single();
 

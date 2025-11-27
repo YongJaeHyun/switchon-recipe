@@ -1,8 +1,9 @@
+import { addDays, startOfDay } from 'date-fns';
 import { useCallback, useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
-import { getKoreanDateString, getWeekAndDay } from 'utils/date';
+import { getKoreanDate, getKoreanDateString, getWeekAndDay } from 'utils/date';
 import { useFasting } from './useFasting';
 import { useTodos } from './useTodos';
 
@@ -43,8 +44,8 @@ export default function useKoreanToday() {
   }, [start_date, resetFasting, resetTodos]);
 
   const revalidateTodayInterval = useCallback(() => {
-    const now = new Date();
-    const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
+    const now = getKoreanDate();
+    const nextMidnight = startOfDay(addDays(now, 1));
 
     const timeoutMs = nextMidnight.getTime() - now.getTime();
 

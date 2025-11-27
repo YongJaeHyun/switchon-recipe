@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useUserStore } from 'stores/userStore';
 import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
 import { Todo } from 'types/todo';
+import { getKoreanDate } from 'utils/date';
 import { useFasting } from './useFasting';
 
 export const useTodos = () => {
@@ -93,7 +94,7 @@ export const useTodos = () => {
 
   useEffect(() => {
     let todos = [...baseTodos];
-    const currentDay = new Date().getDay();
+    const currentDay = getKoreanDate().getDay();
 
     if (fastingStartTime) {
       const startTimeIndex = FASTING_START_TIMES.indexOf(fastingStartTime);

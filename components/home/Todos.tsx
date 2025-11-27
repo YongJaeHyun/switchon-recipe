@@ -19,8 +19,7 @@ export function WeekGuide() {
   const { isLoading: isFastingLoading } = useFasting();
   const isLoading = isTodosLoading || isFastingLoading;
 
-  const today = new Date().toISOString();
-  const { week, day } = getWeekAndDay(startDate ?? today);
+  const { week, day } = getWeekAndDay(startDate);
 
   const isFirstStep = week === 1 && day <= 3;
   const isSecondStep = week === 1 && day > 3;
