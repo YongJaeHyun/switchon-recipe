@@ -23,7 +23,7 @@ export default function OnboardingScreen() {
   const { step, goLastStep, goNextStep } = useSteps(totalSteps);
   const { setWeek } = useWeekCompletePopupStore();
 
-  const today = getKoreanDateString();
+  const today = getKoreanDateString({ formatType: 'date' });
   const [selectedDate, setSelectedDate] = useState(today);
   const { week, day } = getWeekAndDay(selectedDate);
 

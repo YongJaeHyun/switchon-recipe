@@ -13,7 +13,7 @@ export default function useKoreanToday() {
   const { resetTodos } = useTodos();
   const { resetFasting } = useFasting();
 
-  const [today, setToday] = useState(getKoreanDateString());
+  const [today, setToday] = useState(getKoreanDateString({ formatType: 'date' }));
 
   const revalidateToday = useCallback(() => {
     const {
@@ -24,8 +24,9 @@ export default function useKoreanToday() {
       setDay,
       isChecked,
     } = useWeekCompletePopupStore.getState();
-    const newDay = getKoreanDateString();
-    const { week, day } = getWeekAndDay(start_date ?? newDay);
+    const newDay = getKoreanDateString({ formatType: 'date' });
+    const { week, day } = getWeekAndDay(start_date);
+
     const isEnteringNewWeek = prevWeek < week && week < 5;
 
     setToday(newDay);

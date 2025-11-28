@@ -3,6 +3,10 @@ import { differenceInDays } from 'date-fns';
 import { format, toZonedTime } from 'date-fns-tz';
 import { Maybe } from '../types/common';
 
+interface GetKoreanDateStringProps {
+  formatType: 'detailed' | 'date';
+}
+
 export const convertToKoreanDate = (date: Date | string) => {
   return toZonedTime(date, TIME_ZONE);
 };
@@ -11,7 +15,7 @@ export const getWeekAndDay = (startDate: Maybe<string>) => {
   if (!startDate) return { week: 1, day: 1 };
 
   const start = convertToKoreanDate(startDate);
-  const current = convertToKoreanDate(getKoreanDateString());
+  const current = getKoreanDateString({ formatType: 'date' });
 
   const daysDiff = differenceInDays(current, start);
 
@@ -26,10 +30,14 @@ export const getKoreanDate = () => {
   return convertToKoreanDate(now);
 };
 
-export const getKoreanDateString = () => {
+export const getKoreanDateString = (
+  { formatType }: GetKoreanDateStringProps = { formatType: 'detailed' }
+) => {
+  const formatStr = formatType === 'detailed' ? 'yyyy-MM-dd HH:mm:ss' : 'yyyy-MM-dd';
+
   const now = new Date();
   const koreanDate = convertToKoreanDate(now);
-  return format(koreanDate, 'yyyy-MM-dd', { timeZone: TIME_ZONE });
+  return format(koreanDate, formatStr, { timeZone: TIME_ZONE });
 };
 
 export const getKoreanDateWeeksAgo = (weeksAgo: number) => {
