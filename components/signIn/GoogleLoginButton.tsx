@@ -4,6 +4,7 @@ import {
   isErrorWithCode,
   statusCodes,
 } from '@react-native-google-signin/google-signin';
+import { GOOGLE_WEB_CLIENT_ID } from 'const/const';
 import { router } from 'expo-router';
 import { useEffect } from 'react';
 import { Alert, Linking, Platform } from 'react-native';
@@ -78,9 +79,7 @@ export default function GoogleLoginButton() {
   };
 
   useEffect(() => {
-    GoogleSignin.configure({
-      webClientId: '122886446696-o8aeohmp226otako4jklaqb0thm25qtu.apps.googleusercontent.com',
-    });
+    GoogleSignin.configure({ webClientId: GOOGLE_WEB_CLIENT_ID });
   }, []);
 
   return (
