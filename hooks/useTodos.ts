@@ -70,6 +70,13 @@ export const useTodos = () => {
 
       return { previousData };
     },
+    onSuccess: (data) => {
+      const checkedIds = data?.checked_ids ?? [];
+      const completedRate = Math.round((checkedIds.length / baseTodos.length) * 100);
+
+      StatisticsAPI.upsert(completedRate);
+      queryClient.cancelQueries({ queryKey: [QueryKey.todoRateStatistics, userId] });
+    },
     onError: (err, newData, context) => {
       if (context?.previousData) {
         queryClient.setQueryData([QueryKey.todos, userId], context.previousData);
@@ -87,9 +94,6 @@ export const useTodos = () => {
       : [...checkedIds, todoId];
 
     upsertTodo(updatedCheckedIds);
-
-    const completedRate = Math.round((updatedCheckedIds.length / baseTodos.length) * 100);
-    StatisticsAPI.upsert(completedRate);
   };
 
   useEffect(() => {

@@ -1,4 +1,8 @@
+export interface TodoRateStatistics {
+  weeks: TodoRateStatistic[];
+}
+
 export interface TodoRateStatistic {
-  day: number;
-  todoRate: number;
+  todoRatesByWeek: number[];
+  average: number;
 }

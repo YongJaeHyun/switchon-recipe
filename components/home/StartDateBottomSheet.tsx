@@ -1,5 +1,6 @@
 import { BottomSheetView } from '@gorhom/bottom-sheet';
 import { BottomSheetMethods } from '@gorhom/bottom-sheet/lib/typescript/types';
+import { StatisticsAPI } from 'api/StatisticsAPI';
 import { UserAPI } from 'api/UserAPI';
 import { CustomBottomSheet } from 'components/common/CustomBottomSheet';
 import CustomCalendar from 'components/common/CustomCalendar';
@@ -34,7 +35,7 @@ export function StartDateBottomSheet({ bottomSheetRef }: StartDateBottomSheetPro
   };
 
   const updateStartDate = async () => {
-    const { week } = getWeekAndDay(selectedDate);
+    const { week, day } = getWeekAndDay(selectedDate);
 
     const filteredLowIngredients = lowIngredients.filter((ingredient) => ingredient.week <= week);
     if (lowIngredients.length !== filteredLowIngredients.length) {
@@ -47,6 +48,7 @@ export function StartDateBottomSheet({ bottomSheetRef }: StartDateBottomSheetPro
     }
 
     await UserAPI.updateStartDate(selectedDate);
+    await StatisticsAPI.deleteFrom(week, day);
 
     bottomSheetRef.current?.close();
   };

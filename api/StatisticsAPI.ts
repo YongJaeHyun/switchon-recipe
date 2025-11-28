@@ -1,14 +1,15 @@
-import { addDays, format } from 'date-fns';
 import { supabase } from 'lib/supabase';
 import { useUserStore } from 'stores/userStore';
+import { Maybe } from 'types/common';
 import { StatisticsDB } from 'types/database';
 import { TodoRateStatistics } from 'types/statistics';
-import { convertToKoreanDate, getKoreanDateString } from 'utils/date';
+import { getWeekAndDay } from 'utils/date';
 import { sendError } from 'utils/sendError';
 
 export const getTodoRatesByWeeks = async () =>
   sendError<TodoRateStatistics>(async () => {
     const { start_date, id } = useUserStore.getState();
+    const { week: userWeek, day: userDay } = getWeekAndDay(start_date);
 
     if (!start_date) {
       return {
@@ -19,15 +20,10 @@ export const getTodoRatesByWeeks = async () =>
       };
     }
 
-    const start = convertToKoreanDate(start_date);
-    const end = addDays(start, 27); // 총 28일 (4주)
-
     const { data: statistics, error } = await supabase
       .from('statistics')
       .select('*')
       .eq('uid', id)
-      .gte('created_at', format(start, 'yyyy-MM-dd'))
-      .lte('created_at', format(end, 'yyyy-MM-dd'))
       .order('created_at', { ascending: true });
 
     if (error) throw error;
@@ -35,24 +31,35 @@ export const getTodoRatesByWeeks = async () =>
     const dateMap = new Map<string, number>();
 
     statistics.forEach((row) => {
-      const dateKey = format(convertToKoreanDate(row.created_at), 'yyyy-MM-dd');
+      const dateKey = `${row.week}-${row.day}`;
       dateMap.set(dateKey, row.todo_rate);
     });
 
     const weeks = [];
 
-    for (let week = 0; week < 4; week++) {
-      let todoRatesByWeek: number[] = [];
+    for (let week = 1; week <= 4; week++) {
+      let todoRatesByWeek: Maybe<number>[] = [];
 
-      for (let day = 0; day < 7; day++) {
-        const currentDate = addDays(start, week * 7 + day);
-        const key = format(currentDate, 'yyyy-MM-dd');
+      for (let day = 1; day <= 7; day++) {
+        const isReached = week < userWeek || (week <= userWeek && day <= userDay);
+
+        if (!isReached) {
+          todoRatesByWeek.push(null);
+          continue;
+        }
+
+        const key = `${week}-${day}`;
         const value = dateMap.get(key) ?? 0;
         todoRatesByWeek.push(value);
       }
 
-      const todoRatesSum = todoRatesByWeek.reduce((acc, cur) => acc + cur, 0);
-      const average = Math.round(todoRatesSum / todoRatesByWeek.length);
+      const filteredTodoRates = todoRatesByWeek.filter(
+        (rate) => typeof rate === 'number'
+      ) satisfies number[];
+
+      const todoRatesSum = filteredTodoRates.reduce((acc, cur) => acc + cur, 0);
+      const average =
+        filteredTodoRates.length > 0 ? Math.round(todoRatesSum / filteredTodoRates.length) : 0;
 
       weeks.push({
         todoRatesByWeek,
@@ -66,13 +73,13 @@ export const getTodoRatesByWeeks = async () =>
 const upsert = async (todoRate: number) =>
   sendError<StatisticsDB>(async () => {
     const userId = useUserStore.getState().id;
-    const today = getKoreanDateString();
+    const startDate = useUserStore.getState().start_date;
+    const { week, day } = getWeekAndDay(startDate);
 
     const { data, error } = await supabase
       .from('statistics')
-      .upsert({ uid: userId, todo_rate: todoRate, created_at: today }, { onConflict: 'uid' })
+      .upsert({ uid: userId, todo_rate: todoRate, week, day }, { onConflict: 'uid,week,day' })
       .eq('uid', userId)
-      .eq('created_at', today)
       .select()
       .single();
 
@@ -81,7 +88,23 @@ const upsert = async (todoRate: number) =>
     return data;
   });
 
+const deleteFrom = async (week: number, day: number) =>
+  sendError(async () => {
+    const userId = useUserStore.getState().id;
+
+    const { error } = await supabase
+      .from('statistics')
+      .delete()
+      .or(`week.gt.${week},and(week.eq.${week},day.gte.${day})`)
+      .eq('uid', userId);
+
+    if (error) throw error;
+
+    return true;
+  });
+
 export const StatisticsAPI = {
   getTodoRatesByWeeks,
   upsert,
+  deleteFrom,
 };

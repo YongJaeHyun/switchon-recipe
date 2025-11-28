@@ -8,4 +8,5 @@ export enum QueryKey {
   popularCategories,
   todos,
   fasting,
+  todoRateStatistics,
 }
