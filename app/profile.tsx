@@ -10,14 +10,27 @@ import { Text } from 'components/common/Text';
 import { baseProfile, googleIcon, kakaoIconSmall } from 'const/assets';
 import { APP_VERSION, GOOGLE_WEB_CLIENT_ID } from 'const/const';
 import { QueryKey } from 'const/queryKey';
+import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { Link, router } from 'expo-router';
 import { queryClient } from 'lib/queryClient';
-import { ReactNode, useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, TouchableOpacity, View } from 'react-native';
+import React, { ReactNode, useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  ScrollView,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
+} from 'react-native';
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
-import { Maybe } from 'types/common';
+import { Nullable } from 'types/common';
 import { getWeekAndDay } from 'utils/date';
 import { getWeekColor } from 'utils/getWeekColor';
 import { UserAPI } from '../api/UserAPI';
@@ -31,13 +44,13 @@ interface MenuButtonProps {
 interface WeekProps {
   week: number;
   average: number;
-  todoRatesByWeek: Maybe<number>[];
+  todoRatesByWeek: Nullable<number>[];
 }
 
 interface DayProps {
   week: number;
   day: number;
-  todoRate: Maybe<number>;
+  todoRate: Nullable<number>;
 }
 
 const MenuButton = ({ title, icon, onPress }: MenuButtonProps) => {
@@ -55,7 +68,7 @@ const MenuButton = ({ title, icon, onPress }: MenuButtonProps) => {
   );
 };
 
-const Week = ({ week, todoRatesByWeek, average }: WeekProps) => {
+const Week = React.memo(({ week, todoRatesByWeek, average }: WeekProps) => {
   return (
     <View className="mb-2 gap-2">
       <View className="flex-row items-center justify-between">
@@ -74,27 +87,77 @@ const Week = ({ week, todoRatesByWeek, average }: WeekProps) => {
       </View>
     </View>
   );
-};
+});
 
 const Day = ({ week, day, todoRate }: DayProps) => {
-  const start_date = useUserStore((state) => state.start_date);
   const MIN_BOOST = 5;
   const MAX_BAR_HEIGHT = 36;
 
+  const [showBlur, setShowBlur] = useState(false);
+
+  const start_date = useUserStore((state) => state.start_date);
   const { week: currentWeek, day: currentDay } = getWeekAndDay(start_date);
 
-  const safeRate = typeof todoRate === 'number' ? todoRate + MIN_BOOST : 0;
+  const safeRate = todoRate === null ? 0 : todoRate + MIN_BOOST;
   const barHeight = (safeRate / 100) * MAX_BAR_HEIGHT;
 
   const isToday = week === currentWeek && day === currentDay;
+
+  const blurOpacity = useSharedValue(0);
+  const blurStyle = useAnimatedStyle(() => ({
+    opacity: blurOpacity.value,
+  }));
+
+  const appearTodoRate = () => {
+    setShowBlur(true);
+
+    blurOpacity.value = withTiming(1, { duration: 250 });
+  };
+
+  const disappearTodoRate = () => {
+    blurOpacity.value = withTiming(0, { duration: 250 }, () => {
+      runOnJS(() => setShowBlur(false));
+    });
+  };
+
+  const handlePressDay = () => {
+    appearTodoRate();
+
+    setTimeout(() => {
+      disappearTodoRate();
+    }, 1500);
+  };
+
   return (
-    <View className={`relative h-14 w-14 justify-end rounded-full ${isToday && 'bg-green-200/50'}`}>
-      <Text className="absolute left-3 top-1 text-sm">{day}</Text>
+    <TouchableWithoutFeedback onPress={handlePressDay}>
       <View
-        style={{ height: barHeight }}
-        className="absolute bottom-1 right-3 flex-1 rounded-md border-r-8 border-green-500"
-      />
-    </View>
+        className={`relative flex h-14 w-14 items-center justify-center rounded-full 
+          ${isToday && 'bg-green-200/50'}`}>
+        <Text className="absolute left-3 top-1 text-sm">{day}</Text>
+
+        <View
+          style={{ height: barHeight }}
+          className="absolute bottom-1 right-3 flex-1 rounded-md border-r-8 border-green-500"
+        />
+
+        {showBlur && (
+          <Animated.View
+            className="absolute inset-0 z-10 overflow-hidden rounded-full border border-neutral-100"
+            style={blurStyle}>
+            <BlurView
+              intensity={10}
+              tint="light"
+              experimentalBlurMethod="dimezisBlurView"
+              className="absolute inset-0 rounded-full"
+            />
+
+            <View className="absolute inset-0 items-center justify-center">
+              <Text className="text-sm text-neutral-800">{todoRate}%</Text>
+            </View>
+          </Animated.View>
+        )}
+      </View>
+    </TouchableWithoutFeedback>
   );
 };
 
