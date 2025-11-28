@@ -1,6 +1,6 @@
 import { supabase } from 'lib/supabase';
 import { useUserStore } from 'stores/userStore';
-import { Maybe } from 'types/common';
+import { Nullable } from 'types/common';
 import { StatisticsDB } from 'types/database';
 import { TodoRateStatistics } from 'types/statistics';
 import { getWeekAndDay } from 'utils/date';
@@ -38,7 +38,7 @@ export const getTodoRatesByWeeks = async () =>
     const weeks = [];
 
     for (let week = 1; week <= 4; week++) {
-      let todoRatesByWeek: Maybe<number>[] = [];
+      let todoRatesByWeek: Nullable<number>[] = [];
 
       for (let day = 1; day <= 7; day++) {
         const isReached = week < userWeek || (week <= userWeek && day <= userDay);
