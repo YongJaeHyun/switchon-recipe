@@ -6,13 +6,16 @@ import { Link } from 'expo-router';
 import { Pressable, View } from 'react-native';
 import { useRecipeStore } from 'stores/recipeStore';
 import colors from 'tailwindcss/colors';
-import { RecipeDB } from 'types/database';
+import { RecipeWithIsSavedDB } from 'types/database';
 import { getWeekColor } from 'utils/getWeekColor';
 
-export function RecipeCard(recipe: RecipeDB) {
+export function RecipeCard(recipe: RecipeWithIsSavedDB) {
   const { isSavedMap, toggleIsSaved } = useRecipeStore();
-  const isSaved = !!isSavedMap[recipe.id];
+  if (!recipe.id) return;
 
+  const id = recipe.id;
+  const savedCount = recipe.saved_count ?? 0;
+  const isSaved = !!isSavedMap[recipe.id];
   return (
     <Link
       href={`/recipeDetail?recipe=${JSON.stringify({ ...recipe, isSaved })}`}
@@ -46,7 +49,7 @@ export function RecipeCard(recipe: RecipeDB) {
           )}
 
           <Pressable
-            onPress={() => toggleIsSaved(recipe.id)}
+            onPress={() => toggleIsSaved(id)}
             className="absolute right-2 top-2 z-50 items-center justify-center">
             <View className="flex-1 flex-row items-center justify-center gap-1 rounded-full bg-black/30 px-2 py-1">
               <MaterialIcons
@@ -54,7 +57,7 @@ export function RecipeCard(recipe: RecipeDB) {
                 size={22}
                 color={colors.yellow[500]}
               />
-              <Text className="text-white">{recipe.saved_count + (isSaved ? 1 : 0)}</Text>
+              <Text className="text-white">{savedCount + (isSaved ? 1 : 0)}</Text>
             </View>
           </Pressable>
         </View>

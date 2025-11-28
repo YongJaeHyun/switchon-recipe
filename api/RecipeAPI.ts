@@ -4,13 +4,18 @@ import { RecipeSortType } from 'const/sort';
 import { queryClient } from 'lib/queryClient';
 import { supabase } from 'lib/supabase';
 import { useUserStore } from 'stores/userStore';
-import { RecipeDB, SavedRecipeDB } from 'types/database';
+import {
+  RecipeWithIsSavedDB,
+  SavedRecipeDB,
+  SearchRecipesReturn,
+  SearchSavedRecipesReturn,
+} from 'types/database';
 import { sendError } from 'utils/sendError';
 import { useSavedRecipeStore } from '../stores/savedRecipeStore';
 
 // RECENT_RECIPE
 const selectAllRecent = async () =>
-  sendError<RecipeDB[]>(async () => {
+  sendError<RecipeWithIsSavedDB[]>(async () => {
     const userId = useUserStore.getState().id;
     if (!userId) throw new Error('userId가 존재하지 않습니다.');
 
@@ -43,7 +48,7 @@ const checkIsSavedRecipe = async (recipeId: number) =>
   });
 
 const selectAllSavedByWeek = async (week: number) =>
-  sendError<RecipeDB[]>(async () => {
+  sendError<SearchSavedRecipesReturn>(async () => {
     const { sort, filter } = useSavedRecipeStore.getState();
 
     const { data, error } = await supabase.rpc('search_saved_recipes', {
@@ -58,7 +63,7 @@ const selectAllSavedByWeek = async (week: number) =>
   });
 
 const selectAllSaved = async () =>
-  sendError<RecipeDB[]>(async () => {
+  sendError<RecipeWithIsSavedDB[]>(async () => {
     const userId = useUserStore.getState().id;
     if (!userId) throw new Error('userId가 존재하지 않습니다.');
 
@@ -90,7 +95,7 @@ const selectAllByWeekWithPagination = async ({
   filterType = '전체',
   pageSize = 10,
 }: selectAllByWeekWithPaginationProps) =>
-  sendError<RecipeDB[]>(async () => {
+  sendError<SearchRecipesReturn>(async () => {
     const { data, error } = await supabase
       .rpc('search_recipes', {
         filter_type: filterType,

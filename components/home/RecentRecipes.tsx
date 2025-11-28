@@ -2,11 +2,12 @@ import ListEmptyText from 'components/common/ListEmptyText';
 import { Text } from 'components/common/Text';
 import { ActivityIndicator, FlatList, View } from 'react-native';
 import colors from 'tailwindcss/colors';
-import { RecipeDB } from 'types/database';
+import { Maybe } from 'types/common';
+import { RecipeWithIsSavedDB } from 'types/database';
 import { RecipeCard } from './RecipeCard';
 
 interface RecentRecipesProps {
-  recipes: RecipeDB[];
+  recipes: Maybe<RecipeWithIsSavedDB[]>;
   refreshing: boolean;
 }
 
@@ -23,8 +24,8 @@ export default function RecentRecipes({ recipes, refreshing }: RecentRecipesProp
         <FlatList
           className="h-52"
           data={recipes}
-          contentContainerClassName={`gap-5 flex-grow ${recipes.length === 0 ? 'justify-center' : 'justify-start'}`}
-          keyExtractor={(item) => 'RecentRecipes' + item.id.toString()}
+          contentContainerClassName={`gap-5 flex-grow ${recipes?.length === 0 ? 'justify-center' : 'justify-start'}`}
+          keyExtractor={(item) => 'RecentRecipes' + item.id?.toString()}
           renderItem={({ item }) => <RecipeCard {...item} />}
           ListEmptyComponent={
             <ListEmptyText href={'/(tabs)/home/recipeCreation/low'} emptyListName="recentRecipes" />

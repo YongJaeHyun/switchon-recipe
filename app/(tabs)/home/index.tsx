@@ -71,8 +71,8 @@ export default function HomeScreen() {
               />
             </View>
           </View>
-          <SavedRecipes recipes={savedRecipes ?? []} refreshing={refreshing} />
-          <RecentRecipes recipes={recentRecipes ?? []} refreshing={refreshing} />
+          <SavedRecipes recipes={savedRecipes} refreshing={refreshing} />
+          <RecentRecipes recipes={recentRecipes} refreshing={refreshing} />
         </View>
       </ScrollView>
 

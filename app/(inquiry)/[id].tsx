@@ -31,11 +31,11 @@ const AnswerBubble = ({ children, answered }: { children?: React.ReactNode; answ
   );
 
 export default function InquiryDetail() {
-  const { id } = useLocalSearchParams();
+  const { id } = useLocalSearchParams<{ id: string }>();
 
   const { data: inquiry, isLoading } = useQuery({
     queryKey: ['inquiry', id],
-    queryFn: () => InquiryAPI.selectOneById(id),
+    queryFn: () => InquiryAPI.selectOneById(Number(id)),
     enabled: !!id,
   });
 

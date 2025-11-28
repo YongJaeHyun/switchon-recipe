@@ -4,11 +4,12 @@ import { Text } from 'components/common/Text';
 import { Link } from 'expo-router';
 import { ActivityIndicator, FlatList, View } from 'react-native';
 import colors from 'tailwindcss/colors';
-import { RecipeDB } from 'types/database';
+import { RecipeWithIsSavedDB } from 'types/database';
+import { Maybe } from '../../types/common';
 import { RecipeCard } from './RecipeCard';
 
 interface SavedRecipesProps {
-  recipes: RecipeDB[];
+  recipes: Maybe<RecipeWithIsSavedDB[]>;
   refreshing: boolean;
 }
 
@@ -32,7 +33,7 @@ export default function SavedRecipes({ recipes, refreshing }: SavedRecipesProps)
           className="h-52"
           data={recipes}
           contentContainerClassName={`gap-5 flex-grow ${recipes?.length === 0 ? 'justify-center' : 'justify-start'}`}
-          keyExtractor={(item) => 'SavedRecipes' + item.id.toString()}
+          keyExtractor={(item) => 'SavedRecipes' + item.id?.toString()}
           renderItem={({ item }) => <RecipeCard {...item} />}
           ListEmptyComponent={
             <ListEmptyText href={'/(tabs)/home/recipeCreation/low'} emptyListName="savedRecipes" />

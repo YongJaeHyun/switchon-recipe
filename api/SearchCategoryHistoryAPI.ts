@@ -1,9 +1,9 @@
 import { supabase } from 'lib/supabase';
-import { SearchCategoryHistoryDB } from 'types/database';
+import { PopularCategoryDB, SearchCategoryHistoryDB } from 'types/database';
 import { sendError } from 'utils/sendError';
 
 const getPopularCategories = async () =>
-  sendError<SearchCategoryHistoryDB[]>(async () => {
+  sendError<PopularCategoryDB[]>(async () => {
     const { data, error } = await supabase.from('popular_categories').select('*').limit(20);
 
     if (error) throw error;

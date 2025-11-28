@@ -1,10 +1,10 @@
 import { RecipeAPI } from 'api/RecipeAPI';
-import { RecipeDB } from 'types/database';
+import { RecipeWithIsSavedDB } from 'types/database';
 import { create } from 'zustand';
 
 interface RecipeState {
   isSavedMap: Record<number, boolean>;
-  initIsSavedMap: (recipes: RecipeDB[]) => void;
+  initIsSavedMap: (recipes: RecipeWithIsSavedDB[]) => void;
   toggleIsSaved: (id: number) => void;
 }
 
