@@ -2,11 +2,12 @@ import { Feather } from '@expo/vector-icons';
 import { ComponentPropsWithoutRef } from 'react';
 import { Pressable } from 'react-native';
 import colors from 'tailwindcss/colors';
+import { Nullable } from '../../types/common';
 import RippleButton from './RippleButton';
 import { Text } from './Text';
 
 interface ChipProps extends ComponentPropsWithoutRef<typeof Pressable> {
-  value: string;
+  value: Nullable<string>;
   onDelete?: () => void;
   showDeleteIcon?: boolean;
   outerClassName?: string;
