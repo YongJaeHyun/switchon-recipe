@@ -1,7 +1,7 @@
 import BottomSheet from '@gorhom/bottom-sheet';
 import { useQuery } from '@tanstack/react-query';
 import { SafeAreaViewWithNav } from 'components/common/SafeAreaViewWithNav';
-import HomeHeader from 'components/home/HomeHeader';
+import { HomeHeader } from 'components/home/HomeHeader';
 import RecentRecipes from 'components/home/RecentRecipes';
 import RecipeCreation from 'components/home/RecipeCreation';
 import SavedRecipes from 'components/home/SavedRecipes';

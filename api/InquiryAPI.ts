@@ -3,6 +3,7 @@ import { useUserStore } from 'stores/userStore';
 import { InquiryDB } from 'types/database';
 import { sendError } from 'utils/sendError';
 import { showSuccessToast } from 'utils/showToast';
+import { Maybe } from '../types/common';
 
 const selectAll = async () =>
   sendError<InquiryDB[]>(async () => {
@@ -19,8 +20,8 @@ const selectAll = async () =>
     return data;
   });
 
-const selectOneById = async (id: string | string[]) =>
-  sendError<InquiryDB>(async () => {
+const selectOneById = async (id: number) =>
+  sendError<Maybe<InquiryDB>>(async () => {
     const userId = useUserStore.getState().id;
 
     const { data, error } = await supabase

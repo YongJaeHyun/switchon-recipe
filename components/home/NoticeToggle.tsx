@@ -3,6 +3,7 @@ import React, { useRef, useState } from 'react';
 import { LayoutChangeEvent, Pressable, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import colors from 'tailwindcss/colors';
+import { Nullable } from '../../types/common';
 
 interface NoticeToggleProps {
   version: string;
@@ -17,7 +18,7 @@ export default function NoticeToggle({
   updatedAt,
   defaultOpen = false,
 }: NoticeToggleProps) {
-  let timer = useRef<NodeJS.Timeout | null>(null);
+  let timer = useRef<Nullable<NodeJS.Timeout>>(null);
 
   const [isInit, setIsInit] = useState(false);
   const [visible, setVisible] = useState(false);

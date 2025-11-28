@@ -2,9 +2,10 @@ import { supabase } from 'lib/supabase';
 import { useUserStore } from 'stores/userStore';
 import { FastingDB } from 'types/database';
 import { sendError } from 'utils/sendError';
+import { Maybe } from '../types/common';
 
 const selectOne = async () =>
-  sendError<FastingDB>(async () => {
+  sendError<Maybe<FastingDB>>(async () => {
     const userId = useUserStore.getState().id;
 
     const { data, error } = await supabase

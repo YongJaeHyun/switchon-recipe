@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { FlatList, Modal, TouchableWithoutFeedback, View } from 'react-native';
 import colors from 'tailwindcss/colors';
 import { RecipeOption } from 'types/recipe';
+import { Nullable } from '../../types/common';
 import { Text } from './Text';
 
 interface CustomSelectProps<Option> {
@@ -14,7 +15,7 @@ interface CustomSelectProps<Option> {
   borderColor?: string;
   bgColor?: string;
   rippleColor?: string;
-  selectedValue: Option | null;
+  selectedValue: Nullable<Option>;
   onSelect?: (option: Option) => void;
 }
 

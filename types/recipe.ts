@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { Nullable } from './common';
 
 interface Ingredient {
   name: string;
@@ -36,8 +37,8 @@ type RecipeMethod = '샐러드류' | '구이류' | '볶음류' | '덮밥류' | '
 type RecipeOption = RecipeCategory | RecipeMethod;
 
 interface RecipeOptions {
-  category: RecipeCategory | null;
-  method: RecipeMethod | null;
+  category: Nullable<RecipeCategory>;
+  method: Nullable<RecipeMethod>;
 }
 
 export {

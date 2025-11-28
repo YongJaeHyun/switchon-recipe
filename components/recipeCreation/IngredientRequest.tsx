@@ -13,6 +13,7 @@ import { Modal, TextInput, TouchableWithoutFeedback, View } from 'react-native';
 import colors from 'tailwindcss/colors';
 import { RecipeType } from 'types/database';
 import { isCompletedHangul } from 'utils/hangul';
+import { Nullable } from '../../types/common';
 
 interface IngredientRequestError {
   name?: string;
@@ -23,7 +24,7 @@ export function IngredientRequest() {
 
   const [visible, setVisible] = useState(false);
   const [name, setName] = useState('');
-  const [errors, setErrors] = useState<IngredientRequestError | null>(null);
+  const [errors, setErrors] = useState<Nullable<IngredientRequestError>>(null);
 
   const allIngredientNames = [
     ...firstWeekIngredients,

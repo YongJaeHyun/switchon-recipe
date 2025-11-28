@@ -6,17 +6,18 @@ import { baseProfile } from 'const/assets';
 import { Image } from 'expo-image';
 import { Link } from 'expo-router';
 import useKoreanToday from 'hooks/useKoreanToday';
-import React from 'react';
+import React, { RefObject } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import { getWeekAndDay } from 'utils/date';
 import { getWeekBGColor, getWeekBorderColor, getWeekColor } from 'utils/getWeekColor';
+import { Nullable } from '../../types/common';
 
 interface HomeHeaderProps {
-  bottomSheetRef: React.RefObject<BottomSheetMethods | null>;
+  bottomSheetRef: RefObject<Nullable<BottomSheetMethods>>;
 }
 
-export default function HomeHeader({ bottomSheetRef }: HomeHeaderProps) {
+export const HomeHeader = ({ bottomSheetRef }: HomeHeaderProps) => {
   const { start_date, avatar_url } = useUserStore((state) => state);
   const today = useKoreanToday();
 
@@ -89,4 +90,4 @@ export default function HomeHeader({ bottomSheetRef }: HomeHeaderProps) {
       </ScrollView>
     </View>
   );
-}
+};

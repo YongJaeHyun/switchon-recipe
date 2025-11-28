@@ -9,7 +9,7 @@ import { UserAPI } from '../api/UserAPI';
 export default function RedirectKakaoLink() {
   const linkingUrl = useLinkingURL();
 
-  const [targetHref, setTargetHref] = useState<Href | null>(null);
+  const [targetHref, setTargetHref] = useState<Href>('/');
 
   useEffect(() => {
     const handleUrl = async () => {

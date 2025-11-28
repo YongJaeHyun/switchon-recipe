@@ -7,7 +7,7 @@ export const convertToKoreanDate = (date: Date | string) => {
   return toZonedTime(date, TIME_ZONE);
 };
 
-export const getWeekAndDay = (startDate: string | null) => {
+export const getWeekAndDay = (startDate: Maybe<string>) => {
   if (!startDate) return { week: 1, day: 1 };
 
   const start = convertToKoreanDate(startDate);

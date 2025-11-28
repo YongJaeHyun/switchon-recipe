@@ -43,7 +43,7 @@ const baseToastConfig = {
   display: 'flex',
   alignItems: 'center',
   paddingLeft: 12,
-} as ViewStyle;
+} satisfies ViewStyle;
 
 const toastStyle = StyleSheet.create({
   successToast: {

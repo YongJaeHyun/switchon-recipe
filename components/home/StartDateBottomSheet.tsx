@@ -12,9 +12,10 @@ import { useState } from 'react';
 import { TouchableOpacity, View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import { getWeekAndDay } from 'utils/date';
+import { Nullable } from '../../types/common';
 
 interface StartDateBottomSheetProps {
-  bottomSheetRef: React.RefObject<BottomSheetMethods | null>;
+  bottomSheetRef: React.RefObject<Nullable<BottomSheetMethods>>;
 }
 
 export function StartDateBottomSheet({ bottomSheetRef }: StartDateBottomSheetProps) {
