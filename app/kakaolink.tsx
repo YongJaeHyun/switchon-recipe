@@ -9,7 +9,7 @@ import { UserAPI } from '../api/UserAPI';
 export default function RedirectKakaoLink() {
   const linkingUrl = useLinkingURL();
 
-  const [targetHref, setTargetHref] = useState<Href | null>(null);
+  const [targetHref, setTargetHref] = useState<Href>('/');
 
   useEffect(() => {
     const handleUrl = async () => {
@@ -22,7 +22,7 @@ export default function RedirectKakaoLink() {
 
         if (host === 'kakaolink' && recipe) {
           const isLoggedIn = await UserAPI.checkIsLoggedIn();
-          setTargetHref(isLoggedIn ? `/(tabs)/home/recipeDetail?recipe=${recipe}` : '/(auth)');
+          setTargetHref(isLoggedIn ? `/recipeDetail?recipe=${recipe}` : '/(auth)');
         } else {
           setTargetHref('/(auth)');
         }

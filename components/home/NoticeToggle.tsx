@@ -1,41 +1,61 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { LayoutChangeEvent, Pressable, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import colors from 'tailwindcss/colors';
+import { Nullable } from '../../types/common';
 
 interface NoticeToggleProps {
   version: string;
   changes: string[];
   updatedAt: string;
+  defaultOpen?: boolean;
 }
 
-export default function NoticeToggle({ version, changes, updatedAt }: NoticeToggleProps) {
+export default function NoticeToggle({
+  version,
+  changes,
+  updatedAt,
+  defaultOpen = false,
+}: NoticeToggleProps) {
+  let timer = useRef<Nullable<NodeJS.Timeout>>(null);
+
+  const [isInit, setIsInit] = useState(false);
   const [visible, setVisible] = useState(false);
   const [contentHeight, setContentHeight] = useState(0);
 
-  const height = useSharedValue(0);
-  const opacity = useSharedValue(0);
-  const marginTop = useSharedValue(0);
+  const progress = useSharedValue(0);
+
+  const openLatestNotice = () => {
+    if (timer.current) clearTimeout(timer.current);
+
+    timer.current = setTimeout(() => {
+      progress.value = 1;
+      setIsInit(true);
+      setVisible(true);
+    }, 50);
+  };
 
   const onLayout = (event: LayoutChangeEvent) => {
-    const { height } = event.nativeEvent.layout;
-    setContentHeight(height);
+    const { height: measuredHeight } = event.nativeEvent.layout;
+    setContentHeight(measuredHeight);
+
+    if (!isInit && defaultOpen) {
+      openLatestNotice();
+    }
   };
 
   const toggleAnswer = () => {
     const toVisible = !visible;
     setVisible(toVisible);
 
-    height.value = withTiming(toVisible ? contentHeight : 0, { duration: 300 });
-    opacity.value = withTiming(toVisible ? 1 : 0, { duration: 300 });
-    marginTop.value = withTiming(toVisible ? 16 : 0, { duration: 300 });
+    progress.value = withTiming(toVisible ? 1 : 0, { duration: 300 });
   };
 
   const animatedStyle = useAnimatedStyle(() => ({
-    height: height.value,
-    opacity: opacity.value,
-    marginTop: marginTop.value,
+    height: progress.value * contentHeight,
+    opacity: progress.value,
+    marginTop: progress.value * 16,
     overflow: 'hidden',
   }));
 

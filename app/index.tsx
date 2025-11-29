@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UserAPI } from 'api/UserAPI';
 import { FIRST_LAUNCH_KEY } from 'const/const';
+import { ingredientImages } from 'const/ingredients';
+import { Asset } from 'expo-asset';
 import { Redirect, SplashScreen, useRootNavigationState } from 'expo-router';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { useEffect, useState } from 'react';
@@ -38,9 +40,14 @@ export default function Index() {
       }
     };
 
+    const preloadIngredients = async () => {
+      await Asset.loadAsync(ingredientImages);
+    };
+
     const init = async () => {
       await checkFirstLaunch();
       await checkCurrentLogin();
+      await preloadIngredients();
 
       SplashScreen.hideAsync();
       setIsReady(true);
@@ -52,5 +59,5 @@ export default function Index() {
   if (!isReady) return null;
   if (isFirstLaunch) return <Redirect href={'/(greet)'} />;
   if (!isLoggedIn) return <Redirect href={'/(auth)'} />;
-  return isOnboarded ? <Redirect href={'/(tabs)/home'} /> : <Redirect href={'/(auth)/onboard'} />;
+  return isOnboarded ? <Redirect href={'/(tabs)'} /> : <Redirect href={'/(auth)/onboard'} />;
 }

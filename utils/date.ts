@@ -1,15 +1,21 @@
-import { differenceInDays, parseISO } from 'date-fns';
+import { TIME_ZONE } from 'const/const';
+import { differenceInDays } from 'date-fns';
+import { format, toZonedTime } from 'date-fns-tz';
+import { Maybe } from '../types/common';
 
-const convertToKoreanDate = (date: Date) => {
-  const offset = 9 * 60 * 60 * 1000; // 한국은 UTC+9
+interface GetKoreanDateStringProps {
+  formatType: 'detailed' | 'date';
+}
 
-  const koreanDate = new Date(date.getTime() + offset);
-  return koreanDate;
+export const convertToKoreanDate = (date: Date | string) => {
+  return toZonedTime(date, TIME_ZONE);
 };
 
-const getWeekAndDay = (startDate: string) => {
-  const start = parseISO(startDate);
-  const current = parseISO(getKoreanToday());
+export const getWeekAndDay = (startDate: Maybe<string>) => {
+  if (!startDate) return { week: 1, day: 1 };
+
+  const start = convertToKoreanDate(startDate);
+  const current = getKoreanDateString({ formatType: 'date' });
 
   const daysDiff = differenceInDays(current, start);
 
@@ -19,36 +25,32 @@ const getWeekAndDay = (startDate: string) => {
   return { week, day };
 };
 
-const getKoreanToday = () => {
+export const getKoreanDate = () => {
   const now = new Date();
-
-  const koreanDate = convertToKoreanDate(now);
-  return koreanDate.toISOString().split('T')[0];
+  return convertToKoreanDate(now);
 };
 
-const getKoreanDateWeeksAgo = (weeksAgo: number) => {
+export const getKoreanDateString = (
+  { formatType }: GetKoreanDateStringProps = { formatType: 'detailed' }
+) => {
+  const formatStr = formatType === 'detailed' ? 'yyyy-MM-dd HH:mm:ss' : 'yyyy-MM-dd';
+
   const now = new Date();
   const koreanDate = convertToKoreanDate(now);
+  return format(koreanDate, formatStr, { timeZone: TIME_ZONE });
+};
+
+export const getKoreanDateWeeksAgo = (weeksAgo: number) => {
+  const koreanDate = getKoreanDate();
   const msPerWeek = 7 * 24 * 60 * 60 * 1000;
 
   const weeksAgoDate = new Date(koreanDate.getTime() - weeksAgo * msPerWeek);
-  return weeksAgoDate.toISOString().split('T')[0];
+  return format(weeksAgoDate, 'yyyy-MM-dd', { timeZone: TIME_ZONE });
 };
 
-export function formatKoreanDate(dateString: string | undefined): string {
-  let date = dateString ? new Date(dateString) : new Date();
+export const formatKoreanDate = (dateString: Maybe<string>) => {
+  const date = dateString ? new Date(dateString) : new Date();
+  const koreanDate = convertToKoreanDate(date);
 
-  if (date.getTimezoneOffset() === 0) {
-    date = convertToKoreanDate(date);
-  }
-
-  return date.toLocaleDateString('ko-KR', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-export { getKoreanDateWeeksAgo, getKoreanToday, getWeekAndDay };
+  return format(koreanDate, 'yyyy-MM-dd HH:mm', { timeZone: TIME_ZONE });
+};

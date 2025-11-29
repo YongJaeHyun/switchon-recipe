@@ -87,7 +87,7 @@ export default {
         foregroundImage: './assets/icon.png',
         backgroundColor: '#ffffff',
       },
-      googleServicesFile: './google-services.json',
+      googleServicesFile: process.env.GOOGLE_SERVICES_JSON,
       edgeToEdgeEnabled: true,
     },
     extra: {

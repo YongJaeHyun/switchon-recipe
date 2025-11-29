@@ -1,11 +1,12 @@
-import { ImageSource } from 'expo-image';
 import { z } from 'zod';
+import { Nullable } from './common';
 
-interface IIngredient {
+interface Ingredient {
   name: string;
   subKeywords?: string[];
   week: number;
-  image: ImageSource;
+  image: string;
+  isCarbohydrate?: boolean;
 }
 
 const IngredientSchema = z.object({
@@ -13,6 +14,7 @@ const IngredientSchema = z.object({
   isOptional: z.boolean(),
   amount: z.string(),
 });
+type RecipeIngredient = string | z.infer<typeof IngredientSchema>;
 
 const RecipeSchema = z.object({
   recipeName: z.string(),
@@ -35,15 +37,16 @@ type RecipeMethod = '샐러드류' | '구이류' | '볶음류' | '덮밥류' | '
 type RecipeOption = RecipeCategory | RecipeMethod;
 
 interface RecipeOptions {
-  category: RecipeCategory | null;
-  method: RecipeMethod | null;
+  category: Nullable<RecipeCategory>;
+  method: Nullable<RecipeMethod>;
 }
 
 export {
-  IIngredient,
+  Ingredient,
   IngredientSchema,
   Recipe,
   RecipeCategory,
+  RecipeIngredient,
   RecipeMethod,
   RecipeOption,
   RecipeOptions,

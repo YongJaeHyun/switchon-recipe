@@ -22,10 +22,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import colors from 'tailwindcss/colors';
 import { RecipeDB } from 'types/database';
-import { IngredientSchema, Recipe } from 'types/recipe';
-import { z } from 'zod';
-
-type RecipeIngredient = string | z.infer<typeof IngredientSchema>;
+import { IngredientSchema, Recipe, RecipeIngredient } from 'types/recipe';
 
 export default function RecipeDetailScreen() {
   const { recipe }: { recipe: string } = useLocalSearchParams();

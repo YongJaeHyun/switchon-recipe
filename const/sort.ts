@@ -1,5 +1,5 @@
-const savedRecipeSorts = ['최신순', '조리시간순'] as const;
+const RECIPE_SORTS = ['최신순', '저장 많은 순', '조리시간 빠른 순'] as const;
 
-type SavedRecipeSort = (typeof savedRecipeSorts)[number];
+type RecipeSortType = (typeof RECIPE_SORTS)[number];
 
-export { SavedRecipeSort, savedRecipeSorts };
+export { RECIPE_SORTS, RecipeSortType };

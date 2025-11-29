@@ -3,39 +3,22 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Text } from 'components/common/Text';
 import { Image } from 'expo-image';
 import { Link } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
+import { useRecipeStore } from 'stores/recipeStore';
 import colors from 'tailwindcss/colors';
-import { RecipeDB } from 'types/database';
+import { RecipeWithIsSavedDB } from 'types/database';
 import { getWeekColor } from 'utils/getWeekColor';
-import { RecipeAPI } from '../../api/RecipeAPI';
 
-export default function RecipeCard(recipe: RecipeDB) {
-  const [isSaved, setIsSaved] = useState<boolean>(false);
-  const timer = useRef<NodeJS.Timeout>(null);
+export function RecipeCard(recipe: RecipeWithIsSavedDB) {
+  const { isSavedMap, toggleIsSaved } = useRecipeStore();
+  if (!recipe.id) return;
 
-  const toggleIsSaved = () => {
-    const next = !isSaved;
-    setIsSaved(next);
-
-    if (timer.current) clearTimeout(timer.current);
-
-    timer.current = setTimeout(async () => {
-      if (next) {
-        await RecipeAPI.insertSaved(recipe.id);
-      } else {
-        await RecipeAPI.deleteSaved(recipe.id);
-      }
-      timer.current = null;
-    }, 500);
-  };
-
-  useEffect(() => {
-    setIsSaved(recipe.is_saved);
-  }, [recipe]);
+  const id = recipe.id;
+  const savedCount = recipe.saved_count ?? 0;
+  const isSaved = !!isSavedMap[recipe.id];
   return (
     <Link
-      href={`/(tabs)/home/recipeDetail?recipe=${JSON.stringify({ ...recipe, isSaved })}`}
+      href={`/recipeDetail?recipe=${JSON.stringify({ ...recipe, isSaved })}`}
       className="h-48 w-48">
       <View
         className="w-full flex-1 overflow-hidden rounded-xl"
@@ -66,14 +49,16 @@ export default function RecipeCard(recipe: RecipeDB) {
           )}
 
           <Pressable
-            onPress={toggleIsSaved}
-            className="absolute right-2 top-2 z-50 h-10 w-10 items-center justify-center">
-            <View className="absolute left-0 top-0 h-full w-full rounded-full bg-black/30" />
-            <MaterialIcons
-              name={isSaved ? 'star' : 'star-outline'}
-              size={30}
-              color={colors.yellow[500]}
-            />
+            onPress={() => toggleIsSaved(id)}
+            className="absolute right-2 top-2 z-50 items-center justify-center">
+            <View className="flex-1 flex-row items-center justify-center gap-1 rounded-full bg-black/30 px-2 py-1">
+              <MaterialIcons
+                name={isSaved ? 'star' : 'star-outline'}
+                size={22}
+                color={colors.yellow[500]}
+              />
+              <Text className="text-white">{savedCount + (isSaved ? 1 : 0)}</Text>
+            </View>
           </Pressable>
         </View>
         <View className="flex-[3] justify-evenly bg-white px-3">

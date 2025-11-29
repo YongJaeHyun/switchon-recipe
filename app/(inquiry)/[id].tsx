@@ -31,11 +31,11 @@ const AnswerBubble = ({ children, answered }: { children?: React.ReactNode; answ
   );
 
 export default function InquiryDetail() {
-  const { id } = useLocalSearchParams();
+  const { id } = useLocalSearchParams<{ id: string }>();
 
   const { data: inquiry, isLoading } = useQuery({
     queryKey: ['inquiry', id],
-    queryFn: () => InquiryAPI.selectOneById(id),
+    queryFn: () => InquiryAPI.selectOneById(Number(id)),
     enabled: !!id,
   });
 
@@ -61,8 +61,8 @@ export default function InquiryDetail() {
           </View>
 
           <View className="my-5 flex-row items-center justify-between">
-            <CategoryBadge category={inquiry?.category ?? null} />
-            <StatusBadge status={inquiry?.status ?? null} />
+            <CategoryBadge category={inquiry?.category} />
+            <StatusBadge status={inquiry?.status} />
           </View>
 
           <View className="gap-2 rounded-xl bg-white shadow-sm">

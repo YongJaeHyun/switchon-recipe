@@ -5,35 +5,47 @@ import {
   beans,
   beef,
   bokChoy,
+  boriRice,
   broccoli,
   butter,
   cabbage,
   carrot,
+  chajo,
   cheese,
   cherryTomato,
   chestnut,
   chicken,
   chickenStock,
+  chiliSauce,
   chives,
   clam,
   cod,
+  coffee,
   crammy,
   creamCheese,
   cucumber,
   curcuma,
+  curryBlock,
+  curryPowder,
   dakbal,
   dasima,
+  doyuMyun,
   driedTofu,
   duck,
   eastCabbage,
   egg,
   eggplant,
+  emmer,
+  fuju,
   garlic,
   ggwari,
   gim,
   gochu,
   gochuPaste,
+  gogiSundae,
   greenOnion,
+  gwanja,
+  gwiriRice,
   hyunmiRice,
   kimchi,
   kongdambaek,
@@ -49,6 +61,7 @@ import {
   muk,
   myungran,
   nakji,
+  nalchial,
   natto,
   nutari,
   nuts,
@@ -65,6 +78,7 @@ import {
   perillaOil,
   pork,
   potato,
+  proteinPowder,
   pyogo,
   quinoa,
   radish,
@@ -81,6 +95,7 @@ import {
   shrimp,
   softTofu,
   soybeanPaste,
+  soySauce,
   spinach,
   squid,
   sukju,
@@ -92,90 +107,48 @@ import {
   tomatoSauce,
   tuna,
   tunaCan,
+  vegetableMix,
   vinegar,
   wasabi,
   yogurt,
   zucchini,
 } from 'const/assets';
-import { IIngredient } from 'types/recipe';
+import { Ingredient } from 'types/recipe';
 
-export const carbohydrateIngredients: IIngredient[] = [
-  {
-    name: '현미잡곡밥',
-    image: mixedRice,
-    week: 1,
-  },
+export const firstWeekIngredients: Ingredient[] = [
   {
     name: '흰쌀밥',
     image: rice,
     week: 1,
-  },
-  {
-    name: '오트밀',
-    image: oatmeal,
-    week: 2,
-  },
-  {
-    name: '라이스페이퍼',
-    image: ricepaper,
-    week: 2,
-  },
-  {
-    name: '퀴노아',
-    image: quinoa,
-    week: 2,
-  },
-  {
-    name: '메밀면',
-    image: memilMyun,
-    week: 2,
-  },
-  {
-    name: '떡국떡',
-    image: ricecake,
-    week: 3,
-  },
-  {
-    name: '단호박',
-    image: sweetPumpkin,
-    week: 3,
-  },
-  {
-    name: '고구마',
-    image: sweetPotato,
-    week: 3,
-  },
-  {
-    name: '밤',
-    image: chestnut,
-    week: 3,
-  },
-];
-
-export const firstWeekIngredients: IIngredient[] = [
-  {
-    name: '흰쌀밥',
-    image: rice,
-    week: 1,
+    isCarbohydrate: true,
   },
   {
     name: '현미밥',
     image: hyunmiRice,
     week: 1,
+    isCarbohydrate: true,
+  },
+  {
+    name: '보리밥',
+    image: boriRice,
+    week: 1,
+    isCarbohydrate: true,
+  },
+  {
+    name: '귀리밥',
+    image: gwiriRice,
+    week: 1,
+    isCarbohydrate: true,
   },
   {
     name: '잡곡밥',
     image: mixedRice,
     week: 1,
+    isCarbohydrate: true,
   },
   {
     name: '두부면',
     image: tofuMyun,
-    week: 1,
-  },
-  {
-    name: '콩담백면',
-    image: kongdambaek,
     week: 1,
   },
   {
@@ -191,6 +164,17 @@ export const firstWeekIngredients: IIngredient[] = [
   {
     name: '포두부',
     image: driedTofu,
+    week: 1,
+  },
+  {
+    name: '푸주',
+    image: fuju,
+    week: 1,
+  },
+  {
+    name: '단백질쉐이크',
+    subKeywords: ['프로틴쉐이크', '프로틴', '단백질 보충제'],
+    image: proteinPowder,
     week: 1,
   },
   {
@@ -272,6 +256,11 @@ export const firstWeekIngredients: IIngredient[] = [
     week: 1,
   },
   {
+    name: '관자',
+    image: gwanja,
+    week: 1,
+  },
+  {
     name: '굴',
     image: oyster,
     week: 1,
@@ -324,6 +313,11 @@ export const firstWeekIngredients: IIngredient[] = [
   {
     name: '강황',
     image: curcuma,
+    week: 1,
+  },
+  {
+    name: '야채믹스',
+    image: vegetableMix,
     week: 1,
   },
   {
@@ -492,13 +486,23 @@ export const firstWeekIngredients: IIngredient[] = [
     week: 1,
   },
   {
+    name: '간장',
+    image: soySauce,
+    week: 1,
+  },
+  {
     name: '된장',
     image: soybeanPaste,
     week: 1,
   },
   {
-    name: '굴소스',
+    name: '저당굴소스',
     image: oysterSauce,
+    week: 1,
+  },
+  {
+    name: '저당칠리소스',
+    image: chiliSauce,
     week: 1,
   },
   {
@@ -513,26 +517,52 @@ export const firstWeekIngredients: IIngredient[] = [
   },
 ];
 
-export const secondWeekIngredients: IIngredient[] = [
+export const secondWeekIngredients: Ingredient[] = [
   {
-    name: '오트밀',
-    image: oatmeal,
+    name: '콩담백면',
+    image: kongdambaek,
     week: 2,
   },
   {
-    name: '라이스페이퍼',
-    image: ricepaper,
-    week: 2,
-  },
-  {
-    name: '퀴노아',
-    image: quinoa,
+    name: '두유면',
+    image: doyuMyun,
     week: 2,
   },
   {
     name: '메밀면',
     image: memilMyun,
     week: 2,
+    isCarbohydrate: true,
+  },
+  {
+    name: '오트밀',
+    image: oatmeal,
+    week: 2,
+    isCarbohydrate: true,
+  },
+  {
+    name: '라이스페이퍼',
+    image: ricepaper,
+    week: 2,
+    isCarbohydrate: true,
+  },
+  {
+    name: '파로',
+    image: emmer,
+    week: 2,
+    isCarbohydrate: true,
+  },
+  {
+    name: '차조',
+    image: chajo,
+    week: 2,
+    isCarbohydrate: true,
+  },
+  {
+    name: '퀴노아',
+    image: quinoa,
+    week: 2,
+    isCarbohydrate: true,
   },
   {
     name: '콩류',
@@ -555,6 +585,11 @@ export const secondWeekIngredients: IIngredient[] = [
     week: 2,
   },
   {
+    name: '날치알',
+    image: nalchial,
+    week: 2,
+  },
+  {
     name: '게맛살',
     subKeywords: ['크래미', '크레미'],
     image: crammy,
@@ -564,6 +599,11 @@ export const secondWeekIngredients: IIngredient[] = [
     name: '견과류',
     subKeywords: ['땅콩', '콩'],
     image: nuts,
+    week: 2,
+  },
+  {
+    name: '커피',
+    image: coffee,
     week: 2,
   },
   {
@@ -581,32 +621,52 @@ export const secondWeekIngredients: IIngredient[] = [
     image: kimchi,
     week: 2,
   },
+  {
+    name: '카레가루',
+    image: curryPowder,
+    week: 2,
+  },
+  {
+    name: '고형카레',
+    image: curryBlock,
+    week: 2,
+  },
 ];
 
-export const thirdWeekIngredients: IIngredient[] = [
+export const thirdWeekIngredients: Ingredient[] = [
   {
     name: '떡국떡',
     image: ricecake,
     week: 3,
+    isCarbohydrate: true,
   },
   {
     name: '단호박',
     image: sweetPumpkin,
     week: 3,
+    isCarbohydrate: true,
   },
   {
     name: '감자',
     image: potato,
     week: 3,
+    isCarbohydrate: true,
   },
   {
     name: '고구마',
     image: sweetPotato,
     week: 3,
+    isCarbohydrate: true,
   },
   {
     name: '밤',
     image: chestnut,
+    week: 3,
+    isCarbohydrate: true,
+  },
+  {
+    name: '고기순대',
+    image: gogiSundae,
     week: 3,
   },
   {
@@ -646,13 +706,19 @@ export const thirdWeekIngredients: IIngredient[] = [
   },
 ];
 
+const allIngredients = [...firstWeekIngredients, ...secondWeekIngredients, ...thirdWeekIngredients];
+
+export const ingredientImages = allIngredients.map((i) => i.image);
+
+export const carbohydrateIngredients: Ingredient[] = allIngredients.filter((i) => i.isCarbohydrate);
+
 export const newIngredients = {
-  month: 9,
-  week: 4,
-  names: ['현미밥', '참치'],
+  month: 11,
+  week: 5,
+  names: ['카레가루', '고형카레', '날치알'],
 };
 
-export const allIngredients: IngredientsProps[] = [
+export const allIngredientsList: IngredientsProps[] = [
   {
     title: '탄수화물',
     week: 4,

@@ -1,13 +1,16 @@
-import Feather from '@expo/vector-icons/Feather';
+import { Chip } from 'components/common/Chip';
 import { Text } from 'components/common/Text';
+import { allIngredientsList } from 'const/ingredients';
 import { useLastPathname } from 'hooks/useLastPathname';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
-import { Pressable, View } from 'react-native';
+import { useEffect } from 'react';
+import { Pressable } from 'react-native';
+import colors from 'tailwindcss/colors';
 import { RecipeType } from 'types/database';
-import { IIngredient } from 'types/recipe';
+import { Ingredient } from 'types/recipe';
 
 interface SelectedIngredientProps {
-  ingredient?: IIngredient;
+  ingredient?: Ingredient;
 }
 
 export default function SelectedIngredient({ ingredient }: SelectedIngredientProps) {
@@ -15,16 +18,25 @@ export default function SelectedIngredient({ ingredient }: SelectedIngredientPro
 
   const { toggleIngredient } = useSelectedIngredients({ type });
 
+  const isValidIngredient = () =>
+    allIngredientsList.some((ingredientCategory) =>
+      ingredientCategory.ingredientList.some((ing) => ing.name === ingredient?.name)
+    );
+
+  useEffect(() => {
+    if (ingredient && !isValidIngredient()) {
+      toggleIngredient(ingredient);
+    }
+  }, []);
+
   return ingredient ? (
-    <Pressable
+    <Chip
       key={ingredient.name}
+      value={ingredient.name}
+      rippleColor={colors.transparent}
+      outerClassName={type === 'zero' ? 'border-green-600' : 'border-amber-500'}
       onPress={() => toggleIngredient(ingredient)}
-      className={`flex-row items-center gap-2 rounded-full border px-3 py-2 ${type === 'zero' ? 'border-green-600' : 'border-amber-500'}`}>
-      <Text>{ingredient.name}</Text>
-      <View>
-        <Feather name="x" size={16} color="black" />
-      </View>
-    </Pressable>
+    />
   ) : (
     <Pressable
       className={`flex-row items-center gap-2 rounded-full border px-3 py-2 ${type === 'zero' ? 'border-green-600' : 'border-amber-500'}`}>

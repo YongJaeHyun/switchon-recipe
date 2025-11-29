@@ -2,24 +2,18 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import ListEmptyText from 'components/common/ListEmptyText';
 import { Text } from 'components/common/Text';
 import { Link } from 'expo-router';
-import { useEffect } from 'react';
 import { ActivityIndicator, FlatList, View } from 'react-native';
-import { useRecipeStore } from 'stores/recipeStore';
 import colors from 'tailwindcss/colors';
-import { RecipeAPI } from '../../api/RecipeAPI';
-import RecipeCard from './RecipeCard';
+import { RecipeWithIsSavedDB } from 'types/database';
+import { Maybe } from '../../types/common';
+import { RecipeCard } from './RecipeCard';
 
-export default function SavedRecipes({ refreshing }: { refreshing: boolean }) {
-  const recipes = useRecipeStore((state) => state.savedRecipes);
-  const setSavedRecipes = useRecipeStore((state) => state.setSavedRecipes);
+interface SavedRecipesProps {
+  recipes: Maybe<RecipeWithIsSavedDB[]>;
+  refreshing: boolean;
+}
 
-  useEffect(() => {
-    (async () => {
-      const recipes = await RecipeAPI.selectAllSaved();
-      setSavedRecipes(recipes ?? []);
-    })();
-  }, [setSavedRecipes]);
-
+export default function SavedRecipes({ recipes, refreshing }: SavedRecipesProps) {
   return (
     <View className="">
       <View className="mb-6 flex-row items-center justify-between">
@@ -38,8 +32,8 @@ export default function SavedRecipes({ refreshing }: { refreshing: boolean }) {
         <FlatList
           className="h-52"
           data={recipes}
-          contentContainerClassName={`gap-5 flex-grow ${recipes.length === 0 ? 'justify-center' : 'justify-start'}`}
-          keyExtractor={(item) => 'SavedRecipes' + item.id.toString()}
+          contentContainerClassName={`gap-5 flex-grow ${recipes?.length === 0 ? 'justify-center' : 'justify-start'}`}
+          keyExtractor={(item) => 'SavedRecipes' + item.id?.toString()}
           renderItem={({ item }) => <RecipeCard {...item} />}
           ListEmptyComponent={
             <ListEmptyText href={'/(tabs)/home/recipeCreation/low'} emptyListName="savedRecipes" />

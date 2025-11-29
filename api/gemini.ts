@@ -2,6 +2,7 @@ import axios, { isCancel } from 'axios';
 import { RecipeDB } from 'types/database';
 import { isNetworkError } from 'utils/sendError';
 import { showErrorToast } from 'utils/showToast';
+import { Maybe } from '../types/common';
 import { UserAPI } from './UserAPI';
 
 interface CreateRecipeProps {
@@ -16,7 +17,7 @@ export const createRecipe = async ({
   week,
   isZeroCarb: is_zero_carb,
   signal,
-}: CreateRecipeProps): Promise<RecipeDB | undefined> => {
+}: CreateRecipeProps): Promise<Maybe<RecipeDB>> => {
   try {
     const session = await UserAPI.getSession();
     const response = await axios.post<RecipeDB>(

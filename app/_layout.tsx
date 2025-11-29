@@ -8,7 +8,9 @@ import { isRunningInExpoGo } from 'expo';
 import { Stack, useNavigationContainerRef } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
+import { useAuthStateObserver } from 'hooks/useAuthStateObserver';
 import { useAutoUpdate } from 'hooks/useAutoUpdate';
+import { useNotificationObserver } from 'hooks/useNotificationObserver';
 import { queryClient } from 'lib/queryClient';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -46,15 +48,16 @@ function RootLayout() {
 
   const updated = useAutoUpdate();
 
+  useNotificationObserver();
+  useAuthStateObserver();
+
   useEffect(() => {
     if (ref) {
       navigationIntegration.registerNavigationContainer(ref);
     }
   }, [ref]);
 
-  if (!updated) {
-    return null;
-  }
+  if (!updated) return null;
   return (
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
@@ -62,10 +65,11 @@ function RootLayout() {
           <PortalProvider>
             <Stack>
               <Stack.Screen name="index" options={{ headerShown: false }} />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen name="(greet)" options={{ headerShown: false }} />
               <Stack.Screen name="(auth)" options={{ headerShown: false }} />
               <Stack.Screen name="(inquiry)" options={{ headerShown: false }} />
-              <Stack.Screen name="(tabs)/home" options={{ headerShown: false }} />
+              <Stack.Screen name="recipeDetail" options={{ headerShown: false }} />
               <Stack.Screen name="profile" options={{ headerShown: false }} />
               <Stack.Screen name="kakaolink" options={{ headerShown: false }} />
             </Stack>

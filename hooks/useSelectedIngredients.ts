@@ -3,7 +3,7 @@ import { SelectedIngredientAPI } from 'api/SelectedIngredientAPI';
 import { QueryKey } from 'const/queryKey';
 import { queryClient } from 'lib/queryClient';
 import { RecipeType } from 'types/database';
-import { IIngredient } from 'types/recipe';
+import { Ingredient } from 'types/recipe';
 import { showInfoToast } from 'utils/showToast';
 
 interface UseSelectedIngredientsProps {
@@ -31,7 +31,7 @@ export const useSelectedIngredients = ({ type }: UseSelectedIngredientsProps) =>
       });
 
       const previousData =
-        queryClient.getQueryData<IIngredient[]>([QueryKey.selectedIngredients, type]) || [];
+        queryClient.getQueryData<Ingredient[]>([QueryKey.selectedIngredients, type]) || [];
 
       queryClient.setQueryData([QueryKey.selectedIngredients, type], []);
 
@@ -45,12 +45,12 @@ export const useSelectedIngredients = ({ type }: UseSelectedIngredientsProps) =>
   });
 
   const { mutate: upsertIngredients } = useMutation({
-    mutationFn: (ingredients: IIngredient[]) => SelectedIngredientAPI.upsert(type, ingredients),
+    mutationFn: (ingredients: Ingredient[]) => SelectedIngredientAPI.upsert(type, ingredients),
     onMutate: async (newData) => {
       await queryClient.cancelQueries({ queryKey: [QueryKey.selectedIngredients, type] });
 
       const previousData =
-        queryClient.getQueryData<IIngredient[]>([QueryKey.selectedIngredients, type]) || [];
+        queryClient.getQueryData<Ingredient[]>([QueryKey.selectedIngredients, type]) || [];
 
       queryClient.setQueryData([QueryKey.selectedIngredients, type], () => newData);
 
@@ -63,9 +63,9 @@ export const useSelectedIngredients = ({ type }: UseSelectedIngredientsProps) =>
     },
   });
 
-  const toggleIngredient = (ingredient: IIngredient) => {
+  const toggleIngredient = (ingredient: Ingredient) => {
     const selectedIngredients =
-      queryClient.getQueryData<IIngredient[]>([QueryKey.selectedIngredients, type]) || [];
+      queryClient.getQueryData<Ingredient[]>([QueryKey.selectedIngredients, type]) || [];
 
     const isSelected = selectedIngredients.some((i) => i.name === ingredient.name);
 

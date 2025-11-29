@@ -1,5 +1,5 @@
 import { IngredientsProps } from 'components/recipeCreation/Ingredients';
-import { IIngredient } from 'types/recipe';
+import { Ingredient } from 'types/recipe';
 import {
   carbohydrateIngredients,
   firstWeekIngredients,
@@ -7,22 +7,22 @@ import {
   thirdWeekIngredients,
 } from './ingredients';
 
-const isZeroIngredient = (ingredient: IIngredient) =>
+const isZeroIngredient = (ingredient: Ingredient) =>
   !carbohydrateIngredients.some((carboIngredient) => carboIngredient.name === ingredient.name);
 
-export const firstWeekZeroIngredients: IIngredient[] = firstWeekIngredients.filter((ingredient) =>
+export const firstWeekZeroIngredients: Ingredient[] = firstWeekIngredients.filter((ingredient) =>
   isZeroIngredient(ingredient)
 );
 
-export const secondWeekZeroIngredients: IIngredient[] = secondWeekIngredients.filter((ingredient) =>
+export const secondWeekZeroIngredients: Ingredient[] = secondWeekIngredients.filter((ingredient) =>
   isZeroIngredient(ingredient)
 );
 
-export const thirdWeekZeroIngredients: IIngredient[] = thirdWeekIngredients.filter((ingredient) =>
+export const thirdWeekZeroIngredients: Ingredient[] = thirdWeekIngredients.filter((ingredient) =>
   isZeroIngredient(ingredient)
 );
 
-export const allZeroIngredients: IngredientsProps[] = [
+export const allZeroIngredientsList: IngredientsProps[] = [
   {
     title: '1주차',
     week: 1,

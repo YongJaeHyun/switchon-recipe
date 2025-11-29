@@ -9,6 +9,7 @@ interface RippleButtonProps extends PressableProps {
   rounded?: Rounded;
   outerClassName?: string;
   children?: React.ReactNode;
+  animation?: boolean;
 }
 
 const RippleButton = React.forwardRef<React.ComponentRef<typeof Pressable>, RippleButtonProps>(
@@ -19,6 +20,7 @@ const RippleButton = React.forwardRef<React.ComponentRef<typeof Pressable>, Ripp
       outerClassName = '',
       rippleColor = outerClassName ? colors.white : colors.green[700],
       rounded = 'xl',
+      animation = true,
       ...rest
     },
     ref
@@ -26,6 +28,8 @@ const RippleButton = React.forwardRef<React.ComponentRef<typeof Pressable>, Ripp
     const scale = useRef(new Animated.Value(1)).current;
 
     const handlePressIn = () => {
+      if (!animation) return;
+
       Animated.spring(scale, {
         toValue: 0.96,
         useNativeDriver: true,
@@ -34,6 +38,8 @@ const RippleButton = React.forwardRef<React.ComponentRef<typeof Pressable>, Ripp
     };
 
     const handlePressOut = () => {
+      if (!animation) return;
+
       Animated.spring(scale, {
         toValue: 1,
         useNativeDriver: true,

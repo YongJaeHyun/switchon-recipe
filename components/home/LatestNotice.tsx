@@ -6,6 +6,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { Nullable } from '../../types/common';
 import AllNoticesModal from './AllNoticesModal';
 
 interface LatestNoticeProps {
@@ -15,7 +16,7 @@ interface LatestNoticeProps {
 const INTERVAL = 5000;
 
 export function LatestNotice({ notices }: LatestNoticeProps) {
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<Nullable<NodeJS.Timeout>>(null);
   const isActiveRef = useRef(true);
 
   const [visible, setVisible] = useState(false);

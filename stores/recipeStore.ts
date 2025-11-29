@@ -1,42 +1,28 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { RecipeDB } from 'types/database';
+import { RecipeAPI } from 'api/RecipeAPI';
+import { RecipeWithIsSavedDB } from 'types/database';
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 
 interface RecipeState {
-  savedRecipes: RecipeDB[];
-  setSavedRecipes: (recipes: RecipeDB[]) => void;
-  recentRecipes: RecipeDB[];
-  setRecentRecipes: (recipes: RecipeDB[]) => void;
+  isSavedMap: Record<number, boolean>;
+  initIsSavedMap: (recipes: RecipeWithIsSavedDB[]) => void;
+  toggleIsSaved: (id: number) => void;
 }
 
-export const useRecipeStore = create<RecipeState>()(
-  persist(
-    (set) => ({
-      savedRecipes: [],
-      setSavedRecipes: (recipes) => {
-        set({ savedRecipes: recipes });
-      },
-
-      recentRecipes: [],
-      setRecentRecipes: (recipes) => {
-        set({ recentRecipes: recipes });
-      },
-    }),
-    {
-      name: 'recipeStore',
-      storage: {
-        getItem: async (name: string) => {
-          const value = await AsyncStorage.getItem(name);
-          return value ? JSON.parse(value) : null;
-        },
-        setItem: async (name: string, value: any) => {
-          await AsyncStorage.setItem(name, JSON.stringify(value));
-        },
-        removeItem: async (name: string) => {
-          await AsyncStorage.removeItem(name);
-        },
-      },
+export const useRecipeStore = create<RecipeState>()((set, get) => ({
+  isSavedMap: {},
+  initIsSavedMap: (recipes) => {
+    const map = Object.fromEntries(recipes.map((r) => [r.id, true]));
+    set({ isSavedMap: map });
+  },
+  toggleIsSaved: (id) => {
+    const newMap = { ...get().isSavedMap };
+    if (newMap[id]) {
+      newMap[id] = false;
+      RecipeAPI.deleteSaved(id);
+    } else {
+      newMap[id] = true;
+      RecipeAPI.insertSaved(id);
     }
-  )
-);
+    set({ isSavedMap: newMap });
+  },
+}));

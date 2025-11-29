@@ -13,7 +13,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
 import colors from 'tailwindcss/colors';
-import { getKoreanDateWeeksAgo, getKoreanToday, getWeekAndDay } from 'utils/date';
+import { getKoreanDateString, getKoreanDateWeeksAgo, getWeekAndDay } from 'utils/date';
 import { getWeekColor } from 'utils/getWeekColor';
 import RippleButton from '../../components/common/RippleButton';
 
@@ -23,7 +23,7 @@ export default function OnboardingScreen() {
   const { step, goLastStep, goNextStep } = useSteps(totalSteps);
   const { setWeek } = useWeekCompletePopupStore();
 
-  const today = getKoreanToday();
+  const today = getKoreanDateString({ formatType: 'date' });
   const [selectedDate, setSelectedDate] = useState(today);
   const { week, day } = getWeekAndDay(selectedDate);
 

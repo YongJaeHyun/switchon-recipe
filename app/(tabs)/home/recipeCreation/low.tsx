@@ -1,33 +1,28 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { createRecipe } from 'api/gemini';
 import { CustomSelect } from 'components/common/CustomSelect';
+import RippleButton from 'components/common/RippleButton';
+import { SafeAreaViewWithNav } from 'components/common/SafeAreaViewWithNav';
+import { SearchInput } from 'components/common/SearchInput';
 import { Text } from 'components/common/Text';
 import { IngredientRequest } from 'components/recipeCreation/IngredientRequest';
 import Ingredients, { IngredientsProps } from 'components/recipeCreation/Ingredients';
 import Loading from 'components/recipeCreation/Loading';
 import SelectedIngredient from 'components/recipeCreation/SelectedIngredient';
-import { allIngredients } from 'const/ingredients';
-import { disassemble } from 'es-hangul';
-import { router } from 'expo-router';
+import { Tip } from 'components/recipeCreation/Tip';
+import { allIngredientsList } from 'const/ingredients';
+import { QueryKey } from 'const/queryKey';
+import { disassemble, getChoseong } from 'es-hangul';
+import { Link, router } from 'expo-router';
 import { useSelect } from 'hooks/useSelect';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
+import { queryClient } from 'lib/queryClient';
 import { useEffect, useRef, useState } from 'react';
-import {
-  FlatList,
-  Pressable,
-  TextInput,
-  TouchableHighlight,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRecipeStore } from 'stores/recipeStore';
+import { FlatList, TouchableHighlight, TouchableOpacity, View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { RecipeCategory, RecipeMethod } from 'types/recipe';
 import { getWeekAndDay } from 'utils/date';
 import { isCompletedHangul } from 'utils/hangul';
-import { RecipeAPI } from '../../../../api/RecipeAPI';
 
 export default function LowRecipeCreationScreen() {
   const {
@@ -35,8 +30,6 @@ export default function LowRecipeCreationScreen() {
     resetIngredients,
     isLoading: isIngredientsLoading,
   } = useSelectedIngredients({ type: 'low' });
-
-  const setRecentRecipes = useRecipeStore((state) => state.setRecentRecipes);
 
   const [category, toggleCategory] = useSelect<RecipeCategory>(null);
   const [method, toggleMethod] = useSelect<RecipeMethod>(null);
@@ -48,9 +41,8 @@ export default function LowRecipeCreationScreen() {
   const [resetTrigger, setResetTrigger] = useState(false);
 
   const getUserWeek = () => {
-    const today = new Date().toISOString();
     const startDate = useUserStore.getState().start_date;
-    const { week: userWeek } = getWeekAndDay(startDate ?? today);
+    const { week: userWeek } = getWeekAndDay(startDate);
 
     return userWeek;
   };
@@ -60,19 +52,22 @@ export default function LowRecipeCreationScreen() {
       const { name: ingredientName, subKeywords: ingredientSubKeywords } = ingredient;
       const trimmedKeyword = keyword.trim();
 
+      const disassembledIngredient = disassemble(ingredientName);
+      const disassembledKeyword = disassemble(trimmedKeyword);
+      const isIncludeKeyword = disassembledIngredient.includes(disassembledKeyword);
+
       if (isCompletedHangul(trimmedKeyword)) {
-        const isIncludeKeyword = ingredientName.includes(trimmedKeyword);
         const isIncludeSubKeyword = ingredientSubKeywords?.some(
           (ingredientKeyword) => ingredientKeyword === trimmedKeyword
         );
         return isIncludeKeyword || isIncludeSubKeyword;
+      } else {
+        const ingredientChoseong = getChoseong(ingredientName);
+        const keywordChoseong = getChoseong(trimmedKeyword);
+        const isIncludeChoseong = ingredientChoseong.includes(keywordChoseong);
+
+        return isIncludeKeyword || isIncludeChoseong;
       }
-
-      const disassembledIngredient = disassemble(ingredientName);
-      const disassembledKeyword = disassemble(keyword);
-
-      const isIncludeKeyword = disassembledIngredient.includes(disassembledKeyword);
-      return isIncludeKeyword;
     });
 
   const createRecipeWithAI = async () => {
@@ -97,9 +92,7 @@ export default function LowRecipeCreationScreen() {
     });
     if (!recipe) return null;
 
-    const recentRecipes = await RecipeAPI.selectAllRecent();
-    setRecentRecipes(recentRecipes ?? []);
-
+    queryClient.removeQueries({ queryKey: [QueryKey.recentRecipes] });
     return recipe;
   };
 
@@ -108,7 +101,7 @@ export default function LowRecipeCreationScreen() {
 
     const recipe = await createRecipeWithAI();
     if (recipe) {
-      router.push(`/(tabs)/home/recipeDetail?recipe=${JSON.stringify(recipe)}`);
+      router.push(`/recipeDetail?recipe=${JSON.stringify(recipe)}`);
     }
 
     setIsRecipeLoading(false);
@@ -124,24 +117,9 @@ export default function LowRecipeCreationScreen() {
   }, []);
 
   return (
-    <SafeAreaView className="relative flex-1 bg-white px-5">
+    <SafeAreaViewWithNav className="relative flex-1 bg-white px-5">
       <View className="mb-8 w-full gap-3">
-        <View className="relative">
-          <TextInput
-            className="w-full rounded-lg border border-neutral-400 px-3 py-2.5 pr-10"
-            onChangeText={setKeyword}
-            value={keyword}
-            placeholder="재료를 검색하세요!"
-          />
-          {keyword.length > 0 && (
-            <Pressable
-              onPress={() => setKeyword('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2"
-              hitSlop={10}>
-              <Ionicons name="close-circle" size={20} color="#888" />
-            </Pressable>
-          )}
-        </View>
+        <SearchInput keyword={keyword} onChangeText={setKeyword} placeholder="재료를 검색하세요!" />
         <FlatList
           contentContainerClassName="gap-2"
           ListEmptyComponent={<SelectedIngredient />}
@@ -157,7 +135,7 @@ export default function LowRecipeCreationScreen() {
       <FlatList
         className="mb-4 flex-1"
         contentContainerClassName="gap-6"
-        data={allIngredients}
+        data={allIngredientsList}
         extraData={resetTrigger ? 'reset-1' : 'reset-0'}
         ListHeaderComponent={() => <IngredientRequest />}
         renderItem={({ item }) => (
@@ -169,7 +147,7 @@ export default function LowRecipeCreationScreen() {
         )}
       />
 
-      <View className="mb-8 gap-4">
+      <View className="mb-4 gap-4">
         <View className="flex-row gap-3">
           <CustomSelect
             title="요리 카테고리"
@@ -216,10 +194,18 @@ export default function LowRecipeCreationScreen() {
 
       {(isIngredientsLoading || isRecipeLoading) && (
         <View className="absolute inset-0 z-50 items-center justify-center">
-          <View className="absolute inset-0 bg-black/30" />
-          <Loading />
+          <View className="absolute inset-0 bg-black/40" />
+          <View className="translate-y-8">
+            <Loading />
+            <Link href={'/(tabs)/explore'} asChild>
+              <RippleButton outerClassName="bg-white self-center mb-6" className="px-4 py-2.5">
+                <Text className="text-green-600">다른 레시피 둘러보기</Text>
+              </RippleButton>
+            </Link>
+            <Tip />
+          </View>
         </View>
       )}
-    </SafeAreaView>
+    </SafeAreaViewWithNav>
   );
 }

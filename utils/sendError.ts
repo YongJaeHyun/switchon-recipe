@@ -40,6 +40,8 @@ const sendError = async <Response>(callback: () => Promise<Response>, options?: 
 
     return result;
   } catch (error) {
+    console.error(error);
+
     if (isNetworkError(error)) {
       showErrorToast({ textType: 'NETWORK_ERROR' });
     } else if (isGatewayTimeoutError(error)) {

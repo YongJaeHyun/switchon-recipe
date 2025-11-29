@@ -1,3 +1,5 @@
+import colors from 'tailwindcss/colors';
+
 const getWeekColor = (week: number) => {
   if (week === 1) return 'text-week-1';
   else if (week === 2) return 'text-week-2';
@@ -25,4 +27,13 @@ const getWeekBorderColor = (week: number) => {
   else return '';
 };
 
-export { getWeekBGColor, getWeekBorderColor, getWeekColor };
+const getWeekColorHex = (week: number) => {
+  if (week === 1) return '#F4758A';
+  else if (week === 2) return colors.yellow[500];
+  else if (week === 3) return colors.lime[600];
+  else if (week === 4) return '#B192F5';
+  else if (week >= 5) return colors.black;
+  else return '';
+};
+
+export { getWeekBGColor, getWeekBorderColor, getWeekColor, getWeekColorHex };
