@@ -11,7 +11,7 @@ export const latestNotices = [
 
 export const allNotices = [
   {
-    version: 'v4.1.0',
+    version: 'v5.0.0',
     changes: [
       '✨ 주차별 식단 가이드 추가',
       '✨ 4주간의 식단 가이드 일일 완료율을 한눈에 볼 수 있는 "나의 4주 리포트"를 프로필 화면에 추가',
