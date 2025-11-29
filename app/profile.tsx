@@ -209,10 +209,12 @@ export default function Profile() {
         </View>
       </View>
 
-      <View className="mb-4 flex-1 px-5">
+      <View className="mb-4 min-h-[30.3rem] flex-1 px-5">
         <Text className="mb-6 text-lg font-bold">나의 4주 리포트</Text>
         {isLoading ? (
-          <ActivityIndicator size={56} color={colors.emerald[300]} />
+          <View className="flex-1 items-center justify-center">
+            <ActivityIndicator size={56} color={colors.emerald[300]} />
+          </View>
         ) : (
           todoRateStatistics?.weeks.map((statistic, index) => {
             const { average, todoRatesByWeek } = statistic;
