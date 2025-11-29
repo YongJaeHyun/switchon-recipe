@@ -5,11 +5,21 @@ import { newIngredients } from './ingredients';
 const { month, week, names } = newIngredients;
 
 export const latestNotices = [
-  `🚀 [v${APP_VERSION} 업데이트] - 다른 레시피들을 둘러볼 수 있는 "탐색 탭" 추가, 레시피 검색 및 레시피 카테고리 검색 기능 추가`,
+  `🚀 [v${APP_VERSION} 업데이트] - 주차별 식단 가이드 및 나의 4주 리포트 추가`,
   `🥗 [${month}월 ${seosusa(week)}주 재료 업데이트] - ${names.join(', ')} 추가`,
 ];
 
 export const allNotices = [
+  {
+    version: 'v4.1.0',
+    changes: [
+      '✨ 주차별 식단 가이드 추가',
+      '✨ 4주간의 식단 가이드 일일 완료율을 한눈에 볼 수 있는 "나의 4주 리포트"를 프로필 화면에 추가',
+      '✨ 2주차부터 식단 가이드에서 24시간 단식 요일 설정 및 단식 알림 기능 추가',
+      '🍱 카레가루, 고형카레, 날치알 추가',
+    ],
+    updatedAt: '2025.11.29',
+  },
   {
     version: 'v4.0.0',
     changes: [
