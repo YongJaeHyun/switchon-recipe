@@ -7,27 +7,31 @@ import { QueryKey } from 'const/queryKey';
 import { queryClient } from 'lib/queryClient';
 import { useEffect, useMemo, useState } from 'react';
 import { useUserStore } from 'stores/userStore';
-import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
 import { Todo } from 'types/todo';
-import { getKoreanDate } from 'utils/date';
+import { getKoreanDate, getWeekAndDay } from 'utils/date';
 import { useFasting } from './useFasting';
 
 export const useTodos = () => {
   const userId = useUserStore((state) => state.id);
-  const week = useWeekCompletePopupStore((state) => state.week);
+  const startDate = useUserStore((state) => state.start_date);
+
+  const { week, day } = getWeekAndDay(startDate);
+  const currentStep = week === 1 ? (day <= 3 ? 1 : 2) : week + 1;
+
   const { days: fastingDays, startTime: fastingStartTime } = useFasting();
   const fastingNextDays = useMemo(
     () => fastingDays.map((day) => (day + 1) % FASTING_DAYS.length),
     [fastingDays]
   );
+
   const baseTodos = useMemo(
     () =>
-      BASE_TODOS[week]?.map((todo, idx) => ({
+      BASE_TODOS[currentStep]?.map((todo, idx) => ({
         id: idx,
         value: todo,
         checked: false,
       })) ?? [],
-    [week]
+    [currentStep]
   );
 
   const [todos, setTodos] = useState<Todo[]>([]);

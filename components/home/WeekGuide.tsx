@@ -29,7 +29,7 @@ export function WeekGuide() {
     <View className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
       <View className={`px-4 py-2 ${getWeekBGColor(week)}`}>
         <Text className="text-white">
-          <Text>{week}주차 가이드</Text>
+          <Text>{week}주차 식단 가이드</Text>
           {isFirstStep && <Text> (1 ~ 3일) </Text>}
           {isSecondStep && <Text> (4 ~ 7일) </Text>}
         </Text>
