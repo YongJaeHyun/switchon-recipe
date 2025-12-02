@@ -25,6 +25,7 @@ export const broccoli = require('../assets/images/ingredients/broccoli.jpg');
 export const butter = require('../assets/images/ingredients/butter.jpg');
 export const cabbage = require('../assets/images/ingredients/cabbage.jpg');
 export const carrot = require('../assets/images/ingredients/carrot.jpg');
+export const cauliflower = require('../assets/images/ingredients/cauliflower.jpg');
 export const chajo = require('../assets/images/ingredients/chajo.jpg');
 export const cheese = require('../assets/images/ingredients/cheese.jpg');
 export const cherryTomato = require('../assets/images/ingredients/cherry_tomato.jpg');

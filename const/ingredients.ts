@@ -10,6 +10,7 @@ import {
   butter,
   cabbage,
   carrot,
+  cauliflower,
   chajo,
   cheese,
   cherryTomato,
@@ -386,6 +387,11 @@ export const firstWeekIngredients: Ingredient[] = [
     week: 1,
   },
   {
+    name: '콜리플라워',
+    image: cauliflower,
+    week: 1,
+  },
+  {
     name: '시금치',
     image: spinach,
     week: 1,
@@ -713,9 +719,9 @@ export const ingredientImages = allIngredients.map((i) => i.image);
 export const carbohydrateIngredients: Ingredient[] = allIngredients.filter((i) => i.isCarbohydrate);
 
 export const newIngredients = {
-  month: 11,
-  week: 5,
-  names: ['카레가루', '고형카레', '날치알'],
+  month: 12,
+  week: 1,
+  names: ['콜리플라워'],
 };
 
 export const allIngredientsList: IngredientsProps[] = [
