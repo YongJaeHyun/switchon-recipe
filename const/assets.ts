@@ -17,6 +17,7 @@ export const weekCompleteLottie = require('../assets/animations/week_complete.js
 /* 레시피 재료 */
 export const allulose = require('../assets/images/ingredients/allulose.jpg');
 export const avocado = require('../assets/images/ingredients/avocado.jpg');
+export const banana = require('../assets/images/ingredients/banana.jpg');
 export const beans = require('../assets/images/ingredients/beans.jpg');
 export const beef = require('../assets/images/ingredients/beef.jpg');
 export const bokChoy = require('../assets/images/ingredients/bok_choy.jpg');

@@ -2,6 +2,7 @@ import { IngredientsProps } from 'components/recipeCreation/Ingredients';
 import {
   allulose,
   avocado,
+  banana,
   beans,
   beef,
   bokChoy,
@@ -665,6 +666,12 @@ export const thirdWeekIngredients: Ingredient[] = [
     isCarbohydrate: true,
   },
   {
+    name: '바나나',
+    image: banana,
+    week: 3,
+    isCarbohydrate: true,
+  },
+  {
     name: '밤',
     image: chestnut,
     week: 3,
@@ -721,7 +728,7 @@ export const carbohydrateIngredients: Ingredient[] = allIngredients.filter((i) =
 export const newIngredients = {
   month: 12,
   week: 1,
-  names: ['콜리플라워'],
+  names: ['콜리플라워', '바나나'],
 };
 
 export const allIngredientsList: IngredientsProps[] = [
