@@ -2,7 +2,6 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { unlink } from '@react-native-kakao/user';
-import { useQuery } from '@tanstack/react-query';
 import { StatisticsAPI } from 'api/StatisticsAPI';
 import ConfirmModal from 'components/common/ConfirmModal';
 import RippleButton from 'components/common/RippleButton';
@@ -13,6 +12,7 @@ import { QueryKey } from 'const/queryKey';
 import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { Link, router } from 'expo-router';
+import { useQueryWith402Retry } from 'hooks/useCustomQuery';
 import { queryClient } from 'lib/queryClient';
 import React, { ReactNode, useEffect, useState } from 'react';
 import {
@@ -166,7 +166,7 @@ export default function Profile() {
 
   const [isModalVisible, setModalVisible] = useState(false);
 
-  const { data: todoRateStatistics, isLoading } = useQuery({
+  const { data: todoRateStatistics, isLoading } = useQueryWith402Retry({
     queryKey: [QueryKey.todoRateStatistics, id],
     queryFn: StatisticsAPI.getTodoRatesByWeeks,
   });

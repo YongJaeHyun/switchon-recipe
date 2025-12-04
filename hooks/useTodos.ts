@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { StatisticsAPI } from 'api/StatisticsAPI';
 import { TodoAPI } from 'api/TodoAPI';
 import { BASE_TODOS } from 'const/baseTodos';
@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useUserStore } from 'stores/userStore';
 import { Todo } from 'types/todo';
 import { getKoreanDate, getWeekAndDay } from 'utils/date';
+import { useQueryWith402Retry } from './useCustomQuery';
 import { useFasting } from './useFasting';
 
 export const useTodos = () => {
@@ -37,7 +38,7 @@ export const useTodos = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [completedRate, setCompletedRate] = useState(0);
 
-  const { data: checkedIds = [], isLoading } = useQuery({
+  const { data: checkedIds = [], isLoading } = useQueryWith402Retry({
     queryKey: [QueryKey.todos, userId],
     queryFn: TodoAPI.selectOne,
     enabled: !!userId,

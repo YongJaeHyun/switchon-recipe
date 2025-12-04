@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { FastingAPI } from 'api/FastingAPI';
 import { FastingTime } from 'const/fastingDays';
 import { QueryKey } from 'const/queryKey';
@@ -8,11 +8,12 @@ import { useUserStore } from 'stores/userStore';
 import { FastingDB } from 'types/database';
 import { cancelAllScheduledNotifications, registerWeeklyFastingAlarms } from 'utils/notifications';
 import { Maybe } from '../types/common';
+import { useQueryWith402Retry } from './useCustomQuery';
 
 export const useFasting = () => {
   const userId = useUserStore((state) => state.id);
 
-  const { data: fasting, isLoading } = useQuery({
+  const { data: fasting, isLoading } = useQueryWith402Retry({
     queryKey: [QueryKey.fasting, userId],
     queryFn: FastingAPI.selectOne,
     enabled: !!userId,

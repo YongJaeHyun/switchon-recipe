@@ -1,5 +1,4 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
 import { InquiryAPI } from 'api/InquiryAPI';
 import { Text } from 'components/common/Text';
 import { CategoryBadge } from 'components/inquiry/CategoryBadge';
@@ -7,6 +6,7 @@ import { StatusBadge } from 'components/inquiry/StatusBadge';
 import { logo } from 'const/assets';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useQueryWith402Retry } from 'hooks/useCustomQuery';
 import { ActivityIndicator, ScrollView, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import colors from 'tailwindcss/colors';
@@ -33,7 +33,7 @@ const AnswerBubble = ({ children, answered }: { children?: React.ReactNode; answ
 export default function InquiryDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const { data: inquiry, isLoading } = useQuery({
+  const { data: inquiry, isLoading } = useQueryWith402Retry({
     queryKey: ['inquiry', id],
     queryFn: () => InquiryAPI.selectOneById(Number(id)),
     enabled: !!id,

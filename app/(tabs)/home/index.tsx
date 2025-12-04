@@ -1,5 +1,4 @@
 import BottomSheet from '@gorhom/bottom-sheet';
-import { useQuery } from '@tanstack/react-query';
 import { SafeAreaViewWithNav } from 'components/common/SafeAreaViewWithNav';
 import { HomeHeader } from 'components/home/HomeHeader';
 import RecentRecipes from 'components/home/RecentRecipes';
@@ -9,6 +8,7 @@ import { StartDateBottomSheet } from 'components/home/StartDateBottomSheet';
 import { WeekGuide } from 'components/home/WeekGuide';
 import { latestNotices } from 'const/notices';
 import { QueryKey } from 'const/queryKey';
+import { useQueryWith402Retry } from 'hooks/useCustomQuery';
 import { useCallback, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { useRecipeStore } from 'stores/recipeStore';
@@ -22,14 +22,14 @@ export default function HomeScreen() {
 
   const [refreshing, setRefreshing] = useState(false);
 
-  const { data: recentRecipes, refetch: refetchRecentRecipes } = useQuery({
+  const { data: recentRecipes, refetch: refetchRecentRecipes } = useQueryWith402Retry({
     queryKey: [QueryKey.recentRecipes],
     queryFn: async () => {
       const recipes = (await RecipeAPI.selectAllRecent()) ?? [];
       return recipes;
     },
   });
-  const { data: savedRecipes, refetch: refetchSavedRecipes } = useQuery({
+  const { data: savedRecipes, refetch: refetchSavedRecipes } = useQueryWith402Retry({
     queryKey: [QueryKey.savedRecipes],
     queryFn: async () => {
       const recipes = (await RecipeAPI.selectAllSaved()) ?? [];

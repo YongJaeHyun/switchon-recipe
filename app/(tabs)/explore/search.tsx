@@ -1,5 +1,4 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useQuery } from '@tanstack/react-query';
 import { SearchCategoryHistoryAPI } from 'api/SearchCategoryHistoryAPI';
 import { SafeAreaViewWithNav } from 'components/common/SafeAreaViewWithNav';
 import { PopularCategories } from 'components/explore/PopularCategories';
@@ -11,11 +10,12 @@ import { useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import colors from 'tailwindcss/colors';
 import { RecentKeywords } from '../../../components/explore/RecentKeywords';
+import { useQueryWith402Retry } from 'hooks/useCustomQuery';
 
 export default function SearchScreen() {
   const { isLoading: isLoadingRecentKeywords, insertKeyword } = useRecentKeywords();
 
-  const { isLoading: isLoadingPopularCategories } = useQuery({
+  const { isLoading: isLoadingPopularCategories } = useQueryWith402Retry({
     queryKey: [QueryKey.popularCategories],
     queryFn: SearchCategoryHistoryAPI.getPopularCategories,
     staleTime: 60 * 60 * 1000, // 1시간

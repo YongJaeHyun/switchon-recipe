@@ -1,14 +1,14 @@
-import { useQuery } from '@tanstack/react-query';
 import { SearchCategoryHistoryAPI } from 'api/SearchCategoryHistoryAPI';
 import { Chip } from 'components/common/Chip';
 import { Text } from 'components/common/Text';
 import { QueryKey } from 'const/queryKey';
 import { router } from 'expo-router';
+import { useQueryWith402Retry } from 'hooks/useCustomQuery';
 import { View } from 'react-native';
 import { Nullable } from '../../types/common';
 
 export function PopularCategories() {
-  const { data: popularCategories } = useQuery({
+  const { data: popularCategories } = useQueryWith402Retry({
     queryKey: [QueryKey.popularCategories],
     queryFn: SearchCategoryHistoryAPI.getPopularCategories,
     staleTime: 60 * 60 * 1000, // 1시간

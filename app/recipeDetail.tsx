@@ -4,13 +4,13 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { shareCustomTemplate } from '@react-native-kakao/share';
-import { useQuery } from '@tanstack/react-query';
 import { RecipeAPI } from 'api/RecipeAPI';
 import { Text } from 'components/common/Text';
 import { logo } from 'const/assets';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useQueryWith402Retry } from 'hooks/useCustomQuery';
 import { useToggleSaveRecipe } from 'hooks/useToggleSaveRecipe';
 import { Pressable, TouchableOpacity, View } from 'react-native';
 import Animated, {
@@ -41,7 +41,7 @@ export default function RecipeDetailScreen() {
   const parsedNutrition: Recipe['nutrition'] = JSON.parse(nutrition ?? '');
   const parsedCookingSteps: Recipe['cookingSteps'] = JSON.parse(cooking_steps ?? '');
 
-  const { data: isSaved = false } = useQuery({
+  const { data: isSaved = false } = useQueryWith402Retry({
     queryKey: ['savedRecipe', id],
     queryFn: () => RecipeAPI.checkIsSavedRecipe(id),
   });
