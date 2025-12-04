@@ -527,6 +527,7 @@ export type Database = {
           recipe_name: string
           saved_at: string
           saved_count: number
+          uid: string
           week: number
         }[]
       }
