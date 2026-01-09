@@ -20,6 +20,7 @@ import {
   chickenStock,
   chiliSauce,
   chives,
+  chogochuPaste,
   clam,
   cod,
   coffee,
@@ -52,6 +53,7 @@ import {
   kimchi,
   kongdambaek,
   kongnamul,
+  konjac,
   leek,
   lemonJuice,
   lettuce,
@@ -151,6 +153,11 @@ export const firstWeekIngredients: Ingredient[] = [
   {
     name: '두부면',
     image: tofuMyun,
+    week: 1,
+  },
+  {
+    name: '곤약',
+    image: konjac,
     week: 1,
   },
   {
@@ -717,6 +724,11 @@ export const thirdWeekIngredients: Ingredient[] = [
     image: gochuPaste,
     week: 3,
   },
+  {
+    name: '초고추장',
+    image: chogochuPaste,
+    week: 3,
+  },
 ];
 
 const allIngredients = [...firstWeekIngredients, ...secondWeekIngredients, ...thirdWeekIngredients];
@@ -726,9 +738,9 @@ export const ingredientImages = allIngredients.map((i) => i.image);
 export const carbohydrateIngredients: Ingredient[] = allIngredients.filter((i) => i.isCarbohydrate);
 
 export const newIngredients = {
-  month: 12,
-  week: 1,
-  names: ['콜리플라워', '바나나'],
+  month: 1,
+  week: 2,
+  names: ['곤약', '초고추장'],
 };
 
 export const allIngredientsList: IngredientsProps[] = [
