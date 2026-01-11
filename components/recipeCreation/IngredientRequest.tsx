@@ -71,7 +71,7 @@ export function IngredientRequest() {
   return (
     <>
       <RippleButton
-        outerClassName="w-11/12 max-w-96 border border-neutral-500 self-start mx-auto"
+        outerClassName="w-11/12 max-w-96 border border-neutral-500 self-start mx-auto mb-4"
         className="w-full py-3"
         onPress={open}>
         <View className="flex-row items-center gap-3">

@@ -136,7 +136,7 @@ export default function ZeroRecipeCreationScreen() {
         contentContainerClassName="gap-6"
         data={allZeroIngredientsList}
         extraData={resetTrigger ? 'reset-1' : 'reset-0'}
-        ListHeaderComponent={() => <IngredientRequest />}
+        ListFooterComponent={() => <IngredientRequest />}
         renderItem={({ item }) => (
           <Ingredients
             title={item.title}
