@@ -96,6 +96,8 @@ export const FastingDayBottomSheet = () => {
     setSelectedDays(days);
     setSelectedTime(startTime);
   }, [days, startTime]);
+
+  if (week < 2) return null;
   return (
     <>
       <View className="mt-4 gap-4">
