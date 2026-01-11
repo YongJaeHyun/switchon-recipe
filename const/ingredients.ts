@@ -50,6 +50,7 @@ import {
   gwanja,
   gwiriRice,
   hyunmiRice,
+  jalapeno,
   kimchi,
   kongdambaek,
   kongnamul,
@@ -313,6 +314,12 @@ export const firstWeekIngredients: Ingredient[] = [
     name: '꽈리고추',
     image: ggwari,
     week: 1,
+  },
+  {
+    name: '할라피뇨',
+    image: jalapeno,
+    week: 1,
+    subKeywords: ['고추'],
   },
   {
     name: '고춧가루',
@@ -739,8 +746,8 @@ export const carbohydrateIngredients: Ingredient[] = allIngredients.filter((i) =
 
 export const newIngredients = {
   month: 1,
-  week: 2,
-  names: ['곤약', '초고추장'],
+  week: 3,
+  names: ['할라피뇨'],
 };
 
 export const allIngredientsList: IngredientsProps[] = [
