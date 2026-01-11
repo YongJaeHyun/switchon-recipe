@@ -5,11 +5,21 @@ import { newIngredients } from './ingredients';
 const { month, week, names } = newIngredients;
 
 export const latestNotices = [
-  `🚀 [v${APP_VERSION} 업데이트] - 주차별 식단 가이드 및 나의 4주 리포트 추가`,
+  `🚀 [v${APP_VERSION} 업데이트] - 레시피 제작 화면 UI 개선 및 단식 설정 버그 수정`,
   `🥗 [${month}월 ${seosusa(week)}주 재료 업데이트] - ${names.join(', ')} 추가`,
 ];
 
 export const allNotices = [
+  {
+    version: 'v5.0.1',
+    changes: [
+      '🐛 1주차에 24시간 단식 설정이 표시되던 버그 수정',
+      '💄 레시피 제작 화면의 텍스트 폰트 크기 및 간격 조정',
+      '📱 재료 요청 UI가 레시피 제작 화면 상단에서 하단으로 이동',
+      '🍱 할라피뇨 추가',
+    ],
+    updatedAt: '2026.01.12',
+  },
   {
     version: 'v5.0.0',
     changes: [
