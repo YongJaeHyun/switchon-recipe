@@ -46,6 +46,7 @@ import {
   gochu,
   gochuPaste,
   gogiSundae,
+  golbangi,
   greenOnion,
   gwanja,
   gwiriRice,
@@ -103,6 +104,7 @@ import {
   soySauce,
   spinach,
   squid,
+  ssammu,
   sukju,
   sweetPotato,
   sweetPumpkin,
@@ -697,6 +699,11 @@ export const thirdWeekIngredients: Ingredient[] = [
     week: 3,
   },
   {
+    name: '골뱅이',
+    image: golbangi,
+    week: 3,
+  },
+  {
     name: '크림치즈',
     image: creamCheese,
     week: 3,
@@ -714,6 +721,11 @@ export const thirdWeekIngredients: Ingredient[] = [
   {
     name: '토마토',
     image: tomato,
+    week: 3,
+  },
+  {
+    name: '쌈무',
+    image: ssammu,
     week: 3,
   },
   {
@@ -747,7 +759,7 @@ export const carbohydrateIngredients: Ingredient[] = allIngredients.filter((i) =
 export const newIngredients = {
   month: 1,
   week: 3,
-  names: ['할라피뇨'],
+  names: ['할라피뇨', '골뱅이', '쌈무'],
 };
 
 export const allIngredientsList: IngredientsProps[] = [
