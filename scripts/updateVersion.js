@@ -48,8 +48,17 @@ async function updateVersion() {
 
 function getExecutionKoreanDate() {
   const now = new Date();
-  const executionDate = now.getTime() + EXECUTE_DELAY_TIME;
-  return executionDate.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
+  const executionDate = new Date(now.getTime() + EXECUTE_DELAY_TIME);
+
+  return executionDate.toLocaleString('ko-KR', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
 }
 
 setTimeout(() => {
