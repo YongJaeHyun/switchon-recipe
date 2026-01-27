@@ -112,6 +112,7 @@ import {
   tomatoSauce,
   tuna,
   tunaCan,
+  tunaSauce,
   vegetableMix,
   vinegar,
   wasabi,
@@ -536,6 +537,11 @@ export const firstWeekIngredients: Ingredient[] = [
     image: orientalSauce,
     week: 1,
   },
+  {
+    name: '참치액젓',
+    image: tunaSauce,
+    week: 1,
+  },
 ];
 
 export const secondWeekIngredients: Ingredient[] = [
@@ -746,8 +752,8 @@ export const carbohydrateIngredients: Ingredient[] = allIngredients.filter((i) =
 
 export const newIngredients = {
   month: 1,
-  week: 3,
-  names: ['할라피뇨'],
+  week: 5,
+  names: ['참치액젓'],
 };
 
 export const allIngredientsList: IngredientsProps[] = [
