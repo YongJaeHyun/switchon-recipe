@@ -93,6 +93,7 @@ import {
   ricepaper,
   saesongi,
   salmon,
+  samchi,
   sangchu,
   sanggang,
   seaweed,
@@ -239,6 +240,11 @@ export const firstWeekIngredients: Ingredient[] = [
   {
     name: '고등어',
     image: mackerel,
+    week: 1,
+  },
+  {
+    name: '삼치',
+    image: samchi,
     week: 1,
   },
   {
@@ -753,7 +759,7 @@ export const carbohydrateIngredients: Ingredient[] = allIngredients.filter((i) =
 export const newIngredients = {
   month: 1,
   week: 5,
-  names: ['참치액젓'],
+  names: ['삼치', '참치액젓'],
 };
 
 export const allIngredientsList: IngredientsProps[] = [

@@ -108,6 +108,7 @@ export const ricecake = require('../assets/images/ingredients/ricecake.jpg');
 export const ricepaper = require('../assets/images/ingredients/ricepaper.jpg');
 export const saesongi = require('../assets/images/ingredients/saesongi.jpg');
 export const salmon = require('../assets/images/ingredients/salmon.jpg');
+export const samchi = require('../assets/images/ingredients/samchi.jpg');
 export const sangchu = require('../assets/images/ingredients/sangchu.jpg');
 export const sanggang = require('../assets/images/ingredients/sanggang.jpg');
 export const seaweed = require('../assets/images/ingredients/seaweed.jpg');
