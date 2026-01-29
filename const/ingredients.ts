@@ -18,6 +18,8 @@ import {
   chestnut,
   chicken,
   chickenStock,
+  chickenTenderloin,
+  chickenWing,
   chiliSauce,
   chives,
   chogochuPaste,
@@ -82,6 +84,8 @@ import {
   perilla,
   perillaOil,
   pork,
+  porkLoin,
+  porkTenderloin,
   potato,
   proteinPowder,
   pyogo,
@@ -196,14 +200,32 @@ export const firstWeekIngredients: Ingredient[] = [
     week: 1,
   },
   {
-    name: '닭고기',
-    subKeywords: ['닭가슴살'],
+    name: '닭가슴살',
     image: chicken,
     week: 1,
   },
   {
-    name: '돼지고기',
-    subKeywords: ['목살', '삼겹살'],
+    name: '닭안심',
+    image: chickenTenderloin,
+    week: 1,
+  },
+  {
+    name: '닭날개',
+    image: chickenWing,
+    week: 1,
+  },
+  {
+    name: '돼지안심',
+    image: porkTenderloin,
+    week: 1,
+  },
+  {
+    name: '돼지등심',
+    image: porkLoin,
+    week: 1,
+  },
+  {
+    name: '돼지목살',
     image: pork,
     week: 1,
   },
@@ -759,7 +781,7 @@ export const carbohydrateIngredients: Ingredient[] = allIngredients.filter((i) =
 export const newIngredients = {
   month: 1,
   week: 5,
-  names: ['삼치', '참치액젓'],
+  names: ['삼치', '닭안심', '닭날개', '돼지안심', '돼지등심', '돼지목살', '닭가슴살', '참치액젓'],
 };
 
 export const allIngredientsList: IngredientsProps[] = [
