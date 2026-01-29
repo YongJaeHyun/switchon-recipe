@@ -1,6 +1,7 @@
 import { IngredientsProps } from 'components/recipeCreation/Ingredients';
 import {
   allulose,
+  atkaMackerel,
   avocado,
   banana,
   beans,
@@ -262,6 +263,11 @@ export const firstWeekIngredients: Ingredient[] = [
   {
     name: '고등어',
     image: mackerel,
+    week: 1,
+  },
+  {
+    name: '임연수',
+    image: atkaMackerel,
     week: 1,
   },
   {
@@ -781,7 +787,17 @@ export const carbohydrateIngredients: Ingredient[] = allIngredients.filter((i) =
 export const newIngredients = {
   month: 1,
   week: 5,
-  names: ['삼치', '닭안심', '닭날개', '돼지안심', '돼지등심', '돼지목살', '닭가슴살', '참치액젓'],
+  names: [
+    '삼치',
+    '임연수',
+    '닭안심',
+    '닭날개',
+    '돼지안심',
+    '돼지등심',
+    '돼지목살',
+    '닭가슴살',
+    '참치액젓',
+  ],
 };
 
 export const allIngredientsList: IngredientsProps[] = [
