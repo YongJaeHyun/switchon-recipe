@@ -103,10 +103,12 @@ export const useTodos = () => {
 
   useEffect(() => {
     let todos = [...baseTodos];
+    console.log(todos);
     const currentDay = getKoreanDate().getDay();
 
     if (fastingStartTime) {
-      const startTimeIndex = FASTING_START_TIMES.indexOf(fastingStartTime);
+      const index = FASTING_START_TIMES.indexOf(fastingStartTime);
+      const startTimeIndex = fastingStartTime === '저녁 식후' ? index + 1 : index; // todo에는 점심과 저녁사이에 오후 간식이 있음
 
       if (fastingDays.includes(currentDay)) {
         todos = todos.slice(0, startTimeIndex + 1);
