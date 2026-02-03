@@ -139,5 +139,6 @@ export const tunaSauce = require('../assets/images/ingredients/tuna_sauce.jpg');
 export const vegetableMix = require('../assets/images/ingredients/vegetable_mix.jpg');
 export const vinegar = require('../assets/images/ingredients/vinegar.jpg');
 export const wasabi = require('../assets/images/ingredients/wasabi.jpg');
+export const wusamgyup = require('../assets/images/ingredients/wusamgyup.jpg');
 export const yogurt = require('../assets/images/ingredients/yogurt.jpg');
 export const zucchini = require('../assets/images/ingredients/zucchini.jpg');

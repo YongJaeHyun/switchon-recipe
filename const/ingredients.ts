@@ -124,6 +124,7 @@ import {
   vegetableMix,
   vinegar,
   wasabi,
+  wusamgyup,
   yogurt,
   zucchini,
 } from 'const/assets';
@@ -734,6 +735,11 @@ export const thirdWeekIngredients: Ingredient[] = [
     isCarbohydrate: true,
   },
   {
+    name: '우삼겹',
+    image: wusamgyup,
+    week: 3,
+  },
+  {
     name: '고기순대',
     image: gogiSundae,
     week: 3,
@@ -797,19 +803,9 @@ export const ingredientImages = allIngredients.map((i) => i.image);
 export const carbohydrateIngredients: Ingredient[] = allIngredients.filter((i) => i.isCarbohydrate);
 
 export const newIngredients = {
-  month: 1,
-  week: 5,
-  names: [
-    '삼치',
-    '임연수',
-    '닭안심',
-    '닭날개',
-    '돼지안심',
-    '돼지등심',
-    '돼지목살',
-    '닭가슴살',
-    '참치액젓',
-  ],
+  month: 2,
+  week: 1,
+  names: ['우삼겹'],
 };
 
 export const allIngredientsList: IngredientsProps[] = [
