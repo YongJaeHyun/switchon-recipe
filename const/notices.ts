@@ -5,11 +5,19 @@ import { newIngredients } from './ingredients';
 const { month, week, names } = newIngredients;
 
 export const latestNotices = [
-  `🚀 [v${APP_VERSION} 업데이트] - 레시피 제작 화면 UI 개선 및 단식 설정 버그 수정`,
+  `🚀 [v${APP_VERSION} 업데이트] - 단식 설정 초기화 기능 추가`,
   `🥗 [${month}월 ${seosusa(week)}주 재료 업데이트] - ${names.join(', ')} 추가`,
 ];
 
 export const allNotices = [
+  {
+    version: 'v5.0.2',
+    changes: [
+      '✨ 단식 설정 초기화 기능 추가',
+      '🐛 단식 시작 시간을 "저녁 식후"로 설정한 경우, 실제로는 "오후 간식 후"로 반영되던 버그 수정',
+    ],
+    updatedAt: '2026.02.08',
+  },
   {
     version: 'v5.0.1',
     changes: [
