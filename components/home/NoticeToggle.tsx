@@ -81,7 +81,7 @@ export default function NoticeToggle({
         {visible && (
           <View className="gap-4 py-4">
             {changes.map((change) => (
-              <Text key={change}>- {change}</Text>
+              <Text key={change}>{change}</Text>
             ))}
           </View>
         )}
@@ -89,7 +89,7 @@ export default function NoticeToggle({
         <View onLayout={onLayout} className="absolute left-0 right-0 top-0 opacity-0">
           <View className="gap-4 py-4">
             {changes.map((change) => (
-              <Text key={change}>- {change}</Text>
+              <Text key={change}>{change}</Text>
             ))}
           </View>
         </View>

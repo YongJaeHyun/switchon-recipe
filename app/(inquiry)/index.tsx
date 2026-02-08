@@ -1,5 +1,4 @@
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
 import { InquiryAPI } from 'api/InquiryAPI';
 import ListEmptyText from 'components/common/ListEmptyText';
 import RippleButton from 'components/common/RippleButton';
@@ -7,6 +6,7 @@ import { Text } from 'components/common/Text';
 import InquiryItem from 'components/inquiry/InquiryItem';
 import { QueryKey } from 'const/queryKey';
 import { Link, useRouter } from 'expo-router';
+import { useQueryWith402Retry } from 'hooks/useCustomQuery';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -27,7 +27,7 @@ export default function InquiriesMainScreen() {
     data: inquiries = [],
     refetch,
     isLoading,
-  } = useQuery({
+  } = useQueryWith402Retry({
     queryKey: [QueryKey.inquiries],
     queryFn: InquiryAPI.selectAll,
   });

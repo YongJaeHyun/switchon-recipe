@@ -75,7 +75,15 @@ export const useAutoUpdate = () => {
       }
     };
 
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+        checkAndApplyUpdate();
+      }
+      appState.current = nextAppState;
+    });
+
     checkAndApplyUpdate();
+    return () => subscription.remove();
   }, []);
 
   return isUpdated;

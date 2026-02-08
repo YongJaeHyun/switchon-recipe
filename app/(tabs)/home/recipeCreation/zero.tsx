@@ -136,7 +136,7 @@ export default function ZeroRecipeCreationScreen() {
         contentContainerClassName="gap-6"
         data={allZeroIngredientsList}
         extraData={resetTrigger ? 'reset-1' : 'reset-0'}
-        ListHeaderComponent={() => <IngredientRequest />}
+        ListFooterComponent={() => <IngredientRequest />}
         renderItem={({ item }) => (
           <Ingredients
             title={item.title}
@@ -166,7 +166,7 @@ export default function ZeroRecipeCreationScreen() {
             className="flex-[3.5] items-center justify-center rounded-lg border border-green-600 py-4"
             onPress={handleReset}
             disabled={isRecipeLoading}>
-            <Text className="text-lg font-semibold text-green-600">재료 리셋</Text>
+            <Text className="text-lg font-semibold text-green-600">재료 초기화</Text>
           </TouchableOpacity>
           <TouchableHighlight
             className="flex-[6.5] items-center justify-center rounded-lg bg-green-600 py-4"

@@ -7,6 +7,7 @@ dotenv.config();
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const EXECUTE_DELAY_TIME = 3 * 60 * 60 * 1000; // 3시간
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   console.error(
@@ -45,4 +46,23 @@ async function updateVersion() {
   }
 }
 
-updateVersion();
+function getExecutionKoreanDate() {
+  const now = new Date();
+  const executionDate = new Date(now.getTime() + EXECUTE_DELAY_TIME);
+
+  return executionDate.toLocaleString('ko-KR', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+}
+
+setTimeout(() => {
+  updateVersion();
+}, EXECUTE_DELAY_TIME); // 3시간
+
+console.log(`⏳ ${getExecutionKoreanDate()}에 version 업데이트가 실행됩니다...`);

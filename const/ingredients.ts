@@ -1,7 +1,9 @@
 import { IngredientsProps } from 'components/recipeCreation/Ingredients';
 import {
   allulose,
+  atkaMackerel,
   avocado,
+  banana,
   beans,
   beef,
   bokChoy,
@@ -10,14 +12,18 @@ import {
   butter,
   cabbage,
   carrot,
+  cauliflower,
   chajo,
   cheese,
   cherryTomato,
   chestnut,
   chicken,
   chickenStock,
+  chickenTenderloin,
+  chickenWing,
   chiliSauce,
   chives,
+  chogochuPaste,
   clam,
   cod,
   coffee,
@@ -43,13 +49,16 @@ import {
   gochu,
   gochuPaste,
   gogiSundae,
+  golbangi,
   greenOnion,
   gwanja,
   gwiriRice,
   hyunmiRice,
+  jalapeno,
   kimchi,
   kongdambaek,
   kongnamul,
+  konjac,
   leek,
   lemonJuice,
   lettuce,
@@ -77,6 +86,8 @@ import {
   perilla,
   perillaOil,
   pork,
+  porkLoin,
+  porkTenderloin,
   potato,
   proteinPowder,
   pyogo,
@@ -88,6 +99,7 @@ import {
   ricepaper,
   saesongi,
   salmon,
+  samchi,
   sangchu,
   sanggang,
   seaweed,
@@ -98,6 +110,7 @@ import {
   soySauce,
   spinach,
   squid,
+  ssammu,
   sukju,
   sweetPotato,
   sweetPumpkin,
@@ -107,9 +120,11 @@ import {
   tomatoSauce,
   tuna,
   tunaCan,
+  tunaSauce,
   vegetableMix,
   vinegar,
   wasabi,
+  wusamgyup,
   yogurt,
   zucchini,
 } from 'const/assets';
@@ -152,6 +167,11 @@ export const firstWeekIngredients: Ingredient[] = [
     week: 1,
   },
   {
+    name: '곤약',
+    image: konjac,
+    week: 1,
+  },
+  {
     name: '두부',
     image: tofu,
     week: 1,
@@ -184,14 +204,32 @@ export const firstWeekIngredients: Ingredient[] = [
     week: 1,
   },
   {
-    name: '닭고기',
-    subKeywords: ['닭가슴살'],
+    name: '닭가슴살',
     image: chicken,
     week: 1,
   },
   {
-    name: '돼지고기',
-    subKeywords: ['목살', '삼겹살'],
+    name: '닭안심',
+    image: chickenTenderloin,
+    week: 1,
+  },
+  {
+    name: '닭날개',
+    image: chickenWing,
+    week: 1,
+  },
+  {
+    name: '돼지안심',
+    image: porkTenderloin,
+    week: 1,
+  },
+  {
+    name: '돼지등심',
+    image: porkLoin,
+    week: 1,
+  },
+  {
+    name: '돼지목살',
     image: pork,
     week: 1,
   },
@@ -228,6 +266,16 @@ export const firstWeekIngredients: Ingredient[] = [
   {
     name: '고등어',
     image: mackerel,
+    week: 1,
+  },
+  {
+    name: '임연수',
+    image: atkaMackerel,
+    week: 1,
+  },
+  {
+    name: '삼치',
+    image: samchi,
     week: 1,
   },
   {
@@ -304,6 +352,12 @@ export const firstWeekIngredients: Ingredient[] = [
     name: '꽈리고추',
     image: ggwari,
     week: 1,
+  },
+  {
+    name: '할라피뇨',
+    image: jalapeno,
+    week: 1,
+    subKeywords: ['고추'],
   },
   {
     name: '고춧가루',
@@ -383,6 +437,11 @@ export const firstWeekIngredients: Ingredient[] = [
   {
     name: '브로콜리',
     image: broccoli,
+    week: 1,
+  },
+  {
+    name: '콜리플라워',
+    image: cauliflower,
     week: 1,
   },
   {
@@ -513,6 +572,11 @@ export const firstWeekIngredients: Ingredient[] = [
   {
     name: '오리엔탈소스',
     image: orientalSauce,
+    week: 1,
+  },
+  {
+    name: '참치액젓',
+    image: tunaSauce,
     week: 1,
   },
 ];
@@ -659,14 +723,30 @@ export const thirdWeekIngredients: Ingredient[] = [
     isCarbohydrate: true,
   },
   {
+    name: '바나나',
+    image: banana,
+    week: 3,
+    isCarbohydrate: true,
+  },
+  {
     name: '밤',
     image: chestnut,
     week: 3,
     isCarbohydrate: true,
   },
   {
+    name: '우삼겹',
+    image: wusamgyup,
+    week: 3,
+  },
+  {
     name: '고기순대',
     image: gogiSundae,
+    week: 3,
+  },
+  {
+    name: '골뱅이',
+    image: golbangi,
     week: 3,
   },
   {
@@ -690,6 +770,11 @@ export const thirdWeekIngredients: Ingredient[] = [
     week: 3,
   },
   {
+    name: '쌈무',
+    image: ssammu,
+    week: 3,
+  },
+  {
     name: '치킨스톡',
     image: chickenStock,
     week: 3,
@@ -704,6 +789,11 @@ export const thirdWeekIngredients: Ingredient[] = [
     image: gochuPaste,
     week: 3,
   },
+  {
+    name: '초고추장',
+    image: chogochuPaste,
+    week: 3,
+  },
 ];
 
 const allIngredients = [...firstWeekIngredients, ...secondWeekIngredients, ...thirdWeekIngredients];
@@ -713,9 +803,9 @@ export const ingredientImages = allIngredients.map((i) => i.image);
 export const carbohydrateIngredients: Ingredient[] = allIngredients.filter((i) => i.isCarbohydrate);
 
 export const newIngredients = {
-  month: 11,
-  week: 5,
-  names: ['카레가루', '고형카레', '날치알'],
+  month: 2,
+  week: 1,
+  names: ['우삼겹'],
 };
 
 export const allIngredientsList: IngredientsProps[] = [

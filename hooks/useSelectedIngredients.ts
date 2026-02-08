@@ -1,17 +1,18 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { SelectedIngredientAPI } from 'api/SelectedIngredientAPI';
 import { QueryKey } from 'const/queryKey';
 import { queryClient } from 'lib/queryClient';
 import { RecipeType } from 'types/database';
 import { Ingredient } from 'types/recipe';
 import { showInfoToast } from 'utils/showToast';
+import { useQueryWith402Retry } from './useCustomQuery';
 
 interface UseSelectedIngredientsProps {
   type: RecipeType;
 }
 
 export const useSelectedIngredients = ({ type }: UseSelectedIngredientsProps) => {
-  const { data: selectedIngredients = [], isLoading } = useQuery({
+  const { data: selectedIngredients = [], isLoading } = useQueryWith402Retry({
     queryKey: [QueryKey.selectedIngredients, type],
     queryFn: () => SelectedIngredientAPI.selectAll(type),
     staleTime: Infinity,

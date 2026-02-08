@@ -1,4 +1,3 @@
-import { useQuery } from '@tanstack/react-query';
 import { RecipeAPI } from 'api/RecipeAPI';
 import { Filter } from 'components/common/Filter';
 import ListEmptyText from 'components/common/ListEmptyText';
@@ -8,11 +7,13 @@ import { RecipeCard } from 'components/home/RecipeCard';
 import { RECIPE_FILTERS, RecipeFilterType } from 'const/filter';
 import { QueryKey } from 'const/queryKey';
 import { RECIPE_SORTS, RecipeSortType } from 'const/sort';
+import { useQueryWith402Retry } from 'hooks/useCustomQuery';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, TouchableOpacity, View } from 'react-native';
 import { useSavedRecipeStore } from 'stores/savedRecipeStore';
+import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
-import { RecipeDB } from 'types/database';
+import { SearchSavedRecipesReturn } from 'types/database';
 import { Week } from 'types/week';
 import { getWeekColor } from 'utils/getWeekColor';
 import { Sort } from '../../../components/common/Sort';
@@ -20,6 +21,7 @@ import { Sort } from '../../../components/common/Sort';
 const weekTabs = ['1주차', '2주차', '3주차+'] satisfies Week[];
 
 export default function SavedRecipes() {
+  const userId = useUserStore((state) => state.id);
   const [selectedWeek, setSelectedWeek] = useState<Week>('1주차');
   const [refreshing, setRefreshing] = useState(false);
 
@@ -32,13 +34,13 @@ export default function SavedRecipes() {
     data: recipes = [],
     isLoading,
     refetch,
-  } = useQuery({
+  } = useQueryWith402Retry({
     queryFn: async () => await RecipeAPI.selectAllSavedByWeek(parseInt(selectedWeek[0])),
-    queryKey: [QueryKey.savedRecipes, selectedWeek, filter, sort],
+    queryKey: [QueryKey.savedRecipes, selectedWeek, filter, sort, userId],
     staleTime: Infinity,
   });
 
-  const filledRecipes: (RecipeDB & { isDummy?: true })[] = [...recipes];
+  const filledRecipes: (SearchSavedRecipesReturn[number] & { isDummy?: true })[] = [...recipes];
   if (recipes.length === 1) {
     filledRecipes.push({ ...recipes[0], isDummy: true });
   }

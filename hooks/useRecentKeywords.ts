@@ -1,13 +1,14 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { SearchHistoryAPI } from 'api/SearchHistoryAPI';
 import { QueryKey } from 'const/queryKey';
 import { queryClient } from 'lib/queryClient';
 import { useUserStore } from 'stores/userStore';
+import { useQueryWith402Retry } from './useCustomQuery';
 
 export const useRecentKeywords = () => {
   const userId = useUserStore((state) => state.id);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading } = useQueryWith402Retry({
     queryKey: [QueryKey.recentKeywords, userId],
     queryFn: SearchHistoryAPI.getRecent,
   });
