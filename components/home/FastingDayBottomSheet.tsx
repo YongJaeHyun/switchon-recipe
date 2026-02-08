@@ -87,6 +87,10 @@ export const FastingDayBottomSheet = () => {
     });
     bottomSheetRef.current?.close();
   };
+  const handleReset = () => {
+    setSelectedDays([]);
+    setSelectedTime(null);
+  };
 
   const openSheet = () => {
     bottomSheetRef.current?.expand();
@@ -176,13 +180,20 @@ export const FastingDayBottomSheet = () => {
             </View>
           </View>
 
-          <RippleButton
-            outerClassName="mt-10 mb-10"
-            className={`w-full  py-4 ${isAllSelected ? 'bg-green-600' : 'bg-neutral-300'}`}
-            onPress={saveFastingDays}
-            disabled={!isAllSelected}>
-            <Text className="text-lg font-semibold text-white">저장하기</Text>
-          </RippleButton>
+          <View className="flex-row gap-2">
+            <RippleButton
+              outerClassName="my-10 !flex-[3.5] border border-green-600"
+              onPress={handleReset}>
+              <Text className="text-lg font-semibold text-green-600">설정 초기화</Text>
+            </RippleButton>
+            <RippleButton
+              outerClassName="my-10 !flex-[6.5]"
+              className={`w-full py-4 ${isAllSelected ? 'bg-green-600' : 'bg-neutral-300'}`}
+              onPress={saveFastingDays}
+              disabled={!isAllSelected}>
+              <Text className="text-lg font-semibold text-white">저장하기</Text>
+            </RippleButton>
+          </View>
         </BottomSheetView>
       </CustomBottomSheet>
     </>
