@@ -103,7 +103,6 @@ export const useTodos = () => {
 
   useEffect(() => {
     let todos = [...baseTodos];
-    console.log(todos);
     const currentDay = getKoreanDate().getDay();
 
     if (fastingStartTime) {
