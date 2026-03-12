@@ -21,7 +21,6 @@ import { FlatList, TouchableHighlight, TouchableOpacity, View } from 'react-nati
 import { useUserStore } from 'stores/userStore';
 import { RecipeCategory, RecipeMethod } from 'types/recipe';
 import { getWeekAndDay } from 'utils/date';
-import { isCompletedHangul } from 'utils/hangul';
 
 export default function ZeroRecipeCreationScreen() {
   const {
@@ -48,25 +47,22 @@ export default function ZeroRecipeCreationScreen() {
 
   const getSearchedIngredients = (item: IngredientsProps) =>
     item.ingredientList.filter((ingredient) => {
-      const { name: ingredientName, subKeywords: ingredientSubKeywords } = ingredient;
+      const { name, subKeywords = [] } = ingredient;
       const trimmedKeyword = keyword.trim();
 
-      const disassembledIngredient = disassemble(ingredientName);
-      const disassembledKeyword = disassemble(trimmedKeyword);
-      const isIncludeKeyword = disassembledIngredient.includes(disassembledKeyword);
+      const isMatch = [...subKeywords, name].some((ingredientName) => {
+        const disassembledIngredient = disassemble(ingredientName);
+        const disassembledKeyword = disassemble(trimmedKeyword);
+        const isMatchKeyword = disassembledIngredient.includes(disassembledKeyword);
 
-      if (isCompletedHangul(trimmedKeyword)) {
-        const isIncludeSubKeyword = ingredientSubKeywords?.some(
-          (ingredientKeyword) => ingredientKeyword === trimmedKeyword
-        );
-        return isIncludeKeyword || isIncludeSubKeyword;
-      } else {
         const ingredientChoseong = getChoseong(ingredientName);
         const keywordChoseong = getChoseong(trimmedKeyword);
-        const isIncludeChoseong = ingredientChoseong.includes(keywordChoseong);
+        const isMatchChoseong = ingredientChoseong.includes(keywordChoseong);
 
-        return isIncludeKeyword || isIncludeChoseong;
-      }
+        return isMatchKeyword || isMatchChoseong;
+      });
+
+      return isMatch;
     });
 
   const createRecipeWithAI = async () => {
