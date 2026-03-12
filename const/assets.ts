@@ -124,6 +124,7 @@ export const sanggang = require('../assets/images/ingredients/sanggang.jpg');
 export const seaweed = require('../assets/images/ingredients/seaweed.jpg');
 export const sesameOil = require('../assets/images/ingredients/sesame_oil.jpg');
 export const shrimp = require('../assets/images/ingredients/shrimp.jpg');
+export const siokonbu = require('../assets/images/ingredients/siokonbu.jpg');
 export const softTofu = require('../assets/images/ingredients/soft_tofu.jpg');
 export const soybeanPaste = require('../assets/images/ingredients/soybean_paste.jpg');
 export const soySauce = require('../assets/images/ingredients/soy_sauce.jpg');

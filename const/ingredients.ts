@@ -109,6 +109,7 @@ import {
   seaweed,
   sesameOil,
   shrimp,
+  siokonbu,
   softTofu,
   soybeanPaste,
   soySauce,
@@ -209,7 +210,7 @@ export const firstWeekIngredients: Ingredient[] = [
   },
   {
     name: '단백질쉐이크',
-    subKeywords: ['프로틴쉐이크', '프로틴', '단백질 보충제'],
+    subKeywords: ['프로틴쉐이크'],
     image: proteinPowder,
     week: 1,
   },
@@ -373,7 +374,6 @@ export const firstWeekIngredients: Ingredient[] = [
     name: '할라피뇨',
     image: jalapeno,
     week: 1,
-    subKeywords: ['고추'],
   },
   {
     name: '고춧가루',
@@ -809,6 +809,12 @@ export const thirdWeekIngredients: Ingredient[] = [
   {
     name: '쌈무',
     image: ssammu,
+    week: 3,
+  },
+  {
+    name: '시오콘부',
+    subKeywords: ['염장다시마'],
+    image: siokonbu,
     week: 3,
   },
   {
