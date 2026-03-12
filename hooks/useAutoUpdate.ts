@@ -56,17 +56,13 @@ export const useAutoUpdate = () => {
   }, []);
 
   useEffect(() => {
-    const checkAndApplyUpdate = async () => {
-      if (__DEV__ || !Constants.manifest2) {
-        setIsUpdated(true);
-        return;
-      }
-
+    const fetchUpdate = async () => {
       try {
+        if (__DEV__ || !Constants.manifest2) return;
+
         const update = await Updates.checkForUpdateAsync();
         if (update.isAvailable) {
           await Updates.fetchUpdateAsync();
-          await Updates.reloadAsync();
         }
       } catch (error) {
         captureError({ error, prefix: '[OTA 업데이트 실패]: ', level: 'fatal' });
@@ -75,14 +71,35 @@ export const useAutoUpdate = () => {
       }
     };
 
-    const subscription = AppState.addEventListener('change', (nextAppState) => {
-      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
-        checkAndApplyUpdate();
+    const applyUpdateIfReady = async () => {
+      if (__DEV__ || !Constants.manifest2) return;
+
+      try {
+        const update = await Updates.checkForUpdateAsync();
+        if (update.isAvailable) {
+          await Updates.fetchUpdateAsync();
+        } else {
+          await Updates.reloadAsync();
+        }
+      } catch (error) {
+        captureError({ error, prefix: '[OTA 업데이트 적용 실패]: ', level: 'fatal' });
       }
+    };
+
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      const prevState = appState.current;
       appState.current = nextAppState;
+
+      if (prevState === 'active' && nextAppState.match(/inactive|background/)) {
+        // active → background: 다운로드 준비
+        fetchUpdate();
+      } else if (prevState.match(/inactive|background/) && nextAppState === 'active') {
+        // background → active: 다운받은 업데이트 적용
+        applyUpdateIfReady();
+      }
     });
 
-    checkAndApplyUpdate();
+    fetchUpdate();
     return () => subscription.remove();
   }, []);
 
