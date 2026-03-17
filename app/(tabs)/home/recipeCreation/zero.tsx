@@ -11,7 +11,7 @@ import SelectedIngredient from 'components/recipeCreation/SelectedIngredient';
 import { Tip } from 'components/recipeCreation/Tip';
 import { QueryKey } from 'const/queryKey';
 import { allZeroIngredientsList } from 'const/zeroIngredients';
-import { disassemble, getChoseong } from 'es-hangul';
+import { getChoseong } from 'es-hangul';
 import { Link, router } from 'expo-router';
 import { useSelect } from 'hooks/useSelect';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
@@ -21,6 +21,7 @@ import { FlatList, TouchableHighlight, TouchableOpacity, View } from 'react-nati
 import { useUserStore } from 'stores/userStore';
 import { RecipeCategory, RecipeMethod } from 'types/recipe';
 import { getWeekAndDay } from 'utils/date';
+import { isCompletedHangul } from 'utils/hangul';
 
 export default function ZeroRecipeCreationScreen() {
   const {
@@ -51,17 +52,16 @@ export default function ZeroRecipeCreationScreen() {
       const trimmedKeyword = keyword.trim();
 
       const isMatch = [...subKeywords, name].some((ingredientName) => {
-        const disassembledIngredient = disassemble(ingredientName);
-        const disassembledKeyword = disassemble(trimmedKeyword);
-        const isMatchKeyword = disassembledIngredient.includes(disassembledKeyword);
-
-        const ingredientChoseong = getChoseong(ingredientName);
-        const keywordChoseong = getChoseong(trimmedKeyword);
-        const isMatchChoseong = ingredientChoseong.includes(keywordChoseong);
-
-        return isMatchKeyword || isMatchChoseong;
+        if (isCompletedHangul(trimmedKeyword)) {
+          const isMatchSubKeyword = ingredientName.includes(trimmedKeyword);
+          return isMatchSubKeyword;
+        } else {
+          const ingredientChoseong = getChoseong(ingredientName);
+          const keywordChoseong = getChoseong(trimmedKeyword);
+          const isMatchChoseong = ingredientChoseong.includes(keywordChoseong);
+          return isMatchChoseong;
+        }
       });
-
       return isMatch;
     });
 
