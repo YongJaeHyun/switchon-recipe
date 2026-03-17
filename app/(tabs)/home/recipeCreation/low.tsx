@@ -193,10 +193,7 @@ export default function LowRecipeCreationScreen() {
           </TouchableHighlight>
         </View>
       </View>
-      {
-        //isIngredientsLoading || isRecipeLoading
-      }
-      {true && (
+      {(isIngredientsLoading || isRecipeLoading) && (
         <View className="absolute inset-0 z-50 items-center justify-center">
           <View className="absolute inset-0 bg-black/40" />
           <View className="translate-y-8">
