@@ -79,7 +79,6 @@
   "devDependencies": {
     "@babel/core": "^7.20.0",
     "@rolldown/binding-win32-x64-msvc": "^1.0.0-rc.9",
-    "@types/react": "~19.0.10",
     "@types/semver": "^7.7.0",
     "eslint": "^9.25.1",
     "eslint-config-expo": "^9.2.0",
