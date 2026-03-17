@@ -8,10 +8,9 @@ import { IngredientRequest } from 'components/recipeCreation/IngredientRequest';
 import Ingredients, { IngredientsProps } from 'components/recipeCreation/Ingredients';
 import Loading from 'components/recipeCreation/Loading';
 import SelectedIngredient from 'components/recipeCreation/SelectedIngredient';
-import { Tip } from 'components/recipeCreation/Tip';
 import { QueryKey } from 'const/queryKey';
 import { allZeroIngredientsList } from 'const/zeroIngredients';
-import { disassemble, getChoseong } from 'es-hangul';
+import { getChoseong } from 'es-hangul';
 import { Link, router } from 'expo-router';
 import { useSelect } from 'hooks/useSelect';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
@@ -48,40 +47,43 @@ export default function ZeroRecipeCreationScreen() {
 
   const getSearchedIngredients = (item: IngredientsProps) =>
     item.ingredientList.filter((ingredient) => {
-      const { name: ingredientName, subKeywords: ingredientSubKeywords } = ingredient;
+      const { name, subKeywords = [] } = ingredient;
       const trimmedKeyword = keyword.trim();
 
-      const disassembledIngredient = disassemble(ingredientName);
-      const disassembledKeyword = disassemble(trimmedKeyword);
-      const isIncludeKeyword = disassembledIngredient.includes(disassembledKeyword);
-
-      if (isCompletedHangul(trimmedKeyword)) {
-        const isIncludeSubKeyword = ingredientSubKeywords?.some(
-          (ingredientKeyword) => ingredientKeyword === trimmedKeyword
-        );
-        return isIncludeKeyword || isIncludeSubKeyword;
-      } else {
-        const ingredientChoseong = getChoseong(ingredientName);
-        const keywordChoseong = getChoseong(trimmedKeyword);
-        const isIncludeChoseong = ingredientChoseong.includes(keywordChoseong);
-
-        return isIncludeKeyword || isIncludeChoseong;
-      }
+      const isMatch = [...subKeywords, name].some((ingredientName) => {
+        if (isCompletedHangul(trimmedKeyword)) {
+          const isMatchSubKeyword = ingredientName.includes(trimmedKeyword);
+          return isMatchSubKeyword;
+        } else {
+          const ingredientChoseong = getChoseong(ingredientName);
+          const keywordChoseong = getChoseong(trimmedKeyword);
+          const isMatchChoseong = ingredientChoseong.includes(keywordChoseong);
+          return isMatchChoseong;
+        }
+      });
+      return isMatch;
     });
 
   const createRecipeWithAI = async () => {
+    controller.current = new AbortController();
     const ingredients = selectedIngredients.map((ingredients) => ingredients.name).join(', ');
 
     const userWeek = getUserWeek();
     const availableWeek = Math.min(userWeek, 4);
     const recipeWeek = Math.min(userWeek, 3);
 
-    const command =
-      selectedIngredients.length === 0
-        ? `Based on the following information, please find a delicious zero-carb recipe that can be eaten during Switch-On week ${availableWeek}. ${category ? `\nCooking category: ${category}` : ''} ${method ? `\nCooking method: ${method}` : ''}`
-        : `Based on the following information, please create a zero-carb recipe that can be eaten during Switch-On week ${availableWeek}. You must use only the ingredients listed below, and if possible, use all of them. You may freely use sauces or seasonings. \nIngredients: ${ingredients} ${category ? `\nCooking category: ${category}` : ''} ${method ? `\nCooking method: ${method}` : ''}`;
+    let command = '';
 
-    controller.current = new AbortController();
+    if (selectedIngredients.length === 0) {
+      command = `find a delicious zero-carb recipe randomly that can be eaten during Switch-On week ${availableWeek}.`;
+    } else {
+      command = `create a zero-carb recipe that can be eaten during Switch-On week ${availableWeek}. You must use only the ingredients listed below, and if possible, use all of them. \nIngredients: ${ingredients}`;
+    }
+
+    if (category) command += `\nCooking category: ${category}`;
+    if (method) command += `\nCooking method: ${method}`;
+    command += '\nRemove Switch-On week or carbohydrate from the recipe name.';
+    command += '\nYou may freely use sauces or seasonings.';
 
     const recipe = await createRecipe({
       command,
@@ -186,11 +188,13 @@ export default function ZeroRecipeCreationScreen() {
           <View className="translate-y-8">
             <Loading />
             <Link href={'/(tabs)/explore'} asChild>
-              <RippleButton outerClassName="bg-white self-center mb-6" className="px-4 py-2.5">
+              <RippleButton outerClassName="bg-white self-center mb-6" className="px-4 py-3">
                 <Text className="text-green-600">다른 레시피 둘러보기</Text>
               </RippleButton>
             </Link>
-            <Tip />
+            <Text className="border-b-4 border-green-300 font-bold text-white">
+              Tip. 아래 탐색 탭으로도 이동할 수 있어요!
+            </Text>
           </View>
         </View>
       )}

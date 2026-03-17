@@ -73,7 +73,7 @@ function JumpingChar({
   }));
 
   return (
-    <Animated.Text style={[{ fontSize: 14, color: 'white', fontWeight: 'bold' }, animatedStyle]}>
+    <Animated.Text style={[{ fontSize: 16, color: 'white', fontWeight: 'bold' }, animatedStyle]}>
       {char}
     </Animated.Text>
   );

@@ -1,6 +1,7 @@
 /// <reference lib="deno.ns" />
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { Image } from 'https://deno.land/x/imagescript@1.2.15/mod.ts';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -150,27 +151,22 @@ serve(async (req: Request) => {
     const recipeJson = JSON.parse(contentText);
     const validated = validateRecipe(recipeJson);
 
-    // 🔹 2. 이미지 생성
+    // 🔹 2. 이미지 생성 (Imagen 4 Fast)
     const imageRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${geminiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-fast-generate-001:predict?key=${geminiKey}`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          generationConfig: {
-            responseModalities: ['TEXT', 'IMAGE'],
-          },
-          contents: [
+          instances: [
             {
-              parts: [
-                {
-                  text: `Generate photo of the following foods taken with a macro lens of 100mm. The images should ONLY show the food, with absolutely NO text, letters, words, logos, or watermarks anywhere in the image.
+              prompt: `Generate a food photo taken with a macro lens of 100mm using the following information.
 
-name: ${validated.recipeName}`,
-                },
-              ],
+name: ${validated.recipeName}
+ingredients: ${validated.ingredients.map((ingredient) => ingredient.name).join(', ')}`,
+              sampleCount: 1,
             },
           ],
         }),
@@ -178,27 +174,35 @@ name: ${validated.recipeName}`,
     );
 
     if (!imageRes.ok) {
-      throw new Error(`Gemini 이미지 요청 실패 (${imageRes.status})`);
+      throw new Error(`Imagen 이미지 요청 실패 (${imageRes.status})`);
     }
 
     const imageJson = await imageRes.json();
-    const imagePart = imageJson.candidates?.[0]?.content?.parts?.find(
-      (part: any) => 'inlineData' in part
-    )?.inlineData;
 
-    if (!imagePart) throw new Error('Gemini 이미지 생성 실패');
+    const imageBase64 = imageJson?.predictions?.[0]?.bytesBase64Encoded;
 
-    const imageBase64 = imagePart.data;
-    const mimeType = imagePart.mimeType;
-    const fileExt = mimeType.split('/')[1];
+    if (!imageBase64) {
+      throw new Error('Imagen 이미지 생성 실패');
+    }
+
+    // base64 → binary
+    const pngBuffer = Uint8Array.from(atob(imageBase64), (c) => c.charCodeAt(0));
+
+    // PNG decode
+    const image = await Image.decode(pngBuffer);
+
+    // JPEG encode (quality 80)
+    const jpegBuffer = await image.encodeJPEG(80);
+
+    const mimeType = 'image/jpeg';
+    const fileExt = 'jpg';
     const fileName = `recipe-${Date.now()}.${fileExt}`;
     const bucket = 'recipe-images';
 
     // 🔹 3. 이미지 업로드
-    const buffer = Uint8Array.from(atob(imageBase64), (c) => c.charCodeAt(0));
     const { error: uploadError } = await supabaseClient.storage
       .from(bucket)
-      .upload(fileName, buffer, {
+      .upload(fileName, jpegBuffer, {
         contentType: mimeType,
         upsert: false,
       });

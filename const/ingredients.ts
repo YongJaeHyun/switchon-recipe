@@ -1,6 +1,7 @@
 import { IngredientsProps } from 'components/recipeCreation/Ingredients';
 import {
   allulose,
+  almondPowder,
   atkaMackerel,
   avocado,
   banana,
@@ -50,6 +51,7 @@ import {
   gochuPaste,
   gogiSundae,
   golbangi,
+  greenBean,
   greenOnion,
   gwanja,
   gwiriRice,
@@ -59,6 +61,7 @@ import {
   kongdambaek,
   kongnamul,
   konjac,
+  konjacRice,
   leek,
   lemonJuice,
   lettuce,
@@ -76,6 +79,7 @@ import {
   nuts,
   oatmeal,
   octopus,
+  oliveOil,
   onion,
   orientalSauce,
   oyster,
@@ -105,6 +109,7 @@ import {
   seaweed,
   sesameOil,
   shrimp,
+  siokonbu,
   softTofu,
   soybeanPaste,
   soySauce,
@@ -125,6 +130,8 @@ import {
   vinegar,
   wasabi,
   wusamgyup,
+  yangsongi,
+  yeontofu,
   yogurt,
   zucchini,
 } from 'const/assets';
@@ -162,6 +169,11 @@ export const firstWeekIngredients: Ingredient[] = [
     isCarbohydrate: true,
   },
   {
+    name: '곤약밥',
+    image: konjacRice,
+    week: 1,
+  },
+  {
     name: '두부면',
     image: tofuMyun,
     week: 1,
@@ -182,6 +194,11 @@ export const firstWeekIngredients: Ingredient[] = [
     week: 1,
   },
   {
+    name: '연두부',
+    image: yeontofu,
+    week: 1,
+  },
+  {
     name: '포두부',
     image: driedTofu,
     week: 1,
@@ -193,7 +210,7 @@ export const firstWeekIngredients: Ingredient[] = [
   },
   {
     name: '단백질쉐이크',
-    subKeywords: ['프로틴쉐이크', '프로틴', '단백질 보충제'],
+    subKeywords: ['프로틴쉐이크'],
     image: proteinPowder,
     week: 1,
   },
@@ -357,7 +374,6 @@ export const firstWeekIngredients: Ingredient[] = [
     name: '할라피뇨',
     image: jalapeno,
     week: 1,
-    subKeywords: ['고추'],
   },
   {
     name: '고춧가루',
@@ -445,6 +461,11 @@ export const firstWeekIngredients: Ingredient[] = [
     week: 1,
   },
   {
+    name: '껍질콩(그린빈)',
+    image: greenBean,
+    week: 1,
+  },
+  {
     name: '시금치',
     image: spinach,
     week: 1,
@@ -500,6 +521,11 @@ export const firstWeekIngredients: Ingredient[] = [
     week: 1,
   },
   {
+    name: '양송이버섯',
+    image: yangsongi,
+    week: 1,
+  },
+  {
     name: '표고버섯',
     image: pyogo,
     week: 1,
@@ -507,6 +533,11 @@ export const firstWeekIngredients: Ingredient[] = [
   {
     name: '느타리버섯',
     image: nutari,
+    week: 1,
+  },
+  {
+    name: '올리브유',
+    image: oliveOil,
     week: 1,
   },
   {
@@ -661,8 +692,14 @@ export const secondWeekIngredients: Ingredient[] = [
   },
   {
     name: '견과류',
-    subKeywords: ['땅콩', '콩'],
+    subKeywords: ['땅콩', '아몬드'],
     image: nuts,
+    week: 2,
+  },
+  {
+    name: '아몬드파우더',
+    subKeywords: ['가루'],
+    image: almondPowder,
     week: 2,
   },
   {
@@ -775,6 +812,12 @@ export const thirdWeekIngredients: Ingredient[] = [
     week: 3,
   },
   {
+    name: '시오콘부',
+    subKeywords: ['염장다시마'],
+    image: siokonbu,
+    week: 3,
+  },
+  {
     name: '치킨스톡',
     image: chickenStock,
     week: 3,
@@ -803,9 +846,9 @@ export const ingredientImages = allIngredients.map((i) => i.image);
 export const carbohydrateIngredients: Ingredient[] = allIngredients.filter((i) => i.isCarbohydrate);
 
 export const newIngredients = {
-  month: 2,
-  week: 1,
-  names: ['우삼겹'],
+  month: 3,
+  week: 2,
+  names: ['연두부', '아몬드파우더', '올리브유', '양송이버섯', '껍질콩(그린빈)', '곤약밥'],
 };
 
 export const allIngredientsList: IngredientsProps[] = [
