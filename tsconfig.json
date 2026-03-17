@@ -15,6 +15,6 @@
     "expo-env.d.ts",
     "nativewind-env.d.ts",
     "supabase/functions/tsconfig.json"
-, "const/const.js"  ],
+, "const/const.js", "vitest.config.mts"  ],
   "exclude": ["supabase", "node_modules"]
 }

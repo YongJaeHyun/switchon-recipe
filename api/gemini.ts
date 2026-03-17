@@ -19,9 +19,11 @@ export const createRecipe = async ({
   signal,
 }: CreateRecipeProps): Promise<Maybe<RecipeDB>> => {
   try {
+    const edgeFunctionName = __DEV__ ? 'create-recipe-by-gemini-test' : 'create-recipe-by-gemini';
     const session = await UserAPI.getSession();
+
     const response = await axios.post<RecipeDB>(
-      `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/create-recipe-by-gemini`,
+      `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/${edgeFunctionName}`,
       { command, week, is_zero_carb },
       {
         headers: {
