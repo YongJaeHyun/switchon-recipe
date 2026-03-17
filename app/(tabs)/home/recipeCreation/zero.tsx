@@ -66,18 +66,25 @@ export default function ZeroRecipeCreationScreen() {
     });
 
   const createRecipeWithAI = async () => {
+    controller.current = new AbortController();
     const ingredients = selectedIngredients.map((ingredients) => ingredients.name).join(', ');
 
     const userWeek = getUserWeek();
     const availableWeek = Math.min(userWeek, 4);
     const recipeWeek = Math.min(userWeek, 3);
 
-    const command =
-      selectedIngredients.length === 0
-        ? `Based on the following information, please find a delicious zero-carb recipe that can be eaten during Switch-On week ${availableWeek}. ${category ? `\nCooking category: ${category}` : ''} ${method ? `\nCooking method: ${method}` : ''}`
-        : `Based on the following information, please create a zero-carb recipe that can be eaten during Switch-On week ${availableWeek}. You must use only the ingredients listed below, and if possible, use all of them. You may freely use sauces or seasonings. \nIngredients: ${ingredients} ${category ? `\nCooking category: ${category}` : ''} ${method ? `\nCooking method: ${method}` : ''}`;
+    let command = '';
 
-    controller.current = new AbortController();
+    if (selectedIngredients.length === 0) {
+      command = `find a delicious zero-carb recipe randomly that can be eaten during Switch-On week ${availableWeek}.`;
+    } else {
+      command = `create a zero-carb recipe that can be eaten during Switch-On week ${availableWeek}. You must use only the ingredients listed below, and if possible, use all of them. \nIngredients: ${ingredients}`;
+    }
+
+    if (category) command += `\nCooking category: ${category}`;
+    if (method) command += `\nCooking method: ${method}`;
+    command += '\nRemove Switch-On week or carbohydrate from the recipe name.';
+    command += '\nYou may freely use sauces or seasonings.';
 
     const recipe = await createRecipe({
       command,
