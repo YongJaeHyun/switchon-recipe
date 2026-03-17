@@ -5,11 +5,20 @@ import { newIngredients } from './ingredients';
 const { month, week, names } = newIngredients;
 
 export const latestNotices = [
-  `🚀 [v${APP_VERSION} 업데이트] - 단식 설정 초기화 기능 추가`,
+  `🚀 [v${APP_VERSION} 업데이트] - 재료 검색 기능 개선, 레시피 생성 프롬프트 조정, 레시피 제작 로딩화면 UI 개선`,
   `🥗 [${month}월 ${seosusa(week)}주 재료 업데이트] - ${names.join(', ')} 추가`,
 ];
 
 export const allNotices = [
+  {
+    version: 'v5.0.3',
+    changes: [
+      '🐛 재료 검색 시, 관련 없는 재료가 다수 검색되는 버그 수정',
+      '💄 레시피 제작 로딩화면 UI 개선',
+      '⚡️ 레시피 생성 프롬프트 조정',
+    ],
+    updatedAt: '2026.03.18',
+  },
   {
     version: 'v5.0.2',
     changes: [
