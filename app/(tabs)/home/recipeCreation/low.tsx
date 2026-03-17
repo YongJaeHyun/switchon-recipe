@@ -8,7 +8,6 @@ import { IngredientRequest } from 'components/recipeCreation/IngredientRequest';
 import Ingredients, { IngredientsProps } from 'components/recipeCreation/Ingredients';
 import Loading from 'components/recipeCreation/Loading';
 import SelectedIngredient from 'components/recipeCreation/SelectedIngredient';
-import { Tip } from 'components/recipeCreation/Tip';
 import { allIngredientsList } from 'const/ingredients';
 import { QueryKey } from 'const/queryKey';
 import { getChoseong } from 'es-hangul';
@@ -194,18 +193,22 @@ export default function LowRecipeCreationScreen() {
           </TouchableHighlight>
         </View>
       </View>
-
-      {(isIngredientsLoading || isRecipeLoading) && (
+      {
+        //isIngredientsLoading || isRecipeLoading
+      }
+      {true && (
         <View className="absolute inset-0 z-50 items-center justify-center">
           <View className="absolute inset-0 bg-black/40" />
           <View className="translate-y-8">
             <Loading />
             <Link href={'/(tabs)/explore'} asChild>
-              <RippleButton outerClassName="bg-white self-center mb-6" className="px-4 py-2.5">
+              <RippleButton outerClassName="bg-white self-center mb-6" className="px-4 py-3">
                 <Text className="text-green-600">다른 레시피 둘러보기</Text>
               </RippleButton>
             </Link>
-            <Tip />
+            <Text className="border-b-4 border-green-300 font-bold text-white">
+              Tip. 아래 탐색 탭으로도 이동할 수 있어요!
+            </Text>
           </View>
         </View>
       )}
