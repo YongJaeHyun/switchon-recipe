@@ -16,8 +16,9 @@ const selectOne = async () =>
   });
 
 const upsert = async (checkedIds: number[]) =>
-  sendError<TodoDB>(async () => {
+  sendError<Maybe<TodoDB>>(async () => {
     const userId = useUserStore.getState().id;
+    if (!userId) return;
 
     const { data, error } = await supabase
       .from('todo')

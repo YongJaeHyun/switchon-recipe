@@ -20,8 +20,9 @@ const selectOne = async () =>
   });
 
 const upsert = async (body: Partial<FastingDB>) =>
-  sendError<FastingDB>(async () => {
+  sendError<Maybe<FastingDB>>(async () => {
     const userId = useUserStore.getState().id;
+    if (!userId) return;
 
     const { data, error } = await supabase
       .from('fasting')
