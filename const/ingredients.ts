@@ -123,6 +123,7 @@ import {
   tofuMyun,
   tomato,
   tomatoSauce,
+  tortilla,
   tuna,
   tunaCan,
   tunaSauce,
@@ -742,6 +743,12 @@ export const thirdWeekIngredients: Ingredient[] = [
     isCarbohydrate: true,
   },
   {
+    name: '통밀또띠아',
+    image: tortilla,
+    week: 3,
+    isCarbohydrate: true,
+  },
+  {
     name: '단호박',
     image: sweetPumpkin,
     week: 3,
@@ -846,9 +853,9 @@ export const ingredientImages = allIngredients.map((i) => i.image);
 export const carbohydrateIngredients: Ingredient[] = allIngredients.filter((i) => i.isCarbohydrate);
 
 export const newIngredients = {
-  month: 3,
+  month: 4,
   week: 2,
-  names: ['연두부', '아몬드파우더', '올리브유', '양송이버섯', '껍질콩(그린빈)', '곤약밥'],
+  names: ['통밀또띠아'],
 };
 
 export const allIngredientsList: IngredientsProps[] = [

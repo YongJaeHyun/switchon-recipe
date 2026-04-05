@@ -138,6 +138,7 @@ export const tofu = require('../assets/images/ingredients/tofu.jpg');
 export const tofuMyun = require('../assets/images/ingredients/tofu_myun.jpg');
 export const tomato = require('../assets/images/ingredients/tomato.jpg');
 export const tomatoSauce = require('../assets/images/ingredients/tomato_sauce.jpg');
+export const tortilla = require('../assets/images/ingredients/tortilla.jpg');
 export const tuna = require('../assets/images/ingredients/tuna.jpg');
 export const tunaCan = require('../assets/images/ingredients/tuna_can.jpg');
 export const tunaSauce = require('../assets/images/ingredients/tuna_sauce.jpg');
