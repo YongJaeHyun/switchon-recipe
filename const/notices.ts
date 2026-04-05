@@ -5,11 +5,16 @@ import { newIngredients } from './ingredients';
 const { month, week, names } = newIngredients;
 
 export const latestNotices = [
-  `🚀 [v${APP_VERSION} 업데이트] - 재료 검색 기능 개선, 레시피 생성 프롬프트 조정, 레시피 제작 로딩화면 UI 개선`,
+  `🚀 [v${APP_VERSION} 업데이트] - 로그아웃 버그 수정`,
   `🥗 [${month}월 ${seosusa(week)}주 재료 업데이트] - ${names.join(', ')} 추가`,
 ];
 
 export const allNotices = [
+  {
+    version: 'v5.0.4',
+    changes: ['🐛 로그아웃 시, 에러가 발생하는 버그 수정', '🍱 통밀또띠아 추가'],
+    updatedAt: '2026.04.05',
+  },
   {
     version: 'v5.0.3',
     changes: [
