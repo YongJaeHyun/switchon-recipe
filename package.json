@@ -31,7 +31,7 @@
     "@react-native-kakao/social": "^2.4.0",
     "@react-native-kakao/user": "^2.4.0",
     "@sentry/react-native": "~6.14.0",
-    "@shopify/flash-list": "1.7.6",
+    "@shopify/flash-list": "^2.0.0",
     "@stardazed/streams-text-encoding": "^1.0.2",
     "@supabase/supabase-js": "^2.51.0",
     "@tanstack/react-query": "^5.83.0",
