@@ -7,6 +7,7 @@ import {
   banana,
   beans,
   beef,
+  blueberry,
   bokChoy,
   boriRice,
   broccoli,
@@ -45,6 +46,7 @@ import {
   emmer,
   fuju,
   garlic,
+  gazami,
   ggwari,
   gim,
   gochu,
@@ -79,6 +81,7 @@ import {
   nuts,
   oatmeal,
   octopus,
+  olive,
   oliveOil,
   onion,
   orientalSauce,
@@ -130,6 +133,7 @@ import {
   vegetableMix,
   vinegar,
   wasabi,
+  wholeWheatPasta,
   wusamgyup,
   yangsongi,
   yeontofu,
@@ -287,6 +291,11 @@ export const firstWeekIngredients: Ingredient[] = [
     week: 1,
   },
   {
+    name: '가자미',
+    image: gazami,
+    week: 1,
+  },
+  {
     name: '임연수',
     image: atkaMackerel,
     week: 1,
@@ -374,6 +383,11 @@ export const firstWeekIngredients: Ingredient[] = [
   {
     name: '할라피뇨',
     image: jalapeno,
+    week: 1,
+  },
+  {
+    name: '올리브',
+    image: olive,
     week: 1,
   },
   {
@@ -743,6 +757,12 @@ export const thirdWeekIngredients: Ingredient[] = [
     isCarbohydrate: true,
   },
   {
+    name: '통밀파스타면',
+    image: wholeWheatPasta,
+    week: 3,
+    isCarbohydrate: true,
+  },
+  {
     name: '통밀또띠아',
     image: tortilla,
     week: 3,
@@ -809,6 +829,11 @@ export const thirdWeekIngredients: Ingredient[] = [
     week: 3,
   },
   {
+    name: '블루베리',
+    image: blueberry,
+    week: 3,
+  },
+  {
     name: '토마토',
     image: tomato,
     week: 3,
@@ -854,8 +879,8 @@ export const carbohydrateIngredients: Ingredient[] = allIngredients.filter((i) =
 
 export const newIngredients = {
   month: 4,
-  week: 2,
-  names: ['통밀또띠아'],
+  week: 4,
+  names: ['올리브', '블루베리', '통밀파스타면', '가자미'],
 };
 
 export const allIngredientsList: IngredientsProps[] = [

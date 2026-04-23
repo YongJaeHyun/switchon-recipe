@@ -12,7 +12,10 @@ export const latestNotices = [
 export const allNotices = [
   {
     version: 'v5.0.4',
-    changes: ['🐛 로그아웃 시, 에러가 발생하는 버그 수정', '🍱 통밀또띠아 추가'],
+    changes: [
+      '🐛 로그아웃 시, 에러가 발생하는 버그 수정',
+      '🍱 통밀또띠아, 올리브, 블루베리, 통밀파스타면, 가자미 추가',
+    ],
     updatedAt: '2026.04.05',
   },
   {
