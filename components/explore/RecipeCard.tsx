@@ -28,7 +28,7 @@ export const RecipeCard = React.memo(({ keyword, ...recipe }: RecipeCardProps) =
       href={`/recipeDetail?recipe=${JSON.stringify({ ...recipe, isSaved })}`}
       className="flex-1">
       <View
-        className="flex-1 overflow-hidden rounded-xl"
+        className="w-full flex-1 overflow-hidden rounded-xl"
         style={{
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.5,
