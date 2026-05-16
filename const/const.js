@@ -1,4 +1,4 @@
-export const APP_VERSION = '5.0.4';
+export const APP_VERSION = '5.0.4+20260516';
 
 export const FIRST_LAUNCH_KEY = 'is_first_launch';
 

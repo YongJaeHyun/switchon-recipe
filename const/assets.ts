@@ -149,6 +149,7 @@ export const vegetableMix = require('../assets/images/ingredients/vegetable_mix.
 export const vinegar = require('../assets/images/ingredients/vinegar.jpg');
 export const wasabi = require('../assets/images/ingredients/wasabi.jpg');
 export const wholeWheatPasta = require('../assets/images/ingredients/whole_wheat_pasta.jpg');
+export const wooung = require('../assets/images/ingredients/wooung.jpg');
 export const wusamgyup = require('../assets/images/ingredients/wusamgyup.jpg');
 export const yangsongi = require('../assets/images/ingredients/yangsongi.jpg');
 export const yeontofu = require('../assets/images/ingredients/yeontofu.jpg');

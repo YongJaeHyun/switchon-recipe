@@ -134,6 +134,7 @@ import {
   vinegar,
   wasabi,
   wholeWheatPasta,
+  wooung,
   wusamgyup,
   yangsongi,
   yeontofu,
@@ -398,6 +399,11 @@ export const firstWeekIngredients: Ingredient[] = [
   {
     name: '강황',
     image: curcuma,
+    week: 1,
+  },
+  {
+    name: '우엉',
+    image: wooung,
     week: 1,
   },
   {
@@ -878,9 +884,9 @@ export const ingredientImages = allIngredients.map((i) => i.image);
 export const carbohydrateIngredients: Ingredient[] = allIngredients.filter((i) => i.isCarbohydrate);
 
 export const newIngredients = {
-  month: 4,
+  month: 5,
   week: 4,
-  names: ['올리브', '블루베리', '통밀파스타면', '가자미'],
+  names: ['우엉'],
 };
 
 export const allIngredientsList: IngredientsProps[] = [

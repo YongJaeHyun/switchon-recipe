@@ -2,10 +2,11 @@ import { seosusa } from 'es-hangul';
 import { APP_VERSION } from './const';
 import { newIngredients } from './ingredients';
 
+const version = APP_VERSION.split('+')[0];
 const { month, week, names } = newIngredients;
 
 export const latestNotices = [
-  `🚀 [v${APP_VERSION} 업데이트] - 로그아웃 버그 수정`,
+  `🚀 [v${version} 업데이트] - 로그아웃 버그 수정`,
   `🥗 [${month}월 ${seosusa(week)}주 재료 업데이트] - ${names.join(', ')} 추가`,
 ];
 
@@ -14,7 +15,7 @@ export const allNotices = [
     version: 'v5.0.4',
     changes: [
       '🐛 로그아웃 시, 에러가 발생하는 버그 수정',
-      '🍱 통밀또띠아, 올리브, 블루베리, 통밀파스타면, 가자미 추가',
+      '🍱 통밀또띠아, 올리브, 블루베리, 통밀파스타면, 가자미, 우엉 추가',
     ],
     updatedAt: '2026.04.05',
   },
