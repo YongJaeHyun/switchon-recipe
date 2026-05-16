@@ -20,6 +20,7 @@ export const useAutoUpdate = () => {
         const appVersion = Constants.expoConfig?.version;
         const latestVersion = (await VersionAPI.selectLatestVersion()) ?? '1.0.0';
 
+        if (__DEV__ || !Constants.manifest2) return;
         if (!appVersion) throw new Error('appVersion을 찾을 수 없습니다.');
 
         const currentMajor = semver.major(appVersion);
@@ -40,10 +41,10 @@ export const useAutoUpdate = () => {
 
     // ── OTA 업데이트 다운로드 ──────────────────────────────────────
     const fetchUpdate = async () => {
-      // DEV 환경이거나 embedded launch(스탠드얼론 빌드가 아님)면 스킵
-      if (__DEV__ || Updates.isEmbeddedLaunch) return;
-
       try {
+        // DEV 환경이거나 embedded launch(스탠드얼론 빌드가 아님)면 스킵
+        if (__DEV__ || Updates.isEmbeddedLaunch) return;
+
         const update = await Updates.checkForUpdateAsync();
         if (update.isAvailable) {
           await Updates.fetchUpdateAsync();
