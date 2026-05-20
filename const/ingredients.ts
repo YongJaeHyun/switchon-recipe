@@ -20,15 +20,18 @@ import {
   cherryTomato,
   chestnut,
   chicken,
+  chickenLeg,
   chickenStock,
   chickenTenderloin,
   chickenWing,
+  chickpeas,
   chiliSauce,
   chives,
   chogochuPaste,
   clam,
   cod,
   coffee,
+  corn,
   crammy,
   creamCheese,
   cucumber,
@@ -229,6 +232,11 @@ export const firstWeekIngredients: Ingredient[] = [
   {
     name: '닭가슴살',
     image: chicken,
+    week: 1,
+  },
+  {
+    name: '닭다리살',
+    image: chickenLeg,
     week: 1,
   },
   {
@@ -681,6 +689,12 @@ export const secondWeekIngredients: Ingredient[] = [
     isCarbohydrate: true,
   },
   {
+    name: '병아리콩',
+    image: chickpeas,
+    week: 2,
+    isCarbohydrate: true,
+  },
+  {
     name: '콩류',
     image: beans,
     week: 2,
@@ -793,6 +807,12 @@ export const thirdWeekIngredients: Ingredient[] = [
     isCarbohydrate: true,
   },
   {
+    name: '옥수수',
+    image: corn,
+    week: 3,
+    isCarbohydrate: true,
+  },
+  {
     name: '바나나',
     image: banana,
     week: 3,
@@ -886,7 +906,7 @@ export const carbohydrateIngredients: Ingredient[] = allIngredients.filter((i) =
 export const newIngredients = {
   month: 5,
   week: 4,
-  names: ['우엉'],
+  names: ['우엉', '옥수수', '병아리콩', '닭다리살'],
 };
 
 export const allIngredientsList: IngredientsProps[] = [
