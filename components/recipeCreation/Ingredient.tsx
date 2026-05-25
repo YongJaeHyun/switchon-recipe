@@ -25,7 +25,7 @@ function Ingredient({ name, image, week, isSelected, disabled }: IngredientProps
   };
   return (
     <TouchableHighlight
-      className={`h-32 w-24 items-center justify-center rounded-lg ${disabled && 'opacity-40'}`}
+      className={`h-32 min-w-24 items-center justify-center rounded-lg ${disabled && 'opacity-40'}`}
       onPress={toggleSelect}
       underlayColor={colors.neutral[200]}
       disabled={disabled}>
