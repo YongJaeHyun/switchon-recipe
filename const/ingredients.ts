@@ -60,6 +60,7 @@ import {
   greenOnion,
   gwanja,
   gwiriRice,
+  hwangtae,
   hyunmiRice,
   jalapeno,
   kimchi,
@@ -136,6 +137,7 @@ import {
   vegetableMix,
   vinegar,
   wasabi,
+  wholegrainMustard,
   wholeWheatPasta,
   wooung,
   wusamgyup,
@@ -312,6 +314,11 @@ export const firstWeekIngredients: Ingredient[] = [
   {
     name: '삼치',
     image: samchi,
+    week: 1,
+  },
+  {
+    name: '황태',
+    image: hwangtae,
     week: 1,
   },
   {
@@ -602,6 +609,11 @@ export const firstWeekIngredients: Ingredient[] = [
   {
     name: '레몬즙',
     image: lemonJuice,
+    week: 1,
+  },
+  {
+    name: '홀그레인 머스타드',
+    image: wholegrainMustard,
     week: 1,
   },
   {
@@ -905,8 +917,8 @@ export const carbohydrateIngredients: Ingredient[] = allIngredients.filter((i) =
 
 export const newIngredients = {
   month: 5,
-  week: 4,
-  names: ['우엉', '옥수수', '병아리콩', '닭다리살'],
+  week: 5,
+  names: ['홀그레인 머스터드', '황태'],
 };
 
 export const allIngredientsList: IngredientsProps[] = [
