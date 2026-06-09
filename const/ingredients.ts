@@ -19,6 +19,7 @@ import {
   cheese,
   cherryTomato,
   chestnut,
+  chiaseed,
   chicken,
   chickenLeg,
   chickenStock,
@@ -837,6 +838,12 @@ export const thirdWeekIngredients: Ingredient[] = [
     isCarbohydrate: true,
   },
   {
+    name: '치아씨드',
+    image: chiaseed,
+    week: 3,
+    isCarbohydrate: true,
+  },
+  {
     name: '우삼겹',
     image: wusamgyup,
     week: 3,
@@ -916,9 +923,9 @@ export const ingredientImages = allIngredients.map((i) => i.image);
 export const carbohydrateIngredients: Ingredient[] = allIngredients.filter((i) => i.isCarbohydrate);
 
 export const newIngredients = {
-  month: 5,
-  week: 5,
-  names: ['홀그레인 머스터드', '황태'],
+  month: 6,
+  week: 2,
+  names: ['치아씨드'],
 };
 
 export const allIngredientsList: IngredientsProps[] = [

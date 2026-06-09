@@ -34,6 +34,7 @@ export const chajo = require('../assets/images/ingredients/chajo.jpg');
 export const cheese = require('../assets/images/ingredients/cheese.jpg');
 export const cherryTomato = require('../assets/images/ingredients/cherry_tomato.jpg');
 export const chestnut = require('../assets/images/ingredients/chestnut.jpg');
+export const chiaseed = require('../assets/images/ingredients/chiaseed.jpg');
 export const chicken = require('../assets/images/ingredients/chicken.jpg');
 export const chickenLeg = require('../assets/images/ingredients/chicken_leg.jpg');
 export const chickenStock = require('../assets/images/ingredients/chicken_stock.jpg');
