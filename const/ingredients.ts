@@ -19,16 +19,20 @@ import {
   cheese,
   cherryTomato,
   chestnut,
+  chiaseed,
   chicken,
+  chickenLeg,
   chickenStock,
   chickenTenderloin,
   chickenWing,
+  chickpeas,
   chiliSauce,
   chives,
   chogochuPaste,
   clam,
   cod,
   coffee,
+  corn,
   crammy,
   creamCheese,
   cucumber,
@@ -57,6 +61,7 @@ import {
   greenOnion,
   gwanja,
   gwiriRice,
+  hwangtae,
   hyunmiRice,
   jalapeno,
   kimchi,
@@ -133,7 +138,9 @@ import {
   vegetableMix,
   vinegar,
   wasabi,
+  wholegrainMustard,
   wholeWheatPasta,
+  wooung,
   wusamgyup,
   yangsongi,
   yeontofu,
@@ -231,6 +238,11 @@ export const firstWeekIngredients: Ingredient[] = [
     week: 1,
   },
   {
+    name: '닭다리살',
+    image: chickenLeg,
+    week: 1,
+  },
+  {
     name: '닭안심',
     image: chickenTenderloin,
     week: 1,
@@ -303,6 +315,11 @@ export const firstWeekIngredients: Ingredient[] = [
   {
     name: '삼치',
     image: samchi,
+    week: 1,
+  },
+  {
+    name: '황태',
+    image: hwangtae,
     week: 1,
   },
   {
@@ -398,6 +415,11 @@ export const firstWeekIngredients: Ingredient[] = [
   {
     name: '강황',
     image: curcuma,
+    week: 1,
+  },
+  {
+    name: '우엉',
+    image: wooung,
     week: 1,
   },
   {
@@ -591,6 +613,11 @@ export const firstWeekIngredients: Ingredient[] = [
     week: 1,
   },
   {
+    name: '홀그레인 머스타드',
+    image: wholegrainMustard,
+    week: 1,
+  },
+  {
     name: '간장',
     image: soySauce,
     week: 1,
@@ -671,6 +698,12 @@ export const secondWeekIngredients: Ingredient[] = [
   {
     name: '퀴노아',
     image: quinoa,
+    week: 2,
+    isCarbohydrate: true,
+  },
+  {
+    name: '병아리콩',
+    image: chickpeas,
     week: 2,
     isCarbohydrate: true,
   },
@@ -787,6 +820,12 @@ export const thirdWeekIngredients: Ingredient[] = [
     isCarbohydrate: true,
   },
   {
+    name: '옥수수',
+    image: corn,
+    week: 3,
+    isCarbohydrate: true,
+  },
+  {
     name: '바나나',
     image: banana,
     week: 3,
@@ -795,6 +834,12 @@ export const thirdWeekIngredients: Ingredient[] = [
   {
     name: '밤',
     image: chestnut,
+    week: 3,
+    isCarbohydrate: true,
+  },
+  {
+    name: '치아씨드',
+    image: chiaseed,
     week: 3,
     isCarbohydrate: true,
   },
@@ -878,9 +923,9 @@ export const ingredientImages = allIngredients.map((i) => i.image);
 export const carbohydrateIngredients: Ingredient[] = allIngredients.filter((i) => i.isCarbohydrate);
 
 export const newIngredients = {
-  month: 4,
-  week: 4,
-  names: ['올리브', '블루베리', '통밀파스타면', '가자미'],
+  month: 6,
+  week: 2,
+  names: ['치아씨드'],
 };
 
 export const allIngredientsList: IngredientsProps[] = [
