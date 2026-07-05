@@ -13,28 +13,34 @@ interface IngredientProps extends IngredientType {
   disabled: boolean;
 }
 
-function Ingredient({ name, image, week, isSelected, disabled }: IngredientProps) {
+function Ingredient({ name, image, week, isSelected, isCarbohydrate, disabled }: IngredientProps) {
   const type = useLastPathname() as RecipeType;
   const { toggleIngredient } = useSelectedIngredients({ type });
 
   const isSelectedLow = isSelected && type === 'low';
   const isSelectedZero = isSelected && type === 'zero';
+  const isZeroAndCarboHydrate = type === 'zero' && isCarbohydrate;
 
   const toggleSelect = () => {
     toggleIngredient({ name, image, week });
   };
   return (
     <TouchableHighlight
-      className={`h-32 min-w-24 items-center justify-center rounded-lg ${disabled && 'opacity-40'}`}
+      className={`h-32 min-w-24 items-center justify-center rounded-lg ${(disabled || isZeroAndCarboHydrate) && 'opacity-40'}`}
       onPress={toggleSelect}
       underlayColor={colors.neutral[200]}
-      disabled={disabled}>
-      <View className="items-center gap-1">
+      disabled={disabled || isZeroAndCarboHydrate}>
+      <View className="relative items-center gap-1">
         <View
-          className={`h-20 w-20 overflow-hidden rounded-full 
+          className={`h-20 w-20 overflow-hidden rounded-full
           ${isSelectedZero && 'border-[4px] border-green-700/80'} 
           ${isSelectedLow && 'border-[4px] border-amber-600'} 
           ${!isSelected && 'border-2 border-neutral-200'}`}>
+          {isZeroAndCarboHydrate && (
+            <View className="absolute left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2">
+              <Text className="text-md font-bold">저탄수</Text>
+            </View>
+          )}
           <Image style={{ width: '100%', height: '100%', objectFit: 'cover' }} source={image} />
         </View>
         <Text className={`h-6 w-full ${isSelected ? 'font-bold' : 'font-semibold'}`}>{name}</Text>

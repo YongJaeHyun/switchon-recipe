@@ -6,7 +6,7 @@ const version = APP_VERSION.split('+')[0];
 const { month, week, names } = newIngredients;
 
 export const latestNotices = [
-  `🚀 [v${version} 업데이트] - 로그아웃 버그 수정`,
+  `🚀 [v${version} 업데이트] - 무탄수 재료 검색 시, 저탄수 재료도 검색`,
   `🥗 [${month}월 ${seosusa(week)}주 재료 업데이트] - ${names.join(', ')} 추가`,
 ];
 
@@ -15,6 +15,7 @@ export const allNotices = [
     version: 'v5.0.4',
     changes: [
       '🐛 로그아웃 시, 에러가 발생하는 버그 수정',
+      '✨ 무탄수 재료 검색 시, 저탄수 재료도 표시하는 기능 추가',
       '🍱 통밀또띠아, 올리브, 블루베리, 통밀파스타면, 가자미, 우엉, 옥수수, 병아리콩, 닭다리살, 홀그레인 머스타드, 황태, 치아씨드 추가',
     ],
     updatedAt: '2026.04.05',

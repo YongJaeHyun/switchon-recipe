@@ -22,6 +22,24 @@ export const thirdWeekZeroIngredients: Ingredient[] = thirdWeekIngredients.filte
   isZeroIngredient(ingredient)
 );
 
+export const allIngredientsList: IngredientsProps[] = [
+  {
+    title: '1주차',
+    week: 1,
+    ingredientList: firstWeekIngredients,
+  },
+  {
+    title: '2주차',
+    week: 2,
+    ingredientList: secondWeekIngredients,
+  },
+  {
+    title: '3주차 +',
+    week: 3,
+    ingredientList: thirdWeekIngredients,
+  },
+];
+
 export const allZeroIngredientsList: IngredientsProps[] = [
   {
     title: '1주차',

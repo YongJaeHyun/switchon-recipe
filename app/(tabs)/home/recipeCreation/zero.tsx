@@ -5,11 +5,11 @@ import { SafeAreaViewWithNav } from 'components/common/SafeAreaViewWithNav';
 import { SearchInput } from 'components/common/SearchInput';
 import { Text } from 'components/common/Text';
 import { IngredientRequest } from 'components/recipeCreation/IngredientRequest';
-import Ingredients, { IngredientsProps } from 'components/recipeCreation/Ingredients';
+import Ingredients from 'components/recipeCreation/Ingredients';
 import Loading from 'components/recipeCreation/Loading';
 import SelectedIngredient from 'components/recipeCreation/SelectedIngredient';
 import { QueryKey } from 'const/queryKey';
-import { allZeroIngredientsList } from 'const/zeroIngredients';
+import { allIngredientsList, allZeroIngredientsList } from 'const/zeroIngredients';
 import { getChoseong } from 'es-hangul';
 import { Link, router } from 'expo-router';
 import { useSelect } from 'hooks/useSelect';
@@ -45,8 +45,8 @@ export default function ZeroRecipeCreationScreen() {
     return userWeek;
   };
 
-  const getSearchedIngredients = (item: IngredientsProps) =>
-    item.ingredientList.filter((ingredient) => {
+  const getSearchedIngredients = (index: number) =>
+    allIngredientsList[index].ingredientList.filter((ingredient) => {
       const { name, subKeywords = [] } = ingredient;
       const trimmedKeyword = keyword.trim();
 
@@ -139,11 +139,11 @@ export default function ZeroRecipeCreationScreen() {
         data={allZeroIngredientsList}
         extraData={resetTrigger ? 'reset-1' : 'reset-0'}
         ListFooterComponent={() => <IngredientRequest />}
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <Ingredients
             title={item.title}
             week={item.week}
-            ingredientList={getSearchedIngredients(item)}
+            ingredientList={!!keyword.trim() ? getSearchedIngredients(index) : item.ingredientList}
           />
         )}
       />

@@ -39,6 +39,7 @@ export default function Ingredients({ title, week, ingredientList }: Ingredients
                 image={ingredient.image}
                 name={ingredient.name}
                 week={ingredient.week}
+                isCarbohydrate={ingredient.isCarbohydrate}
                 isSelected={selectedIngredients.some((i) => i.name === ingredient.name)}
                 disabled={ingredient.week > userWeek}
               />
