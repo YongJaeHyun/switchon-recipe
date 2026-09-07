@@ -2,6 +2,7 @@ import { IngredientsProps } from 'components/recipeCreation/Ingredients';
 import {
   allulose,
   almondPowder,
+  arugula,
   atkaMackerel,
   avocado,
   banana,
@@ -483,6 +484,11 @@ export const firstWeekIngredients: Ingredient[] = [
     week: 1,
   },
   {
+    name: '루꼴라',
+    image: arugula,
+    week: 1,
+  },
+  {
     name: '부추',
     image: chives,
     week: 1,
@@ -923,9 +929,9 @@ export const ingredientImages = allIngredients.map((i) => i.image);
 export const carbohydrateIngredients: Ingredient[] = allIngredients.filter((i) => i.isCarbohydrate);
 
 export const newIngredients = {
-  month: 6,
+  month: 9,
   week: 2,
-  names: ['치아씨드'],
+  names: ['루꼴라'],
 };
 
 export const allIngredientsList: IngredientsProps[] = [
