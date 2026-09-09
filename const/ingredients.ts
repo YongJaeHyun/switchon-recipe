@@ -62,6 +62,7 @@ import {
   greenOnion,
   gwanja,
   gwiriRice,
+  halfEgg,
   hwangtae,
   hyunmiRice,
   jalapeno,
@@ -229,8 +230,14 @@ export const firstWeekIngredients: Ingredient[] = [
   },
   {
     name: '계란',
-    subKeywords: ['달걀'],
+    subKeywords: ['달걀', '반숙', '반숙란'],
     image: egg,
+    week: 1,
+  },
+  {
+    name: '반숙란',
+    subKeywords: ['달걀', '계란'],
+    image: halfEgg,
     week: 1,
   },
   {
@@ -931,7 +938,7 @@ export const carbohydrateIngredients: Ingredient[] = allIngredients.filter((i) =
 export const newIngredients = {
   month: 9,
   week: 2,
-  names: ['루꼴라'],
+  names: ['루꼴라', '반숙란'],
 };
 
 export const allIngredientsList: IngredientsProps[] = [

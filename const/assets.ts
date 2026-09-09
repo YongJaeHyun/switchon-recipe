@@ -77,6 +77,7 @@ export const greenBean = require('../assets/images/ingredients/green_beans.jpg')
 export const greenOnion = require('../assets/images/ingredients/green_onion.jpg');
 export const gwanja = require('../assets/images/ingredients/gwanja.jpg');
 export const gwiriRice = require('../assets/images/ingredients/gwiri_rice.jpg');
+export const halfEgg = require('../assets/images/ingredients/half_egg.jpg');
 export const hwangtae = require('../assets/images/ingredients/hwangtae.jpg');
 export const hyunmiRice = require('../assets/images/ingredients/hyunmi_rice.jpg');
 export const jalapeno = require('../assets/images/ingredients/jalapeno.jpg');
