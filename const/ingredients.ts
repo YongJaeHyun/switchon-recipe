@@ -125,6 +125,7 @@ import {
   soySauce,
   spinach,
   squid,
+  srirachaSauce,
   ssammu,
   sukju,
   sweetPotato,
@@ -651,6 +652,11 @@ export const firstWeekIngredients: Ingredient[] = [
     week: 1,
   },
   {
+    name: '스리라차소스',
+    image: srirachaSauce,
+    week: 1,
+  },
+  {
     name: '알룰로스',
     image: allulose,
     week: 1,
@@ -937,8 +943,8 @@ export const carbohydrateIngredients: Ingredient[] = allIngredients.filter((i) =
 
 export const newIngredients = {
   month: 9,
-  week: 2,
-  names: ['루꼴라', '반숙란'],
+  week: 3,
+  names: ['스리라차소스'],
 };
 
 export const allIngredientsList: IngredientsProps[] = [

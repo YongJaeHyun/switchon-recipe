@@ -140,6 +140,7 @@ export const soybeanPaste = require('../assets/images/ingredients/soybean_paste.
 export const soySauce = require('../assets/images/ingredients/soy_sauce.jpg');
 export const spinach = require('../assets/images/ingredients/spinach.jpg');
 export const squid = require('../assets/images/ingredients/squid.jpg');
+export const srirachaSauce = require('../assets/images/ingredients/sriracha_sauce.jpg');
 export const ssammu = require('../assets/images/ingredients/ssammu.jpg');
 export const sukju = require('../assets/images/ingredients/sukju.jpg');
 export const sweetPotato = require('../assets/images/ingredients/sweet_potato.jpg');
