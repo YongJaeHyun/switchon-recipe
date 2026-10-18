@@ -49,3 +49,6 @@ android
 
 # scripts
 scripts/updateDBType.txt
+
+# edge function test output
+supabase/functions/tests/.output/
