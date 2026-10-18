@@ -42,6 +42,10 @@ const RECIPE_CREATION_CANCELED: ToastTextProps = {
   subtitle: '레시피 생성 요청이 취소되었습니다.',
 };
 
+const INGREDIENT_REQUEST_LIMIT: ToastTextProps = {
+  title: '요청 한도 초과',
+  subtitle: '재료 요청은 하루 5번까지 가능해요.',
+};
 const EXCEED_MAXIMUM_INGREDIENT_SELECTED: ToastTextProps = {
   title: '최대 선택 갯수 초과',
   subtitle: '재료는 최대 10개까지 선택할 수 있어요!',
@@ -61,4 +65,4 @@ export const ErrorToastText = {
   LOGIN_ERROR,
   GATEWAY_TIMEOUT_ERROR,
 };
-export const InfoToastText = { EXCEED_MAXIMUM_INGREDIENT_SELECTED };
+export const InfoToastText = { EXCEED_MAXIMUM_INGREDIENT_SELECTED, INGREDIENT_REQUEST_LIMIT };

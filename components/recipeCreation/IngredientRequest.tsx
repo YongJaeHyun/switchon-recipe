@@ -1,18 +1,16 @@
 import { FontAwesome6 } from '@expo/vector-icons';
-import { sendSlackMessage } from 'api/slack';
+import { IngredientRequestAPI } from 'api/IngredientRequestAPI';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
-import {
-  firstWeekIngredients,
-  secondWeekIngredients,
-  thirdWeekIngredients,
-} from 'const/ingredients';
+import { useIngredients } from 'hooks/useIngredients';
 import { useLastPathname } from 'hooks/useLastPathname';
 import { useState } from 'react';
 import { Modal, TextInput, TouchableWithoutFeedback, View } from 'react-native';
 import colors from 'tailwindcss/colors';
 import { RecipeType } from 'types/database';
 import { isCompletedHangul } from 'utils/hangul';
+import { normalizeIngredientName } from 'utils/normalizeIngredientName';
+import { showErrorToast, showInfoToast, showSuccessToast } from 'utils/showToast';
 import { Nullable } from '../../types/common';
 
 interface IngredientRequestError {
@@ -26,11 +24,10 @@ export function IngredientRequest() {
   const [name, setName] = useState('');
   const [errors, setErrors] = useState<Nullable<IngredientRequestError>>(null);
 
-  const allIngredientNames = [
-    ...firstWeekIngredients,
-    ...secondWeekIngredients,
-    ...thirdWeekIngredients,
-  ].map((ingredient) => ingredient.name);
+  const { ingredients } = useIngredients();
+  const allIngredientNames = ingredients.flatMap((ingredient) =>
+    [ingredient.name, ...(ingredient.subKeywords ?? [])].map(normalizeIngredientName)
+  );
 
   const open = () => setVisible(true);
   const close = () => {
@@ -50,7 +47,8 @@ export function IngredientRequest() {
     if (!trimmedName) newErrors.name = '재료명을 입력해주세요.';
     else if (!isCompletedHangul(trimmedName))
       newErrors.name = '재료명은 중간에 자음이나 모음이 단독으로 올 수 없어요.';
-    else if (allIngredientNames.includes(trimmedName)) newErrors.name = '이미 존재하는 재료예요.';
+    else if (allIngredientNames.includes(normalizeIngredientName(trimmedName)))
+      newErrors.name = '이미 존재하는 재료예요.';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -58,10 +56,11 @@ export function IngredientRequest() {
 
   const submitRequest = async () => {
     if (validate()) {
-      const parsedIngredientName = encodeURIComponent(name);
-      await sendSlackMessage(
-        `🥗 재료 요청 도착!\n\n재료명: ${name}\n이미지:https://pixabay.com/ko/photos/search/${parsedIngredientName}/`
-      );
+      const result = await IngredientRequestAPI.create(name);
+
+      if (result === 'ok') showSuccessToast({ textType: 'INGREDIENT_REQUEST_SUCCESS' });
+      else if (result === 'limit') showInfoToast({ textType: 'INGREDIENT_REQUEST_LIMIT' });
+      else showErrorToast({ textType: 'INGREDIENT_REQUEST_ERROR' });
 
       close();
       reset();
@@ -88,7 +87,7 @@ export function IngredientRequest() {
               onStartShouldSetResponder={() => true}>
               <Text className="mb-1 text-xl font-bold">재료 요청</Text>
               <Text className="mb-4 text-sm text-neutral-500">
-                검토 후, 스위치온 다이어트에 적합한 재료라면 추가돼요.
+                스위치온 다이어트에 적합한 재료라면 자동으로 추가돼요.
               </Text>
 
               <View className="mb-4">
@@ -107,9 +106,7 @@ export function IngredientRequest() {
                 )}
               </View>
 
-              <Text className="mb-4 text-sm text-neutral-500">
-                🕒 검토에는 최대 2일 정도 걸려요.
-              </Text>
+              <Text className="mb-4 text-sm text-neutral-500">🕒 보통 몇 분 안에 반영돼요.</Text>
               <View className="flex-row gap-4">
                 <RippleButton
                   onPress={close}
