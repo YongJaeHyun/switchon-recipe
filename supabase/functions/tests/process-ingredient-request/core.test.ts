@@ -77,7 +77,9 @@ describe('getProcessMode', () => {
   });
 
   it('returns new on pending insert', () => {
-    expect(getProcessMode({ type: 'INSERT', record: rec('pending'), old_record: null })).toBe('new');
+    expect(getProcessMode({ type: 'INSERT', record: rec('pending'), old_record: null })).toBe(
+      'new'
+    );
   });
 
   it('returns retry when operator resets to pending', () => {

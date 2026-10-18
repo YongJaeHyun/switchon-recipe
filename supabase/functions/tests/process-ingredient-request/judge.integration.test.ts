@@ -36,7 +36,10 @@ describe.skipIf(!geminiKey)('judgeIngredient', () => {
   it(
     'treats a spelling variant as duplicate',
     async () => {
-      expect(await judge('치아시드')).toMatchObject({ decision: 'duplicate', matchedName: '치아씨드' });
+      expect(await judge('치아시드')).toMatchObject({
+        decision: 'duplicate',
+        matchedName: '치아씨드',
+      });
     },
     TIMEOUT_MS
   );

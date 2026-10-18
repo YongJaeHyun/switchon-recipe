@@ -92,7 +92,9 @@ const postJson = async (url: string, body: unknown, label: string) => {
   return res.json();
 };
 
-const verifyPrompt = (name: string) => `이 사진이 음식 재료 "${name}"을(를) 명확하게 보여주는지 판단하세요.
+const verifyPrompt = (
+  name: string
+) => `이 사진이 음식 재료 "${name}"을(를) 명확하게 보여주는지 판단하세요.
 다음 중 하나라도 해당하면 matches는 false입니다.
 - "${name}"이(가) 사진의 주인공이 아니거나 다른 재료가 주로 보임
 - 재료가 아니라 조리된 완성 요리 사진임
