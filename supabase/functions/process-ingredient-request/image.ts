@@ -124,13 +124,13 @@ export const createImageDeps = ({
       per_page: '10',
       lang,
     });
-    const res = await fetch(`https://pixabay.com/api/?${params}`);
+    const res = await fetchWithRetry(`https://pixabay.com/api/?${params}`, {});
     if (!res.ok) throw new Error(`Pixabay 검색 실패 (${res.status}): ${await res.text()}`);
     return ((await res.json()).hits ?? []) as PixabayHit[];
   },
 
   download: async (url) => {
-    const res = await fetch(url);
+    const res = await fetchWithRetry(url, {});
     if (!res.ok) throw new Error(`이미지 다운로드 실패 (${res.status})`);
     return {
       bytes: new Uint8Array(await res.arrayBuffer()),
