@@ -9,6 +9,12 @@ interface Ingredient {
   isCarbohydrate?: boolean;
 }
 
+interface IngredientRecord extends Ingredient {
+  source: 'seed' | 'auto' | 'manual';
+  createdAt: string;
+  sortOrder: number;
+}
+
 const IngredientSchema = z.object({
   name: z.string(),
   isOptional: z.boolean(),
@@ -43,6 +49,7 @@ interface RecipeOptions {
 
 export {
   Ingredient,
+  IngredientRecord,
   IngredientSchema,
   Recipe,
   RecipeCategory,
