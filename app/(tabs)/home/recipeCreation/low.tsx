@@ -5,13 +5,14 @@ import { SafeAreaViewWithNav } from 'components/common/SafeAreaViewWithNav';
 import { SearchInput } from 'components/common/SearchInput';
 import { Text } from 'components/common/Text';
 import { IngredientRequest } from 'components/recipeCreation/IngredientRequest';
+import { IngredientsLoadError } from 'components/recipeCreation/IngredientsLoadError';
 import Ingredients, { IngredientsProps } from 'components/recipeCreation/Ingredients';
 import Loading from 'components/recipeCreation/Loading';
 import SelectedIngredient from 'components/recipeCreation/SelectedIngredient';
-import { allIngredientsList } from 'const/ingredients';
 import { QueryKey } from 'const/queryKey';
 import { getChoseong } from 'es-hangul';
 import { Link, router } from 'expo-router';
+import { useIngredients } from 'hooks/useIngredients';
 import { useSelect } from 'hooks/useSelect';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { queryClient } from 'lib/queryClient';
@@ -29,6 +30,14 @@ export default function LowRecipeCreationScreen() {
     resetIngredients,
     isLoading: isIngredientsLoading,
   } = useSelectedIngredients({ type: 'low' });
+
+  const {
+    ingredients,
+    lowLists,
+    isLoading: isIngredientListLoading,
+    isError: isIngredientListError,
+    refetch: refetchIngredientList,
+  } = useIngredients();
 
   const [category, toggleCategory] = useSelect<RecipeCategory>(null);
   const [method, toggleMethod] = useSelect<RecipeMethod>(null);
@@ -134,20 +143,24 @@ export default function LowRecipeCreationScreen() {
           <Text className="font-bold text-amber-500">최대 10개</Text>까지 재료를 선택할 수 있어요!
         </Text>
       </View>
-      <FlatList
-        className="mb-4 flex-1"
-        contentContainerClassName="gap-6"
-        data={allIngredientsList}
-        extraData={resetTrigger ? 'reset-1' : 'reset-0'}
-        ListFooterComponent={() => <IngredientRequest />}
-        renderItem={({ item }) => (
-          <Ingredients
-            title={item.title}
-            week={item.week}
-            ingredientList={getSearchedIngredients(item)}
-          />
-        )}
-      />
+      {isIngredientListError && ingredients.length === 0 ? (
+        <IngredientsLoadError onRetry={refetchIngredientList} />
+      ) : (
+        <FlatList
+          className="mb-4 flex-1"
+          contentContainerClassName="gap-6"
+          data={lowLists}
+          extraData={resetTrigger ? 'reset-1' : 'reset-0'}
+          ListFooterComponent={() => <IngredientRequest />}
+          renderItem={({ item }) => (
+            <Ingredients
+              title={item.title}
+              week={item.week}
+              ingredientList={getSearchedIngredients(item)}
+            />
+          )}
+        />
+      )}
 
       <View className="mb-4 gap-4">
         <View className="flex-row gap-3">
@@ -193,7 +206,7 @@ export default function LowRecipeCreationScreen() {
           </TouchableHighlight>
         </View>
       </View>
-      {(isIngredientsLoading || isRecipeLoading) && (
+      {(isIngredientsLoading || isIngredientListLoading || isRecipeLoading) && (
         <View className="absolute inset-0 z-50 items-center justify-center">
           <View className="absolute inset-0 bg-black/40" />
           <View className="translate-y-8">

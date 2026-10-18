@@ -1,9 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UserAPI } from 'api/UserAPI';
 import { FIRST_LAUNCH_KEY } from 'const/const';
-import { ingredientImages } from 'const/ingredients';
-import { Asset } from 'expo-asset';
+import { Image } from 'expo-image';
 import { Redirect, SplashScreen, useRootNavigationState } from 'expo-router';
+import { prefetchIngredients } from 'hooks/useIngredients';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { useEffect, useState } from 'react';
 import { useUserStore } from 'stores/userStore';
@@ -41,7 +41,15 @@ export default function Index() {
     };
 
     const preloadIngredients = async () => {
-      await Asset.loadAsync(ingredientImages);
+      try {
+        const ingredients = await prefetchIngredients();
+        await Image.prefetch(
+          ingredients.map((i) => i.image),
+          'disk'
+        );
+      } catch (error) {
+        console.error('[preloadIngredients]', error);
+      }
     };
 
     const init = async () => {

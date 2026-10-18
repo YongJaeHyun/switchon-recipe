@@ -6,9 +6,10 @@ import RecipeCreation from 'components/home/RecipeCreation';
 import SavedRecipes from 'components/home/SavedRecipes';
 import { StartDateBottomSheet } from 'components/home/StartDateBottomSheet';
 import { WeekGuide } from 'components/home/WeekGuide';
-import { latestNotices } from 'const/notices';
+import { getLatestNotices } from 'const/notices';
 import { QueryKey } from 'const/queryKey';
 import { useQueryWith402Retry } from 'hooks/useCustomQuery';
+import { useIngredients } from 'hooks/useIngredients';
 import { useCallback, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { useRecipeStore } from 'stores/recipeStore';
@@ -17,6 +18,7 @@ import { LatestNotice } from '../../../components/home/LatestNotice';
 
 export default function HomeScreen() {
   const initIsSavedMap = useRecipeStore((state) => state.initIsSavedMap);
+  const { latestNotice } = useIngredients();
 
   const bottomSheetRef = useRef<BottomSheet>(null);
 
@@ -56,7 +58,7 @@ export default function HomeScreen() {
 
         <View className="mb-10 gap-10">
           <View className="gap-5">
-            <LatestNotice notices={latestNotices} />
+            <LatestNotice notices={getLatestNotices(latestNotice)} />
             <WeekGuide />
             <View className="flex-row gap-4">
               <RecipeCreation

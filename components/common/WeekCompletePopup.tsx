@@ -1,5 +1,5 @@
 import { weekCompleteLottie } from 'const/assets';
-import { secondWeekIngredients, thirdWeekIngredients } from 'const/ingredients';
+import { useIngredients } from 'hooks/useIngredients';
 import useSteps from 'hooks/useSteps';
 import LottieView from 'lottie-react-native';
 import { useEffect } from 'react';
@@ -20,6 +20,7 @@ import { Text } from './Text';
 export function WeekCompletePopup() {
   const { close, week, visible } = useWeekCompletePopupStore();
   const { step, goNextStep, resetStep } = useSteps(2);
+  const { ingredients } = useIngredients();
 
   const scale = useSharedValue(0);
 
@@ -97,21 +98,25 @@ export function WeekCompletePopup() {
               <AnimatedTextView className="w-full" delay={1250}>
                 <View className="mb-10 flex-row flex-wrap gap-3">
                   {week === 2 &&
-                    secondWeekIngredients.map((ingredient) => (
-                      <Text
-                        key={ingredient.name}
-                        className="rounded bg-gray-200 px-3 py-1 text-center font-bold">
-                        {ingredient.name}
-                      </Text>
-                    ))}
+                    ingredients
+                      .filter((ingredient) => ingredient.week === 2)
+                      .map((ingredient) => (
+                        <Text
+                          key={ingredient.name}
+                          className="rounded bg-gray-200 px-3 py-1 text-center font-bold">
+                          {ingredient.name}
+                        </Text>
+                      ))}
                   {week === 3 &&
-                    thirdWeekIngredients.map((ingredient) => (
-                      <Text
-                        key={ingredient.name}
-                        className="rounded bg-gray-200 px-3 py-1 text-center font-bold">
-                        {ingredient.name}
-                      </Text>
-                    ))}
+                    ingredients
+                      .filter((ingredient) => ingredient.week === 3)
+                      .map((ingredient) => (
+                        <Text
+                          key={ingredient.name}
+                          className="rounded bg-gray-200 px-3 py-1 text-center font-bold">
+                          {ingredient.name}
+                        </Text>
+                      ))}
                   {week === 4 && (
                     <View className="gap-4">
                       <Text>

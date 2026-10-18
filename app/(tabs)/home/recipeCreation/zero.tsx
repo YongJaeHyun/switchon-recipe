@@ -5,13 +5,14 @@ import { SafeAreaViewWithNav } from 'components/common/SafeAreaViewWithNav';
 import { SearchInput } from 'components/common/SearchInput';
 import { Text } from 'components/common/Text';
 import { IngredientRequest } from 'components/recipeCreation/IngredientRequest';
+import { IngredientsLoadError } from 'components/recipeCreation/IngredientsLoadError';
 import Ingredients from 'components/recipeCreation/Ingredients';
 import Loading from 'components/recipeCreation/Loading';
 import SelectedIngredient from 'components/recipeCreation/SelectedIngredient';
 import { QueryKey } from 'const/queryKey';
-import { allIngredientsList, allZeroIngredientsList } from 'const/zeroIngredients';
 import { getChoseong } from 'es-hangul';
 import { Link, router } from 'expo-router';
+import { useIngredients } from 'hooks/useIngredients';
 import { useSelect } from 'hooks/useSelect';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { queryClient } from 'lib/queryClient';
@@ -28,6 +29,15 @@ export default function ZeroRecipeCreationScreen() {
     resetIngredients,
     isLoading: isIngredientsLoading,
   } = useSelectedIngredients({ type: 'zero' });
+
+  const {
+    ingredients,
+    allWeekLists,
+    zeroLists,
+    isLoading: isIngredientListLoading,
+    isError: isIngredientListError,
+    refetch: refetchIngredientList,
+  } = useIngredients();
 
   const [category, toggleCategory] = useSelect<RecipeCategory>(null);
   const [method, toggleMethod] = useSelect<RecipeMethod>(null);
@@ -46,7 +56,7 @@ export default function ZeroRecipeCreationScreen() {
   };
 
   const getSearchedIngredients = (index: number) =>
-    allIngredientsList[index].ingredientList.filter((ingredient) => {
+    allWeekLists[index].ingredientList.filter((ingredient) => {
       const { name, subKeywords = [] } = ingredient;
       const trimmedKeyword = keyword.trim();
 
@@ -133,20 +143,26 @@ export default function ZeroRecipeCreationScreen() {
           <Text className="font-bold text-green-600">최대 10개</Text>까지 재료를 선택할 수 있어요!
         </Text>
       </View>
-      <FlatList
-        className="mb-4 flex-1"
-        contentContainerClassName="gap-6"
-        data={allZeroIngredientsList}
-        extraData={resetTrigger ? 'reset-1' : 'reset-0'}
-        ListFooterComponent={() => <IngredientRequest />}
-        renderItem={({ item, index }) => (
-          <Ingredients
-            title={item.title}
-            week={item.week}
-            ingredientList={!!keyword.trim() ? getSearchedIngredients(index) : item.ingredientList}
-          />
-        )}
-      />
+      {isIngredientListError && ingredients.length === 0 ? (
+        <IngredientsLoadError onRetry={refetchIngredientList} />
+      ) : (
+        <FlatList
+          className="mb-4 flex-1"
+          contentContainerClassName="gap-6"
+          data={zeroLists}
+          extraData={resetTrigger ? 'reset-1' : 'reset-0'}
+          ListFooterComponent={() => <IngredientRequest />}
+          renderItem={({ item, index }) => (
+            <Ingredients
+              title={item.title}
+              week={item.week}
+              ingredientList={
+                !!keyword.trim() ? getSearchedIngredients(index) : item.ingredientList
+              }
+            />
+          )}
+        />
+      )}
       <View className="mb-4 gap-4">
         <View className="flex-row gap-3">
           <CustomSelect
@@ -182,7 +198,7 @@ export default function ZeroRecipeCreationScreen() {
         </View>
       </View>
 
-      {(isIngredientsLoading || isRecipeLoading) && (
+      {(isIngredientsLoading || isIngredientListLoading || isRecipeLoading) && (
         <View className="absolute inset-0 z-50 items-center justify-center">
           <View className="absolute inset-0 bg-black/40" />
           <View className="translate-y-8">

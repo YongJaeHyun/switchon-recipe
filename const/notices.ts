@@ -1,14 +1,21 @@
 import { seosusa } from 'es-hangul';
 import { APP_VERSION } from './const';
-import { newIngredients } from './ingredients';
+import { getLatestIngredientNotice } from 'utils/latestIngredientNotice';
 
 const version = APP_VERSION.split('+')[0];
-const { month, week, names } = newIngredients;
 
-export const latestNotices = [
-  `🚀 [v${version} 업데이트] - 무탄수 재료 검색 시, 저탄수 재료도 검색`,
-  `🥗 [${month}월 ${seosusa(week)}주 재료 업데이트] - ${names.join(', ')} 추가`,
-];
+export const getLatestNotices = (
+  latestIngredient: ReturnType<typeof getLatestIngredientNotice>
+) => {
+  const notices = [`🚀 [v${version} 업데이트] - 무탄수 재료 검색 시, 저탄수 재료도 검색`];
+
+  if (latestIngredient) {
+    const { month, week, names } = latestIngredient;
+    notices.push(`🥗 [${month}월 ${seosusa(week)}주 재료 업데이트] - ${names.join(', ')} 추가`);
+  }
+
+  return notices;
+};
 
 export const allNotices = [
   {

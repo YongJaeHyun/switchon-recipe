@@ -4,19 +4,28 @@ import { QueryKey } from 'const/queryKey';
 import { queryClient } from 'lib/queryClient';
 import { RecipeType } from 'types/database';
 import { Ingredient } from 'types/recipe';
+import { rehydrateSelectedIngredients } from 'utils/rehydrateSelectedIngredients';
 import { showInfoToast } from 'utils/showToast';
 import { useQueryWith402Retry } from './useCustomQuery';
+import { useIngredients } from './useIngredients';
 
 interface UseSelectedIngredientsProps {
   type: RecipeType;
 }
 
 export const useSelectedIngredients = ({ type }: UseSelectedIngredientsProps) => {
-  const { data: selectedIngredients = [], isLoading } = useQueryWith402Retry({
+  const { ingredients } = useIngredients();
+  const { data: savedIngredients = [], isLoading } = useQueryWith402Retry({
     queryKey: [QueryKey.selectedIngredients, type],
     queryFn: () => SelectedIngredientAPI.selectAll(type),
     staleTime: Infinity,
   });
+
+  // 저장된 선택 재료를 현재 재료 목록 기준으로 복원 (목록 로딩 전에는 그대로 사용)
+  const rehydrate = (saved: Ingredient[]) =>
+    ingredients.length > 0 ? rehydrateSelectedIngredients(saved, ingredients) : saved;
+
+  const selectedIngredients = rehydrate(savedIngredients);
 
   const prefetch = async () =>
     await queryClient.prefetchQuery({
@@ -65,8 +74,9 @@ export const useSelectedIngredients = ({ type }: UseSelectedIngredientsProps) =>
   });
 
   const toggleIngredient = (ingredient: Ingredient) => {
-    const selectedIngredients =
-      queryClient.getQueryData<Ingredient[]>([QueryKey.selectedIngredients, type]) || [];
+    const selectedIngredients = rehydrate(
+      queryClient.getQueryData<Ingredient[]>([QueryKey.selectedIngredients, type]) || []
+    );
 
     const isSelected = selectedIngredients.some((i) => i.name === ingredient.name);
 
