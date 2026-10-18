@@ -1,3 +1,4 @@
+import { fetchWithRetry } from './http.ts';
 import type { CandidateIngredient, ImageSource } from './types.ts';
 
 const MAX_PIXABAY_CANDIDATES = 5;
@@ -83,7 +84,7 @@ const geminiUrl = (model: string, method: string, apiKey: string) =>
   `https://generativelanguage.googleapis.com/v1beta/models/${model}:${method}?key=${apiKey}`;
 
 const postJson = async (url: string, body: unknown, label: string) => {
-  const res = await fetch(url, {
+  const res = await fetchWithRetry(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

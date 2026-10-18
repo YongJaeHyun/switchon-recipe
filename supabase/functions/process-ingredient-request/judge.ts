@@ -1,4 +1,5 @@
 import { JudgementParseError, MAX_CANDIDATES, parseJudgement } from './core.ts';
+import { fetchWithRetry, type RetryOptions } from './http.ts';
 import { SWITCHON_RULES } from './rules.ts';
 import type { ExistingIngredient, Judgement } from './types.ts';
 
@@ -21,6 +22,7 @@ export const buildJudgePrompt = (requestName: string, existing: ExistingIngredie
 ${SWITCHON_RULES}
 
 ## 현재 앱에 등록된 재료 (숨김 포함)
+중복 여부는 **이 목록만** 기준으로 판단합니다. 위 기준 문서의 "주차 배정 참고 사례"는 주차/탄수화물 판단을 위한 참고 자료일 뿐이며, 그 사례에 있다고 해서 이미 등록된 재료가 아닙니다.
 ${formatExisting(existing)}
 
 ## 중복/유사 규칙
@@ -53,8 +55,8 @@ ${formatExisting(existing)}
 ${requestName}
 `;
 
-const requestJudgement = async (prompt: string, apiKey: string) => {
-  const res = await fetch(
+const requestJudgement = async (prompt: string, apiKey: string, options: RetryOptions) => {
+  const res = await fetchWithRetry(
     `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
     {
       method: 'POST',
@@ -64,7 +66,8 @@ const requestJudgement = async (prompt: string, apiKey: string) => {
         tools: [{ google_search: {} }],
         generationConfig: { temperature: 0 },
       }),
-    }
+    },
+    options
   );
 
   if (!res.ok) throw new Error(`Gemini 판단 요청 실패 (${res.status}): ${await res.text()}`);
@@ -77,14 +80,15 @@ const requestJudgement = async (prompt: string, apiKey: string) => {
 export const judgeIngredient = async (
   requestName: string,
   existing: ExistingIngredient[],
-  apiKey: string
+  apiKey: string,
+  options: RetryOptions = {}
 ): Promise<Judgement> => {
   const prompt = buildJudgePrompt(requestName, existing);
 
   try {
-    return parseJudgement(await requestJudgement(prompt, apiKey), existing);
+    return parseJudgement(await requestJudgement(prompt, apiKey, options), existing);
   } catch (error) {
     if (!(error instanceof JudgementParseError)) throw error;
-    return parseJudgement(await requestJudgement(prompt, apiKey), existing);
+    return parseJudgement(await requestJudgement(prompt, apiKey, options), existing);
   }
 };
