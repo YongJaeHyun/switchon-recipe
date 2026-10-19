@@ -2,10 +2,11 @@
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { fetchAllPages, findUnusedFiles } from './cleanup.ts';
 
 const supabase = createClient(
-  Deno.env.get('SUPABASE_URL'),
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+  Deno.env.get('SUPABASE_URL')!,
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 );
 
 serve(async () => {
@@ -24,20 +25,22 @@ serve(async () => {
     const files = allFiles || [];
 
     // ✅ 2. recipe 테이블의 image_uri 컬럼 조회
-    const { data: recipes, error: recipeError } = await supabase.from('recipe').select('image_uri');
-    if (recipeError) throw recipeError;
+    // 1000행 제한 없이 모든 레시피의 image_uri 조회
+    const recipes = await fetchAllPages(async (from, to) => {
+      const { data, error } = await supabase
+        .from('recipe')
+        .select('image_uri')
+        .order('id')
+        .range(from, to);
+      if (error) throw error;
+      return data;
+    });
 
-    // ✅ 3. DB에 등록된 이미지 파일명 (.jpg 등 확장자 포함) 추출
-    const usedFileNames = new Set(
-      recipes
-        .map((r) => r.image_uri?.split('/').pop()?.split('?')[0]) // 파일명만 추출
-        .filter(Boolean)
+    // ✅ 3~4. 스토리지 내 파일 중 어떤 레시피도 쓰지 않는 것 찾기
+    const unusedFiles = findUnusedFiles(
+      files.map((file) => file.name),
+      recipes.map((r) => r.image_uri)
     );
-
-    // ✅ 4. 스토리지 내 파일 중 DB에 없는 것 찾기
-    const unusedFiles = files
-      .filter((file) => !usedFileNames.has(file.name))
-      .map((file) => file.name);
     console.log(`🧹 삭제 대상 파일 개수: ${unusedFiles.length}`);
 
     // ✅ 5. 삭제 실행
@@ -64,7 +67,7 @@ serve(async () => {
     console.error('❌ Error during cleanup:', err);
     return new Response(
       JSON.stringify({
-        error: err.message,
+        error: err instanceof Error ? err.message : String(err),
       }),
       {
         status: 500,

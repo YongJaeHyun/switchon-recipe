@@ -1,5 +1,6 @@
 /// <reference lib="deno.ns" />
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { buildPushMessage } from './message.ts';
 
 type NotificationType = 'INQUIRY';
 type ChannelType = 'INQUIRY';
@@ -29,7 +30,7 @@ const supabase = createClient(
 
 Deno.serve(async (req) => {
   const payload: WebhookPayload = await req.json();
-  const { uid, title, body, href, channel_id } = payload.record;
+  const { uid } = payload.record;
   console.log('Notification Payload:', payload);
 
   const { data: profiles } = await supabase
@@ -39,20 +40,20 @@ Deno.serve(async (req) => {
     .single();
   console.log('User Profile:', profiles);
 
+  const message = buildPushMessage(payload.record, profiles?.push_token);
+  if (!message) {
+    return new Response(JSON.stringify({ skipped: 'no push token' }), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   const res = await fetch('https://exp.host/--/api/v2/push/send', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${Deno.env.get('EXPO_ACCESS_TOKEN')}`,
     },
-    body: JSON.stringify({
-      to: profiles?.push_token,
-      sound: 'default',
-      title,
-      body,
-      data: { href },
-      channelId: channel_id,
-    }),
+    body: JSON.stringify(message),
   }).then((res) => res.json());
   console.log('Push Notification Response:', res);
 
