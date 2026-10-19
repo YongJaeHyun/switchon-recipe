@@ -353,3 +353,9 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/slack-ingredient-action/deno.json"
 entrypoint = "./functions/slack-ingredient-action/index.ts"
+
+[functions.verify-pass-purchase]
+enabled = true
+verify_jwt = true
+import_map = "./functions/verify-pass-purchase/deno.json"
+entrypoint = "./functions/verify-pass-purchase/index.ts"
