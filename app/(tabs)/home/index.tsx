@@ -1,6 +1,7 @@
 import BottomSheet from '@gorhom/bottom-sheet';
 import { SafeAreaViewWithNav } from 'components/common/SafeAreaViewWithNav';
 import { HomeHeader } from 'components/home/HomeHeader';
+import { PassBanner } from 'components/home/PassBanner';
 import RecentRecipes from 'components/home/RecentRecipes';
 import RecipeCreation from 'components/home/RecipeCreation';
 import SavedRecipes from 'components/home/SavedRecipes';
@@ -59,6 +60,7 @@ export default function HomeScreen() {
         <View className="mb-10 gap-10">
           <View className="gap-5">
             <LatestNotice notices={getLatestNotices(latestNotice)} />
+            <PassBanner />
             <WeekGuide />
             <View className="flex-row gap-4">
               <RecipeCreation

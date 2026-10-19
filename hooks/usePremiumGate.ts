@@ -1,9 +1,6 @@
-import { type Href, router } from 'expo-router';
+import { router } from 'expo-router';
 import { useCallback } from 'react';
 import { usePass } from './usePass';
-
-// TODO: 결제 화면(app/pass) 추가 후 타입 캐스팅 제거
-const PASS_ROUTE = '/pass' as Href;
 
 // 구독 전용 기능 진입 가드 (표시용, 서버가 최종 판단).
 // 권한 있으면 action 실행, 없으면 결제 화면으로, 판매 중이 아니면 아무 것도 하지 않는다.
@@ -21,7 +18,7 @@ export const usePremiumGate = (): ((action: () => void) => () => void) => {
         action();
         return;
       }
-      if (status.sales.onSale) router.push(PASS_ROUTE);
+      if (status.sales.onSale) router.push('/pass');
     },
     [status, refetch]
   );

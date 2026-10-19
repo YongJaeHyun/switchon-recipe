@@ -13,6 +13,7 @@ import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { Link, router } from 'expo-router';
 import { useQueryWith402Retry } from 'hooks/useCustomQuery';
+import { usePass } from 'hooks/usePass';
 import { queryClient } from 'lib/queryClient';
 import React, { ReactNode, useEffect, useState } from 'react';
 import {
@@ -35,6 +36,8 @@ import { getWeekAndDay } from 'utils/date';
 import { getWeekColor } from 'utils/getWeekColor';
 import { UserAPI } from '../api/UserAPI';
 import { requireOnline } from 'utils/network';
+import { formatPassRemaining } from 'utils/passDisplay';
+import { getDeleteAccountMessage, getPassRemainingDays } from 'utils/passScreen';
 import { clearCachedUser } from 'utils/userCache';
 
 interface MenuButtonProps {
@@ -42,6 +45,8 @@ interface MenuButtonProps {
   icon: ReactNode;
   onPress?: () => void;
 }
+
+const DELETE_ACCOUNT_MESSAGE = '탈퇴 시 모든 데이터가 삭제되며, 다시 복구할 수 없어요.';
 
 interface WeekProps {
   week: number;
@@ -168,6 +173,12 @@ export default function Profile() {
 
   const [isModalVisible, setModalVisible] = useState(false);
 
+  const { status: passStatus } = usePass();
+  const now = new Date();
+  const passRemaining = formatPassRemaining(passStatus?.passExpiresAt ?? null, now);
+  const passRemainingDays = getPassRemainingDays(passStatus?.passExpiresAt ?? null, now);
+  const passOnSale = passStatus?.sales.onSale === true;
+
   const { data: todoRateStatistics, isLoading } = useQueryWith402Retry({
     queryKey: [QueryKey.todoRateStatistics, id],
     queryFn: StatisticsAPI.getTodoRatesByWeeks,
@@ -238,6 +249,21 @@ export default function Profile() {
       <View className="mb-40 justify-between px-5">
         <Text className="mb-6 text-lg font-bold">메뉴</Text>
         <View className="gap-4">
+          {passRemaining ? (
+            <MenuButton
+              title={`스위치온 패스 · ${passRemaining}`}
+              icon={<MaterialIcons name="verified" size={24} color={colors.green[600]} />}
+              onPress={passOnSale ? () => router.push('/pass') : undefined}
+            />
+          ) : (
+            passOnSale && (
+              <MenuButton
+                title="패스 구매"
+                icon={<MaterialIcons name="local-offer" size={24} color={colors.green[600]} />}
+                onPress={() => router.push('/pass')}
+              />
+            )
+          )}
           <Link href={'/(inquiry)'} asChild>
             <MenuButton
               title="문의사항"
@@ -272,7 +298,7 @@ export default function Profile() {
         iconElement={<MaterialIcons name="delete-forever" size={60} color={colors.red[600]} />}
         visible={isModalVisible}
         title="정말로 탈퇴하시겠어요?"
-        message="탈퇴 시 모든 데이터가 삭제되며, 다시 복구할 수 없어요."
+        message={getDeleteAccountMessage(DELETE_ACCOUNT_MESSAGE, passRemainingDays)}
         onConfirm={requireOnline(handleConfirm)}
         onCancel={() => setModalVisible(false)}
       />
