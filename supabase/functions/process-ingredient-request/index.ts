@@ -3,6 +3,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { Image } from 'https://deno.land/x/imagescript@1.2.15/mod.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { isServiceRoleRequest } from '../_shared/serviceRole.ts';
 import {
   buildRequesterNotification,
   decideFinalStatus,
@@ -11,7 +12,6 @@ import {
   hiddenRejectionReport,
   getProcessMode,
   isBlockedByPriorRequests,
-  isServiceRoleRequest,
   withDeadline,
 } from './core.ts';
 import { createImageDeps, findIngredientImage, type ImageDeps } from './image.ts';

@@ -365,3 +365,9 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/get-pass-status/deno.json"
 entrypoint = "./functions/get-pass-status/index.ts"
+
+[functions.sync-voided-purchases]
+enabled = true
+verify_jwt = true
+import_map = "./functions/sync-voided-purchases/deno.json"
+entrypoint = "./functions/sync-voided-purchases/index.ts"
