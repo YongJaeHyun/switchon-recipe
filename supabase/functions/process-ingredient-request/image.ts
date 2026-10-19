@@ -30,9 +30,20 @@ export interface ImageDeps {
   generate(ingredientName: string, imageQueryEn: string): Promise<ImageData>;
 }
 
+const searchSafely = async (deps: ImageDeps, query: string, lang: 'en' | 'ko') => {
+  try {
+    return await deps.search(query, lang);
+  } catch (error) {
+    console.error(`[image] Pixabay 검색 실패 (${query}):`, error);
+    return [];
+  }
+};
+
 const searchCandidates = async (candidate: CandidateIngredient, deps: ImageDeps) => {
-  const hits = [...(await deps.search(candidate.imageQueryEn, 'en'))];
-  if (hits.length < MIN_ENGLISH_HITS) hits.push(...(await deps.search(candidate.name, 'ko')));
+  const hits = [...(await searchSafely(deps, candidate.imageQueryEn, 'en'))];
+  if (hits.length < MIN_ENGLISH_HITS) {
+    hits.push(...(await searchSafely(deps, candidate.name, 'ko')));
+  }
 
   const unique = hits.filter((hit, index) => hits.findIndex((h) => h.id === hit.id) === index);
   return unique.slice(0, MAX_PIXABAY_CANDIDATES);
@@ -82,13 +93,13 @@ const toBase64 = (bytes: Uint8Array) => {
 
 const fromBase64 = (base64: string) => Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
 
-const geminiUrl = (model: string, method: string, apiKey: string) =>
-  `https://generativelanguage.googleapis.com/v1beta/models/${model}:${method}?key=${apiKey}`;
+const geminiUrl = (model: string, method: string) =>
+  `https://generativelanguage.googleapis.com/v1beta/models/${model}:${method}`;
 
-const postJson = async (url: string, body: unknown, label: string) => {
+const postJson = async (url: string, apiKey: string, body: unknown, label: string) => {
   const res = await fetchWithRetry(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`${label} 실패 (${res.status}): ${await res.text()}`);
@@ -142,7 +153,8 @@ export const createImageDeps = ({
 
   verify: async (image, name) => {
     const json = await postJson(
-      geminiUrl('gemini-2.5-flash', 'generateContent', geminiKey),
+      geminiUrl('gemini-2.5-flash', 'generateContent'),
+      geminiKey,
       {
         contents: [
           {
@@ -172,7 +184,8 @@ export const createImageDeps = ({
 
   generate: async (name, queryEn) => {
     const json = await postJson(
-      geminiUrl(IMAGE_MODEL, 'generateContent', geminiKey),
+      geminiUrl(IMAGE_MODEL, 'generateContent'),
+      geminiKey,
       {
         contents: [{ role: 'user', parts: [{ text: generatePrompt(name, queryEn) }] }],
         generationConfig: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: '1:1' } },

@@ -7,6 +7,8 @@ export interface RetryOptions {
   timeoutMs?: number;
 }
 
+export const redactSecrets = (message: string) => message.replace(/key=[^&\s)]+/g, 'key=***');
+
 const isTransient = (status: number) => status === 429 || status >= 500;
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -23,7 +25,9 @@ export const fetchWithRetry = async (
       const res = await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
       if (res.ok || !isTransient(res.status) || isLastAttempt) return res;
     } catch (error) {
-      if (isLastAttempt) throw error;
+      if (isLastAttempt) {
+        throw new Error(redactSecrets(error instanceof Error ? error.message : String(error)));
+      }
     }
 
     await sleep(retryDelayMs * attempt);

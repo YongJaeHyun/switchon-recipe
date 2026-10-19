@@ -45,6 +45,10 @@ describe('loadIngredientsWithCache', () => {
     await expect(loadIngredientsWithCache(failing)).rejects.toThrow('network');
   });
 
+  it('throws when the fetch is empty and there is no cache', async () => {
+    await expect(loadIngredientsWithCache(async () => [])).rejects.toThrow();
+  });
+
   it('keeps a non-empty cache when the fetcher returns an empty list', async () => {
     await loadIngredientsWithCache(async () => cached);
     expect(await loadIngredientsWithCache(async () => [])).toEqual(cached);

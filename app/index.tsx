@@ -7,6 +7,9 @@ import { prefetchIngredients } from 'hooks/useIngredients';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { useEffect, useState } from 'react';
 import { useUserStore } from 'stores/userStore';
+import { withTimeout } from 'utils/withTimeout';
+
+const INGREDIENT_PREFETCH_TIMEOUT_MS = 5000;
 
 SplashScreen.preventAutoHideAsync();
 
@@ -41,12 +44,16 @@ export default function Index() {
     };
 
     const preloadIngredients = async () => {
+      // 스플래시가 네트워크를 오래 기다리지 않도록: 목록은 최대 5초, 이미지는 기다리지 않음
       try {
-        const ingredients = await prefetchIngredients();
-        await Image.prefetch(
+        const ingredients = await withTimeout(
+          prefetchIngredients(),
+          INGREDIENT_PREFETCH_TIMEOUT_MS
+        );
+        Image.prefetch(
           ingredients.map((i) => i.image),
           'disk'
-        );
+        ).catch((error) => console.error('[preloadIngredients]', error));
       } catch (error) {
         console.error('[preloadIngredients]', error);
       }

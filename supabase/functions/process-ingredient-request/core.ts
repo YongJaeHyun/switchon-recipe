@@ -154,3 +154,56 @@ export const formatSlackReport = (report: ProcessReport) => {
 
   return lines.join('\n');
 };
+
+// verify_jwt가 서명을 검증한 뒤이므로, 여기서는 role만 확인 (anon 키·유저 토큰 차단)
+export const isServiceRoleRequest = (authorization: string | null) => {
+  const token = authorization?.replace(/^Bearer\s+/i, '');
+  const payload = token?.split('.')[1];
+  if (!payload) return false;
+
+  try {
+    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(json).role === 'service_role';
+  } catch {
+    return false;
+  }
+};
+
+const STALE_PENDING_MS = 10 * 60 * 1000;
+
+interface PriorRequest {
+  id: number;
+  status: string;
+  created_at: string;
+}
+
+// 같은 이름의 다른 요청 때문에 이번 요청을 처리하지 않아도 되는지.
+// duplicate/failed는 막지 않음 (실패한 이름은 다시 요청하면 재처리 — 스펙 4.7)
+export const isBlockedByPriorRequests = (
+  self: PriorRequest,
+  others: PriorRequest[],
+  now: Date = new Date()
+) =>
+  others.some(
+    (r) =>
+      r.status === 'added' ||
+      r.status === 'rejected' ||
+      (r.status === 'pending' &&
+        r.id < self.id &&
+        now.getTime() - new Date(r.created_at).getTime() < STALE_PENDING_MS)
+  );
+
+export class DeadlineExceededError extends Error {
+  constructor(ms: number) {
+    super(`처리 시간 초과 (${Math.round(ms / 1000)}초)`);
+    this.name = 'DeadlineExceededError';
+  }
+}
+
+export const withDeadline = <T>(promise: Promise<T>, ms: number): Promise<T> => {
+  let timer: ReturnType<typeof setTimeout>;
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new DeadlineExceededError(ms)), ms);
+  });
+  return Promise.race([promise, deadline]).finally(() => clearTimeout(timer));
+};

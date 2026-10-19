@@ -124,6 +124,17 @@ describe('findIngredientImage', () => {
     expect(labelOf(result!.bytes)).toBe(hit(2).largeImageURL);
   });
 
+  it('falls back to generation when the pixabay search fails', async () => {
+    const { deps } = createFakeDeps({ passing: ['generated-1'] });
+    deps.search = async () => {
+      throw new Error('Pixabay 503');
+    };
+
+    const result = await findIngredientImage(candidate, deps);
+
+    expect(result?.source).toBe('generated');
+  });
+
   it('dedupes hits returned by both searches', async () => {
     const { deps, calls } = createFakeDeps({ en: [hit(1)], ko: [hit(1), hit(2)] });
 

@@ -3,7 +3,15 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { Image } from 'https://deno.land/x/imagescript@1.2.15/mod.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { decideFinalStatus, findExactMatch, formatSlackReport, getProcessMode } from './core.ts';
+import {
+  decideFinalStatus,
+  findExactMatch,
+  formatSlackReport,
+  getProcessMode,
+  isBlockedByPriorRequests,
+  isServiceRoleRequest,
+  withDeadline,
+} from './core.ts';
 import { createImageDeps, findIngredientImage, type ImageDeps } from './image.ts';
 import { judgeIngredient } from './judge.ts';
 import type {
@@ -23,6 +31,8 @@ const errorMessage = (error: unknown) => (error instanceof Error ? error.message
 const IMAGE_SIZE = 640;
 const JPEG_QUALITY = 80;
 const UNIQUE_VIOLATION = '23505';
+// 무료 플랜 wall clock(150초) 안에 상태 저장·Slack 보고까지 끝내기 위한 처리 시간 상한
+const PROCESS_DEADLINE_MS = 120 * 1000;
 
 const requireEnv = (key: string) => {
   const value = Deno.env.get(key);
@@ -51,16 +61,23 @@ const loadExistingIngredients = async (): Promise<ExistingIngredient[]> => {
 const hasPriorRequest = async (record: RequestRecord) => {
   const { data, error } = await supabase
     .from('ingredient_request')
-    .select('id, status')
+    .select('id, status, created_at')
     .eq('normalized_name', record.normalized_name)
     .neq('id', record.id);
   if (error) throw error;
 
-  return data.some(
-    (r) =>
-      ['added', 'duplicate', 'rejected'].includes(r.status) ||
-      (r.status === 'pending' && r.id < record.id)
-  );
+  return isBlockedByPriorRequests(record, data);
+};
+
+// 웹훅 payload 대신 DB의 현재 값을 사용 (이미 처리된 요청이면 null)
+const loadPendingRequest = async (id: number): Promise<RequestRecord | null> => {
+  const { data, error } = await supabase
+    .from('ingredient_request')
+    .select('id, name, normalized_name, status, created_at')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.status === 'pending' ? data : null;
 };
 
 const toSquareJpeg = async (bytes: Uint8Array) => {
@@ -70,7 +87,7 @@ const toSquareJpeg = async (bytes: Uint8Array) => {
   return cropped.resize(IMAGE_SIZE, IMAGE_SIZE).encodeJPEG(JPEG_QUALITY);
 };
 
-const nextSortOrder = async () => {
+const loadNextSortOrder = async () => {
   const { data, error } = await supabase
     .from('ingredient')
     .select('sort_order')
@@ -83,6 +100,7 @@ const nextSortOrder = async () => {
 const addCandidate = async (
   candidate: CandidateIngredient,
   requestId: number,
+  sortOrder: number,
   imageDeps: ImageDeps
 ): Promise<IngredientOutcome> => {
   const found = await findIngredientImage(candidate, imageDeps);
@@ -104,7 +122,7 @@ const addCandidate = async (
     image_url: imageUrl,
     image_source: found.source,
     source: 'auto',
-    sort_order: await nextSortOrder(),
+    sort_order: sortOrder,
     request_id: requestId,
     ai_reason: candidate.reason,
   });
@@ -152,15 +170,16 @@ const buildReport = async (
   }
 
   const imageDeps = createImageDeps({ geminiKey, pixabayKey: requireEnv('PIXABAY_API_KEY') });
-  const outcomes: IngredientOutcome[] = [];
+  const baseSortOrder = await loadNextSortOrder();
 
-  for (const candidate of judgement.ingredients) {
-    try {
-      outcomes.push(await addCandidate(candidate, record.id, imageDeps));
-    } catch (error) {
-      outcomes.push({ candidate, status: 'failed', error: errorMessage(error) });
-    }
-  }
+  // 후보는 최대 4개라 병렬 처리 (순차 처리 시 실행 시간 제한을 넘을 수 있음)
+  const outcomes: IngredientOutcome[] = await Promise.all(
+    judgement.ingredients.map((candidate, index) =>
+      addCandidate(candidate, record.id, baseSortOrder + index, imageDeps).catch(
+        (error): IngredientOutcome => ({ candidate, status: 'failed', error: errorMessage(error) })
+      )
+    )
+  );
 
   return { ...base, status: decideFinalStatus(outcomes), reason: judgement.reason, outcomes };
 };
@@ -182,7 +201,7 @@ const processRequest = async (record: RequestRecord, mode: 'new' | 'retry') => {
   let report: ProcessReport;
 
   try {
-    report = await buildReport(record, mode);
+    report = await withDeadline(buildReport(record, mode), PROCESS_DEADLINE_MS);
   } catch (error) {
     console.error(error);
     report = {
@@ -204,15 +223,21 @@ const processRequest = async (record: RequestRecord, mode: 'new' | 'retry') => {
 };
 
 serve(async (req: Request) => {
+  // Database Webhook(service role)만 허용. anon 키나 유저 토큰으로 직접 호출하는 것을 차단
+  if (!isServiceRoleRequest(req.headers.get('Authorization'))) {
+    return new Response(JSON.stringify({ error: 'forbidden' }), { status: 403 });
+  }
+
   try {
     const payload: WebhookPayload = await req.json();
     const mode = getProcessMode(payload);
+    const record = mode && payload.record ? await loadPendingRequest(payload.record.id) : null;
 
-    if (!mode || !payload.record) {
+    if (!mode || !record) {
       return new Response(JSON.stringify({ skipped: true }), { status: 200 });
     }
 
-    EdgeRuntime.waitUntil(processRequest(payload.record, mode));
+    EdgeRuntime.waitUntil(processRequest(record, mode));
     return new Response(JSON.stringify({ accepted: true }), { status: 202 });
   } catch (error) {
     console.error(error);
