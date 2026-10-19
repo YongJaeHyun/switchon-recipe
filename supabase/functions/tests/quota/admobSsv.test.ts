@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   createKeyFetcher,
   derToRawEcdsa,
+  isAllowedAdUnit,
   parseSsvQuery,
   verifySsv,
   type SsvKey,
@@ -83,6 +84,12 @@ describe('parseSsvQuery', () => {
     expect(parsed?.params.userId).toBeNull();
   });
 
+  it('업무 파라미터는 서명 대상 메시지에서만 읽는다', () => {
+    expect(parseSsvQuery('ad_unit=2&transaction_id=t&signature=s&key_id=1&user_id=x')).toBeNull();
+    expect(parseSsvQuery('ad_unit=2&transaction_id=t&signature=s&user_id=x&key_id=1')).toBeNull();
+    expect(parseSsvQuery('ad_unit=2&transaction_id=t&signature=s&key_id=1&')).toBeNull();
+  });
+
   it('signature나 key_id가 없으면 null', () => {
     expect(parseSsvQuery(MESSAGE)).toBeNull();
     expect(parseSsvQuery(`${MESSAGE}&signature=abc`)).toBeNull();
@@ -116,6 +123,22 @@ describe('verifySsv', () => {
     const tampered = query.replace('reward_amount=1', 'reward_amount=9');
     expect(tampered).not.toBe(query);
     expect(await verifySsv(tampered, [key])).toBeNull();
+  });
+
+  it('서명 뒤에 user_id를 덧붙이면 null (서명 범위 밖 파라미터 거부)', async () => {
+    const { privateKey, key } = await makeKey();
+    const message =
+      'ad_network=1&ad_unit=2&reward_amount=1&reward_item=r&timestamp=1&transaction_id=t';
+    const query = await signedQuery(privateKey, message);
+    expect(await verifySsv(query, [key])).not.toBeNull();
+    expect(await verifySsv(`${query}&user_id=${UID}`, [key])).toBeNull();
+  });
+
+  it('key_id 뒤에 어떤 파라미터든 붙으면 null', async () => {
+    const { privateKey, key } = await makeKey();
+    const query = await signedQuery(privateKey);
+    expect(await verifySsv(`${query}&foo=bar`, [key])).toBeNull();
+    expect(await verifySsv(`${query}&reward_amount=9`, [key])).toBeNull();
   });
 
   it('모르는 key_id면 null', async () => {
@@ -186,17 +209,72 @@ describe('createKeyFetcher', () => {
     }
   });
 
-  it('forceRefresh면 캐시를 무시하고 다시 받는다', async () => {
+  it('forceRefresh면 최소 간격이 지난 뒤에만 다시 받는다', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchFn = vi.fn(async () => keysResponse());
+      const getKeys = createKeyFetcher(fetchFn as unknown as typeof fetch);
+      await getKeys();
+      await getKeys(true); // 60초 안 → 캐시
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+      vi.advanceTimersByTime(60_001);
+      await getKeys(true);
+      expect(fetchFn).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('강제 갱신 최소 간격은 인자로 바꿀 수 있다', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchFn = vi.fn(async () => keysResponse());
+      const getKeys = createKeyFetcher(fetchFn as unknown as typeof fetch, 24 * 3600_000, 1000);
+      await getKeys();
+      vi.advanceTimersByTime(999);
+      await getKeys(true);
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+      vi.advanceTimersByTime(2);
+      await getKeys(true);
+      expect(fetchFn).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('캐시가 없으면 forceRefresh도 바로 받는다', async () => {
     const fetchFn = vi.fn(async () => keysResponse());
     const getKeys = createKeyFetcher(fetchFn as unknown as typeof fetch);
-    await getKeys();
     await getKeys(true);
-    expect(fetchFn).toHaveBeenCalledTimes(2);
+    expect(fetchFn).toHaveBeenCalledTimes(1);
   });
 
   it('응답이 실패면 예외', async () => {
     const fetchFn = vi.fn(async () => new Response('nope', { status: 503 }));
     const getKeys = createKeyFetcher(fetchFn as unknown as typeof fetch);
     await expect(getKeys()).rejects.toThrow();
+  });
+});
+
+describe('isAllowedAdUnit', () => {
+  it('목록에 있으면 true', () => {
+    expect(isAllowedAdUnit('5224354917', '5224354917')).toBe(true);
+    expect(isAllowedAdUnit('222', '111,222')).toBe(true);
+  });
+
+  it('목록에 없으면 false', () => {
+    expect(isAllowedAdUnit('333', '111,222')).toBe(false);
+    expect(isAllowedAdUnit('', '111,222')).toBe(false);
+  });
+
+  it('env가 없거나 비어 있으면 false (fail closed)', () => {
+    expect(isAllowedAdUnit('111', undefined)).toBe(false);
+    expect(isAllowedAdUnit('111', '')).toBe(false);
+    expect(isAllowedAdUnit('', ' , ')).toBe(false);
+  });
+
+  it('목록의 공백은 무시한다', () => {
+    expect(isAllowedAdUnit('222', ' 111 , 222 ')).toBe(true);
+    expect(isAllowedAdUnit('111', '111 ,\n222')).toBe(true);
   });
 });

@@ -5,6 +5,7 @@
 
 export const VERIFIER_KEYS_URL = 'https://www.gstatic.com/admob/reward/verifier-keys.json';
 const DEFAULT_KEY_TTL_MS = 24 * 60 * 60 * 1000;
+const DEFAULT_MIN_REFRESH_INTERVAL_MS = 60_000;
 
 export interface SsvKey {
   keyId: number;
@@ -22,6 +23,10 @@ export interface SsvParams {
 }
 
 // signature와 key_id는 항상 쿼리 맨 끝에 오므로, 그 앞 원문이 서명 대상 메시지다.
+// 업무 파라미터는 서명 대상 메시지에서만 읽고, 꼬리는 정확히 'signature=..&key_id=..'여야 한다
+// (서명 뒤에 user_id 등을 덧붙여 서명 범위 밖 값을 끼워 넣는 위조 차단).
+const SIGNATURE_TAIL = /^signature=([^&]+)&key_id=(\d+)$/;
+
 export const parseSsvQuery = (
   rawQuery: string
 ): { params: SsvParams; signedMessage: string } | null => {
@@ -30,11 +35,17 @@ export const parseSsvQuery = (
   if (signatureIndex <= 0) return null;
 
   const signedMessage = query.slice(0, signatureIndex);
-  const search = new URLSearchParams(query);
-  const signature = search.get('signature');
-  const keyIdText = search.get('key_id');
-  if (!signature || !keyIdText || !/^\d+$/.test(keyIdText)) return null;
+  const tail = SIGNATURE_TAIL.exec(query.slice(signatureIndex + 1));
+  if (!tail) return null;
 
+  let signature: string;
+  try {
+    signature = decodeURIComponent(tail[1]);
+  } catch {
+    return null;
+  }
+
+  const search = new URLSearchParams(signedMessage);
   const rewardAmount = Number(search.get('reward_amount'));
   return {
     signedMessage,
@@ -44,10 +55,22 @@ export const parseSsvQuery = (
       rewardItem: search.get('reward_item') ?? '',
       transactionId: search.get('transaction_id') ?? '',
       userId: search.get('user_id') || null,
-      keyId: Number(keyIdText),
+      keyId: Number(tail[2]),
       signature,
     },
   };
+};
+
+// Google 공개키는 모든 AdMob 앱 공용이라, 다른 앱의 서명된 콜백도 검증을 통과한다.
+// 그래서 우리 보상형 광고 단위(콜백 ad_unit 값 = 광고 단위 ID의 '/' 뒤 숫자)만 허용한다.
+// allowlistEnv는 쉼표 구분 목록. 비어 있거나 없으면 전부 거부 (fail closed).
+export const isAllowedAdUnit = (adUnit: string, allowlistEnv: string | undefined): boolean => {
+  if (!adUnit || !allowlistEnv) return false;
+  return allowlistEnv
+    .split(',')
+    .map((id) => id.trim())
+    .filter((id) => id.length > 0)
+    .includes(adUnit);
 };
 
 // DER SEQUENCE { INTEGER r, INTEGER s } → WebCrypto가 받는 raw r||s (각 32바이트)
@@ -135,15 +158,20 @@ export const verifySsv = async (rawQuery: string, keys: SsvKey[]): Promise<SsvPa
   }
 };
 
-// Google 공개키 목록을 메모리에 캐시한다. forceRefresh는 캐시에 없는 key_id(키 교체)를 만났을 때 쓴다.
+// Google 공개키 목록을 메모리에 캐시한다. forceRefresh는 캐시에 없는 key_id(키 교체)를 만났을 때 쓰며,
+// 모르는 key_id 요청마다 재조회하지 않도록 마지막 조회 후 minRefreshIntervalMs 안에는 캐시를 돌려준다.
 export const createKeyFetcher = (
   fetchFn: typeof fetch = (input, init) => fetch(input, init),
-  ttlMs: number = DEFAULT_KEY_TTL_MS
+  ttlMs: number = DEFAULT_KEY_TTL_MS,
+  minRefreshIntervalMs: number = DEFAULT_MIN_REFRESH_INTERVAL_MS
 ): ((forceRefresh?: boolean) => Promise<SsvKey[]>) => {
   let cached: { keys: SsvKey[]; fetchedAt: number } | null = null;
 
   return async (forceRefresh = false) => {
-    if (cached && !forceRefresh && Date.now() - cached.fetchedAt < ttlMs) return cached.keys;
+    if (cached) {
+      const age = Date.now() - cached.fetchedAt;
+      if (forceRefresh ? age < minRefreshIntervalMs : age < ttlMs) return cached.keys;
+    }
 
     const response = await fetchFn(VERIFIER_KEYS_URL);
     if (!response.ok) throw new Error(`AdMob 공개키 조회 실패: ${response.status}`);
