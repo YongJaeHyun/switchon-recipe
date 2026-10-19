@@ -342,6 +342,10 @@ entrypoint = "./functions/create-recipe-by-gemini/index.ts"
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/create-recipe-by-gemini/*.html" ]
 
+[functions.create-recipe-by-gemini-test]
+enabled = true
+verify_jwt = true
+
 [functions.process-ingredient-request]
 enabled = true
 verify_jwt = true
