@@ -37,7 +37,7 @@
 
 - **재료 데이터와 이미지를 앱 번들에서 Supabase(DB + Storage)로 옮긴다.** 운영자가 OTA/코드 자동 커밋 방식 대신 이 방식을 선택했다. 처음 한 번은 기존 재료 이전과 앱 업데이트 1회 배포가 필요하다는 점을 알고 동의했다.
 - **AI는 Gemini를 쓴다.** 레시피 생성(`supabase/functions/create-recipe-by-gemini`)에 이미 쓰고 있다. (내 결정)
-- **이미지는 Pixabay 우선, 없으면 AI 생성(Imagen 4 Fast)**. 운영자가 Pixabay를 고집하지 않는다고 했다. 실사 사진이 기존 이미지와 잘 어울리지만 한국 재료는 사진이 없는 경우가 많아서, 생성 이미지를 대안으로 둔다. Imagen은 `create-recipe-by-gemini`에서 같은 `GEMINI_API_KEY`로 이미 쓰고 있다. Unsplash와 Pexels는 원본 링크 사용이나 앱 내 출처 표시를 요구해서 뺐다. (내 결정)
+- **이미지는 Pixabay 우선, 없으면 AI 생성(Gemini 이미지 모델. Imagen 4가 API에서 제거되어 `gemini-3.1-flash-lite-image`로 변경, 장당 $0.0336)**. 운영자가 Pixabay를 고집하지 않는다고 했다. 실사 사진이 기존 이미지와 잘 어울리지만 한국 재료는 사진이 없는 경우가 많아서, 생성 이미지를 대안으로 둔다. Imagen은 `create-recipe-by-gemini`에서 같은 `GEMINI_API_KEY`로 이미 쓰고 있다. Unsplash와 Pexels는 원본 링크 사용이나 앱 내 출처 표시를 요구해서 뺐다. (내 결정)
 - **결과 알림은 운영자 Slack으로만** 보낸다. 코드 패턴은 `notify-inquiry`를 따르되, 웹훅은 **새 시크릿 `INGREDIENT_SLACK_WEBHOOK_URL`** 을 쓴다. 기존 `SLACK_WEBHOOK_URL`은 문의 채널용이라 건드리지 않는다. 값은 지금 앱의 `EXPO_PUBLIC_SLACK_WEBHOOK_URL`과 같은 URL로 시작해, 재료 요청이 오던 채널에 그대로 보고가 온다. (내 결정)
 
 ## 4. 동작
@@ -122,7 +122,7 @@ RLS: 유저는 `ingredient` 읽기만(활성 재료), `ingredient_request`는 �
 1. Pixabay API로 영어 키워드를 검색한다(사진만, safesearch). 결과가 부족하면 한국어 키워드로도 검색한다.
 2. 상위 후보 몇 장을 Gemini(비전)로 하나씩 검증한다. 질문은 "이 사진이 '<재료명>'을 명확하게 보여주는가? 다른 재료가 주가 되거나, 요리된 완성 요리이거나, 텍스트/워터마크 위주가 아닌가?"이다.
 3. 처음으로 통과한 후보를 쓴다.
-4. **Pixabay 후보가 모두 탈락하면 Imagen 4 Fast로 생성한다.** 기존 재료 사진과 어울리도록 실사풍으로 만든다: 재료 하나만, 조리 전 상태, 단순한 배경, 자연광, 텍스트 없음. 생성 이미지도 2번 검증을 똑같이 통과해야 한다. 생성은 최대 2번 시도한다(수치는 빌더 재량).
+4. **Pixabay 후보가 모두 탈락하면 Gemini 이미지 모델(`gemini-3.1-flash-lite-image`)로 생성한다.** 기존 재료 사진과 어울리도록 실사풍으로 만든다: 재료 하나만, 조리 전 상태, 단순한 배경, 자연광, 텍스트 없음. 생성 이미지도 2번 검증을 똑같이 통과해야 한다. 생성은 최대 2번 시도한다(수치는 빌더 재량).
 5. 고른 이미지는 정사각형에 가깝게 크롭하고 리사이즈해서 업로드한다. 기존 재료 카드가 `objectFit: cover`로 보인다.
 6. **생성 이미지까지 통과하지 못하면 그 재료는 추가하지 않는다.** 요청 상태는 `failed`, Slack에 "맞는 이미지 없음"으로 보고한다. (안티 목표 1)
 7. `ingredient` 테이블에 `image_source`(`pixabay` / `generated` / `seed` / `manual`)를 기록하고, Slack 보고에도 표시한다. 운영자가 생성 이미지를 골라서 확인할 수 있게 하기 위해서다.

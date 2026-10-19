@@ -4,6 +4,8 @@ import type { CandidateIngredient, ImageSource } from './types.ts';
 const MAX_PIXABAY_CANDIDATES = 5;
 const MIN_ENGLISH_HITS = 3;
 const MAX_GENERATIONS = 2;
+// Imagen 4는 Gemini API에서 제거됨(2026-10 확인). 가장 저렴한 Gemini 이미지 모델 사용
+const IMAGE_MODEL = 'gemini-3.1-flash-lite-image';
 
 export interface PixabayHit {
   id: number;
@@ -170,15 +172,17 @@ export const createImageDeps = ({
 
   generate: async (name, queryEn) => {
     const json = await postJson(
-      geminiUrl('imagen-4.0-fast-generate-001', 'predict', geminiKey),
+      geminiUrl(IMAGE_MODEL, 'generateContent', geminiKey),
       {
-        instances: [{ prompt: generatePrompt(name, queryEn) }],
-        parameters: { sampleCount: 1, aspectRatio: '1:1' },
+        contents: [{ role: 'user', parts: [{ text: generatePrompt(name, queryEn) }] }],
+        generationConfig: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: '1:1' } },
       },
-      'Imagen 이미지 생성'
+      '이미지 생성'
     );
-    const base64 = json?.predictions?.[0]?.bytesBase64Encoded;
-    if (!base64) throw new Error('Imagen 이미지 생성 결과 없음');
-    return { bytes: fromBase64(base64), mimeType: 'image/png' };
+    const parts: { inlineData?: { mimeType: string; data: string } }[] =
+      json?.candidates?.[0]?.content?.parts ?? [];
+    const image = parts.find((p) => p.inlineData)?.inlineData;
+    if (!image) throw new Error('이미지 생성 결과 없음');
+    return { bytes: fromBase64(image.data), mimeType: image.mimeType };
   },
 });
