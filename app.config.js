@@ -67,6 +67,7 @@ export default {
       'expo-font',
       'expo-build-properties',
       'expo-notifications',
+      'expo-iap',
     ],
     orientation: 'portrait',
     icon: './assets/icon.png',

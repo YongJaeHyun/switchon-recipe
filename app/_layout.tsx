@@ -11,6 +11,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useAuthStateObserver } from 'hooks/useAuthStateObserver';
 import { useAutoUpdate } from 'hooks/useAutoUpdate';
 import { useNotificationObserver } from 'hooks/useNotificationObserver';
+import { usePassPurchaseRecovery } from 'hooks/usePassPurchaseRecovery';
 import { queryClient } from 'lib/queryClient';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -50,6 +51,7 @@ function RootLayout() {
 
   useNotificationObserver();
   useAuthStateObserver();
+  usePassPurchaseRecovery();
 
   useEffect(() => {
     if (ref) {
