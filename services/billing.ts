@@ -14,6 +14,7 @@ type IapPurchase = Awaited<ReturnType<ExpoIap['getAvailablePurchases']>>[number]
 // Play Purchase.PurchaseState
 const PURCHASE_STATE_PURCHASED = 1;
 const USER_CANCELLED = 'E_USER_CANCELLED';
+const ALREADY_OWNED = 'E_ALREADY_OWNED';
 
 export class BillingUnavailableError extends Error {
   constructor(cause?: unknown) {
@@ -62,8 +63,8 @@ const toPassPurchase = (purchase: IapPurchase): PassPurchase | null => {
   return { productId: purchase.productId, purchaseToken: purchase.purchaseToken };
 };
 
-const isUserCancelled = (error: unknown) =>
-  typeof error === 'object' && error !== null && 'code' in error && error.code === USER_CANCELLED;
+const hasErrorCode = (error: unknown, code: string) =>
+  typeof error === 'object' && error !== null && 'code' in error && error.code === code;
 
 // 결제 연결. 네이티브 모듈이 없거나 Play 서비스를 쓸 수 없으면 BillingUnavailableError로 실패
 export async function initBilling(): Promise<void> {
@@ -86,6 +87,7 @@ export async function getProduct(
 }
 
 // Play 결제창을 띄운다. 취소하거나 결제가 보류 중이면 null. 그 밖의 실패는 throw
+// 이미 보유 중(서버가 아직 소비 안 한 같은 상품 구매가 있음)이면 그 구매를 돌려줘서 호출부가 검증하게 한다 (서버는 멱등)
 // uid는 obfuscatedAccountIdAndroid로 넘기고, 서버가 요청한 유저와 같은지 확인한다
 export async function purchasePass(productId: string, uid: string): Promise<PassPurchase | null> {
   const iap = await connect();
@@ -103,7 +105,11 @@ export async function purchasePass(productId: string, uid: string): Promise<Pass
       .find((p): p is PassPurchase => p?.productId === productId);
     return purchase ?? null;
   } catch (error) {
-    if (isUserCancelled(error)) return null;
+    if (hasErrorCode(error, USER_CANCELLED)) return null;
+    if (hasErrorCode(error, ALREADY_OWNED)) {
+      const owned = (await getUnconsumedPassPurchases()).find((p) => p.productId === productId);
+      if (owned) return owned;
+    }
     throw error;
   }
 }
