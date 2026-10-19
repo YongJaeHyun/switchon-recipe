@@ -98,6 +98,23 @@ export function getSalesState(now: Date, setting: PremiumSetting): SalesState {
   const { early1Start, early1End, early2Start, early2End } = windows;
   const t = now.getTime();
 
+  // 무료 기간 시작 전에는 팔지 않음: 하루 먼저 산 사람이 정가를 내는 일을 막기 위해 (운영자 결정)
+  if (t < early1Start.getTime()) {
+    return {
+      onSale: false,
+      freeActive: false,
+      tier: null,
+      productId: null,
+      priceKrw: null,
+      freeDaysLeft: 0,
+      nextTier: {
+        tier: 'early1',
+        priceKrw: PASS_PRODUCTS.early1.priceKrw,
+        startsAt: early1Start.toISOString(),
+      },
+    };
+  }
+
   let tier: Tier;
   if (t >= early1Start.getTime() && t < early1End.getTime()) {
     tier = 'early1';
@@ -115,13 +132,7 @@ export function getSalesState(now: Date, setting: PremiumSetting): SalesState {
     : 0;
 
   let nextTier: SalesState['nextTier'] = null;
-  if (t < early1Start.getTime()) {
-    nextTier = {
-      tier: 'early1',
-      priceKrw: PASS_PRODUCTS.early1.priceKrw,
-      startsAt: early1Start.toISOString(),
-    };
-  } else if (t < early1End.getTime()) {
+  if (t < early1End.getTime()) {
     nextTier = {
       tier: 'early2',
       priceKrw: PASS_PRODUCTS.early2.priceKrw,

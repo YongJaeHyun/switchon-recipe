@@ -37,12 +37,17 @@ describe('getSalesState', () => {
     expect(state.nextTier).toBeNull();
   });
 
-  it('시작 전: 11/1 00:00 KST 1초 전', () => {
+  it('시작 전: 11/1 00:00 KST 1초 전 — 판매하지 않음 (운영자 결정)', () => {
     const state = getSalesState(new Date('2026-10-31T14:59:59Z'), setting);
-    expect(state.onSale).toBe(true);
-    expect(state.freeActive).toBe(false);
-    expect(state.tier).toBe('regular');
-    expect(state.nextTier?.tier).toBe('early1');
+    expect(state).toMatchObject({
+      onSale: false,
+      freeActive: false,
+      tier: null,
+      productId: null,
+      priceKrw: null,
+      freeDaysLeft: 0,
+    });
+    expect(state.nextTier).toMatchObject({ tier: 'early1', startsAt: '2026-10-31T15:00:00.000Z' });
   });
 
   it('1일째 시작: 11/1 00:00 KST', () => {
