@@ -43,6 +43,7 @@ export interface ProcessReport {
 
 export interface RequestRecord {
   id: number;
+  uid?: string;
   name: string;
   normalized_name: string;
   status: RequestStatus;

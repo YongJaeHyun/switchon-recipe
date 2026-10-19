@@ -34,6 +34,7 @@ const requestNotificationPermission = async () => {
 
     const pushToken = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
     await UserAPI.updatePushToken(pushToken);
+    return pushToken;
   } catch (error) {
     captureError({ error, prefix: '[registerForPushNotificationsAsync]: ' });
   }

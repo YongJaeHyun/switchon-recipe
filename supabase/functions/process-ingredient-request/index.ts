@@ -4,6 +4,7 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { Image } from 'https://deno.land/x/imagescript@1.2.15/mod.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
+  buildRequesterNotification,
   decideFinalStatus,
   findExactMatch,
   formatSlackReport,
@@ -73,7 +74,7 @@ const hasPriorRequest = async (record: RequestRecord) => {
 const loadPendingRequest = async (id: number): Promise<RequestRecord | null> => {
   const { data, error } = await supabase
     .from('ingredient_request')
-    .select('id, name, normalized_name, status, created_at')
+    .select('id, uid, name, normalized_name, status, created_at')
     .eq('id', id)
     .maybeSingle();
   if (error) throw error;
@@ -197,6 +198,22 @@ const sendSlack = async (report: ProcessReport) => {
   }
 };
 
+// 요청한 유저에게 결과 푸시 (notifications insert → 기존 push 함수가 발송)
+const notifyRequester = async (record: RequestRecord, report: ProcessReport) => {
+  const notification = buildRequesterNotification(report);
+  if (!record.uid || !notification) return;
+
+  const { error } = await supabase.from('notifications').insert({
+    uid: record.uid,
+    title: notification.title,
+    body: notification.body,
+    href: notification.href,
+    channel_id: 'INGREDIENT',
+    type: 'INGREDIENT_REQUEST',
+  });
+  if (error) console.error('재료 요청 결과 알림 저장 실패:', error);
+};
+
 const processRequest = async (record: RequestRecord, mode: 'new' | 'retry') => {
   let report: ProcessReport;
 
@@ -220,6 +237,7 @@ const processRequest = async (record: RequestRecord, mode: 'new' | 'retry') => {
   if (error) console.error('요청 상태 저장 실패:', error);
 
   await sendSlack(report);
+  await notifyRequester(record, report);
 };
 
 serve(async (req: Request) => {

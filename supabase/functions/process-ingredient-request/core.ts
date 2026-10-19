@@ -207,3 +207,51 @@ export const withDeadline = <T>(promise: Promise<T>, ms: number): Promise<T> => 
   });
   return Promise.race([promise, deadline]).finally(() => clearTimeout(timer));
 };
+
+export interface RequesterNotification {
+  title: string;
+  body: string;
+  href: string | null;
+}
+
+const LOW_CARB_SCREEN = '/(tabs)/home/recipeCreation/low';
+const ZERO_CARB_SCREEN = '/(tabs)/home/recipeCreation/zero';
+
+// 요청한 유저에게 보낼 결과 알림. 처리 실패는 운영자만 받음 (재처리 후 결과를 보냄)
+export const buildRequesterNotification = (report: ProcessReport): RequesterNotification | null => {
+  const name = report.requestName;
+
+  if (report.status === 'added') {
+    const added = report.outcomes.filter((o) => o.status === 'added').map((o) => o.candidate);
+    const others = added.filter((c) => normalizeName(c.name) !== normalizeName(name));
+    const allZeroCarb = added.every((c) => !c.isCarbohydrate);
+    return {
+      title: `🥗 요청하신 '${added[0]?.name ?? name}' 재료가 추가됐어요!`,
+      body:
+        others.length > 0
+          ? `${others.map((c) => c.name).join(', ')}도 함께 추가됐어요. 지금 레시피에 써보세요.`
+          : '지금 레시피에 써보세요.',
+      href: allZeroCarb ? ZERO_CARB_SCREEN : LOW_CARB_SCREEN,
+    };
+  }
+
+  if (report.status === 'rejected') {
+    return {
+      title: '재료 요청 결과',
+      body: `요청하신 '${name}'은(는) 스위치온 다이어트 기준에 맞지 않아 추가되지 않았어요. ${report.reason}`.trim(),
+      href: null,
+    };
+  }
+
+  if (report.status === 'duplicate') {
+    return {
+      title: '재료 요청 결과',
+      body: report.matchedName
+        ? `요청하신 '${name}'은(는) 이미 '${report.matchedName}'(으)로 등록돼 있어요.`
+        : `요청하신 '${name}'은(는) 이미 검토된 재료예요. 재료 목록을 확인해주세요.`,
+      href: null,
+    };
+  }
+
+  return null;
+};

@@ -2,6 +2,7 @@ import { FontAwesome6 } from '@expo/vector-icons';
 import { IngredientRequestAPI } from 'api/IngredientRequestAPI';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
+import { CHANNELS } from 'const/channels';
 import { useIngredients } from 'hooks/useIngredients';
 import { useLastPathname } from 'hooks/useLastPathname';
 import { useState } from 'react';
@@ -10,6 +11,7 @@ import colors from 'tailwindcss/colors';
 import { RecipeType } from 'types/database';
 import { isCompletedHangul } from 'utils/hangul';
 import { normalizeIngredientName } from 'utils/normalizeIngredientName';
+import { registerForPushNotificationsAsync } from 'utils/notifications';
 import { showErrorToast, showInfoToast, showSuccessToast } from 'utils/showToast';
 import { Nullable } from '../../types/common';
 
@@ -58,8 +60,11 @@ export function IngredientRequest() {
     if (validate()) {
       const result = await IngredientRequestAPI.create(name);
 
-      if (result === 'ok') showSuccessToast({ textType: 'INGREDIENT_REQUEST_SUCCESS' });
-      else if (result === 'limit') showInfoToast({ textType: 'INGREDIENT_REQUEST_LIMIT' });
+      if (result === 'ok') {
+        showSuccessToast({ textType: 'INGREDIENT_REQUEST_SUCCESS' });
+        // 처리 결과를 푸시로 받을 수 있게 권한 요청 (거절해도 요청은 그대로 처리됨)
+        registerForPushNotificationsAsync(CHANNELS.INGREDIENT).catch(() => {});
+      } else if (result === 'limit') showInfoToast({ textType: 'INGREDIENT_REQUEST_LIMIT' });
       else showErrorToast({ textType: 'INGREDIENT_REQUEST_ERROR' });
 
       close();
