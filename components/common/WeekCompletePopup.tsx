@@ -12,6 +12,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
 import colors from 'tailwindcss/colors';
+import { WEEK_CHANGES } from 'utils/dietGuide';
 import { getWeekColor } from 'utils/getWeekColor';
 import AnimatedTextView from './AnimatedTextView';
 import RippleButton from './RippleButton';
@@ -86,6 +87,16 @@ export function WeekCompletePopup() {
                 <Text className="mb-2 text-2xl font-bold">
                   <Text className={getWeekColor(week)}>{week}주차</Text>에는...
                 </Text>
+                {WEEK_CHANGES[week] && (
+                  <View className="mb-6 gap-1.5 rounded-xl bg-neutral-100 p-4">
+                    <Text className="mb-1 font-bold">이번 주 달라지는 점</Text>
+                    {WEEK_CHANGES[week].map((line) => (
+                      <Text key={line} className="text-sm text-neutral-700">
+                        • {line}
+                      </Text>
+                    ))}
+                  </View>
+                )}
                 {week < 4 ? (
                   <Text className="mb-10 text-neutral-600">
                     아래 재료들을 추가로 선택할 수 있어요.

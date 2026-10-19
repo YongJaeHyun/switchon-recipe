@@ -9,6 +9,8 @@ import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { getWeekAndDay } from 'utils/date';
 import { getWeekBGColor, getWeekColor, getWeekColorHex } from 'utils/getWeekColor';
+import { WEEK_CHANGES } from 'utils/dietGuide';
+import { FastingCard } from './FastingCard';
 import { FastingDayBottomSheet } from './FastingDayBottomSheet';
 import { Todo } from './Todo';
 
@@ -34,6 +36,17 @@ export function WeekGuide() {
           {isSecondStep && <Text> (4 ~ 7일) </Text>}
         </Text>
       </View>
+      <FastingCard />
+      {week >= 5 && (
+        <View className="mx-4 mt-4 gap-1 rounded-xl bg-neutral-100 p-4">
+          <Text className="font-bold text-neutral-700">유지기 가이드</Text>
+          {WEEK_CHANGES[5].map((line) => (
+            <Text key={line} className="text-sm text-neutral-600">
+              • {line}
+            </Text>
+          ))}
+        </View>
+      )}
       <View className="m-4 items-center justify-evenly rounded-xl bg-neutral-100 py-4">
         <View className="flex-row items-center gap-1">
           {completedRate === 100 && (
