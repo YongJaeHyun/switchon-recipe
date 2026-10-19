@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { BottomSheetView } from '@gorhom/bottom-sheet';
 import { BottomSheetMethods } from '@gorhom/bottom-sheet/lib/typescript/types';
 import RippleButton from 'components/common/RippleButton';
@@ -6,8 +7,9 @@ import { FASTING_DAYS, FASTING_START_TIMES, FastingDay, FastingTime } from 'cons
 import { useFasting } from 'hooks/useFasting';
 import { useEffect, useRef, useState } from 'react';
 import { FlatList, View } from 'react-native';
+import colors from 'tailwindcss/colors';
 import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
-import { getWeekBorderColor, getWeekColor } from 'utils/getWeekColor';
+import { getWeekColor } from 'utils/getWeekColor';
 import { Maybe } from '../../types/common';
 import { CustomBottomSheet } from '../common/CustomBottomSheet';
 
@@ -110,17 +112,16 @@ export const FastingDayBottomSheet = () => {
             <Text className={getWeekColor(week)}>{week}주차 </Text>
             <Text className="text-neutral-800">24시간 단식 요일</Text>
           </Text>
+          {/* 설정값: 버튼 모양 대신 값 + 화살표로 보여줘서 할 일 버튼과 구분 */}
           <RippleButton
             onPress={openSheet}
-            outerClassName={`border ${getWeekBorderColor(week)}`}
-            className={`rounded-full px-4 py-1.5`}>
-            {days.length === 0 ? (
-              <Text className={`font-bold ${getWeekColor(week)}`}>설정하기</Text>
-            ) : (
-              <Text className={`font-bold ${getWeekColor(week)}`}>
-                {convertFastingDayToText(days)}
-              </Text>
-            )}
+            rounded="lg"
+            rippleColor={colors.neutral[200]}
+            className="flex-row items-center gap-0.5 py-1 pl-2">
+            <Text className={`font-bold ${getWeekColor(week)}`}>
+              {days.length === 0 ? '설정하기' : convertFastingDayToText(days)}
+            </Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.neutral[400]} />
           </RippleButton>
         </View>
       </View>
