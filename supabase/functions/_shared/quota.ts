@@ -11,6 +11,34 @@ export interface QuotaDecision {
 
 export const QUOTA_EXCEEDED_MESSAGE = '오늘 레시피를 모두 만들었어요. 내일 다시 만들 수 있어요.';
 
+// consume_recipe_quota rpc의 jsonb 응답이 기대한 모양인지 확인한다. 모양이 어긋나면(널 또는 필드
+// 타입 불일치) false 양성(429)으로 새지 않도록 여기서 바로 던져 500으로 처리되게 한다.
+export function parseQuotaDecision(data: unknown): QuotaDecision {
+  if (typeof data !== 'object' || data === null) {
+    throw new Error('레시피 한도 응답 형식이 올바르지 않습니다');
+  }
+
+  const d = data as Record<string, unknown>;
+
+  if (
+    typeof d.allowed !== 'boolean' ||
+    typeof d.remaining !== 'number' ||
+    typeof d.limit !== 'number' ||
+    typeof d.isPass !== 'boolean' ||
+    typeof d.canWatchAd !== 'boolean'
+  ) {
+    throw new Error('레시피 한도 응답 형식이 올바르지 않습니다');
+  }
+
+  return {
+    allowed: d.allowed,
+    remaining: d.remaining,
+    limit: d.limit,
+    isPass: d.isPass,
+    canWatchAd: d.canWatchAd,
+  };
+}
+
 export function quotaExceededBody(decision: QuotaDecision): {
   code: 'QUOTA_EXCEEDED';
   error: string;

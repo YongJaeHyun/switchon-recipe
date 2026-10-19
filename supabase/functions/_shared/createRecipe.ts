@@ -8,7 +8,7 @@ import { Image } from 'https://deno.land/x/imagescript@1.2.15/mod.ts';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { requireEnv } from './auth.ts';
-import { quotaExceededBody, runWithQuota, type QuotaDecision } from './quota.ts';
+import { parseQuotaDecision, quotaExceededBody, runWithQuota } from './quota.ts';
 
 const RecipeSchema = z.object({
   recipeName: z.string(),
@@ -57,6 +57,17 @@ export async function handleCreateRecipe(req: Request): Promise<Response> {
     }
   );
 
+  // consume_recipe_quota/release_recipe_quota는 service role 전용으로 revoke되어 있다.
+  // supabase-js는 global.headers.Authorization(위 유저 JWT)이 있으면 그걸 service role 키보다
+  // 우선해서 Bearer로 보내므로, 위 supabaseClient로 이 두 rpc를 호출하면 PostgREST가 요청을
+  // authenticated role로 처리해 항상 거부된다. 그래서 유저 헤더를 전혀 싣지 않는 별도의
+  // service role 전용 클라이언트를 만들어 이 두 rpc에만 쓴다 (auth.getUser/insert/upload는
+  // 기존 supabaseClient 그대로 사용).
+  const adminClient = createClient(
+    requireEnv('SUPABASE_URL'),
+    requireEnv('SUPABASE_SERVICE_ROLE_KEY')
+  );
+
   try {
     const { command, week, is_zero_carb } = await req.json();
 
@@ -67,16 +78,16 @@ export async function handleCreateRecipe(req: Request): Promise<Response> {
 
     if (userError || !user) throw new Error('로그인된 사용자 정보를 가져올 수 없습니다');
 
-    const consume = async (): Promise<QuotaDecision> => {
-      const { data, error } = await supabaseClient.rpc('consume_recipe_quota', {
+    const consume = async () => {
+      const { data, error } = await adminClient.rpc('consume_recipe_quota', {
         p_uid: user.id,
       });
       if (error) throw new Error(`레시피 한도 확인 실패: ${error.message}`);
-      return data as QuotaDecision;
+      return parseQuotaDecision(data);
     };
 
     const release = async (): Promise<void> => {
-      const { error } = await supabaseClient.rpc('release_recipe_quota', { p_uid: user.id });
+      const { error } = await adminClient.rpc('release_recipe_quota', { p_uid: user.id });
       if (error) throw new Error(`레시피 한도 복구 실패: ${error.message}`);
     };
 

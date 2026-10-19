@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  parseQuotaDecision,
   QUOTA_EXCEEDED_MESSAGE,
   quotaExceededBody,
   runWithQuota,
@@ -66,6 +67,36 @@ describe('runWithQuota', () => {
 
     await expect(runWithQuota({ consume, release }, generate)).rejects.toThrow(generateError);
     expect(release).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('parseQuotaDecision', () => {
+  it('유효한 입력이면 QuotaDecision을 그대로 돌려준다', () => {
+    const data = {
+      allowed: true,
+      remaining: 4,
+      limit: 5,
+      isPass: false,
+      canWatchAd: true,
+    };
+
+    expect(parseQuotaDecision(data)).toEqual(data);
+  });
+
+  it('null이면 던진다', () => {
+    expect(() => parseQuotaDecision(null)).toThrow();
+  });
+
+  it('allowed가 boolean이 아니면 던진다', () => {
+    expect(() =>
+      parseQuotaDecision({
+        allowed: 'yes',
+        remaining: 4,
+        limit: 5,
+        isPass: false,
+        canWatchAd: true,
+      })
+    ).toThrow();
   });
 });
 
