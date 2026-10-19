@@ -2,17 +2,12 @@
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { getUid, requireEnv } from '../_shared/auth.ts';
 import { createGooglePlayClient, type ServiceAccount } from '../_shared/googlePlay.ts';
 import type { PurchaseForExpiry } from '../_shared/pass.ts';
 import { type PurchaseRow, type VerifyDeps, verifyPurchase } from './handler.ts';
 
 const UNIQUE_VIOLATION = '23505';
-
-const requireEnv = (key: string) => {
-  const value = Deno.env.get(key);
-  if (!value) throw new Error(`${key} not set`);
-  return value;
-};
 
 const json = (body: unknown, status: number) =>
   new Response(JSON.stringify(body), {
@@ -96,21 +91,6 @@ const deps = (): VerifyDeps => ({
 
   play: getPlayClient(),
 });
-
-const getUid = async (req: Request): Promise<string | null> => {
-  const authorization = req.headers.get('Authorization');
-  if (!authorization) return null;
-
-  const userClient = createClient(requireEnv('SUPABASE_URL'), requireEnv('SUPABASE_ANON_KEY'), {
-    global: { headers: { Authorization: authorization } },
-  });
-  const {
-    data: { user },
-    error,
-  } = await userClient.auth.getUser();
-  if (error || !user) return null;
-  return user.id;
-};
 
 const parseBody = async (
   req: Request

@@ -359,3 +359,9 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/verify-pass-purchase/deno.json"
 entrypoint = "./functions/verify-pass-purchase/index.ts"
+
+[functions.get-pass-status]
+enabled = true
+verify_jwt = true
+import_map = "./functions/get-pass-status/deno.json"
+entrypoint = "./functions/get-pass-status/index.ts"
