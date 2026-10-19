@@ -174,7 +174,7 @@ export function computeExpiry(purchases: PurchaseForExpiry[]): Date | null {
 
   let expiry: Date | null = null;
   for (const purchase of granted) {
-    const base =
+    const base: Date =
       expiry && expiry.getTime() > purchase.purchasedAt.getTime() ? expiry : purchase.purchasedAt;
     expiry = new Date(base.getTime() + PASS_DAYS * DAY_MS);
   }
