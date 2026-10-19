@@ -17,8 +17,16 @@ describe('getTodoAction', () => {
     });
   });
 
-  it('gives a tip for protein shakes', () => {
-    expect(getTodoAction('아침 프로틴쉐이크 마시기')).toMatchObject({ type: 'tip', label: '팁' });
+  it('gives a structured tip for protein shakes', () => {
+    const action = getTodoAction('아침 프로틴쉐이크 마시기');
+    expect(action).toMatchObject({ type: 'tip', label: '팁' });
+    if (action?.type !== 'tip') return;
+    expect(action.tip.title).toBe('프로틴쉐이크 팁');
+    expect(action.tip.points.length).toBeGreaterThanOrEqual(3);
+    for (const point of action.tip.points) {
+      expect(point.title.length).toBeGreaterThan(0);
+      expect(point.text.length).toBeGreaterThan(0);
+    }
   });
 
   it('has no action for other todos', () => {

@@ -1,20 +1,36 @@
 import type { FastingTime } from 'const/fastingDays';
 
 // ── 할 일에서 바로 행동하기 ────────────────────────────────────
+export interface Tip {
+  title: string;
+  description: string;
+  points: { icon: string; title: string; text: string }[];
+}
+
 export type TodoAction =
   | {
       type: 'route';
       label: string;
       href: '/(tabs)/home/recipeCreation/low' | '/(tabs)/home/recipeCreation/zero';
     }
-  | { type: 'tip'; label: string; title: string; body: string };
+  | { type: 'tip'; label: string; tip: Tip };
 
-const SHAKE_TIP = {
+const SHAKE_TIP: Tip = {
   title: '프로틴쉐이크 팁',
-  body:
-    '• 당이 적은(1회 5g 이하) 단백질 쉐이크를 고르세요.\n' +
-    '• 물이나 무가당 두유·아몬드 우유에 타서 드세요.\n' +
-    '• 쉐이크가 없다면 두부, 계란, 닭가슴살처럼 단백질 위주로 가볍게 대체할 수 있어요.',
+  description: '스위치온 초반에는 쉐이크가 식사를 대신해요. 이렇게 고르고 드세요.',
+  points: [
+    { icon: '🥤', title: '저당 제품 고르기', text: '1회 당류 5g 이하인 단백질 쉐이크를 고르세요.' },
+    {
+      icon: '🥛',
+      title: '물이나 무가당 음료에',
+      text: '물, 무가당 두유, 아몬드 우유에 타서 드세요.',
+    },
+    {
+      icon: '🍳',
+      title: '쉐이크가 없다면',
+      text: '두부, 계란, 닭가슴살처럼 단백질 위주로 가볍게 대체할 수 있어요.',
+    },
+  ],
 };
 
 export const getTodoAction = (todo: string): TodoAction | null => {
@@ -22,7 +38,7 @@ export const getTodoAction = (todo: string): TodoAction | null => {
     return { type: 'route', label: '레시피 만들기', href: '/(tabs)/home/recipeCreation/low' };
   if (todo.includes('무탄수식'))
     return { type: 'route', label: '레시피 만들기', href: '/(tabs)/home/recipeCreation/zero' };
-  if (todo.includes('프로틴쉐이크')) return { type: 'tip', label: '팁', ...SHAKE_TIP };
+  if (todo.includes('프로틴쉐이크')) return { type: 'tip', label: '팁', tip: SHAKE_TIP };
   return null;
 };
 

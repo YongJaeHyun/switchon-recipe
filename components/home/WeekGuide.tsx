@@ -12,6 +12,7 @@ import { getWeekBGColor, getWeekColor, getWeekColorHex } from 'utils/getWeekColo
 import { WEEK_CHANGES } from 'utils/dietGuide';
 import { FastingCard } from './FastingCard';
 import { FastingDayBottomSheet } from './FastingDayBottomSheet';
+import { TipBottomSheet } from './TipBottomSheet';
 import { Todo } from './Todo';
 
 export function WeekGuide() {
@@ -89,6 +90,7 @@ export function WeekGuide() {
       ) : (
         <View className="h-4" />
       )}
+      <TipBottomSheet />
     </View>
   );
 }
