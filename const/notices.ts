@@ -7,7 +7,7 @@ const version = APP_VERSION.split('+')[0];
 export const getLatestNotices = (
   latestIngredient: ReturnType<typeof getLatestIngredientNotice>
 ) => {
-  const notices = [`🚀 [v${version} 업데이트] - 무탄수 재료 검색 시, 저탄수 재료도 검색`];
+  const notices = [`🚀 [v${version} 업데이트] - 재료 요청 자동 처리 및 결과 알림`];
 
   if (latestIngredient) {
     const { month, week, names } = latestIngredient;
@@ -18,6 +18,18 @@ export const getLatestNotices = (
 };
 
 export const allNotices = [
+  {
+    version: 'v5.0.5',
+    changes: [
+      '✨ 재료 요청 시, 스위치온 기준에 맞는 재료는 자동으로 바로 추가',
+      '🔔 재료 요청 결과를 푸시 알림으로 안내',
+      '⚡️ 재료 목록을 서버에서 불러와, 앱 업데이트 없이 새 재료 반영',
+      '⚡️ 앱을 켜면 최신 버전이 바로 적용되도록 업데이트 방식 개선',
+      '🐛 재료를 불러오는 중에 레시피 제작 로딩 화면이 뜨는 버그 수정',
+      '🍱 아스파라거스, 케일, 앞다리살, 브로콜리니 추가',
+    ],
+    updatedAt: '2026.10.20',
+  },
   {
     version: 'v5.0.4',
     changes: [
