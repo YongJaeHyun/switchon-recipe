@@ -13,8 +13,8 @@ import { createRecoveryRunner } from 'utils/passRecovery';
 const triggerRecovery = createRecoveryRunner({
   isOnline,
   now: () => Date.now(),
-  run: async () => {
-    await recoverPendingPurchases(PassAPI.verify);
+  run: async (uid) => {
+    await recoverPendingPurchases(uid, PassAPI.verify);
     await queryClient.invalidateQueries({ queryKey: [QueryKey.pass] });
   },
 });

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   createGooglePlayClient,
+  parseServiceAccount,
   type ServiceAccount,
   type VoidedPurchase,
 } from '../../_shared/googlePlay.ts';
@@ -252,5 +253,27 @@ describe('createGooglePlayClient', () => {
       expect(message).not.toContain(sa.private_key);
       expect(message).not.toContain('BEGIN PRIVATE KEY');
     }
+  });
+});
+
+describe('parseServiceAccount', () => {
+  it('JSON이면 서비스 계정을 돌려준다', () => {
+    const raw = JSON.stringify({ client_email: 'a@b.iam', private_key: 'KEY' });
+    expect(parseServiceAccount(raw)).toEqual({ client_email: 'a@b.iam', private_key: 'KEY' });
+  });
+
+  it('JSON이 아니면 시크릿 내용 없이 일반 오류를 던진다', () => {
+    const raw = '{"private_key": "-----BEGIN PRIVATE KEY-----super-secret", oops';
+    let caught: unknown;
+    try {
+      parseServiceAccount(raw);
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(Error);
+    const error = caught as Error;
+    expect(error.message).toBe('GOOGLE_PLAY_SERVICE_ACCOUNT is not valid JSON');
+    expect(error.cause).toBeUndefined();
+    expect(String(error.stack)).not.toContain('super-secret');
   });
 });

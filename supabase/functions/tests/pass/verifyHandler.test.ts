@@ -59,7 +59,7 @@ const createFakeDeps = (
     getSetting: vi.fn(async () => SETTING),
     findPurchase: vi.fn(async (token: string) => {
       const row = rows.find((r) => r.purchaseToken === token);
-      return row ? { status: row.status } : null;
+      return row ? { status: row.status, uid: row.uid } : null;
     }),
     listUserPurchases: vi.fn(async (uid: string) =>
       rows
@@ -165,6 +165,34 @@ describe('verifyPurchase', () => {
     expect(deps.insertPurchase).not.toHaveBeenCalled();
   });
 
+  it('다른 유저가 이미 처리한 granted 토큰이면 invalid, 그 유저 만료일을 동기화하지 않고 consume만 재시도', async () => {
+    const row = existingRow({ purchaseToken: TOKEN, uid: 'someone-else' });
+    const { deps, play, expiries } = createFakeDeps({ existing: [row] });
+
+    const result = await verifyPurchase(deps, input);
+
+    expect(result).toEqual({ status: 'invalid' });
+    expect(deps.listUserPurchases).not.toHaveBeenCalled();
+    expect(deps.raisePassExpiry).not.toHaveBeenCalled();
+    expect(expiries.size).toBe(0);
+    expect(play.getProductPurchase).not.toHaveBeenCalled();
+    expect(play.consumeProductPurchase).toHaveBeenCalledWith(P1900, TOKEN);
+    expect(deps.insertPurchase).not.toHaveBeenCalled();
+  });
+
+  it('다른 유저(또는 탈퇴로 uid null)의 refunded 토큰이면 invalid, consume 안 함', async () => {
+    const row = existingRow({
+      purchaseToken: TOKEN,
+      uid: null as unknown as string,
+      status: 'refunded_ineligible',
+    });
+    const { deps, play } = createFakeDeps({ existing: [row] });
+
+    expect(await verifyPurchase(deps, input)).toEqual({ status: 'invalid' });
+    expect(deps.raisePassExpiry).not.toHaveBeenCalled();
+    expect(play.consumeProductPurchase).not.toHaveBeenCalled();
+  });
+
   it('insert가 duplicate(동시 요청)면 already_processed를 반환한다', async () => {
     const { deps } = createFakeDeps({ insertResult: 'duplicate' });
 
@@ -253,6 +281,26 @@ describe('verifyPurchase', () => {
     expect(play.refundOrder).not.toHaveBeenCalled();
     expect(rows[0]).toMatchObject({ status: 'refunded_ineligible', orderId: null });
     expect(play.consumeProductPurchase).not.toHaveBeenCalled();
+  });
+
+  it('orderId 없이 환불하지 못한 경우 구매 토큰 전체를 로그에 남기지 않는다', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const longToken = 'abcdefghijklmnopqrstuvwxyz0123456789-secret-token';
+    const { deps } = createFakeDeps({
+      now: AFTER_GRACE,
+      playPurchase: purchase({
+        purchaseTimeMillis: String(AFTER_GRACE.getTime()),
+        orderId: undefined,
+      }),
+    });
+
+    await verifyPurchase(deps, { ...input, purchaseToken: longToken });
+
+    expect(errorSpy).toHaveBeenCalled();
+    const logged = errorSpy.mock.calls.flat().map(String).join(' ');
+    expect(logged).not.toContain(longToken);
+    expect(logged).toContain(longToken.slice(0, 8));
+    errorSpy.mockRestore();
   });
 
   it('패스가 남아 있을 때 재구매하면 만료일이 이어 붙는다', async () => {

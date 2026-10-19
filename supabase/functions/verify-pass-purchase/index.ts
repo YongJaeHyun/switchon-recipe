@@ -3,7 +3,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getUid, requireEnv } from '../_shared/auth.ts';
-import { createGooglePlayClient, type ServiceAccount } from '../_shared/googlePlay.ts';
+import { createGooglePlayClient, parseServiceAccount } from '../_shared/googlePlay.ts';
 import type { PurchaseForExpiry } from '../_shared/pass.ts';
 import { type PurchaseRow, type VerifyDeps, verifyPurchase } from './handler.ts';
 
@@ -21,7 +21,8 @@ const supabase = createClient(requireEnv('SUPABASE_URL'), requireEnv('SUPABASE_S
 let playClient: ReturnType<typeof createGooglePlayClient> | null = null;
 const getPlayClient = () => {
   if (!playClient) {
-    const sa = JSON.parse(requireEnv('GOOGLE_PLAY_SERVICE_ACCOUNT')) as ServiceAccount;
+    // 파싱 실패 오류에 시크릿 원문이 담기지 않게 한다
+    const sa = parseServiceAccount(requireEnv('GOOGLE_PLAY_SERVICE_ACCOUNT'));
     playClient = createGooglePlayClient(sa, requireEnv('ANDROID_PACKAGE_NAME'));
   }
   return playClient;
@@ -43,7 +44,7 @@ const deps = (): VerifyDeps => ({
   async findPurchase(token: string) {
     const { data, error } = await supabase
       .from('pass_purchase')
-      .select('status')
+      .select('status, uid')
       .eq('purchase_token', token)
       .maybeSingle();
     if (error) throw error;

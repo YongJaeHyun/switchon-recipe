@@ -13,6 +13,7 @@ import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { Link, router } from 'expo-router';
 import { useQueryWith402Retry } from 'hooks/useCustomQuery';
+import { useBillingAvailable } from 'hooks/useBillingAvailable';
 import { usePass } from 'hooks/usePass';
 import { queryClient } from 'lib/queryClient';
 import React, { ReactNode, useEffect, useState } from 'react';
@@ -37,7 +38,7 @@ import { getWeekColor } from 'utils/getWeekColor';
 import { UserAPI } from '../api/UserAPI';
 import { requireOnline } from 'utils/network';
 import { formatPassRemaining } from 'utils/passDisplay';
-import { getDeleteAccountMessage, getPassRemainingDays } from 'utils/passScreen';
+import { getDeleteAccountMessage, getPassRemainingDays, isPassOnSale } from 'utils/passScreen';
 import { clearCachedUser } from 'utils/userCache';
 
 interface MenuButtonProps {
@@ -177,7 +178,9 @@ export default function Profile() {
   const now = new Date();
   const passRemaining = formatPassRemaining(passStatus?.passExpiresAt ?? null, now);
   const passRemainingDays = getPassRemainingDays(passStatus?.passExpiresAt ?? null, now);
-  const passOnSale = passStatus?.sales.onSale === true;
+  const billingAvailable = useBillingAvailable();
+  // 결제를 못 쓰는 빌드면 "패스 구매"를 숨기고 이용 중 표시도 결제 화면으로 보내지 않는다
+  const passOnSale = isPassOnSale(passStatus?.sales, billingAvailable);
 
   const { data: todoRateStatistics, isLoading } = useQueryWith402Retry({
     queryKey: [QueryKey.todoRateStatistics, id],

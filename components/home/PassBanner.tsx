@@ -2,15 +2,17 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import { router } from 'expo-router';
+import { useBillingAvailable } from 'hooks/useBillingAvailable';
 import { usePass } from 'hooks/usePass';
 import { View } from 'react-native';
 import colors from 'tailwindcss/colors';
 import { getPassBannerText } from 'utils/passScreen';
 
-// 무료 기간(사전 결제 할인) 중에만 보이는 홈 배너. 판매 중이 아니면 숨긴다
+// 무료 기간(사전 결제 할인) 중에만 보이는 홈 배너. 판매 중이 아니거나 이 빌드에서 결제를 못 쓰면 숨긴다
 export function PassBanner() {
   const { status } = usePass();
-  const text = getPassBannerText(status?.sales);
+  const billingAvailable = useBillingAvailable();
+  const text = getPassBannerText(status?.sales, billingAvailable);
   if (!text) return null;
 
   return (

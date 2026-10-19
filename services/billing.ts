@@ -71,6 +71,18 @@ export async function initBilling(): Promise<void> {
   await connect();
 }
 
+// 이 바이너리에서 결제를 쓸 수 있는지. 결제 모듈이 없는 빌드(같은 runtime version의 구 빌드 등)는 false
+export async function isBillingAvailable(): Promise<boolean> {
+  try {
+    await initBilling();
+    return true;
+  } catch (error) {
+    if (!(error instanceof BillingUnavailableError))
+      console.error('[billing.isBillingAvailable]', error);
+    return false;
+  }
+}
+
 // 상품의 Play 표시 가격. 조회할 수 없으면 null
 export async function getProduct(
   productId: string
@@ -107,28 +119,34 @@ export async function purchasePass(productId: string, uid: string): Promise<Pass
   } catch (error) {
     if (hasErrorCode(error, USER_CANCELLED)) return null;
     if (hasErrorCode(error, ALREADY_OWNED)) {
-      const owned = (await getUnconsumedPassPurchases()).find((p) => p.productId === productId);
+      const owned = (await getUnconsumedPassPurchases(uid)).find((p) => p.productId === productId);
       if (owned) return owned;
     }
     throw error;
   }
 }
 
-// 서버가 아직 소비하지 않은 패스 구매 (결제 완료 상태만)
-export async function getUnconsumedPassPurchases(): Promise<PassPurchase[]> {
+// 서버가 아직 소비하지 않은 이 계정(uid)의 패스 구매 (결제 완료 상태만).
+// 같은 Google 계정으로 여러 앱 계정을 쓰면 다른 앱 계정의 구매도 보이므로, 결제 때 넘긴
+// obfuscatedAccountIdAndroid가 uid와 같은 것만 돌려준다 (서버도 다른 계정 구매는 invalid로 거절)
+export async function getUnconsumedPassPurchases(uid: string): Promise<PassPurchase[]> {
   const iap = await connect();
   const purchases = await iap.getAvailablePurchases();
-  return purchases.map(toPassPurchase).filter((p): p is PassPurchase => p !== null);
+  return purchases
+    .filter((p) => p.platform === 'android' && p.obfuscatedAccountIdAndroid === uid)
+    .map(toPassPurchase)
+    .filter((p): p is PassPurchase => p !== null);
 }
 
 // 결제 누락 복구: 미소비 구매를 하나씩 서버로 다시 보낸다. 하나가 실패해도 나머지는 계속한다.
 // 서버 검증 요청에 성공한 개수를 돌려준다. 결제를 쓸 수 없으면 0 (throw하지 않음)
 export async function recoverPendingPurchases(
+  uid: string,
   verify: (p: PassPurchase) => Promise<unknown>
 ): Promise<number> {
   let purchases: PassPurchase[];
   try {
-    purchases = await getUnconsumedPassPurchases();
+    purchases = await getUnconsumedPassPurchases(uid);
   } catch (error) {
     console.error('[billing.recoverPendingPurchases]', error);
     return 0;

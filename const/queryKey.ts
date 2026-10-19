@@ -11,4 +11,5 @@ export enum QueryKey {
   todoRateStatistics,
   ingredients,
   pass,
+  billingAvailable,
 }

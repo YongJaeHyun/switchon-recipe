@@ -368,6 +368,7 @@ formatSalesHeadline(sales: SalesState): { price: string; original: string | null
   5. JSON 키를 `GOOGLE_PLAY_SERVICE_ACCOUNT` 시크릿으로 등록한다 (운영자가 직접 `! npx supabase secrets set ...`)
   6. Supabase Cron에 `sync-voided-purchases`를 매일 04:00 KST로 등록한다
 - [ ] **Step 4: E2E (라이선스 테스터, 테스트용 `premium_setting` 날짜로)**
+  - **주의:** 운영(production) 프로젝트의 `premium_setting`에 테스트용 실제 날짜를 넣지 않는다. 행이 하나(`id = 1`)뿐이라 넣는 순간 모든 사용자에게 판매가 열린다. 스테이징 프로젝트에서 테스트하거나, 결제 빌드가 내부 테스트 트랙에만 있는 기간에만 넣고 테스트가 끝나면 바로 null로 되돌린다
   - 결제 → 즉시 활성화
   - 결제 직후 앱 강제 종료 → 재실행 시 복구
   - 같은 토큰 재전송 → `already_processed`

@@ -26,6 +26,10 @@ const PASS_INVALID: ToastTextProps = {
   title: '결제 확인 실패',
   subtitle: '결제를 확인하지 못했어요. 문의사항으로 알려주세요.',
 };
+const PASS_ALREADY_PROCESSED: ToastTextProps = {
+  title: '이미 처리된 결제예요',
+  subtitle: '이용 중인 패스가 없어요. 문의사항으로 알려주세요.',
+};
 const PASS_VERIFY_DELAYED: ToastTextProps = {
   title: '결제 확인이 늦어지고 있어요',
   subtitle: '결제는 안전하게 저장됐어요. 잠시 후 자동으로 다시 확인할게요.',
@@ -93,6 +97,7 @@ export const ErrorToastText = {
   GATEWAY_TIMEOUT_ERROR,
   PASS_PRICE_CHANGED,
   PASS_INVALID,
+  PASS_ALREADY_PROCESSED,
   PASS_VERIFY_DELAYED,
   PASS_BILLING_UNAVAILABLE,
   PASS_PURCHASE_ERROR,

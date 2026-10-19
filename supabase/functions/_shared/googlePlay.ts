@@ -7,6 +7,16 @@ export interface ServiceAccount {
   private_key: string;
 }
 
+// 시크릿(GOOGLE_PLAY_SERVICE_ACCOUNT) 파싱. JSON.parse 오류 메시지에는 원문 일부가 담길 수 있으므로
+// 원래 오류(cause)를 버리고 일반 오류로 바꿔 시크릿이 로그에 남지 않게 한다
+export function parseServiceAccount(raw: string): ServiceAccount {
+  try {
+    return JSON.parse(raw) as ServiceAccount;
+  } catch {
+    throw new Error('GOOGLE_PLAY_SERVICE_ACCOUNT is not valid JSON');
+  }
+}
+
 export interface ProductPurchase {
   purchaseState: number;
   consumptionState: number;

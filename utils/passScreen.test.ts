@@ -5,6 +5,7 @@ import {
   getPassBannerText,
   getPassRemainingDays,
   getVerifyResultToast,
+  isPassOnSale,
 } from './passScreen';
 
 const freeSales: SalesState = {
@@ -19,59 +20,108 @@ const freeSales: SalesState = {
 
 describe('getPassBannerText', () => {
   it('무료 기간 early1 → 61% 할인 · D-N', () => {
-    expect(getPassBannerText(freeSales)).toBe('지금 사면 61% 할인 · D-12');
+    expect(getPassBannerText(freeSales, true)).toBe('지금 사면 61% 할인 · D-12');
   });
 
   it('무료 기간 early2 → 40% 할인', () => {
     expect(
-      getPassBannerText({ ...freeSales, tier: 'early2', priceKrw: 2900, freeDaysLeft: 3 })
+      getPassBannerText({ ...freeSales, tier: 'early2', priceKrw: 2900, freeDaysLeft: 3 }, true)
     ).toBe('지금 사면 40% 할인 · D-3');
   });
 
   it('무료 기간이 아니면 null', () => {
     expect(
-      getPassBannerText({
-        ...freeSales,
-        freeActive: false,
-        tier: 'regular',
-        priceKrw: 4900,
-        freeDaysLeft: 0,
-      })
+      getPassBannerText(
+        {
+          ...freeSales,
+          freeActive: false,
+          tier: 'regular',
+          priceKrw: 4900,
+          freeDaysLeft: 0,
+        },
+        true
+      )
     ).toBeNull();
   });
 
   it('판매 중이 아니면 null', () => {
-    expect(getPassBannerText({ ...freeSales, onSale: false })).toBeNull();
+    expect(getPassBannerText({ ...freeSales, onSale: false }, true)).toBeNull();
   });
 
   it('상태를 모르면 null', () => {
-    expect(getPassBannerText(undefined)).toBeNull();
+    expect(getPassBannerText(undefined, true)).toBeNull();
+  });
+
+  it('이 빌드에서 결제를 쓸 수 없으면 null', () => {
+    expect(getPassBannerText(freeSales, false)).toBeNull();
+  });
+
+  it('결제 가능 여부를 아직 모르면 null', () => {
+    expect(getPassBannerText(freeSales, undefined)).toBeNull();
+  });
+});
+
+describe('isPassOnSale', () => {
+  it('판매 중이고 결제를 쓸 수 있으면 true', () => {
+    expect(isPassOnSale(freeSales, true)).toBe(true);
+  });
+
+  it('결제를 쓸 수 없는 빌드면 판매 중이어도 false', () => {
+    expect(isPassOnSale(freeSales, false)).toBe(false);
+  });
+
+  it('결제 가능 여부를 아직 모르면 false', () => {
+    expect(isPassOnSale(freeSales, undefined)).toBe(false);
+  });
+
+  it('판매 중이 아니거나 상태를 모르면 false', () => {
+    expect(isPassOnSale({ ...freeSales, onSale: false }, true)).toBe(false);
+    expect(isPassOnSale(undefined, true)).toBe(false);
   });
 });
 
 describe('getVerifyResultToast', () => {
+  const NOW = new Date('2026-11-19T03:00:00Z');
+
   it('granted → 성공', () => {
     expect(
-      getVerifyResultToast({ status: 'granted', passExpiresAt: '2026-12-01T14:59:59Z' })
+      getVerifyResultToast({ status: 'granted', passExpiresAt: '2026-12-01T14:59:59Z' }, NOW)
     ).toEqual({ type: 'success', textType: 'PASS_ACTIVATED' });
   });
 
-  it('already_processed → 성공으로 취급', () => {
-    expect(getVerifyResultToast({ status: 'already_processed', passExpiresAt: null })).toEqual({
-      type: 'success',
-      textType: 'PASS_ACTIVATED',
-    });
+  it('already_processed + 만료일이 미래 → 성공으로 취급', () => {
+    expect(
+      getVerifyResultToast(
+        { status: 'already_processed', passExpiresAt: '2026-12-01T14:59:59Z' },
+        NOW
+      )
+    ).toEqual({ type: 'success', textType: 'PASS_ACTIVATED' });
+  });
+
+  it('already_processed + 만료일 없음(환불된 구매 등) → 성공 아님', () => {
+    expect(getVerifyResultToast({ status: 'already_processed', passExpiresAt: null }, NOW)).toEqual(
+      { type: 'error', textType: 'PASS_ALREADY_PROCESSED' }
+    );
+  });
+
+  it('already_processed + 만료일이 지남 → 성공 아님', () => {
+    expect(
+      getVerifyResultToast(
+        { status: 'already_processed', passExpiresAt: '2026-11-19T02:59:59Z' },
+        NOW
+      )
+    ).toEqual({ type: 'error', textType: 'PASS_ALREADY_PROCESSED' });
   });
 
   it('price_changed → 가격 변경 오류', () => {
-    expect(getVerifyResultToast({ status: 'price_changed' })).toEqual({
+    expect(getVerifyResultToast({ status: 'price_changed' }, NOW)).toEqual({
       type: 'error',
       textType: 'PASS_PRICE_CHANGED',
     });
   });
 
   it('invalid → 확인 실패 오류', () => {
-    expect(getVerifyResultToast({ status: 'invalid' })).toEqual({
+    expect(getVerifyResultToast({ status: 'invalid' }, NOW)).toEqual({
       type: 'error',
       textType: 'PASS_INVALID',
     });

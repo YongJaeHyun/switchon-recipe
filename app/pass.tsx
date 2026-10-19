@@ -4,6 +4,7 @@ import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import { QueryKey } from 'const/queryKey';
 import { router } from 'expo-router';
+import { useBillingAvailable } from 'hooks/useBillingAvailable';
 import { usePass } from 'hooks/usePass';
 import { queryClient } from 'lib/queryClient';
 import { useRef, useState } from 'react';
@@ -15,7 +16,7 @@ import colors from 'tailwindcss/colors';
 import type { PassStatus } from 'types/pass';
 import { requireOnline } from 'utils/network';
 import { formatPassRemaining, formatSalesHeadline } from 'utils/passDisplay';
-import { getVerifyResultToast } from 'utils/passScreen';
+import { getVerifyResultToast, isPassOnSale } from 'utils/passScreen';
 import { showErrorToast, showSuccessToast } from 'utils/showToast';
 
 // 패스 전용 기능 (스펙 1절). 배포되기 전까지는 "곧 추가돼요"로 표시한다
@@ -99,6 +100,7 @@ const PriceCard = ({ status }: { status: PassStatus }) => {
 export default function PassScreen() {
   const uid = useUserStore((state) => state.id);
   const { status, isLoading, refetch } = usePass();
+  const billingAvailable = useBillingAvailable();
 
   // 결제/검증이 진행 중이면 다시 누를 수 없다 (상태 반영 전 연타도 ref로 막는다)
   const inFlightRef = useRef(false);
@@ -136,7 +138,7 @@ export default function PassScreen() {
         return;
       }
 
-      const toast = getVerifyResultToast(result);
+      const toast = getVerifyResultToast(result, new Date());
       if (toast.type === 'success') showSuccessToast({ textType: toast.textType });
       else showErrorToast({ textType: toast.textType });
 
@@ -167,7 +169,16 @@ export default function PassScreen() {
       );
     }
 
-    if (!status.sales.onSale) {
+    if (billingAvailable === undefined) {
+      return (
+        <Centered>
+          <ActivityIndicator size={48} color={colors.green[600]} />
+        </Centered>
+      );
+    }
+
+    // 판매 중이 아니거나 이 빌드에서 결제를 쓸 수 없으면(결제 모듈 없는 구 빌드) 같은 "준비 중" 화면
+    if (!isPassOnSale(status.sales, billingAvailable)) {
       return (
         <Centered>
           <MaterialIcons name="hourglass-empty" size={48} color={colors.neutral[400]} />
