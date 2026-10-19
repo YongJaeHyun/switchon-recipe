@@ -4,6 +4,8 @@ import { QueryKey } from 'const/queryKey';
 import { queryClient } from 'lib/queryClient';
 import { RecipeType } from 'types/database';
 import { Ingredient } from 'types/recipe';
+import { failFastWhenOffline } from 'utils/failFastWhenOffline';
+import { orEmptyArray } from 'utils/stableDefaults';
 import { rehydrateSelectedIngredients } from 'utils/rehydrateSelectedIngredients';
 import { showInfoToast } from 'utils/showToast';
 import { useQueryWith402Retry } from './useCustomQuery';
@@ -15,11 +17,13 @@ interface UseSelectedIngredientsProps {
 
 export const useSelectedIngredients = ({ type }: UseSelectedIngredientsProps) => {
   const { ingredients } = useIngredients();
-  const { data: savedIngredients = [], isLoading } = useQueryWith402Retry({
+  const { data: savedData, isLoading } = useQueryWith402Retry({
     queryKey: [QueryKey.selectedIngredients, type],
-    queryFn: () => SelectedIngredientAPI.selectAll(type),
+    queryFn: failFastWhenOffline(() => SelectedIngredientAPI.selectAll(type)),
     staleTime: Infinity,
   });
+
+  const savedIngredients = orEmptyArray(savedData);
 
   // 저장된 선택 재료를 현재 재료 목록 기준으로 복원 (목록 로딩 전에는 그대로 사용)
   const rehydrate = (saved: Ingredient[]) =>
@@ -30,7 +34,7 @@ export const useSelectedIngredients = ({ type }: UseSelectedIngredientsProps) =>
   const prefetch = async () =>
     await queryClient.prefetchQuery({
       queryKey: [QueryKey.selectedIngredients, type],
-      queryFn: () => SelectedIngredientAPI.selectAll(type),
+      queryFn: failFastWhenOffline(() => SelectedIngredientAPI.selectAll(type)),
     });
 
   const { mutate: resetIngredients } = useMutation({

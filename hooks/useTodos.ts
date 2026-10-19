@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useUserStore } from 'stores/userStore';
 import { Todo } from 'types/todo';
 import { getKoreanDate, getWeekAndDay } from 'utils/date';
+import { orEmptyArray } from 'utils/stableDefaults';
 import { useQueryWith402Retry } from './useCustomQuery';
 import { useFasting } from './useFasting';
 
@@ -38,11 +39,13 @@ export const useTodos = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [completedRate, setCompletedRate] = useState(0);
 
-  const { data: checkedIds = [], isLoading } = useQueryWith402Retry({
+  const { data, isLoading } = useQueryWith402Retry({
     queryKey: [QueryKey.todos, userId],
     queryFn: TodoAPI.selectOne,
     enabled: !!userId,
   });
+  // 오프라인 등으로 조회가 실패하면 data가 없음. 매번 새 [] 를 만들면 아래 useEffect가 무한 반복됨
+  const checkedIds = orEmptyArray(data);
 
   const { mutate: resetTodos } = useMutation({
     mutationFn: () => TodoAPI.reset(),
