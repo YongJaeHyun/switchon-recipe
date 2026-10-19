@@ -4,7 +4,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: '12.2.3 (519615d)';
+    PostgrestVersion: '12.2.3';
   };
   public: {
     Tables: {
@@ -62,7 +62,7 @@ export type Database = {
         Insert: {
           ai_reason?: string | null;
           created_at?: string;
-          id?: number;
+          id?: never;
           image_source: string;
           image_url: string;
           is_active?: boolean;
@@ -77,7 +77,7 @@ export type Database = {
         Update: {
           ai_reason?: string | null;
           created_at?: string;
-          id?: number;
+          id?: never;
           image_source?: string;
           image_url?: string;
           is_active?: boolean;
@@ -111,18 +111,18 @@ export type Database = {
         };
         Insert: {
           created_at?: string;
-          id?: number;
+          id?: never;
           name: string;
-          normalized_name?: never;
+          normalized_name?: string | null;
           result?: Json | null;
           status?: string;
           uid?: string;
         };
         Update: {
           created_at?: string;
-          id?: number;
+          id?: never;
           name?: string;
-          normalized_name?: never;
+          normalized_name?: string | null;
           result?: Json | null;
           status?: string;
           uid?: string;
@@ -257,6 +257,59 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: 'recipe_uid_fkey';
+            columns: ['uid'];
+            isOneToOne: false;
+            referencedRelation: 'user';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      recipe_duplicate: {
+        Row: {
+          cooking_steps: string | null;
+          cooking_time: number | null;
+          created_at: string;
+          id: number;
+          image_uri: string | null;
+          image_uri_backup: string | null;
+          ingredients: string | null;
+          is_zero_carb: boolean | null;
+          nutrition: string | null;
+          recipe_name: string | null;
+          uid: string | null;
+          week: number | null;
+        };
+        Insert: {
+          cooking_steps?: string | null;
+          cooking_time?: number | null;
+          created_at?: string;
+          id?: number;
+          image_uri?: string | null;
+          image_uri_backup?: string | null;
+          ingredients?: string | null;
+          is_zero_carb?: boolean | null;
+          nutrition?: string | null;
+          recipe_name?: string | null;
+          uid?: string | null;
+          week?: number | null;
+        };
+        Update: {
+          cooking_steps?: string | null;
+          cooking_time?: number | null;
+          created_at?: string;
+          id?: number;
+          image_uri?: string | null;
+          image_uri_backup?: string | null;
+          ingredients?: string | null;
+          is_zero_carb?: boolean | null;
+          nutrition?: string | null;
+          recipe_name?: string | null;
+          uid?: string | null;
+          week?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'recipe_duplicate_uid_fkey';
             columns: ['uid'];
             isOneToOne: false;
             referencedRelation: 'user';
@@ -568,6 +621,10 @@ export type Database = {
           uid: string;
           value: string;
         }[];
+      };
+      ingredient_request_count_today: {
+        Args: { p_uid: string };
+        Returns: number;
       };
       search_recipes: {
         Args: {
