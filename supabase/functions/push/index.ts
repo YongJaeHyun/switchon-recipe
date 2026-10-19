@@ -30,8 +30,14 @@ const supabase = createClient(
 Deno.serve(async (req) => {
   const payload: WebhookPayload = await req.json();
   const { uid, title, body, href, channel_id } = payload.record;
+  console.log('Notification Payload:', payload);
 
-  const { data: user } = await supabase.from('user').select('push_token').eq('id', uid).single();
+  const { data: profiles } = await supabase
+    .from('user')
+    .select('push_token')
+    .eq('id', uid)
+    .single();
+  console.log('User Profile:', profiles);
 
   const res = await fetch('https://exp.host/--/api/v2/push/send', {
     method: 'POST',
@@ -40,7 +46,7 @@ Deno.serve(async (req) => {
       Authorization: `Bearer ${Deno.env.get('EXPO_ACCESS_TOKEN')}`,
     },
     body: JSON.stringify({
-      to: user?.push_token,
+      to: profiles?.push_token,
       sound: 'default',
       title,
       body,
@@ -48,6 +54,7 @@ Deno.serve(async (req) => {
       channelId: channel_id,
     }),
   }).then((res) => res.json());
+  console.log('Push Notification Response:', res);
 
   return new Response(JSON.stringify(res), {
     headers: { 'Content-Type': 'application/json' },

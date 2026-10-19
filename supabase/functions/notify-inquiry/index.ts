@@ -1,6 +1,4 @@
-/// <reference lib="deno.ns" />
-
-import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { formatKoreanDate } from './formatKoreanDate.ts';
 
 serve(async (req: Request) => {
