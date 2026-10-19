@@ -5,7 +5,10 @@ import * as Updates from 'expo-updates';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, AppState, Linking } from 'react-native';
 import semver from 'semver';
+import { runStartupUpdate } from 'utils/otaUpdate';
 import { captureError } from 'utils/sendError';
+
+const STARTUP_UPDATE_TIMEOUT_MS = 5000;
 
 export const useAutoUpdate = () => {
   const appState = useRef(AppState.currentState);
@@ -39,35 +42,58 @@ export const useAutoUpdate = () => {
       }
     };
 
-    // ── OTA 업데이트 다운로드 ──────────────────────────────────────
-    const fetchUpdate = async () => {
-      try {
-        // DEV 환경이거나 embedded launch(스탠드얼론 빌드가 아님)면 스킵
-        if (__DEV__ || Updates.isEmbeddedLaunch) return;
+    // ── OTA 업데이트 ─────────────────────────────────────────────
+    // isEmbeddedLaunch(스토어에서 받은 그대로의 번들)도 업데이트 대상이므로 건너뛰지 않음
+    const canUpdate = !__DEV__ && Updates.isEnabled;
 
-        const update = await Updates.checkForUpdateAsync();
-        if (update.isAvailable) {
-          await Updates.fetchUpdateAsync();
-          updateReady.current = true; // 다운로드 완료 마킹
+    const markReady = () => {
+      updateReady.current = true;
+    };
+
+    // 앱 시작: 스플래시를 유지한 채 최대 5초 안에 받으면 바로 재시작해 최신 버전으로 열기
+    const updateOnStartup = async () => {
+      try {
+        if (!canUpdate) return;
+
+        const result = await runStartupUpdate(
+          {
+            checkForUpdate: async () => (await Updates.checkForUpdateAsync()).isAvailable,
+            fetchUpdate: async () => {
+              await Updates.fetchUpdateAsync();
+            },
+            reload: () => Updates.reloadAsync(),
+            onReadyLater: markReady,
+          },
+          STARTUP_UPDATE_TIMEOUT_MS
+        );
+        if (result === 'error') {
+          captureError({ error: new Error('startup OTA failed'), prefix: '[OTA 업데이트]: ' });
         }
-      } catch (error) {
-        captureError({ error, prefix: '[OTA 업데이트 다운로드 실패]: ', level: 'fatal' });
       } finally {
         setIsUpdated(true);
       }
     };
 
-    // ── 포그라운드 복귀 시 업데이트 적용 ──────────────────────────
-    const applyUpdateIfReady = async () => {
-      if (__DEV__ || Updates.isEmbeddedLaunch) return;
-
-      // 다운로드된 업데이트가 있을 때만 reload
-      if (updateReady.current) {
-        try {
-          await Updates.reloadAsync();
-        } catch (error) {
-          captureError({ error, prefix: '[OTA 업데이트 적용 실패]: ', level: 'fatal' });
+    // 백그라운드로 갈 때: 받아 두기만 하고 (사용 중 재시작 방지) 다음 복귀 때 적용
+    const downloadInBackground = async () => {
+      if (!canUpdate || updateReady.current) return;
+      try {
+        const update = await Updates.checkForUpdateAsync();
+        if (update.isAvailable) {
+          await Updates.fetchUpdateAsync();
+          markReady();
         }
+      } catch (error) {
+        captureError({ error, prefix: '[OTA 업데이트 다운로드 실패]: ' });
+      }
+    };
+
+    const applyUpdateIfReady = async () => {
+      if (!canUpdate || !updateReady.current) return;
+      try {
+        await Updates.reloadAsync();
+      } catch (error) {
+        captureError({ error, prefix: '[OTA 업데이트 적용 실패]: ', level: 'fatal' });
       }
     };
 
@@ -79,7 +105,7 @@ export const useAutoUpdate = () => {
       if (prevState === 'active' && nextAppState.match(/inactive|background/)) {
         // 포그라운드 → 백그라운드: 버전 체크 + 다운로드
         checkCurrentVersion();
-        fetchUpdate();
+        downloadInBackground();
       } else if (prevState.match(/inactive|background/) && nextAppState === 'active') {
         // 백그라운드 → 포그라운드: 다운받은 업데이트 적용
         applyUpdateIfReady();
@@ -88,7 +114,7 @@ export const useAutoUpdate = () => {
 
     // 앱 최초 실행 시에도 체크
     checkCurrentVersion();
-    fetchUpdate();
+    updateOnStartup();
 
     return () => subscription.remove();
   }, []);
