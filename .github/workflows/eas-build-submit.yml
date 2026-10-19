@@ -36,7 +36,6 @@ jobs:
           EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
           EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
-          EXPO_PUBLIC_SLACK_WEBHOOK_URL: ${{ secrets.EXPO_PUBLIC_SLACK_WEBHOOK_URL }}
         run: expo prebuild --platform android
 
       - name: EAS Build And Submit (Android)
@@ -45,7 +44,6 @@ jobs:
           EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
           EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
-          EXPO_PUBLIC_SLACK_WEBHOOK_URL: ${{ secrets.EXPO_PUBLIC_SLACK_WEBHOOK_URL }}
         run: eas build --platform android --non-interactive --auto-submit
 
       - name: Update Supabase version
