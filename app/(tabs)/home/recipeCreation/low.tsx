@@ -30,6 +30,7 @@ import { RecipeCategory, RecipeMethod } from 'types/recipe';
 import { getWeekAndDay } from 'utils/date';
 import { getCreationLoadingKind } from 'utils/creationLoading';
 import { isCompletedHangul } from 'utils/hangul';
+import { requireOnline } from 'utils/network';
 
 export default function LowRecipeCreationScreen() {
   const {
@@ -210,7 +211,7 @@ export default function LowRecipeCreationScreen() {
           <TouchableHighlight
             className="flex-[6.5] items-center justify-center rounded-lg bg-amber-500 py-4"
             underlayColor={colors.amber[600]}
-            onPress={handleCreateRecipe}
+            onPress={requireOnline(handleCreateRecipe)}
             disabled={isRecipeLoading}>
             <Text className="text-lg font-semibold text-white">
               {selectedIngredients.length > 0 ? '레시피 제작' : `랜덤 레시피 제작`}

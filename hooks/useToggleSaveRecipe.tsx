@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { RecipeAPI } from 'api/RecipeAPI';
 import { queryClient } from 'lib/queryClient';
+import { requireOnline } from 'utils/network';
 
 export function useToggleSaveRecipe({ id }: { id: number }) {
   const optimisticUpdate = (next: boolean) => {
@@ -37,14 +38,14 @@ export function useToggleSaveRecipe({ id }: { id: number }) {
     },
   });
 
-  const toggleIsSaved = () => {
+  const toggleIsSaved = requireOnline(() => {
     const current = queryClient.getQueryData<boolean>(['savedRecipe', id]) ?? false;
     if (current) {
       deleteMutation.mutate();
     } else {
       saveMutation.mutate();
     }
-  };
+  });
 
   return { toggleIsSaved };
 }

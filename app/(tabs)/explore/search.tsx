@@ -11,6 +11,7 @@ import { ActivityIndicator, View } from 'react-native';
 import colors from 'tailwindcss/colors';
 import { RecentKeywords } from '../../../components/explore/RecentKeywords';
 import { useQueryWith402Retry } from 'hooks/useCustomQuery';
+import { requireOnline } from 'utils/network';
 
 export default function SearchScreen() {
   const { isLoading: isLoadingRecentKeywords, insertKeyword } = useRecentKeywords();
@@ -25,14 +26,14 @@ export default function SearchScreen() {
 
   const isLoading = isLoadingRecentKeywords || isLoadingPopularCategories;
 
-  const search = (keyword: string) => {
+  const search = requireOnline((keyword: string) => {
     insertKeyword(keyword);
 
     router.push({
       pathname: '/(tabs)/explore/searchResult',
       params: { keyword },
     });
-  };
+  });
 
   const onSubmitEditing = () => {
     const trimmedKeyword = keyword.trim();

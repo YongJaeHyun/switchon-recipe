@@ -34,6 +34,8 @@ import { Nullable } from 'types/common';
 import { getWeekAndDay } from 'utils/date';
 import { getWeekColor } from 'utils/getWeekColor';
 import { UserAPI } from '../api/UserAPI';
+import { requireOnline } from 'utils/network';
+import { clearCachedUser } from 'utils/userCache';
 
 interface MenuButtonProps {
   title: string;
@@ -173,6 +175,7 @@ export default function Profile() {
 
   const handleConfirm = async () => {
     await UserAPI.deleteOne();
+    await clearCachedUser();
 
     if (provider === 'google') await GoogleSignin.signOut();
     if (provider === 'kakao') await unlink();
@@ -244,7 +247,7 @@ export default function Profile() {
           <MenuButton
             title="로그아웃"
             icon={<MaterialIcons name="power-settings-new" size={24} color={colors.neutral[600]} />}
-            onPress={UserAPI.logout}
+            onPress={requireOnline(UserAPI.logout)}
           />
         </View>
       </View>
@@ -270,7 +273,7 @@ export default function Profile() {
         visible={isModalVisible}
         title="정말로 탈퇴하시겠어요?"
         message="탈퇴 시 모든 데이터가 삭제되며, 다시 복구할 수 없어요."
-        onConfirm={handleConfirm}
+        onConfirm={requireOnline(handleConfirm)}
         onCancel={() => setModalVisible(false)}
       />
     </ScrollView>

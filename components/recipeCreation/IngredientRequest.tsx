@@ -14,6 +14,7 @@ import { normalizeIngredientName } from 'utils/normalizeIngredientName';
 import { registerForPushNotificationsAsync } from 'utils/notifications';
 import { showErrorToast, showInfoToast, showSuccessToast } from 'utils/showToast';
 import { Nullable } from '../../types/common';
+import { requireOnline } from 'utils/network';
 
 interface IngredientRequestError {
   name?: string;
@@ -120,7 +121,7 @@ export function IngredientRequest() {
                   <Text className="text-gray-700">취소</Text>
                 </RippleButton>
                 <RippleButton
-                  onPress={submitRequest}
+                  onPress={requireOnline(submitRequest)}
                   outerClassName="flex-1"
                   className={`w-full px-4 py-3 ${type === 'zero' ? 'bg-green-600' : 'bg-amber-500'}`}>
                   <Text className="text-white">제출</Text>

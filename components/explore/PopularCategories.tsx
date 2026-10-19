@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import { useQueryWith402Retry } from 'hooks/useCustomQuery';
 import { View } from 'react-native';
 import { Nullable } from '../../types/common';
+import { requireOnline } from 'utils/network';
 
 export function PopularCategories() {
   const { data: popularCategories } = useQueryWith402Retry({
@@ -14,14 +15,14 @@ export function PopularCategories() {
     staleTime: 60 * 60 * 1000, // 1시간
   });
 
-  const search = (keyword: Nullable<string>) => {
+  const search = requireOnline((keyword: Nullable<string>) => {
     if (!keyword) return;
 
     router.push({
       pathname: '/(tabs)/explore/searchResult',
       params: { keyword },
     });
-  };
+  });
 
   return (
     <>
