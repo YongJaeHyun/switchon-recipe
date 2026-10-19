@@ -151,38 +151,45 @@ serve(async (req: Request) => {
     const recipeJson = JSON.parse(contentText);
     const validated = validateRecipe(recipeJson);
 
-    // 🔹 2. 이미지 생성 (Imagen 4 Fast)
+    // 🔹 2. 이미지 생성 (gemini-3.1-flash-image)
     const imageRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-fast-generate-001:predict?key=${geminiKey}`,
+      `https://generativelanguage.googleapis.com/v1/models/gemini-3.1-flash-image:generateContent?key=${geminiKey}`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          instances: [
+          contents: [
             {
-              prompt: `Generate a food photo taken with a macro lens of 100mm using the following information.
+              parts: [
+                {
+                  text: `Generate a food photo taken with a macro lens of 100mm using the following information.
 
-name: ${validated.recipeName}
-ingredients: ${validated.ingredients.map((ingredient) => ingredient.name).join(', ')}`,
-              sampleCount: 1,
+    name: ${validated.recipeName}`,
+                },
+              ],
             },
           ],
+          generationConfig: {
+            responseModalities: ['IMAGE'],
+          },
         }),
       }
     );
 
     if (!imageRes.ok) {
-      throw new Error(`Imagen 이미지 요청 실패 (${imageRes.status})`);
+      const error = await imageRes.text();
+      throw new Error(`Gemini 이미지 요청 실패 (${imageRes.status})\n\nError: ${error}`);
     }
 
     const imageJson = await imageRes.json();
-
-    const imageBase64 = imageJson?.predictions?.[0]?.bytesBase64Encoded;
+    const imageBase64 = imageJson.candidates?.[0]?.content?.parts?.find(
+      (part: any) => part.inlineData
+    )?.inlineData.data;
 
     if (!imageBase64) {
-      throw new Error('Imagen 이미지 생성 실패');
+      throw new Error('Gemini 이미지 생성 실패');
     }
 
     // base64 → binary
