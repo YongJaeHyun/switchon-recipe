@@ -25,20 +25,23 @@ export async function syncVoided(
 
   const tokens = voidedPurchases.map((v) => v.purchaseToken);
   const found = await deps.findPurchasesByTokens(tokens);
+  if (found.length === 0) return { voided: 0, usersUpdated: 0 }; // 모르는 토큰뿐이면 할 일 없음
 
-  // 모르는 토큰(findPurchasesByTokens가 안 돌려줌)과 이미 voided인 토큰은 건너뛴다
-  const toVoid = found.filter((f) => f.status !== 'voided');
-  if (toVoid.length === 0) return { voided: 0, usersUpdated: 0 };
+  // granted 토큰만 voided로 표시한다. refunded_ineligible(서버가 이미 환불한 건)은 감사 흔적을
+  // 위해 건드리지 않고, 이미 voided인 토큰도 다시 마킹하지 않는다.
+  const toMark = found.filter((f) => f.status === 'granted').map((f) => f.purchaseToken);
+  if (toMark.length > 0) await deps.markVoided(toMark);
 
-  await deps.markVoided(toVoid.map((f) => f.purchaseToken));
-
-  // 탈퇴(uid null)한 구매는 voided 표시만 하고 만료일 재계산은 하지 않는다
-  const uids = [...new Set(toVoid.map((f) => f.uid).filter((uid): uid is string => uid !== null))];
+  // 부분 실패(markVoided 성공 후 setPassExpiry 실패)나 verify-pass-purchase와의 레이스로 저장된
+  // 만료일이 틀어졌을 수 있다. 그래서 이번에 새로 마킹한 토큰뿐 아니라, found에 있던 모든 토큰
+  // (이미 voided였던 것 포함)의 유저도 매번 현재 granted 구매 기준으로 다시 계산해 덮어쓴다.
+  // 탈퇴(uid null)한 구매는 voided 표시만 하고 재계산 대상에서 제외한다.
+  const uids = [...new Set(found.map((f) => f.uid).filter((uid): uid is string => uid !== null))];
   for (const uid of uids) {
     const purchases = await deps.listUserPurchases(uid);
     const expiry = computeExpiry(purchases);
     await deps.setPassExpiry(uid, expiry);
   }
 
-  return { voided: toVoid.length, usersUpdated: uids.length };
+  return { voided: toMark.length, usersUpdated: uids.length };
 }

@@ -1,8 +1,10 @@
 /// <reference lib="deno.ns" />
 
 // 환불된 패스 구매 회수 배치: cron 등 service role 호출로만 실행한다 (스펙 4.4).
-// 최근 3일 안에 Play가 보고한 무효화 구매를 가져와 pass_purchase를 voided로 표시하고
+// 최근 7일 안에 Play가 보고한 무효화 구매를 가져와 pass_purchase를 voided로 표시하고
 // 영향받은 유저의 패스 만료일을 정확한 값으로 다시 쓴다 (환불이므로 낮추거나 없앨 수 있어야 함).
+// 재실행은 idempotent하므로(이미 voided인 토큰도 유저 재계산은 항상 다시 함) 넓게 잡아
+// 며칠치 cron 실패도 다음 실행에서 복구되게 한다.
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -13,7 +15,7 @@ import { isServiceRoleRequest } from '../_shared/serviceRole.ts';
 import { syncVoided, type VoidedDeps } from './handler.ts';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const LOOKBACK_MS = 3 * DAY_MS;
+const LOOKBACK_MS = 7 * DAY_MS;
 
 const json = (body: unknown, status: number) =>
   new Response(JSON.stringify(body), {
@@ -78,13 +80,11 @@ const deps = (): VoidedDeps => ({
       if (error) throw error;
       return;
     }
-    const { error } = await supabase
-      .from('user_pass')
-      .upsert({
-        uid,
-        pass_expires_at: expiresAt.toISOString(),
-        updated_at: new Date().toISOString(),
-      });
+    const { error } = await supabase.from('user_pass').upsert({
+      uid,
+      pass_expires_at: expiresAt.toISOString(),
+      updated_at: new Date().toISOString(),
+    });
     if (error) throw error;
   },
 });

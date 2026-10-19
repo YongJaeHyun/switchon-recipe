@@ -3,7 +3,7 @@ import type { VoidedPurchase } from '../../_shared/googlePlay.ts';
 import { computeExpiry } from '../../_shared/pass.ts';
 import { syncVoided, type VoidedDeps } from '../../sync-voided-purchases/handler.ts';
 
-const SINCE = Date.UTC(2026, 9, 17); // now - 3d 역할의 임의 기준점
+const SINCE = Date.UTC(2026, 9, 17); // now - 7d 역할의 임의 기준점
 
 interface Row {
   purchaseToken: string;
@@ -96,7 +96,7 @@ describe('syncVoided', () => {
     expect(deps.markVoided).not.toHaveBeenCalled();
   });
 
-  it('이미 voided인 토큰은 다시 처리하지 않는다', async () => {
+  it('이미 voided인 토큰은 다시 마킹하지 않는다', async () => {
     const rows: Row[] = [
       { purchaseToken: 't1', uid: 'u1', status: 'voided', purchasedAt: new Date() },
     ];
@@ -104,9 +104,46 @@ describe('syncVoided', () => {
 
     const result = await syncVoided(deps, SINCE);
 
-    expect(result).toEqual({ voided: 0, usersUpdated: 0 });
+    expect(result.voided).toBe(0);
     expect(deps.markVoided).not.toHaveBeenCalled();
-    expect(deps.setPassExpiry).not.toHaveBeenCalled();
+  });
+
+  it('이미 voided로 처리된 토큰이 다시 보고돼도 유저의 저장된 만료일을 남은 granted 구매 기준으로 다시 맞춘다', async () => {
+    // 이전 실행에서 부분 실패했거나 verify-pass-purchase와 레이스가 나서 저장된 만료일이
+    // t1까지 포함한 값으로 틀어져 있다고 가정. 이번 재실행에서도 t1은 여전히 voided로 보고된다.
+    const p1 = new Date('2026-10-01T00:00:00.000Z');
+    const p2 = new Date('2026-10-05T00:00:00.000Z');
+    const rows: Row[] = [
+      { purchaseToken: 't1', uid: 'u1', status: 'voided', purchasedAt: p1 },
+      { purchaseToken: 't2', uid: 'u1', status: 'granted', purchasedAt: p2 },
+    ];
+    const { deps, expiries } = createFakeDeps(rows, [voided({ purchaseToken: 't1' })]);
+
+    const result = await syncVoided(deps, SINCE);
+
+    const expected = computeExpiry([{ purchasedAt: p2, status: 'granted' }]);
+    expect(result).toEqual({ voided: 0, usersUpdated: 1 });
+    expect(deps.markVoided).not.toHaveBeenCalled();
+    expect(deps.setPassExpiry).toHaveBeenCalledWith('u1', expected);
+    expect(expiries.get('u1')).toEqual(expected);
+  });
+
+  it('refunded_ineligible 구매는 voided로 바꾸지 않지만 해당 유저는 다시 계산된다', async () => {
+    const rows: Row[] = [
+      { purchaseToken: 't1', uid: 'u1', status: 'refunded_ineligible', purchasedAt: new Date() },
+    ];
+    const {
+      deps,
+      rows: stored,
+      expiries,
+    } = createFakeDeps(rows, [voided({ purchaseToken: 't1' })]);
+
+    const result = await syncVoided(deps, SINCE);
+
+    expect(result).toEqual({ voided: 0, usersUpdated: 1 });
+    expect(deps.markVoided).not.toHaveBeenCalled();
+    expect(stored[0].status).toBe('refunded_ineligible');
+    expect(expiries.get('u1')).toBeNull(); // refunded_ineligible은 granted가 아니므로 만료일에 기여하지 않음
   });
 
   it('uid가 null(탈퇴)이면 voided 표시만 하고 만료일은 재계산하지 않는다', async () => {
