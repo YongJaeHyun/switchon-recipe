@@ -36,11 +36,15 @@ const createFakeDeps = (
     existing?: PurchaseRow[];
     insertResult?: 'inserted' | 'duplicate';
     consumeError?: Error;
+    raiseError?: Error; // 첫 raisePassExpiry 호출만 실패
+    storedExpiry?: Date; // user_pass에 이미 저장된 만료일
     now?: Date;
   } = {}
 ) => {
   const rows: PurchaseRow[] = [...(options.existing ?? [])];
-  const expiries = new Map<string, Date | null>();
+  const expiries = new Map<string, Date>();
+  if (options.storedExpiry) expiries.set(UID, options.storedExpiry);
+  let raiseError = options.raiseError;
 
   const play = {
     getProductPurchase: vi.fn(async () => options.playPurchase ?? purchase()),
@@ -67,8 +71,17 @@ const createFakeDeps = (
       rows.push(row);
       return 'inserted' as const;
     }),
-    setPassExpiry: vi.fn(async (uid: string, expiresAt: Date | null) => {
-      expiries.set(uid, expiresAt);
+    // DB의 raise_pass_expiry처럼 greatest(기존, 새 값)만 저장한다
+    raisePassExpiry: vi.fn(async (uid: string, expiresAt: Date) => {
+      if (raiseError) {
+        const error = raiseError;
+        raiseError = undefined;
+        throw error;
+      }
+      const current = expiries.get(uid);
+      const next = current && current.getTime() > expiresAt.getTime() ? current : expiresAt;
+      expiries.set(uid, next);
+      return next;
     }),
     play,
   };
@@ -146,6 +159,7 @@ describe('verifyPurchase', () => {
       status: 'already_processed',
       passExpiresAt: (row.grantedUntil as Date).toISOString(),
     });
+    expect(deps.raisePassExpiry).toHaveBeenCalledWith(UID, row.grantedUntil);
     expect(play.getProductPurchase).not.toHaveBeenCalled();
     expect(play.consumeProductPurchase).toHaveBeenCalledWith(P1900, TOKEN);
     expect(deps.insertPurchase).not.toHaveBeenCalled();
@@ -157,7 +171,6 @@ describe('verifyPurchase', () => {
     const result = await verifyPurchase(deps, input);
 
     expect(result.status).toBe('already_processed');
-    expect(deps.setPassExpiry).not.toHaveBeenCalled();
   });
 
   it('purchaseState가 0이 아니면 invalid, insert 없음', async () => {
@@ -167,7 +180,7 @@ describe('verifyPurchase', () => {
 
     expect(result).toEqual({ status: 'invalid' });
     expect(deps.insertPurchase).not.toHaveBeenCalled();
-    expect(deps.setPassExpiry).not.toHaveBeenCalled();
+    expect(deps.raisePassExpiry).not.toHaveBeenCalled();
     expect(play.consumeProductPurchase).not.toHaveBeenCalled();
   });
 
@@ -221,7 +234,7 @@ describe('verifyPurchase', () => {
       grantedFrom: null,
       grantedUntil: null,
     });
-    expect(deps.setPassExpiry).not.toHaveBeenCalled();
+    expect(deps.raisePassExpiry).not.toHaveBeenCalled();
     expect(play.consumeProductPurchase).not.toHaveBeenCalled();
   });
 
@@ -280,5 +293,40 @@ describe('verifyPurchase', () => {
 
     expect(await verifyPurchase(deps, input)).toEqual({ status: 'invalid' });
     expect(deps.insertPurchase).not.toHaveBeenCalled();
+  });
+
+  it('만료일 기록 전에 요청이 끊겨도 재시도의 already_processed 경로에서 복구된다', async () => {
+    const { deps, play, rows, expiries } = createFakeDeps({
+      raiseError: new Error('connection lost'),
+    });
+
+    await expect(verifyPurchase(deps, input)).rejects.toThrow('connection lost');
+    expect(rows).toHaveLength(1);
+    expect(expiries.has(UID)).toBe(false);
+
+    const retry = await verifyPurchase(deps, input);
+
+    const expectedExpiry = new Date(IN_EARLY1.getTime() + 35 * DAY_MS);
+    expect(retry).toEqual({
+      status: 'already_processed',
+      passExpiresAt: expectedExpiry.toISOString(),
+    });
+    expect(expiries.get(UID)).toEqual(expectedExpiry);
+    expect(play.consumeProductPurchase).toHaveBeenCalledWith(P1900, TOKEN);
+  });
+
+  it('동시 구매에서 오래된 짧은 만료일이 저장된 긴 만료일을 줄이지 않는다', async () => {
+    // 다른 요청(B)이 먼저 더 긴 만료일을 기록해 둔 상태에서, A는 B를 못 본 목록으로 계산한다
+    const longer = new Date(IN_EARLY1.getTime() + 70 * DAY_MS);
+    const { deps, expiries } = createFakeDeps({ storedExpiry: longer });
+
+    const result = await verifyPurchase(deps, input);
+
+    expect(deps.raisePassExpiry).toHaveBeenCalledWith(
+      UID,
+      new Date(IN_EARLY1.getTime() + 35 * DAY_MS)
+    );
+    expect(result).toEqual({ status: 'granted', passExpiresAt: longer.toISOString() });
+    expect(expiries.get(UID)).toEqual(longer);
   });
 });

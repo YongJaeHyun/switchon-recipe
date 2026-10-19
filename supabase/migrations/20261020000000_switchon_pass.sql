@@ -74,6 +74,24 @@ $$;
 revoke all on function public.has_premium_access() from public, anon, authenticated;
 grant execute on function public.has_premium_access() to authenticated;
 
+-- 구매 처리용: 패스 만료일을 올리기만 한다 (동시 구매가 오래된 짧은 값으로 덮어쓰지 못하게). service role 전용
+create or replace function public.raise_pass_expiry(p_uid uuid, p_expires_at timestamptz)
+returns timestamptz
+language sql
+volatile
+security definer
+set search_path = public
+as $$
+  insert into public.user_pass (uid, pass_expires_at, updated_at)
+  values (p_uid, p_expires_at, now())
+  on conflict (uid) do update
+    set pass_expires_at = greatest(public.user_pass.pass_expires_at, excluded.pass_expires_at),
+        updated_at = now()
+  returning pass_expires_at;
+$$;
+
+revoke all on function public.raise_pass_expiry(uuid, timestamptz) from public, anon, authenticated;
+
 alter table public.premium_setting enable row level security;
 alter table public.user_pass enable row level security;
 alter table public.pass_purchase enable row level security;

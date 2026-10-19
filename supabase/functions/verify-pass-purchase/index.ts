@@ -85,15 +85,13 @@ const deps = (): VerifyDeps => ({
     throw error;
   },
 
-  async setPassExpiry(uid: string, expiresAt: Date | null) {
-    const { error } = expiresAt
-      ? await supabase.from('user_pass').upsert({
-          uid,
-          pass_expires_at: expiresAt.toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-      : await supabase.from('user_pass').delete().eq('uid', uid);
+  async raisePassExpiry(uid: string, expiresAt: Date) {
+    const { data, error } = await supabase.rpc('raise_pass_expiry', {
+      p_uid: uid,
+      p_expires_at: expiresAt.toISOString(),
+    });
     if (error) throw error;
+    return new Date(data as string);
   },
 
   play: getPlayClient(),

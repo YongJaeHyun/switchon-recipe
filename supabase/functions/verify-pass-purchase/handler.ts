@@ -42,7 +42,8 @@ export interface VerifyDeps {
   findPurchase(token: string): Promise<{ status: string } | null>;
   listUserPurchases(uid: string): Promise<PurchaseForExpiry[]>;
   insertPurchase(row: PurchaseRow): Promise<'inserted' | 'duplicate'>; // unique 위반이면 'duplicate'
-  setPassExpiry(uid: string, expiresAt: Date | null): Promise<void>; // null이면 user_pass 삭제
+  // user_pass 만료일을 greatest(기존, expiresAt)로 올리고 저장된 값을 돌려준다 (줄이지 않음)
+  raisePassExpiry(uid: string, expiresAt: Date): Promise<Date>;
   play: Pick<
     ReturnType<typeof createGooglePlayClient>,
     'getProductPurchase' | 'consumeProductPurchase' | 'refundOrder'
@@ -55,7 +56,11 @@ export interface VerifyInput {
   purchaseToken: string;
 }
 
-const toIso = (date: Date | null) => (date ? date.toISOString() : null);
+// 전체 구매로 만료일을 다시 계산해 user_pass에 반영한다 (동시 요청이 짧은 값으로 덮어쓰지 못하게 raise만 한다)
+const syncPassExpiry = async (deps: VerifyDeps, uid: string): Promise<Date | null> => {
+  const expiry = computeExpiry(await deps.listUserPurchases(uid));
+  return expiry ? deps.raisePassExpiry(uid, expiry) : null;
+};
 
 // 소비 실패는 결과를 바꾸지 않는다. 다음 복구 요청의 already_processed 경로에서 다시 시도한다
 const tryConsume = async (deps: VerifyDeps, productId: string, token: string) => {
@@ -71,9 +76,10 @@ const alreadyProcessed = async (
   input: VerifyInput,
   status: string
 ): Promise<VerifyResult> => {
+  // 이전 요청이 insert 후 만료일 기록 전에 끊겼어도 여기서 복구된다
+  const expiry = await syncPassExpiry(deps, input.uid);
   if (status === 'granted') await tryConsume(deps, input.productId, input.purchaseToken);
-  const expiry = computeExpiry(await deps.listUserPurchases(input.uid));
-  return { status: 'already_processed', passExpiresAt: toIso(expiry) };
+  return { status: 'already_processed', passExpiresAt: expiry ? expiry.toISOString() : null };
 };
 
 const isValidPurchase = (purchase: ProductPurchase, input: VerifyInput) =>
@@ -139,10 +145,9 @@ export async function verifyPurchase(deps: VerifyDeps, input: VerifyInput): Prom
   if (inserted === 'duplicate') return alreadyProcessed(deps, input, 'granted');
 
   // 동시에 처리된 다른 구매도 반영되도록 insert 후 전체 구매로 다시 계산한다
-  const expiry = computeExpiry(await deps.listUserPurchases(input.uid));
-  await deps.setPassExpiry(input.uid, expiry);
+  const expiry = (await syncPassExpiry(deps, input.uid)) as Date;
 
   await tryConsume(deps, input.productId, input.purchaseToken);
 
-  return { status: 'granted', passExpiresAt: toIso(expiry) as string };
+  return { status: 'granted', passExpiresAt: expiry.toISOString() };
 }
