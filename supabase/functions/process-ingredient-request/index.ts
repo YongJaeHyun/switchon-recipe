@@ -7,7 +7,8 @@ import {
   buildRequesterNotification,
   decideFinalStatus,
   findExactMatch,
-  formatSlackReport,
+  findHiddenIngredient,
+  hiddenRejectionReport,
   getProcessMode,
   isBlockedByPriorRequests,
   isServiceRoleRequest,
@@ -15,6 +16,7 @@ import {
 } from './core.ts';
 import { createImageDeps, findIngredientImage, type ImageDeps } from './image.ts';
 import { judgeIngredient } from './judge.ts';
+import { buildSlackMessage } from './slack.ts';
 import type {
   CandidateIngredient,
   ExistingIngredient,
@@ -46,10 +48,11 @@ const supabase = createClient(requireEnv('SUPABASE_URL'), requireEnv('SUPABASE_S
 const loadExistingIngredients = async (): Promise<ExistingIngredient[]> => {
   const { data, error } = await supabase
     .from('ingredient')
-    .select('name, sub_keywords, week, is_carbohydrate, is_active');
+    .select('id, name, sub_keywords, week, is_carbohydrate, is_active');
   if (error) throw error;
 
   return data.map((row) => ({
+    id: row.id,
     name: row.name,
     subKeywords: row.sub_keywords ?? [],
     week: row.week,
@@ -115,18 +118,22 @@ const addCandidate = async (
 
   const imageUrl = supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
 
-  const { error: insertError } = await supabase.from('ingredient').insert({
-    name: candidate.name,
-    sub_keywords: candidate.subKeywords,
-    week: candidate.week,
-    is_carbohydrate: candidate.isCarbohydrate,
-    image_url: imageUrl,
-    image_source: found.source,
-    source: 'auto',
-    sort_order: sortOrder,
-    request_id: requestId,
-    ai_reason: candidate.reason,
-  });
+  const { data: inserted, error: insertError } = await supabase
+    .from('ingredient')
+    .insert({
+      name: candidate.name,
+      sub_keywords: candidate.subKeywords,
+      week: candidate.week,
+      is_carbohydrate: candidate.isCarbohydrate,
+      image_url: imageUrl,
+      image_source: found.source,
+      source: 'auto',
+      sort_order: sortOrder,
+      request_id: requestId,
+      ai_reason: candidate.reason,
+    })
+    .select('id')
+    .single();
 
   if (insertError) {
     await supabase.storage.from(BUCKET).remove([path]);
@@ -136,7 +143,13 @@ const addCandidate = async (
     throw new Error(`재료 저장 실패: ${insertError.message}`);
   }
 
-  return { candidate, status: 'added', imageUrl, imageSource: found.source };
+  return {
+    candidate,
+    status: 'added',
+    imageUrl,
+    imageSource: found.source,
+    ingredientId: inserted.id,
+  };
 };
 
 const buildReport = async (
@@ -144,12 +157,15 @@ const buildReport = async (
   mode: 'new' | 'retry'
 ): Promise<ProcessReport> => {
   const base = { requestName: record.name, outcomes: [] };
+  const existing = await loadExistingIngredients();
+
+  // 숨긴 재료 확인이 먼저: 롤백한 재료는 예전 'added' 요청이 있어 아래 중복 확인에 걸리기 때문
+  const hidden = findHiddenIngredient(record.name, existing);
+  if (hidden) return hiddenRejectionReport(record.name, hidden);
 
   if (mode === 'new' && (await hasPriorRequest(record))) {
     return { ...base, status: 'duplicate', reason: '이미 처리되었거나 처리 중인 요청' };
   }
-
-  const existing = await loadExistingIngredients();
   const match = findExactMatch(record.name, existing);
   if (match) {
     return { ...base, status: 'duplicate', reason: '이미 등록된 재료', matchedName: match.name };
@@ -162,6 +178,8 @@ const buildReport = async (
     return { ...base, status: 'rejected', reason: judgement.reason };
   }
   if (judgement.decision === 'duplicate') {
+    const hiddenMatch = findHiddenIngredient(judgement.matchedName, existing);
+    if (hiddenMatch) return hiddenRejectionReport(record.name, hiddenMatch);
     return {
       ...base,
       status: 'duplicate',
@@ -190,7 +208,7 @@ const sendSlack = async (report: ProcessReport) => {
     const res = await fetch(requireEnv('INGREDIENT_SLACK_WEBHOOK_URL'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: formatSlackReport(report) }),
+      body: JSON.stringify(buildSlackMessage(report)),
     });
     if (!res.ok) console.error(`Slack 전송 실패 (${res.status}): ${await res.text()}`);
   } catch (error) {

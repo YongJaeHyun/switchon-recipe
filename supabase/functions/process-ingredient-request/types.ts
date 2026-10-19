@@ -3,6 +3,7 @@ export type RequestStatus = 'pending' | 'added' | 'rejected' | 'duplicate' | 'fa
 export type ImageSource = 'pixabay' | 'generated';
 
 export interface ExistingIngredient {
+  id?: number;
   name: string;
   subKeywords: string[];
   week: Week;
@@ -29,6 +30,7 @@ export interface IngredientOutcome {
   status: 'added' | 'failed';
   imageUrl?: string;
   imageSource?: ImageSource;
+  ingredientId?: number;
   error?: string;
 }
 
@@ -37,6 +39,8 @@ export interface ProcessReport {
   status: Exclude<RequestStatus, 'pending'>;
   reason: string;
   matchedName?: string;
+  // 운영자가 숨긴(롤백한) 재료를 다시 요청한 경우
+  hiddenIngredient?: { id: number; name: string };
   outcomes: IngredientOutcome[];
   error?: string;
 }

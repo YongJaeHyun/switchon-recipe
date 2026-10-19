@@ -347,3 +347,9 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/process-ingredient-request/deno.json"
 entrypoint = "./functions/process-ingredient-request/index.ts"
+
+[functions.slack-ingredient-action]
+enabled = true
+verify_jwt = false
+import_map = "./functions/slack-ingredient-action/deno.json"
+entrypoint = "./functions/slack-ingredient-action/index.ts"

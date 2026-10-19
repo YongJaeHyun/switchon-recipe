@@ -137,6 +137,8 @@ const formatOutcome = ({ candidate, status, imageUrl, imageSource, error }: Ingr
     .join('\n');
 };
 
+const HIDDEN_HEADER = '🙈 숨긴 재료 재요청';
+
 const headers = {
   added: '✅ 재료 자동 추가',
   rejected: '🚫 재료 요청 거절',
@@ -145,7 +147,10 @@ const headers = {
 } as const;
 
 export const formatSlackReport = (report: ProcessReport) => {
-  const lines = [`${headers[report.status]}\n`, `요청 재료: ${report.requestName}`];
+  const header = report.hiddenIngredient ? HIDDEN_HEADER : headers[report.status];
+  const lines = [`${header}\n`, `요청 재료: ${report.requestName}`];
+
+  if (report.hiddenIngredient) lines.push(`숨긴 재료: ${report.hiddenIngredient.name}`);
 
   if (report.matchedName) lines.push(`겹치는 기존 재료: ${report.matchedName}`);
   if (report.reason) lines.push(`판단 근거: ${report.reason}`);
@@ -235,6 +240,14 @@ export const buildRequesterNotification = (report: ProcessReport): RequesterNoti
     };
   }
 
+  if (report.hiddenIngredient) {
+    return {
+      title: '재료 요청 결과',
+      body: `요청하신 '${name}'은(는) 검토 결과 추가되지 않았어요.`,
+      href: null,
+    };
+  }
+
   if (report.status === 'rejected') {
     return {
       title: '재료 요청 결과',
@@ -255,3 +268,20 @@ export const buildRequesterNotification = (report: ProcessReport): RequesterNoti
 
   return null;
 };
+
+// 운영자가 숨긴(롤백한) 재료와 같은 재료인지. 다시 AI 판단에 맡기면 그대로 재추가될 수 있음
+export const findHiddenIngredient = (name: string, existing: ExistingIngredient[]) => {
+  const match = findExactMatch(name, existing);
+  return match && !match.isActive && match.id != null ? { id: match.id, name: match.name } : null;
+};
+
+export const hiddenRejectionReport = (
+  requestName: string,
+  hiddenIngredient: { id: number; name: string }
+): ProcessReport => ({
+  requestName,
+  status: 'rejected',
+  reason: '운영자가 숨긴 재료',
+  hiddenIngredient,
+  outcomes: [],
+});
