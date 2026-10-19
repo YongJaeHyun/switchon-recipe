@@ -6,3 +6,4 @@ npx supabase functions deploy slack-ingredient-action
 npx supabase functions deploy verify-pass-purchase
 npx supabase functions deploy get-pass-status
 npx supabase functions deploy sync-voided-purchases
+npx supabase functions deploy admob-ssv

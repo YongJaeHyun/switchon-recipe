@@ -375,3 +375,10 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/sync-voided-purchases/deno.json"
 entrypoint = "./functions/sync-voided-purchases/index.ts"
+
+# AdMob 보상형 광고 SSV 콜백은 Google이 JWT 없이 호출한다 (서명은 함수 안에서 검증)
+[functions.admob-ssv]
+enabled = true
+verify_jwt = false
+import_map = "./functions/admob-ssv/deno.json"
+entrypoint = "./functions/admob-ssv/index.ts"
