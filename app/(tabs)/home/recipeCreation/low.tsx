@@ -17,11 +17,18 @@ import { useSelect } from 'hooks/useSelect';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { queryClient } from 'lib/queryClient';
 import { useEffect, useRef, useState } from 'react';
-import { FlatList, TouchableHighlight, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  TouchableHighlight,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { RecipeCategory, RecipeMethod } from 'types/recipe';
 import { getWeekAndDay } from 'utils/date';
+import { getCreationLoadingKind } from 'utils/creationLoading';
 import { isCompletedHangul } from 'utils/hangul';
 
 export default function LowRecipeCreationScreen() {
@@ -127,6 +134,11 @@ export default function LowRecipeCreationScreen() {
     return () => controller.current?.abort();
   }, []);
 
+  const loadingKind = getCreationLoadingKind({
+    isRecipeLoading,
+    isDataLoading: isIngredientsLoading || isIngredientListLoading,
+  });
+
   return (
     <SafeAreaViewWithNav className="relative flex-1 bg-white px-5">
       <View className="mb-8 w-full gap-3">
@@ -206,7 +218,12 @@ export default function LowRecipeCreationScreen() {
           </TouchableHighlight>
         </View>
       </View>
-      {(isIngredientsLoading || isIngredientListLoading || isRecipeLoading) && (
+      {loadingKind === 'data' && (
+        <View className="absolute inset-0 z-50 items-center justify-center">
+          <ActivityIndicator size="large" color={colors.amber[500]} />
+        </View>
+      )}
+      {loadingKind === 'recipe' && (
         <View className="absolute inset-0 z-50 items-center justify-center">
           <View className="absolute inset-0 bg-black/40" />
           <View className="translate-y-8">
