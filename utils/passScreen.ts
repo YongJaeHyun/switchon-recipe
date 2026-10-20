@@ -2,7 +2,7 @@
 import { TIME_ZONE } from 'const/const';
 import type { ErrorToastText, SuccessToastText } from 'const/toastText';
 import { formatInTimeZone } from 'date-fns-tz';
-import type { SalesState, VerifyResult } from 'types/pass';
+import type { PassStatus, SalesState, VerifyResult } from 'types/pass';
 import { formatSalesHeadline } from './passDisplay';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -17,6 +17,16 @@ export function isPassOnSale(
   billingAvailable: boolean | undefined
 ): boolean {
   return sales?.onSale === true && billingAvailable === true;
+}
+
+// 구독 전용 기능 진입점(홈 카드 등)을 보일지. 권한이 있으면 항상, 없으면 패스를 살 수 있을 때만
+// (그때 누르면 usePremiumGate가 결제 화면으로 보낸다). 상태를 아직 모르면 숨긴다
+export function shouldShowPremiumEntry(
+  status: PassStatus | undefined,
+  billingAvailable: boolean | undefined
+): boolean {
+  if (!status) return false;
+  return status.hasAccess || isPassOnSale(status.sales, billingAvailable);
 }
 
 // 홈 배너 문구. 판매 중(결제 가능)이고 무료 기간(사전 결제 할인)일 때만. 그 밖에는 null (배너 숨김)

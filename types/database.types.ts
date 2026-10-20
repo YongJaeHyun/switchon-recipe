@@ -43,6 +43,65 @@ export type Database = {
           },
         ];
       };
+      food_check: {
+        Row: {
+          alternatives: string[] | null;
+          basis: string | null;
+          created_at: string;
+          id: number;
+          image_path: string | null;
+          input_text: string | null;
+          input_type: string;
+          product_name: string | null;
+          reasons: string[] | null;
+          score: number | null;
+          thumb_path: string | null;
+          uid: string;
+          verdict: string | null;
+          week: number | null;
+        };
+        Insert: {
+          alternatives?: string[] | null;
+          basis?: string | null;
+          created_at?: string;
+          id?: number;
+          image_path?: string | null;
+          input_text?: string | null;
+          input_type: string;
+          product_name?: string | null;
+          reasons?: string[] | null;
+          score?: number | null;
+          thumb_path?: string | null;
+          uid: string;
+          verdict?: string | null;
+          week?: number | null;
+        };
+        Update: {
+          alternatives?: string[] | null;
+          basis?: string | null;
+          created_at?: string;
+          id?: number;
+          image_path?: string | null;
+          input_text?: string | null;
+          input_type?: string;
+          product_name?: string | null;
+          reasons?: string[] | null;
+          score?: number | null;
+          thumb_path?: string | null;
+          uid?: string;
+          verdict?: string | null;
+          week?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'food_check_uid_fkey';
+            columns: ['uid'];
+            isOneToOne: false;
+            referencedRelation: 'user';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       ingredient: {
         Row: {
           ai_reason: string | null;
@@ -719,6 +778,7 @@ export type Database = {
           value: string;
         }[];
       };
+      get_premium_quota: { Args: { p_feature: string }; Returns: Json };
       get_recipe_quota: { Args: never; Returns: Json };
       has_premium_access: { Args: never; Returns: boolean };
       has_premium_access_for: { Args: { p_uid: string }; Returns: boolean };

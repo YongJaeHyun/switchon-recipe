@@ -2,6 +2,7 @@ import BottomSheet from '@gorhom/bottom-sheet';
 import { SafeAreaViewWithNav } from 'components/common/SafeAreaViewWithNav';
 import { HomeHeader } from 'components/home/HomeHeader';
 import { PassBanner } from 'components/home/PassBanner';
+import { PremiumFeatureCards } from 'components/home/PremiumFeatureCards';
 import RecentRecipes from 'components/home/RecentRecipes';
 import RecipeCreation from 'components/home/RecipeCreation';
 import SavedRecipes from 'components/home/SavedRecipes';
@@ -74,6 +75,7 @@ export default function HomeScreen() {
                 subtitle="탄수화물 추가로 포만감 있게!"
               />
             </View>
+            <PremiumFeatureCards />
           </View>
           <SavedRecipes recipes={savedRecipes} refreshing={refreshing} />
           <RecentRecipes recipes={recentRecipes} refreshing={refreshing} />
