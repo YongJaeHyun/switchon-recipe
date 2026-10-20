@@ -7,7 +7,7 @@ const version = APP_VERSION.split('+')[0];
 export const getLatestNotices = (
   latestIngredient: ReturnType<typeof getLatestIngredientNotice>
 ) => {
-  const notices = [`🚀 [v${version} 업데이트] - 재료 요청 자동 처리 및 결과 알림`];
+  const notices = [`🚀 [v${version} 업데이트] - 오프라인 화면 유지, 오늘 남은 레시피 표시`];
 
   if (latestIngredient) {
     const { month, week, names } = latestIngredient;
