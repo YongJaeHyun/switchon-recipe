@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { partitionRemoved, selectExpired } from '../../_shared/foodCheckCleanup.ts';
+import {
+  orphanFolders,
+  partitionRemoved,
+  selectExpired,
+  uidFolderNames,
+} from '../../_shared/foodCheckCleanup.ts';
 
 const NOW = new Date('2026-11-20T00:00:00Z');
 
@@ -51,5 +56,31 @@ describe('partitionRemoved', () => {
 
   it('하나도 안 돌아옴', () => {
     expect(partitionRemoved(requested, [])).toEqual({ removedIds: [], notRemoved: requested });
+  });
+});
+
+describe('orphanFolders', () => {
+  const A = '11111111-1111-4111-8111-111111111111';
+  const B = '22222222-2222-4222-8222-222222222222';
+  const C = 'CCCCCCCC-cccc-4ccc-8ccc-cccccccccccc';
+
+  it('public.user에 없는 uid 폴더만 고름', () => {
+    expect(orphanFolders([A, B, C], new Set([B]))).toEqual([A, C]);
+  });
+
+  it('모두 있으면 빈 배열', () => {
+    expect(orphanFolders([A, B], new Set([A, B]))).toEqual([]);
+  });
+
+  it('uid(uuid)가 아닌 이름·빈 이름·중복은 제외', () => {
+    expect(orphanFolders(['', ' ', '.emptyFolderPlaceholder', 'a', A, A], new Set())).toEqual([A]);
+  });
+});
+
+describe('uidFolderNames', () => {
+  it('uuid 모양 이름만 남김', () => {
+    expect(
+      uidFolderNames(['.emptyFolderPlaceholder', '11111111-1111-4111-8111-111111111111', 'x'])
+    ).toEqual(['11111111-1111-4111-8111-111111111111']);
   });
 });

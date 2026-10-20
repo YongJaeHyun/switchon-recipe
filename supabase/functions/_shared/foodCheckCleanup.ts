@@ -34,3 +34,23 @@ export const partitionRemoved = (
   }
   return { removedIds, notRemoved };
 };
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// 버킷 최상위 이름 중 uid(uuid) 모양만 남긴다. .emptyFolderPlaceholder 같은 이름을 user.id(uuid)
+// 조회에 넣으면 쿼리 전체가 실패하므로 먼저 거른다
+export const uidFolderNames = (names: string[]): string[] =>
+  names.filter((name) => UUID_RE.test(name));
+
+// 탈퇴 등으로 public.user 행이 없는 uid의 사진 폴더(food-check/{uid}/)를 고른다.
+// uid 모양이 아닌 이름·중복은 뺀다
+export const orphanFolders = (folderUids: string[], existingUids: Set<string>): string[] => {
+  const seen = new Set<string>();
+  const orphans: string[] = [];
+  for (const uid of uidFolderNames(folderUids)) {
+    if (seen.has(uid)) continue;
+    seen.add(uid);
+    if (!existingUids.has(uid)) orphans.push(uid);
+  }
+  return orphans;
+};

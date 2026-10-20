@@ -68,6 +68,25 @@ describe('runWithQuota', () => {
     await expect(runWithQuota({ consume, release }, generate)).rejects.toThrow(generateError);
     expect(release).toHaveBeenCalledTimes(1);
   });
+
+  it('release 실패 로그는 기능과 무관한 문구', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const releaseError = new Error('복구 실패');
+    try {
+      await expect(
+        runWithQuota(
+          {
+            consume: vi.fn().mockResolvedValue(allowedDecision),
+            release: vi.fn().mockRejectedValue(releaseError),
+          },
+          vi.fn().mockRejectedValue(new Error('생성 실패'))
+        )
+      ).rejects.toThrow('생성 실패');
+      expect(errorSpy).toHaveBeenCalledWith('quota release 실패:', releaseError);
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
 });
 
 describe('parseQuotaDecision', () => {

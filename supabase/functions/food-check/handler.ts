@@ -1,7 +1,8 @@
 // 편의점 판정 요청 처리 본체. 외부 의존성(인증, 한도, Gemini, DB/스토리지)은 deps로 받아
 // Vitest(node)에서 가짜로 테스트한다. URL import를 두지 않는다 (실제 연결은 index.ts).
 // 흐름: 인증 -> 본문 크기/입력 검증 -> 패스 확인(has_premium_access_for) -> 하루 한도 차감
-// -> Gemini 판정·해석 -> 행 저장 -> (사진이면) 원본·썸네일 업로드 -> 행에 경로 기록.
+// -> (사진이면) 디코드·썸네일 생성 -> Gemini 판정·해석 -> 행 저장 -> (사진이면) 원본·썸네일 업로드
+// -> 행에 경로 기록. 사진 디코드를 Gemini보다 먼저 해서 깨진 사진은 AI 비용 없이 실패한다.
 // 한도 차감 뒤 실패(인식 실패 포함)는 모두 차감을 되돌린다(release).
 
 import {
@@ -21,7 +22,8 @@ import {
   type PremiumQuotaDecision,
 } from '../_shared/premiumQuota.ts';
 import { runWithQuota } from '../_shared/quota.ts';
-import { programWeekOf } from '../_shared/week.ts';
+import { programDayOf, programWeekOf } from '../_shared/week.ts';
+import type { PreparedImages } from './images.ts';
 
 export const MAX_BODY_BYTES = 4 * 1024 * 1024;
 export const MAX_TEXT_LENGTH = 50;
@@ -83,8 +85,11 @@ export interface FoodCheckDeps {
   // Gemini 응답 텍스트를 돌려준다
   askGemini(prompt: string, input: FoodCheckInput): Promise<string>;
   insertCheck(row: FoodCheckInsert): Promise<FoodCheckRow>;
-  // 원본(JPEG q80)·썸네일(긴 변 200px JPEG q70)을 만들어 업로드하고 경로를 돌려준다
-  storeImages(uid: string, id: number, imageBase64: string): Promise<ImagePaths>;
+  // 사진을 디코드해 원본(JPEG는 그대로, PNG는 긴 변 1280px JPEG q80)·썸네일(긴 변 200px JPEG q70)을
+  // 만든다. 디코드할 수 없으면 던진다
+  prepareImages(image: { imageBase64: string; mimeType: string }): Promise<PreparedImages>;
+  // 준비한 원본·썸네일을 업로드하고 경로를 돌려준다
+  storeImages(uid: string, id: number, images: PreparedImages): Promise<ImagePaths>;
   updateImagePaths(id: number, paths: ImagePaths): Promise<void>;
   deleteCheck(id: number): Promise<void>;
   // 썸네일 signed URL (1시간)
@@ -193,13 +198,14 @@ const save = async (
   uid: string,
   input: FoodCheckInput,
   result: FoodCheckResult,
-  week: number
+  week: number,
+  images: PreparedImages | null
 ): Promise<FoodCheckRow> => {
   const row = await deps.insertCheck(toInsert(uid, input, result, week));
-  if (input.type === 'text') return row;
+  if (!images) return row;
 
   try {
-    const paths = await deps.storeImages(uid, row.id, input.imageBase64);
+    const paths = await deps.storeImages(uid, row.id, images);
     await deps.updateImagePaths(row.id, paths);
     return { ...row, image_path: paths.imagePath, thumb_path: paths.thumbPath };
   } catch (error) {
@@ -240,14 +246,25 @@ export async function handleFoodCheck(req: Request, deps: FoodCheckDeps): Promis
       outcome = await runWithQuota(
         { consume: () => deps.consume(uid), release: () => deps.release(uid) },
         async () => {
-          const week = programWeekOf(await deps.getStartDate(uid), deps.now());
-          const text = await deps.askGemini(buildFoodCheckPrompt(input, week), input);
+          // 깨진 사진은 Gemini 호출 전에 실패시킨다 (차감은 runWithQuota가 되돌림)
+          const images =
+            input.type === 'text'
+              ? null
+              : await deps.prepareImages({
+                  imageBase64: input.imageBase64,
+                  mimeType: input.mimeType,
+                });
+          const startDate = await deps.getStartDate(uid);
+          const now = deps.now();
+          const week = programWeekOf(startDate, now);
+          const day = programDayOf(startDate, now);
+          const text = await deps.askGemini(buildFoodCheckPrompt(input, week, day), input);
           const parsed = parseFoodCheckResponse(text, input.type);
           if (parsed.status === 'unrecognized') throw new UnrecognizedError();
           if (parsed.status === 'invalid') {
             throw new Error(`Gemini 응답 형식이 올바르지 않습니다: ${text.slice(0, 200)}`);
           }
-          return save(deps, uid, input, parsed.result, week);
+          return save(deps, uid, input, parsed.result, week, images);
         }
       );
     } catch (error) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { programWeekOf } from '../../_shared/week.ts';
+import { programDayOf, programWeekOf } from '../../_shared/week.ts';
 
 // KST 2026-10-20 00:00 = 2026-10-19T15:00Z
 const kst = (iso: string) => new Date(iso);
@@ -30,5 +30,28 @@ describe('programWeekOf', () => {
   it('시작일이 미래거나 형식이 잘못되면 1주차', () => {
     expect(programWeekOf('2026-11-01', kst('2026-10-20T03:00:00Z'))).toBe(1);
     expect(programWeekOf('not-a-date', kst('2026-10-20T03:00:00Z'))).toBe(1);
+  });
+});
+
+describe('programDayOf', () => {
+  it('시작일이 없거나 잘못되거나 미래면 1일차', () => {
+    expect(programDayOf(null, kst('2026-10-20T03:00:00Z'))).toBe(1);
+    expect(programDayOf('', kst('2026-10-20T03:00:00Z'))).toBe(1);
+    expect(programDayOf('not-a-date', kst('2026-10-20T03:00:00Z'))).toBe(1);
+    expect(programDayOf('2026-11-01', kst('2026-10-20T03:00:00Z'))).toBe(1);
+  });
+
+  it('주 안의 일차(1~7), 앱 getWeekAndDay와 같은 규칙', () => {
+    expect(programDayOf('2026-10-20', kst('2026-10-20T03:00:00Z'))).toBe(1);
+    expect(programDayOf('2026-10-20', kst('2026-10-22T03:00:00Z'))).toBe(3);
+    expect(programDayOf('2026-10-20', kst('2026-10-23T03:00:00Z'))).toBe(4);
+    expect(programDayOf('2026-10-20', kst('2026-10-26T03:00:00Z'))).toBe(7);
+    expect(programDayOf('2026-10-20', kst('2026-10-27T03:00:00Z'))).toBe(1);
+    expect(programDayOf('2026-10-01', kst('2026-10-20T03:00:00Z'))).toBe(6);
+  });
+
+  it('하루 경계는 KST 자정', () => {
+    expect(programDayOf('2026-10-20', kst('2026-10-22T14:59:59Z'))).toBe(3);
+    expect(programDayOf('2026-10-20', kst('2026-10-22T15:00:00Z'))).toBe(4);
   });
 });

@@ -36,6 +36,9 @@ const PHOTO_TYPES: { type: FoodCheckPhotoType; label: string }[] = [
   { type: 'label', label: '성분표' },
 ];
 
+// expo-image-picker에는 크기 줄이기 옵션이 없고 네이티브 모듈(image-manipulator)은 OTA로 추가할 수 없다.
+// 그래서 품질 0.6으로 용량만 줄이고, 그래도 서버 한도를 넘으면 다시 고를 수 없으므로 '용량이 너무 커요'
+// 안내로 끝낸다. 서버는 JPEG 원본을 그대로 저장하고 PNG만 긴 변 1280px로 줄인다 (food-check/images.ts).
 const PICKER_OPTIONS: ImagePicker.ImagePickerOptions = {
   mediaTypes: ['images'],
   quality: 0.6,

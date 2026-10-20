@@ -77,7 +77,7 @@ export async function runWithQuota<T, D extends { allowed: boolean } = QuotaDeci
     try {
       await deps.release();
     } catch (releaseError) {
-      console.error('release_recipe_quota 실패:', releaseError);
+      console.error('quota release 실패:', releaseError);
     }
     throw generateError;
   }

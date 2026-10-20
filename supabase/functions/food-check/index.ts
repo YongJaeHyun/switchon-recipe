@@ -11,11 +11,11 @@ import { getUid, requireEnv } from '../_shared/auth.ts';
 import type { FoodCheckInput } from '../_shared/foodCheck.ts';
 import { parsePremiumQuota } from '../_shared/premiumQuota.ts';
 import { type FoodCheckDeps, type FoodCheckRow, handleFoodCheck } from './handler.ts';
+import { type ImageCodec, prepareFoodCheckImages } from './images.ts';
 
 const FEATURE = 'food_check';
 const BUCKET = 'food-check';
 const GEMINI_TIMEOUT_MS = 30_000;
-const THUMB_LONGEST_SIDE = 200;
 const SIGNED_URL_SECONDS = 60 * 60;
 
 const supabase = createClient(requireEnv('SUPABASE_URL'), requireEnv('SUPABASE_SERVICE_ROLE_KEY'));
@@ -39,7 +39,11 @@ const askGemini = async (prompt: string, input: FoodCheckInput): Promise<string>
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ role: 'user', parts }],
-          generationConfig: { responseMimeType: 'application/json' },
+          // 생각(thinking)을 끄고 바로 답하게 해 30초 시간 제한 안에서 지연을 줄인다
+          generationConfig: {
+            responseMimeType: 'application/json',
+            thinkingConfig: { thinkingBudget: 0 },
+          },
         }),
         signal: controller.signal,
       }
@@ -61,7 +65,15 @@ const askGemini = async (prompt: string, input: FoodCheckInput): Promise<string>
   }
 };
 
-const decodeBase64 = (base64: string) => Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+// imagescript 연결. GIF 등 Image가 아닌 결과는 디코드 실패로 던진다
+const codec: ImageCodec = {
+  async decode(bytes) {
+    const image = await Image.decode(bytes);
+    if (!(image instanceof Image)) throw new Error('판정 이미지를 디코드할 수 없습니다');
+    return image;
+  },
+  RESIZE_AUTO: Image.RESIZE_AUTO,
+};
 
 const upload = async (path: string, bytes: Uint8Array) => {
   const { error } = await supabase.storage
@@ -110,20 +122,10 @@ const deps: FoodCheckDeps = {
     return data as FoodCheckRow;
   },
 
-  // 디코드 실패(JPEG/PNG 아님 등)도 저장 실패로 던진다 → 차감 되돌림 후 500
-  async storeImages(uid, id, imageBase64) {
-    const image = await Image.decode(decodeBase64(imageBase64));
-    if (!(image instanceof Image)) throw new Error('판정 이미지를 디코드할 수 없습니다');
+  // 디코드 실패(JPEG/PNG 아님 등)는 던진다 → Gemini 호출 전 차감 되돌림 후 500
+  prepareImages: (image) => prepareFoodCheckImages(codec, image),
 
-    const original = await image.encodeJPEG(80);
-
-    // 원본보다 키우지 않는다
-    if (Math.max(image.width, image.height) > THUMB_LONGEST_SIDE) {
-      if (image.width >= image.height) image.resize(THUMB_LONGEST_SIDE, Image.RESIZE_AUTO);
-      else image.resize(Image.RESIZE_AUTO, THUMB_LONGEST_SIDE);
-    }
-    const thumb = await image.encodeJPEG(70);
-
+  async storeImages(uid, id, { original, thumb }) {
     const imagePath = `${uid}/${id}.jpg`;
     const thumbPath = `${uid}/${id}_thumb.jpg`;
     await upload(imagePath, original);

@@ -9,6 +9,7 @@ import {
 import { PREMIUM_QUOTA_EXCEEDED_MESSAGE } from '../../_shared/premiumQuota.ts';
 
 const UID = 'user-1';
+const PREPARED = { original: new Uint8Array([1]), thumb: new Uint8Array([2]) };
 
 const geminiOk = (o: Record<string, unknown> = {}) =>
   JSON.stringify({
@@ -39,6 +40,7 @@ const makeDeps = (o: Partial<FoodCheckDeps> = {}) => {
         created_at: '2026-10-20T03:00:01.000Z',
       })
     ),
+    prepareImages: vi.fn(async () => PREPARED),
     storeImages: vi.fn(async (uid: string, id: number) => ({
       imagePath: `${uid}/${id}.jpg`,
       thumbPath: `${uid}/${id}_thumb.jpg`,
@@ -141,7 +143,7 @@ describe('handleFoodCheck', () => {
   it('사진 저장이 실패하면 500 + release 1회, 만든 행은 지운다', async () => {
     const deps = makeDeps({
       storeImages: vi.fn(async () => {
-        throw new Error('decode failed');
+        throw new Error('upload failed');
       }),
     });
     const res = await handleFoodCheck(req(photoBody), deps);
@@ -149,6 +151,51 @@ describe('handleFoodCheck', () => {
     expect(deps.release).toHaveBeenCalledTimes(1);
     expect(deps.deleteCheck).toHaveBeenCalledWith(100);
     expect(deps.updateImagePaths).not.toHaveBeenCalled();
+  });
+
+  it('사진 디코드가 실패하면 Gemini 호출 전에 500 + release 1회, 행을 만들지 않음', async () => {
+    const deps = makeDeps({
+      prepareImages: vi.fn(async () => {
+        throw new Error('decode failed');
+      }),
+    });
+    const res = await handleFoodCheck(req(photoBody), deps);
+    expect(res.status).toBe(500);
+    expect(deps.consume).toHaveBeenCalledTimes(1);
+    expect(deps.release).toHaveBeenCalledTimes(1);
+    expect(deps.askGemini).not.toHaveBeenCalled();
+    expect(deps.insertCheck).not.toHaveBeenCalled();
+  });
+
+  it('사진은 Gemini 호출 전에 디코드한다', async () => {
+    const order: string[] = [];
+    const deps = makeDeps({
+      prepareImages: vi.fn(async () => {
+        order.push('prepare');
+        return PREPARED;
+      }),
+      askGemini: vi.fn(async () => {
+        order.push('gemini');
+        return geminiOk();
+      }),
+    });
+    const res = await handleFoodCheck(req(photoBody), deps);
+    expect(res.status).toBe(200);
+    expect(order).toEqual(['prepare', 'gemini']);
+  });
+
+  it('1주차 1~3일차와 4일차 이후를 프롬프트에서 구분 (일차 전달)', async () => {
+    // KST 10/20, 시작일 10/19 → 1주차 2일차 / 시작일 10/15 → 1주차 6일차
+    const early = makeDeps({ getStartDate: vi.fn(async () => '2026-10-19') });
+    await handleFoodCheck(req(textBody), early);
+    const [earlyPrompt] = (early.askGemini as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(earlyPrompt).toContain('하루 4끼 모두 프로틴쉐이크');
+
+    const later = makeDeps({ getStartDate: vi.fn(async () => '2026-10-15') });
+    await handleFoodCheck(req(textBody), later);
+    const [laterPrompt] = (later.askGemini as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(laterPrompt).toContain('점심 저탄수식');
+    expect(laterPrompt).not.toContain('하루 4끼 모두 프로틴쉐이크');
   });
 
   it('경로 update가 실패해도 release 1회', async () => {
@@ -180,6 +227,7 @@ describe('handleFoodCheck', () => {
       week: 3,
     });
     expect(deps.storeImages).not.toHaveBeenCalled();
+    expect(deps.prepareImages).not.toHaveBeenCalled();
     expect(deps.signThumbUrl).not.toHaveBeenCalled();
     expect(deps.release).not.toHaveBeenCalled();
 
@@ -232,7 +280,11 @@ describe('handleFoodCheck', () => {
         week: 1,
       })
     );
-    expect(deps.storeImages).toHaveBeenCalledWith(UID, 100, 'aGVsbG8=');
+    expect(deps.prepareImages).toHaveBeenCalledWith({
+      imageBase64: 'aGVsbG8=',
+      mimeType: 'image/png',
+    });
+    expect(deps.storeImages).toHaveBeenCalledWith(UID, 100, PREPARED);
     expect(deps.updateImagePaths).toHaveBeenCalledWith(100, {
       imagePath: `${UID}/100.jpg`,
       thumbPath: `${UID}/100_thumb.jpg`,
