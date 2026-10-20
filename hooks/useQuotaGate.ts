@@ -6,7 +6,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { isAdsAvailable, showRewardedAd } from 'services/ads';
 import { useUserStore } from 'stores/userStore';
 import type { QuotaExceeded } from 'types/recipeQuota';
-import { getQuotaModalActions, waitForAdBonus, formatRemaining } from 'utils/recipeQuota';
+import {
+  formatRemaining,
+  getQuotaModalActions,
+  runAdBonusFlow,
+  waitForAdBonus,
+} from 'utils/recipeQuota';
 import { isPassOnSale } from 'utils/passScreen';
 import { showInfoToast } from 'utils/showToast';
 import { useBillingAvailable } from './useBillingAvailable';
@@ -25,12 +30,19 @@ export const useQuotaGate = () => {
   const [adsAvailable, setAdsAvailable] = useState(false);
   const [isWaitingBonus, setIsWaitingBonus] = useState(false);
   const busy = useRef(false);
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   const remainingText = quota ? formatRemaining(quota) : null;
   const onSale = isPassOnSale(status?.sales, billingAvailable);
 
   useEffect(() => {
-    if (!exceeded) return;
     let cancelled = false;
     isAdsAvailable().then((available) => {
       if (!cancelled) setAdsAvailable(available);
@@ -38,7 +50,7 @@ export const useQuotaGate = () => {
     return () => {
       cancelled = true;
     };
-  }, [exceeded]);
+  }, []);
 
   const invalidateQuota = useCallback(
     () => queryClient.invalidateQueries({ queryKey: [QueryKey.recipeQuota] }),
@@ -70,29 +82,26 @@ export const useQuotaGate = () => {
     setExceeded(null);
 
     try {
-      const result = await showRewardedAd(uid);
-      if (result !== 'earned') return;
-
-      setIsWaitingBonus(true);
-      const granted = await waitForAdBonus(RecipeQuotaAPI.get);
-      setIsWaitingBonus(false);
-      await invalidateQuota();
-
-      if (!granted) {
+      const outcome = await runAdBonusFlow({
+        showAd: () => showRewardedAd(uid),
+        waitBonus: () => waitForAdBonus(RecipeQuotaAPI.get),
+        retry,
+        isMounted: () => mounted.current,
+        onWaiting: setIsWaitingBonus,
+      });
+      if (outcome === 'delayed' && mounted.current) {
         showInfoToast({
           textType: 'CUSTOM',
           title: '보상 확인이 늦어지고 있어요. 잠시 후 다시 시도해주세요.',
         });
-        return;
       }
-      await retry();
     } catch {
       showInfoToast({
         textType: 'CUSTOM',
         title: '광고를 불러오지 못했어요. 잠시 후 다시 시도해주세요.',
       });
     } finally {
-      setIsWaitingBonus(false);
+      if (mounted.current) setIsWaitingBonus(false);
       busy.current = false;
       void invalidateQuota();
     }

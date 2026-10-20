@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { formatRemaining, getQuotaModalActions, waitForAdBonus } from './recipeQuota';
+import {
+  formatRemaining,
+  getQuotaModalActions,
+  runAdBonusFlow,
+  waitForAdBonus,
+} from './recipeQuota';
 
 describe('getQuotaModalActions', () => {
   const base = { isPass: false, canWatchAd: true, onSale: true, adsAvailable: true };

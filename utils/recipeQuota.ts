@@ -43,3 +43,25 @@ export const waitForAdBonus = async (
   }
   return false;
 };
+
+export type AdBonusOutcome = 'closed' | 'delayed' | 'retried' | 'unmounted';
+
+// 광고 시청 → 보상 확인 → 재시도 순서. 보상 확인 중에는 onWaiting(true)를 유지하고,
+// 재시도 시작 전에는 풀지 않는다(보상 1개에 생성이 두 번 시작되는 틈을 막는다)
+export const runAdBonusFlow = async (deps: {
+  showAd: () => Promise<'earned' | 'closed'>;
+  waitBonus: () => Promise<boolean>;
+  retry: () => Promise<void>;
+  isMounted: () => boolean;
+  onWaiting: (waiting: boolean) => void;
+}): Promise<AdBonusOutcome> => {
+  if ((await deps.showAd()) !== 'earned') return 'closed';
+  deps.onWaiting(true);
+  const granted = await deps.waitBonus();
+  if (!granted) return 'delayed';
+  if (!deps.isMounted()) return 'unmounted';
+  const retrying = deps.retry();
+  deps.onWaiting(false);
+  await retrying;
+  return 'retried';
+};

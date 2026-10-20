@@ -218,7 +218,7 @@ export default function ZeroRecipeCreationScreen() {
             className="flex-[6.5] items-center justify-center rounded-lg bg-green-600 py-4"
             underlayColor="#379237"
             onPress={requireOnline(handleCreateRecipe)}
-            disabled={isRecipeLoading}>
+            disabled={isRecipeLoading || quotaGate.isWaitingBonus}>
             <Text className="text-lg font-semibold text-white">
               {selectedIngredients.length > 0 ? '레시피 제작' : `랜덤 레시피 제작`}
             </Text>
@@ -253,7 +253,7 @@ export default function ZeroRecipeCreationScreen() {
       <QuotaExceededModal
         visible={!!quotaGate.exceeded}
         actions={quotaGate.actions}
-        onWatchAd={() => void quotaGate.watchAd(handleCreateRecipe)}
+        onWatchAd={requireOnline(() => void quotaGate.watchAd(handleCreateRecipe))}
         onPass={quotaGate.goPass}
         onClose={quotaGate.close}
       />
