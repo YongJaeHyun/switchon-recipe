@@ -9,6 +9,7 @@ import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { requireEnv } from './auth.ts';
 import { parseQuotaDecision, quotaExceededBody, runWithQuota } from './quota.ts';
+import { requestRecipeImage } from './recipeImage.ts';
 
 const RecipeSchema = z.object({
   recipeName: z.string(),
@@ -192,46 +193,8 @@ export async function handleCreateRecipe(req: Request): Promise<Response> {
       const recipeJson = JSON.parse(contentText);
       const validated = validateRecipe(recipeJson);
 
-      // 🔹 2. 이미지 생성 (gemini-3.1-flash-image)
-      const imageRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1/models/gemini-3.1-flash-image:generateContent?key=${geminiKey}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text: `Generate a food photo taken with a macro lens of 100mm using the following information.
-
-    name: ${validated.recipeName}`,
-                  },
-                ],
-              },
-            ],
-            generationConfig: {
-              responseModalities: ['IMAGE'],
-            },
-          }),
-        }
-      );
-
-      if (!imageRes.ok) {
-        const error = await imageRes.text();
-        throw new Error(`Gemini 이미지 요청 실패 (${imageRes.status})\n\nError: ${error}`);
-      }
-
-      const imageJson = await imageRes.json();
-      const imageBase64 = imageJson.candidates?.[0]?.content?.parts?.find(
-        (part: any) => part.inlineData
-      )?.inlineData.data;
-
-      if (!imageBase64) {
-        throw new Error('Gemini 이미지 생성 실패');
-      }
+      // 🔹 2. 이미지 생성
+      const imageBase64 = await requestRecipeImage(validated.recipeName, geminiKey);
 
       // base64 → binary
       const pngBuffer = Uint8Array.from(atob(imageBase64), (c) => c.charCodeAt(0));
