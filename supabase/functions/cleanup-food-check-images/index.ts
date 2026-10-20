@@ -18,7 +18,7 @@ import {
   uidFolderNames,
 } from '../_shared/foodCheckCleanup.ts';
 import { isServiceRoleRequest } from '../_shared/serviceRole.ts';
-import { fetchAllPages } from '../delete-unused-images/cleanup.ts';
+import { fetchAllPages } from '../_shared/pagination.ts';
 
 const BUCKET = 'food-check';
 const BATCH_SIZE = 100;

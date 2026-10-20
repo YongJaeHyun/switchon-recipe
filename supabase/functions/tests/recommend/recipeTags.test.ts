@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CUISINES,
+  METHODS,
+  RECIPE_TAG_BATCH_RESPONSE_SCHEMA,
   RECIPE_TAG_SCHEMA_PROMPT,
   buildRecipeTagBatchPrompt,
   parseRecipeTagBatchResponse,
@@ -116,5 +119,23 @@ describe('parseRecipeTagBatchResponse', () => {
   it('JSON이 아니거나 배열이 아니면 빈 배열', () => {
     expect(parseRecipeTagBatchResponse('nope', ids)).toEqual([]);
     expect(parseRecipeTagBatchResponse('{"id":1}', ids)).toEqual([]);
+  });
+});
+
+describe('RECIPE_TAG_BATCH_RESPONSE_SCHEMA', () => {
+  it('{id, spicy, cuisine, method} 배열, 값 목록은 enum', () => {
+    expect(RECIPE_TAG_BATCH_RESPONSE_SCHEMA).toEqual({
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          id: { type: 'INTEGER' },
+          spicy: { type: 'BOOLEAN' },
+          cuisine: { type: 'STRING', enum: [...CUISINES] },
+          method: { type: 'STRING', enum: [...METHODS] },
+        },
+        required: ['id', 'spicy', 'cuisine', 'method'],
+      },
+    });
   });
 });

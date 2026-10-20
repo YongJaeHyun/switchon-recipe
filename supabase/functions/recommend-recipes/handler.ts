@@ -6,6 +6,7 @@
 
 import {
   buildIngredientNormalizer,
+  excludeByContainment,
   type RegisteredIngredient,
 } from '../_shared/ingredientNormalize.ts';
 import {
@@ -144,7 +145,8 @@ export const parseConditions = (body: unknown): RecommendConditions => {
 };
 
 // recipe.ingredients(JSON 문자열: 옛 형식 문자열 배열 또는 { name } 배열)를 이름 목록으로.
-// 해석할 수 없으면 null (제외 재료를 확인할 수 없으므로 후보에서 뺀다)
+// 해석할 수 없거나 모양을 알 수 없는 항목이 하나라도 있으면 null
+// (제외 재료를 확인할 수 없으므로 후보에서 뺀다)
 const ingredientNames = (raw: string | null): { name: string }[] | null => {
   if (!raw) return null;
   let parsed: unknown;
@@ -163,7 +165,7 @@ const ingredientNames = (raw: string | null): { name: string }[] | null => {
       typeof (i as { name?: unknown }).name === 'string'
     ) {
       names.push({ name: (i as { name: string }).name });
-    }
+    } else return null;
   }
   return names;
 };
@@ -224,7 +226,10 @@ export async function handleRecommend(req: Request, deps: RecommendDeps): Promis
     ];
     const normalize = buildIngredientNormalizer(registered);
     const rows = candidates.map(toRecipeRow).filter((r): r is RecipeRow => r !== null);
-    const matched = filterRecipes(rows, { ...conditions, exclude }, { week, day }, normalize);
+    // 제외는 포함 여부로 먼저 거른다 (정확 일치만 보면 "닭가슴살 소시지"·"양념장 (고추장, …)"이 빠져나감).
+    // filterRecipes의 정확 일치 제외도 그대로 둔다. 필수 재료는 정규화 후 정확 일치
+    const kept = excludeByContainment(rows, exclude, registered);
+    const matched = filterRecipes(kept, { ...conditions, exclude }, { week, day }, normalize);
     if (matched.length === 0) return json({ recipes: [], totalMatches: 0 }, 200);
 
     const ids = pickRecommendations(matched, RECOMMEND_COUNT, deps.random).map((r) => r.id);

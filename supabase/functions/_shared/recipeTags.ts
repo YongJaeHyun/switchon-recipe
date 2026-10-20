@@ -128,3 +128,18 @@ export function parseRecipeTagBatchResponse(
   }
   return result;
 }
+
+// Gemini responseSchema: 배치 응답을 {id, spicy, cuisine, method} 배열로 강제한다 (검증은 그래도 parse에서 한다)
+export const RECIPE_TAG_BATCH_RESPONSE_SCHEMA = {
+  type: 'ARRAY',
+  items: {
+    type: 'OBJECT',
+    properties: {
+      id: { type: 'INTEGER' },
+      spicy: { type: 'BOOLEAN' },
+      cuisine: { type: 'STRING', enum: [...CUISINES] },
+      method: { type: 'STRING', enum: [...METHODS] },
+    },
+    required: ['id', 'spicy', 'cuisine', 'method'],
+  },
+};

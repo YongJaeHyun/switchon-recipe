@@ -99,8 +99,38 @@ describe('handleRecommend', () => {
   });
 
   it('빈 문자열은 버린 뒤 개수를 센다', async () => {
-    const res = await handleRecommend(req({ mustInclude: ['두부', '', ' ', ''] }), makeDeps());
-    expect(res.status).toBe(200);
+    const { status, body } = await read(
+      await handleRecommend(req({ mustInclude: ['두부', '', ' ', ''] }), makeDeps())
+    );
+    expect(status).toBe(200);
+    expect(body.recipes.map((r: { id: number }) => r.id)).toEqual([1]);
+  });
+
+  it('제외 재료는 포함 여부로 거른다 (복합 이름·괄호 안·상위 재료)', async () => {
+    const deps = makeDeps({
+      getExcludedIngredients: vi.fn(async () => ['소시지']),
+      fetchCandidates: vi.fn(async () => [
+        candidate({ id: 1, ingredients: JSON.stringify(['닭가슴살 소시지']) }),
+        candidate({ id: 2, ingredients: JSON.stringify(['양념장 (고추장, 마늘)']) }),
+        candidate({ id: 3, ingredients: JSON.stringify(['돼지목살']) }),
+        candidate({ id: 4, ingredients: JSON.stringify(['두부']) }),
+      ]),
+    });
+    const { body } = await read(await handleRecommend(req({ exclude: ['고추장', '돼지'] }), deps));
+    expect(body.totalMatches).toBe(1);
+    expect(body.recipes.map((r: { id: number }) => r.id)).toEqual([4]);
+  });
+
+  it('재료 항목 모양을 알 수 없으면 그 레시피는 뺀다', async () => {
+    const deps = makeDeps({
+      fetchCandidates: vi.fn(async () => [
+        candidate({ id: 1, ingredients: JSON.stringify(['두부', { title: '오이' }]) }),
+        candidate({ id: 2, ingredients: JSON.stringify(['두부', 3]) }),
+        candidate({ id: 3, ingredients: JSON.stringify([{ name: '두부' }]) }),
+      ]),
+    });
+    const { body } = await read(await handleRecommend(req({}), deps));
+    expect(body.recipes.map((r: { id: number }) => r.id)).toEqual([3]);
   });
 
   it('저장된 제외 재료와 요청 제외 재료를 합쳐 거른다 (정규화 포함)', async () => {
