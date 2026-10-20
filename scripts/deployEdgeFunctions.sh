@@ -8,3 +8,4 @@ npx supabase functions deploy get-pass-status
 npx supabase functions deploy sync-voided-purchases
 npx supabase functions deploy admob-ssv
 npx supabase functions deploy food-check
+npx supabase functions deploy cleanup-food-check-images

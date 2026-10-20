@@ -388,3 +388,10 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/admob-ssv/deno.json"
 entrypoint = "./functions/admob-ssv/index.ts"
+
+# 판정 원본 사진 정리 배치: cron이 service role 키로 호출 (JWT 서명은 게이트웨이, role은 함수 안에서 확인)
+[functions.cleanup-food-check-images]
+enabled = true
+verify_jwt = true
+import_map = "./functions/cleanup-food-check-images/deno.json"
+entrypoint = "./functions/cleanup-food-check-images/index.ts"
