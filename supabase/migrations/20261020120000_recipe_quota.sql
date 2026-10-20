@@ -88,7 +88,9 @@ begin
     'remaining', greatest(v_limit - v_used, 0),
     'limit', v_limit,
     'isPass', v_is_pass,
+    -- 광고 1개로 실제로 1개를 더 만들 수 있을 때만 (패스 만료·설정 변경으로 used가 한도보다 많이 앞선 경우 제외)
     'canWatchAd', (not v_is_pass) and v_ad_bonus < v_setting.ad_bonus_daily
+                  and v_used < v_setting.free_daily + v_ad_bonus + 1
   );
 end;
 $$;
@@ -227,6 +229,7 @@ begin
     'limit', v_limit,
     'remaining', greatest(v_limit - v_used, 0),
     'adBonusLeft', case when v_is_pass then 0
+                        when v_used >= v_setting.free_daily + v_ad_bonus + 1 then 0
                         else greatest(v_setting.ad_bonus_daily - v_ad_bonus, 0) end,
     'isPass', v_is_pass
   );
