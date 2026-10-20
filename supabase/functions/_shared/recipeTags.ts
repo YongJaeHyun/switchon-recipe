@@ -26,7 +26,8 @@ export function parseRecipeTags(raw: unknown): RecipeTags | null {
   if (typeof raw !== 'object' || raw === null) return null;
   const { spicy, cuisine, method } = raw as Record<string, unknown>;
   if (typeof spicy !== 'boolean') return null;
-  if (typeof cuisine !== 'string' || !(CUISINES as readonly string[]).includes(cuisine)) return null;
+  if (typeof cuisine !== 'string' || !(CUISINES as readonly string[]).includes(cuisine))
+    return null;
   if (typeof method !== 'string' || !(METHODS as readonly string[]).includes(method)) return null;
   return { spicy, cuisine: cuisine as Cuisine, method: method as Method };
 }
@@ -38,3 +39,92 @@ export const RECIPE_TAG_SCHEMA_PROMPT = [
   `- cuisine: one of ${CUISINES.join(', ')}.`,
   `- method: the main cooking method, one of ${METHODS.join(', ')} (stir_fry = pan-fried or sauteed, grill = grilled or baked, soup = soup or stew, steam = steamed or boiled, salad = salad or raw, rice_bowl = rice bowl or rice dish, other = anything else).`,
 ].join('\n');
+
+// ---- 기존 레시피 태깅(tag-recipes) 배치용 ----
+
+export interface RecipeTagInput {
+  id: number;
+  name: string;
+  ingredients: string[];
+  steps: string[];
+}
+
+const parseJsonArray = (raw: string | null): unknown[] => {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+// recipe 행(ingredients·cooking_steps는 JSON 문자열)을 태깅 입력으로 바꾼다.
+// 재료는 옛 형식(문자열)과 새 형식({ name }) 모두 받는다. 조리 단계는 앞 3개만 (비용 절감)
+export function recipeTagInputOf(row: {
+  id: number;
+  recipe_name: string | null;
+  ingredients: string | null;
+  cooking_steps: string | null;
+}): RecipeTagInput {
+  const ingredients = parseJsonArray(row.ingredients)
+    .map((i) =>
+      typeof i === 'string'
+        ? i
+        : typeof i === 'object' && i !== null && typeof (i as { name?: unknown }).name === 'string'
+          ? (i as { name: string }).name
+          : ''
+    )
+    .filter((n) => n.length > 0);
+  const steps = parseJsonArray(row.cooking_steps)
+    .filter((s): s is string => typeof s === 'string')
+    .slice(0, 3);
+  return { id: row.id, name: row.recipe_name ?? '', ingredients, steps };
+}
+
+// 여러 레시피를 한 번에 태깅하는 프롬프트
+export function buildRecipeTagBatchPrompt(recipes: RecipeTagInput[]): string {
+  return [
+    'You are tagging Korean diet recipes.',
+    RECIPE_TAG_SCHEMA_PROMPT,
+    '',
+    'Recipes (one JSON object per line; steps are the first few cooking steps):',
+    ...recipes.map((r) =>
+      JSON.stringify({ id: r.id, name: r.name, ingredients: r.ingredients, steps: r.steps })
+    ),
+    '',
+    'Respond with only a JSON array with one object per recipe, in the form',
+    '[{"id": <recipe id>, "spicy": true|false, "cuisine": "<cuisine>", "method": "<method>"}].',
+  ].join('\n');
+}
+
+// Gemini 응답에서 이 배치 id에 해당하고 parseRecipeTags를 통과한 항목만 돌려준다 (id 중복은 첫 항목만)
+export function parseRecipeTagBatchResponse(
+  text: string,
+  ids: number[]
+): { id: number; tags: RecipeTags }[] {
+  const cleaned = text
+    .trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/, '');
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(parsed)) return [];
+
+  const wanted = new Set(ids);
+  const seen = new Set<number>();
+  const result: { id: number; tags: RecipeTags }[] = [];
+  for (const item of parsed) {
+    if (typeof item !== 'object' || item === null) continue;
+    const id = (item as { id?: unknown }).id;
+    if (typeof id !== 'number' || !wanted.has(id) || seen.has(id)) continue;
+    seen.add(id);
+    const tags = parseRecipeTags(item);
+    if (tags) result.push({ id, tags });
+  }
+  return result;
+}

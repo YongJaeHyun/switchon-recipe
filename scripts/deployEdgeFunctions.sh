@@ -9,3 +9,5 @@ npx supabase functions deploy sync-voided-purchases
 npx supabase functions deploy admob-ssv
 npx supabase functions deploy food-check
 npx supabase functions deploy cleanup-food-check-images
+npx supabase functions deploy recommend-recipes
+npx supabase functions deploy tag-recipes

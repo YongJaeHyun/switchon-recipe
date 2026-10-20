@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { RECIPE_TAG_SCHEMA_PROMPT, parseRecipeTags } from '../../_shared/recipeTags.ts';
+import {
+  RECIPE_TAG_SCHEMA_PROMPT,
+  buildRecipeTagBatchPrompt,
+  parseRecipeTagBatchResponse,
+  parseRecipeTags,
+  recipeTagInputOf,
+} from '../../_shared/recipeTags.ts';
 
 describe('parseRecipeTags', () => {
   it('정상 태그를 그대로 돌려준다', () => {
@@ -35,5 +41,80 @@ describe('RECIPE_TAG_SCHEMA_PROMPT', () => {
     expect(RECIPE_TAG_SCHEMA_PROMPT).toContain('spicy');
     expect(RECIPE_TAG_SCHEMA_PROMPT).toContain('rice_bowl');
     expect(RECIPE_TAG_SCHEMA_PROMPT).toContain('japanese');
+  });
+});
+
+describe('recipeTagInputOf', () => {
+  it('재료 이름(옛 문자열·새 객체 모두)과 조리 단계 앞 3개를 뽑는다', () => {
+    expect(
+      recipeTagInputOf({
+        id: 7,
+        recipe_name: '두부조림',
+        ingredients: JSON.stringify(['두부', { name: '간장', isOptional: false, amount: '1T' }]),
+        cooking_steps: JSON.stringify(['a', 'b', 'c', 'd']),
+      })
+    ).toEqual({ id: 7, name: '두부조림', ingredients: ['두부', '간장'], steps: ['a', 'b', 'c'] });
+  });
+
+  it('JSON이 깨졌거나 비어 있으면 빈 목록', () => {
+    expect(
+      recipeTagInputOf({ id: 1, recipe_name: null, ingredients: '{', cooking_steps: null })
+    ).toEqual({ id: 1, name: '', ingredients: [], steps: [] });
+  });
+});
+
+describe('buildRecipeTagBatchPrompt', () => {
+  it('태그 설명, 각 레시피의 id·이름·재료·단계, 배열 형식 지시를 담는다', () => {
+    const prompt = buildRecipeTagBatchPrompt([
+      { id: 3, name: '김치찌개', ingredients: ['김치', '두부'], steps: ['끓인다'] },
+      { id: 9, name: '샐러드', ingredients: ['양상추'], steps: [] },
+    ]);
+    expect(prompt).toContain(RECIPE_TAG_SCHEMA_PROMPT);
+    expect(prompt).toContain('"id":3');
+    expect(prompt).toContain('김치찌개');
+    expect(prompt).toContain('두부');
+    expect(prompt).toContain('끓인다');
+    expect(prompt).toContain('"id":9');
+    expect(prompt).toMatch(/JSON array/);
+  });
+});
+
+describe('parseRecipeTagBatchResponse', () => {
+  const ids = [1, 2, 3];
+
+  it('유효한 항목만 id와 태그로 돌려준다', () => {
+    const text = JSON.stringify([
+      { id: 1, spicy: true, cuisine: 'korean', method: 'soup' },
+      { id: 2, spicy: 'no', cuisine: 'korean', method: 'soup' },
+      { id: 3, spicy: false, cuisine: 'western', method: 'salad' },
+    ]);
+    expect(parseRecipeTagBatchResponse(text, ids)).toEqual([
+      { id: 1, tags: { spicy: true, cuisine: 'korean', method: 'soup' } },
+      { id: 3, tags: { spicy: false, cuisine: 'western', method: 'salad' } },
+    ]);
+  });
+
+  it('배치에 없는 id·중복 id는 버린다 (첫 항목만)', () => {
+    const text = JSON.stringify([
+      { id: 99, spicy: true, cuisine: 'korean', method: 'soup' },
+      { id: 1, spicy: true, cuisine: 'korean', method: 'soup' },
+      { id: 1, spicy: false, cuisine: 'other', method: 'other' },
+      { id: '2', spicy: true, cuisine: 'korean', method: 'soup' },
+    ]);
+    expect(parseRecipeTagBatchResponse(text, ids)).toEqual([
+      { id: 1, tags: { spicy: true, cuisine: 'korean', method: 'soup' } },
+    ]);
+  });
+
+  it('코드 펜스를 벗긴다', () => {
+    const text = '```json\n[{"id":2,"spicy":false,"cuisine":"chinese","method":"stir_fry"}]\n```';
+    expect(parseRecipeTagBatchResponse(text, ids)).toEqual([
+      { id: 2, tags: { spicy: false, cuisine: 'chinese', method: 'stir_fry' } },
+    ]);
+  });
+
+  it('JSON이 아니거나 배열이 아니면 빈 배열', () => {
+    expect(parseRecipeTagBatchResponse('nope', ids)).toEqual([]);
+    expect(parseRecipeTagBatchResponse('{"id":1}', ids)).toEqual([]);
   });
 });

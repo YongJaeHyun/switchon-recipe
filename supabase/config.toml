@@ -395,3 +395,17 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/cleanup-food-check-images/deno.json"
 entrypoint = "./functions/cleanup-food-check-images/index.ts"
+
+# 맞춤 레시피 추천 (패스 전용, 유저 JWT)
+[functions.recommend-recipes]
+enabled = true
+verify_jwt = true
+import_map = "./functions/recommend-recipes/deno.json"
+entrypoint = "./functions/recommend-recipes/index.ts"
+
+# 기존 레시피 태그 백필: service role 키로만 호출 (JWT 서명은 게이트웨이, role은 함수 안에서 확인)
+[functions.tag-recipes]
+enabled = true
+verify_jwt = true
+import_map = "./functions/tag-recipes/deno.json"
+entrypoint = "./functions/tag-recipes/index.ts"
