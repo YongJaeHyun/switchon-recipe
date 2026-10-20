@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import colors from 'tailwindcss/colors';
 import { InquiryCategory, InquiryDB } from 'types/database';
 import { registerForPushNotificationsAsync } from 'utils/notifications';
+import { requireOnline } from 'utils/network';
 
 type InquiryError = Pick<InquiryDB, 'title' | 'message'>;
 
@@ -136,7 +137,7 @@ export default function NewInquiryScreen() {
 
       <RippleButton
         className="w-full bg-green-600 py-5"
-        onPress={validateAndShowModal}
+        onPress={requireOnline(validateAndShowModal)}
         rounded="xl">
         <Text className="text-lg font-medium text-white">제출하기</Text>
       </RippleButton>

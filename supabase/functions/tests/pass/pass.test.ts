@@ -1,0 +1,226 @@
+import { describe, expect, it } from 'vitest';
+import {
+  computeExpiry,
+  GRACE_MS,
+  getSalesState,
+  isFreeActive,
+  isPurchaseEligible,
+  PASS_DAYS,
+  PASS_PRODUCTS,
+  tierOfProduct,
+  type PremiumSetting,
+  type PurchaseForExpiry,
+} from '../../_shared/pass.ts';
+
+const setting: PremiumSetting = { freeStart: '2026-11-01', freeEnd: '2026-11-14' };
+const noSetting: PremiumSetting = { freeStart: null, freeEnd: null };
+
+describe('PASS_PRODUCTS', () => {
+  it('maps each tier to its product id and price', () => {
+    expect(PASS_PRODUCTS).toEqual({
+      early1: { productId: 'switchon_pass_5w_1900', priceKrw: 1900 },
+      early2: { productId: 'switchon_pass_5w_2900', priceKrw: 2900 },
+      regular: { productId: 'switchon_pass_5w_4900', priceKrw: 4900 },
+    });
+  });
+});
+
+describe('getSalesState', () => {
+  it('설정 없음: 판매하지 않음', () => {
+    const state = getSalesState(new Date('2026-11-01T00:00:00Z'), noSetting);
+    expect(state.onSale).toBe(false);
+    expect(state.tier).toBeNull();
+    expect(state.freeActive).toBe(false);
+    expect(state.productId).toBeNull();
+    expect(state.priceKrw).toBeNull();
+    expect(state.freeDaysLeft).toBe(0);
+    expect(state.nextTier).toBeNull();
+  });
+
+  it('시작 전: 11/1 00:00 KST 1초 전 — 판매하지 않음 (운영자 결정)', () => {
+    const state = getSalesState(new Date('2026-10-31T14:59:59Z'), setting);
+    expect(state).toMatchObject({
+      onSale: false,
+      freeActive: false,
+      tier: null,
+      productId: null,
+      priceKrw: null,
+      freeDaysLeft: 0,
+    });
+    expect(state.nextTier).toMatchObject({ tier: 'early1', startsAt: '2026-10-31T15:00:00.000Z' });
+  });
+
+  it('1일째 시작: 11/1 00:00 KST', () => {
+    const state = getSalesState(new Date('2026-10-31T15:00:00Z'), setting);
+    expect(state.tier).toBe('early1');
+    expect(state.freeActive).toBe(true);
+    expect(state.freeDaysLeft).toBe(14);
+    expect(state.nextTier).toEqual({
+      tier: 'early2',
+      priceKrw: 2900,
+      startsAt: '2026-11-07T15:00:00.000Z',
+    });
+  });
+
+  it('7일째 끝', () => {
+    const state = getSalesState(new Date('2026-11-07T14:59:59Z'), setting);
+    expect(state.tier).toBe('early1');
+    expect(state.freeDaysLeft).toBe(8);
+  });
+
+  it('8일째 시작', () => {
+    const state = getSalesState(new Date('2026-11-07T15:00:00Z'), setting);
+    expect(state.tier).toBe('early2');
+    expect(state.priceKrw).toBe(2900);
+    expect(state.freeDaysLeft).toBe(7);
+  });
+
+  it('14일째 끝', () => {
+    const state = getSalesState(new Date('2026-11-14T14:59:59Z'), setting);
+    expect(state.tier).toBe('early2');
+    expect(state.freeActive).toBe(true);
+    expect(state.freeDaysLeft).toBe(1);
+  });
+
+  it('15일째', () => {
+    const state = getSalesState(new Date('2026-11-14T15:00:00Z'), setting);
+    expect(state.tier).toBe('regular');
+    expect(state.freeActive).toBe(false);
+    expect(state.freeDaysLeft).toBe(0);
+    expect(state.nextTier).toBeNull();
+  });
+});
+
+describe('isFreeActive', () => {
+  it('matches getSalesState.freeActive across boundaries', () => {
+    expect(isFreeActive(new Date('2026-10-31T14:59:59Z'), setting)).toBe(false);
+    expect(isFreeActive(new Date('2026-10-31T15:00:00Z'), setting)).toBe(true);
+    expect(isFreeActive(new Date('2026-11-14T14:59:59Z'), setting)).toBe(true);
+    expect(isFreeActive(new Date('2026-11-14T15:00:00Z'), setting)).toBe(false);
+  });
+
+  it('설정 없음이면 항상 false', () => {
+    expect(isFreeActive(new Date('2026-11-05T00:00:00Z'), noSetting)).toBe(false);
+  });
+});
+
+describe('tierOfProduct', () => {
+  it('resolves known product ids', () => {
+    expect(tierOfProduct('switchon_pass_5w_1900')).toBe('early1');
+    expect(tierOfProduct('switchon_pass_5w_2900')).toBe('early2');
+    expect(tierOfProduct('switchon_pass_5w_4900')).toBe('regular');
+  });
+
+  it('returns null for unknown product ids', () => {
+    expect(tierOfProduct('x')).toBeNull();
+  });
+});
+
+describe('isPurchaseEligible', () => {
+  it('같은 구간: 1900 at 11/3', () => {
+    expect(
+      isPurchaseEligible('switchon_pass_5w_1900', new Date('2026-11-03T00:00:00Z'), setting)
+    ).toBe(true);
+  });
+
+  it('유예 안: 1900 at 구간 종료 후 24h 직전', () => {
+    expect(
+      isPurchaseEligible('switchon_pass_5w_1900', new Date('2026-11-08T14:59:59Z'), setting)
+    ).toBe(true);
+  });
+
+  it('유예 밖: 1900 at 구간 종료 후 정확히 24h', () => {
+    expect(
+      isPurchaseEligible('switchon_pass_5w_1900', new Date('2026-11-08T15:00:00Z'), setting)
+    ).toBe(false);
+  });
+
+  it('미래 구간: 2900 at 11/2', () => {
+    expect(
+      isPurchaseEligible('switchon_pass_5w_2900', new Date('2026-11-02T00:00:00Z'), setting)
+    ).toBe(false);
+  });
+
+  it('정가: 4900 아무 때나, 설정 null 포함', () => {
+    expect(
+      isPurchaseEligible('switchon_pass_5w_4900', new Date('2026-01-01T00:00:00Z'), setting)
+    ).toBe(true);
+    expect(
+      isPurchaseEligible('switchon_pass_5w_4900', new Date('2026-01-01T00:00:00Z'), noSetting)
+    ).toBe(true);
+  });
+
+  it('모르는 상품', () => {
+    expect(isPurchaseEligible('x', new Date('2026-11-03T00:00:00Z'), setting)).toBe(false);
+  });
+});
+
+describe('computeExpiry', () => {
+  const purchase = (
+    purchasedAt: string,
+    status: PurchaseForExpiry['status'] = 'granted'
+  ): PurchaseForExpiry => ({ purchasedAt: new Date(purchasedAt), status });
+
+  it('없음: 빈 배열', () => {
+    expect(computeExpiry([])).toBeNull();
+  });
+
+  it('없음: 전부 voided', () => {
+    expect(
+      computeExpiry([
+        purchase('2026-11-01T10:00:00Z', 'voided'),
+        purchase('2026-11-10T10:00:00Z', 'refunded_ineligible'),
+      ])
+    ).toBeNull();
+  });
+
+  it('단일: 11/1 10:00Z + 35일', () => {
+    const expected = new Date('2026-11-01T10:00:00Z').getTime() + PASS_DAYS * 24 * 60 * 60 * 1000;
+    expect(computeExpiry([purchase('2026-11-01T10:00:00Z')])?.getTime()).toBe(expected);
+  });
+
+  it('겹침: 11/1, 11/10 → 11/1 + 70일', () => {
+    const expected =
+      new Date('2026-11-01T10:00:00Z').getTime() + 2 * PASS_DAYS * 24 * 60 * 60 * 1000;
+    expect(
+      computeExpiry([purchase('2026-11-01T10:00:00Z'), purchase('2026-11-10T10:00:00Z')])?.getTime()
+    ).toBe(expected);
+  });
+
+  it('만료 후 재구매: 11/1, 12/20 → 12/20 + 35일', () => {
+    const expected = new Date('2026-12-20T10:00:00Z').getTime() + PASS_DAYS * 24 * 60 * 60 * 1000;
+    expect(
+      computeExpiry([purchase('2026-11-01T10:00:00Z'), purchase('2026-12-20T10:00:00Z')])?.getTime()
+    ).toBe(expected);
+  });
+
+  it('겹친 것 중 앞 것 환불: 11/1 voided, 11/10 granted → 11/10 + 35일', () => {
+    const expected = new Date('2026-11-10T10:00:00Z').getTime() + PASS_DAYS * 24 * 60 * 60 * 1000;
+    expect(
+      computeExpiry([
+        purchase('2026-11-01T10:00:00Z', 'voided'),
+        purchase('2026-11-10T10:00:00Z'),
+      ])?.getTime()
+    ).toBe(expected);
+  });
+
+  it('순서 무관: 입력 순서를 섞어도 같은 결과', () => {
+    const ordered = computeExpiry([
+      purchase('2026-11-01T10:00:00Z'),
+      purchase('2026-11-10T10:00:00Z'),
+      purchase('2026-12-20T10:00:00Z'),
+    ]);
+    const shuffled = computeExpiry([
+      purchase('2026-12-20T10:00:00Z'),
+      purchase('2026-11-01T10:00:00Z'),
+      purchase('2026-11-10T10:00:00Z'),
+    ]);
+    expect(shuffled?.getTime()).toBe(ordered?.getTime());
+  });
+});
+
+describe('GRACE_MS', () => {
+  it('is 24 hours in ms', () => {
+    expect(GRACE_MS).toBe(24 * 60 * 60 * 1000);
+  });
+});

@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/react-native';
 import { ErrorToastTextProps } from 'types/toast';
+import { showNetworkErrorToast } from './network';
 import { showErrorToast } from './showToast';
 
 interface CaptureErrorProps {
@@ -43,7 +44,7 @@ const sendError = async <Response>(callback: () => Promise<Response>, options?: 
     console.error(error);
 
     if (isNetworkError(error)) {
-      showErrorToast({ textType: 'NETWORK_ERROR' });
+      showNetworkErrorToast();
     } else if (isGatewayTimeoutError(error)) {
       showErrorToast({ textType: 'GATEWAY_TIMEOUT_ERROR' });
       captureError({ error, prefix: '[Gateway Timeout 504]: ' });

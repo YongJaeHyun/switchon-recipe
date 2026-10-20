@@ -3,6 +3,7 @@ import { Text } from 'components/common/Text';
 import { router } from 'expo-router';
 import { useRecentKeywords } from 'hooks/useRecentKeywords';
 import { ScrollView, View } from 'react-native';
+import { requireOnline } from 'utils/network';
 
 export function RecentKeywords() {
   const {
@@ -14,14 +15,14 @@ export function RecentKeywords() {
 
   const hasRecentKeywords = recentKeywords && recentKeywords.length > 0;
 
-  const search = (keyword: string) => {
+  const search = requireOnline((keyword: string) => {
     insertKeyword(keyword);
 
     router.push({
       pathname: '/(tabs)/explore/searchResult',
       params: { keyword },
     });
-  };
+  });
 
   return (
     <>

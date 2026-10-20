@@ -2,6 +2,7 @@ import { RecipeQuotaAPI } from 'api/RecipeQuotaAPI';
 import { QueryKey } from 'const/queryKey';
 import { useUserStore } from 'stores/userStore';
 import type { RecipeQuota } from 'types/recipeQuota';
+import { failFastWhenOffline } from 'utils/failFastWhenOffline';
 import { useQueryWith402Retry } from './useCustomQuery';
 
 const STALE_TIME = 30 * 1000;
@@ -17,7 +18,7 @@ export const useRecipeQuota = (): {
   const { data, isLoading, refetch } = useQueryWith402Retry<RecipeQuota>({
     // 계정이 바뀌면 다른 캐시를 쓴다. 무효화는 [QueryKey.recipeQuota] 접두어로 한다
     queryKey: [QueryKey.recipeQuota, uid],
-    queryFn: RecipeQuotaAPI.get,
+    queryFn: failFastWhenOffline(RecipeQuotaAPI.get),
     enabled: !!uid,
     staleTime: STALE_TIME,
   });

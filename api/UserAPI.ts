@@ -3,6 +3,9 @@ import { useUserStore } from 'stores/userStore';
 import { UserDB } from 'types/database';
 import { sendError } from 'utils/sendError';
 import { showSuccessToast } from 'utils/showToast';
+import { isOnline } from 'utils/network';
+import { resolveStartupUser } from 'utils/resolveStartupUser';
+import { loadCachedUser, saveCachedUser } from 'utils/userCache';
 
 const getSession = async () =>
   sendError(async () => {
@@ -15,18 +18,19 @@ const getSession = async () =>
 
 const checkIsLoggedIn = async () =>
   sendError(async () => {
-    const session = await getSession();
+    const { isLoggedIn, user } = await resolveStartupUser({
+      isOnline,
+      loadSessionUser: async () => {
+        const session = await getSession();
+        if (!session?.access_token) return { hasSession: false, user: null };
+        return { hasSession: true, user: (await selectOne(session.user.id)) ?? null };
+      },
+      loadCachedUser,
+      saveCachedUser,
+    });
 
-    if (session?.access_token) {
-      const setUser = useUserStore.getState().setUser;
-      const user = await selectOne(session.user.id);
-
-      if (user) {
-        await setUser(user);
-      }
-    }
-
-    return session?.access_token ? true : false;
+    if (user) await useUserStore.getState().setUser(user);
+    return isLoggedIn;
   });
 
 const logout = async () =>

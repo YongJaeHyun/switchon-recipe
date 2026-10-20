@@ -7,6 +7,7 @@ import { prefetchIngredients } from 'hooks/useIngredients';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { useEffect, useState } from 'react';
 import { useUserStore } from 'stores/userStore';
+import { isOnline } from 'utils/network';
 import { withTimeout } from 'utils/withTimeout';
 
 const INGREDIENT_PREFETCH_TIMEOUT_MS = 5000;
@@ -38,8 +39,12 @@ export default function Index() {
       const isLoggedIn = await UserAPI.checkIsLoggedIn();
       setIsLoggedIn(!!isLoggedIn);
 
-      if (isLoggedIn) {
-        await Promise.all([zeroIngredientsPrefetch(), lowIngredientsPrefetch()]);
+      // 오프라인이면 건너뜀: Supabase가 토큰 갱신을 재시도하는 동안 요청이 오래 멈춰 스플래시가 길어짐
+      if (isLoggedIn && (await isOnline())) {
+        await withTimeout(
+          Promise.all([zeroIngredientsPrefetch(), lowIngredientsPrefetch()]),
+          INGREDIENT_PREFETCH_TIMEOUT_MS
+        ).catch((error) => console.error('[prefetchSelectedIngredients]', error));
       }
     };
 

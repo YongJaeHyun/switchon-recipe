@@ -2,6 +2,7 @@ import { IngredientAPI } from 'api/IngredientAPI';
 import { QueryKey } from 'const/queryKey';
 import { queryClient } from 'lib/queryClient';
 import { useMemo } from 'react';
+import { failFastWhenOffline } from 'utils/failFastWhenOffline';
 import { loadIngredientsWithCache } from 'utils/ingredientCache';
 import {
   buildAllWeekLists,
@@ -15,7 +16,7 @@ const STALE_TIME = 10 * 60 * 1000;
 
 const ingredientsQuery = {
   queryKey: [QueryKey.ingredients],
-  queryFn: () => loadIngredientsWithCache(IngredientAPI.selectAll),
+  queryFn: () => loadIngredientsWithCache(failFastWhenOffline(IngredientAPI.selectAll)),
   staleTime: STALE_TIME,
 };
 

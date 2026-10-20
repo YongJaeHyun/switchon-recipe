@@ -1,41 +1,19 @@
 import 'dotenv/config';
 import { describe, expect, it } from 'vitest';
+import { requestRecipeImage } from '../../_shared/recipeImage.ts';
 
-const TIMEOUT_MS = 30000;
+const TIMEOUT_MS = 60000;
 const geminiKey = process.env.GEMINI_API_KEY;
+// 실제 Gemini를 호출해 이미지 1장당 비용(약 90원)이 들므로 평소 테스트에서는 건너뛴다.
+// 실행: RUN_PAID_TESTS=1 npx vitest run supabase/functions/tests/integrations
+const runPaid = process.env.RUN_PAID_TESTS === '1';
 
-describe.skipIf(!geminiKey)('create recipe image', () => {
+describe.skipIf(!runPaid || !geminiKey)('create recipe image (실제 API 호출)', () => {
   it(
-    'should generate recipe image',
+    '실서비스 이미지 모델로 레시피 이미지를 만든다',
     async () => {
-      const imageRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-fast-generate-001:predict?key=${geminiKey}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            instances: [
-              {
-                prompt: `Generate photo of the following foods taken with a macro lens of 100mm. name: 계란프라이`,
-                sampleCount: 1,
-              },
-            ],
-          }),
-        }
-      );
-
-      if (!imageRes.ok) {
-        const text = await imageRes.text();
-        throw new Error(`Imagen 이미지 요청 실패 (${imageRes.status}): ${text}`);
-      }
-
-      const imageJson = await imageRes.json();
-
-      const imageBase64 = imageJson?.predictions?.[0]?.bytesBase64Encoded;
-
-      expect(imageBase64).toBeDefined();
+      const imageBase64 = await requestRecipeImage('계란프라이', geminiKey as string);
+      expect(imageBase64.length).toBeGreaterThan(1000);
     },
     TIMEOUT_MS
   );

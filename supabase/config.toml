@@ -342,6 +342,10 @@ entrypoint = "./functions/create-recipe-by-gemini/index.ts"
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/create-recipe-by-gemini/*.html" ]
 
+[functions.create-recipe-by-gemini-test]
+enabled = true
+verify_jwt = true
+
 [functions.process-ingredient-request]
 enabled = true
 verify_jwt = true
@@ -353,3 +357,28 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/slack-ingredient-action/deno.json"
 entrypoint = "./functions/slack-ingredient-action/index.ts"
+
+[functions.verify-pass-purchase]
+enabled = true
+verify_jwt = true
+import_map = "./functions/verify-pass-purchase/deno.json"
+entrypoint = "./functions/verify-pass-purchase/index.ts"
+
+[functions.get-pass-status]
+enabled = true
+verify_jwt = true
+import_map = "./functions/get-pass-status/deno.json"
+entrypoint = "./functions/get-pass-status/index.ts"
+
+[functions.sync-voided-purchases]
+enabled = true
+verify_jwt = true
+import_map = "./functions/sync-voided-purchases/deno.json"
+entrypoint = "./functions/sync-voided-purchases/index.ts"
+
+# AdMob 보상형 광고 SSV 콜백은 Google이 JWT 없이 호출한다 (서명은 함수 안에서 검증)
+[functions.admob-ssv]
+enabled = true
+verify_jwt = false
+import_map = "./functions/admob-ssv/deno.json"
+entrypoint = "./functions/admob-ssv/index.ts"

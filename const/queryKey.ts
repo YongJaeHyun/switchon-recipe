@@ -10,5 +10,7 @@ export enum QueryKey {
   fasting,
   todoRateStatistics,
   ingredients,
+  pass,
+  billingAvailable,
   recipeQuota,
 }

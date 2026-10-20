@@ -5,6 +5,8 @@ export interface RecipeQuota {
   remaining: number;
   adBonusLeft: number;
   isPass: boolean;
+  // 광고 보상을 뺀 기본 하루 한도(무료 5, 패스 20). 이전 서버 응답에는 없어서 선택값
+  dailyLimit?: number;
 }
 
 // create-recipe-by-gemini 429(QUOTA_EXCEEDED) 응답을 앱에서 다루는 모양

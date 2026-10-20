@@ -214,6 +214,77 @@ export type Database = {
           },
         ];
       };
+      pass_purchase: {
+        Row: {
+          created_at: string;
+          granted_from: string | null;
+          granted_until: string | null;
+          id: number;
+          order_id: string | null;
+          price_krw: number | null;
+          product_id: string;
+          purchase_token: string;
+          purchased_at: string;
+          raw: Json | null;
+          status: string;
+          uid: string | null;
+        };
+        Insert: {
+          created_at?: string;
+          granted_from?: string | null;
+          granted_until?: string | null;
+          id?: never;
+          order_id?: string | null;
+          price_krw?: number | null;
+          product_id: string;
+          purchase_token: string;
+          purchased_at: string;
+          raw?: Json | null;
+          status: string;
+          uid?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          granted_from?: string | null;
+          granted_until?: string | null;
+          id?: never;
+          order_id?: string | null;
+          price_krw?: number | null;
+          product_id?: string;
+          purchase_token?: string;
+          purchased_at?: string;
+          raw?: Json | null;
+          status?: string;
+          uid?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'pass_purchase_uid_fkey';
+            columns: ['uid'];
+            isOneToOne: false;
+            referencedRelation: 'user';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      premium_setting: {
+        Row: {
+          free_end: string | null;
+          free_start: string | null;
+          id: number;
+        };
+        Insert: {
+          free_end?: string | null;
+          free_start?: string | null;
+          id?: number;
+        };
+        Update: {
+          free_end?: string | null;
+          free_start?: string | null;
+          id?: number;
+        };
+        Relationships: [];
+      };
       recipe: {
         Row: {
           cooking_steps: string | null;
@@ -492,6 +563,32 @@ export type Database = {
         };
         Relationships: [];
       };
+      user_pass: {
+        Row: {
+          pass_expires_at: string;
+          uid: string;
+          updated_at: string;
+        };
+        Insert: {
+          pass_expires_at: string;
+          uid: string;
+          updated_at?: string;
+        };
+        Update: {
+          pass_expires_at?: string;
+          uid?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'user_pass_uid_fkey';
+            columns: ['uid'];
+            isOneToOne: true;
+            referencedRelation: 'user';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       user_search_category_history: {
         Row: {
           created_at: string;
@@ -623,9 +720,15 @@ export type Database = {
         }[];
       };
       get_recipe_quota: { Args: never; Returns: Json };
+      has_premium_access: { Args: never; Returns: boolean };
+      has_premium_access_for: { Args: { p_uid: string }; Returns: boolean };
       ingredient_request_count_today: {
         Args: { p_uid: string };
         Returns: number;
+      };
+      raise_pass_expiry: {
+        Args: { p_expires_at: string; p_uid: string };
+        Returns: string;
       };
       search_recipes: {
         Args: {

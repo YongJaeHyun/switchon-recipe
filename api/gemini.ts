@@ -1,7 +1,8 @@
 import axios, { isAxiosError, isCancel } from 'axios';
 import { RecipeDB } from 'types/database';
+import type { QuotaExceeded } from 'types/recipeQuota';
 import { isNetworkError } from 'utils/sendError';
-import { showErrorToast, showInfoToast } from 'utils/showToast';
+import { showErrorToast } from 'utils/showToast';
 import { Maybe } from '../types/common';
 import { UserAPI } from './UserAPI';
 
@@ -17,7 +18,7 @@ export const createRecipe = async ({
   week,
   isZeroCarb: is_zero_carb,
   signal,
-}: CreateRecipeProps): Promise<Maybe<RecipeDB>> => {
+}: CreateRecipeProps): Promise<Maybe<RecipeDB> | QuotaExceeded> => {
   try {
     const edgeFunctionName = __DEV__ ? 'create-recipe-by-gemini-test' : 'create-recipe-by-gemini';
     const session = await UserAPI.getSession();
@@ -36,15 +37,19 @@ export const createRecipe = async ({
 
     return response.data;
   } catch (error) {
-    // 서버의 하루 생성 한도 초과(429): 다시 시도해도 안 되므로 서버 안내 문구를 그대로 보여준다
+    // 하루 한도 초과(429)는 토스트 없이 호출부가 모달로 안내하도록 돌려준다
     if (isAxiosError(error) && error.response?.status === 429) {
-      const message = (error.response.data as { error?: string } | undefined)?.error;
-      showInfoToast({
-        textType: 'CUSTOM',
-        title: message ?? '오늘 레시피를 모두 만들었어요.',
-        subtitle: '내일 다시 만들 수 있어요.',
-      });
-    } else if (isNetworkError(error)) {
+      const body = error.response.data;
+      if (body?.code === 'QUOTA_EXCEEDED') {
+        return {
+          quotaExceeded: true,
+          canWatchAd: body.canWatchAd === true,
+          isPass: body.isPass === true,
+        };
+      }
+    }
+
+    if (isNetworkError(error)) {
       showErrorToast({ textType: 'NETWORK_ERROR' });
     } else if (isCancel(error)) {
       showErrorToast({ textType: 'RECIPE_CREATION_CANCELED' });
