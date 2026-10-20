@@ -1,8 +1,9 @@
 // 편의점 판정 입력(사진/글자) 검사. 서버(food-check)도 다시 검사한다
 import type { FoodCheckMimeType } from 'types/foodCheck';
 
-// 서버 본문 한도(4MB)에 맞춘 base64 길이 상한 (약 4MB)
-export const MAX_IMAGE_BASE64_LENGTH = 5_300_000;
+// base64 길이 상한. 서버(food-check MAX_BODY_BYTES = 4MB)는 base64가 든 JSON 본문 전체 바이트를 재므로
+// 그 한도에서 JSON 감싸개({"type":..,"mimeType":..}) 여유 1KB를 뺀다
+export const MAX_IMAGE_BASE64_LENGTH = 4 * 1024 * 1024 - 1024;
 export const IMAGE_TOO_LARGE_MESSAGE = '사진이 너무 커요. 다른 사진을 골라주세요';
 export const MAX_FOOD_CHECK_TEXT_LENGTH = 50;
 

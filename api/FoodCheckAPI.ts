@@ -1,4 +1,6 @@
-import axios, { isAxiosError, isCancel } from 'axios';
+import axios from 'axios';
+import { QueryKey } from 'const/queryKey';
+import { queryClient } from 'lib/queryClient';
 import { supabase } from 'lib/supabase';
 import {
   FOOD_CHECK_FEATURE,
@@ -8,12 +10,15 @@ import {
   type PremiumQuotaStatus,
 } from 'types/foodCheck';
 import {
+  classifyFoodCheckRequestError,
+  FOOD_CHECK_TIMEOUT_MESSAGE,
   interpretFoodCheckResponse,
   parsePremiumQuotaStatus,
   toFoodCheckRecord,
 } from 'utils/foodCheckResponse';
-import { captureError, isNetworkError } from 'utils/sendError';
-import { showErrorToast } from 'utils/showToast';
+import { showNetworkErrorToast } from 'utils/network';
+import { captureError } from 'utils/sendError';
+import { showErrorToast, showInfoToast } from 'utils/showToast';
 import { UserAPI } from './UserAPI';
 
 const BUCKET = 'food-check';
@@ -22,7 +27,7 @@ const SIGNED_URL_EXPIRES_IN = 60 * 60;
 const REQUEST_TIMEOUT_MS = 60 * 1000;
 
 // 판정 요청. 서버가 정한 결과(성공/인식 실패/402/429/413/400/500)는 FoodCheckOutcome으로 돌려주고
-// 화면이 안내한다. 네트워크 오류·취소는 여기서 토스트를 띄우고 undefined를 돌려준다
+// 화면이 안내한다. 네트워크 오류·시간 초과·취소는 여기서 안내(취소는 조용히)하고 undefined를 돌려준다
 const check = async (
   input: FoodCheckInput,
   signal?: AbortSignal
@@ -52,9 +57,16 @@ const check = async (
     }
     return outcome;
   } catch (error) {
-    if (isCancel(error)) return undefined;
-    if (isNetworkError(error) || (isAxiosError(error) && !error.response)) {
-      showErrorToast({ textType: 'NETWORK_ERROR' });
+    const kind = classifyFoodCheckRequestError(error);
+    if (kind === 'canceled') return undefined;
+    if (kind === 'timeout') {
+      // 서버는 판정·저장을 마쳤을 수 있다. 기록을 다시 받게 한다
+      void queryClient.invalidateQueries({ queryKey: [QueryKey.foodChecks] });
+      showInfoToast({ textType: 'CUSTOM', title: FOOD_CHECK_TIMEOUT_MESSAGE });
+      return undefined;
+    }
+    if (kind === 'network') {
+      showNetworkErrorToast();
       return undefined;
     }
     captureError({ error, prefix: '[FoodCheckAPI.check]: ' });

@@ -90,3 +90,24 @@ export function parsePremiumQuotaStatus(data: unknown): PremiumQuotaStatus | nul
   }
   return { used: d.used, limit: d.limit, remaining: d.remaining };
 }
+
+export const FOOD_CHECK_TIMEOUT_MESSAGE =
+  '판정이 오래 걸리고 있어요. 잠시 후 기록에서 확인해 주세요';
+
+export type FoodCheckRequestErrorKind = 'canceled' | 'timeout' | 'network' | 'unknown';
+
+// 요청 자체가 실패했을 때(응답 없음) 종류. axios를 import하지 않고 오류 모양으로만 본다.
+// 시간 초과는 서버에서 판정·저장이 끝났을 수 있어 네트워크 오류와 따로 안내한다
+export function classifyFoodCheckRequestError(error: unknown): FoodCheckRequestErrorKind {
+  const e = asObject(error);
+  if (!e) return 'unknown';
+  if (e.name === 'CanceledError' || e.code === 'ERR_CANCELED' || e.__CANCEL__ === true) {
+    return 'canceled';
+  }
+  if (e.isAxiosError === true && !e.response) {
+    if (e.code === 'ECONNABORTED' || e.code === 'ETIMEDOUT') return 'timeout';
+    return 'network';
+  }
+  if (error instanceof Error && error.message.includes('Network request failed')) return 'network';
+  return 'unknown';
+}

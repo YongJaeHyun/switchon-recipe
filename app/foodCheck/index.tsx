@@ -7,6 +7,7 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { setFoodCheckDetail, useFoodChecks, usePremiumQuota } from 'hooks/useFoodChecks';
+import { useBillingAvailable } from 'hooks/useBillingAvailable';
 import { usePass } from 'hooks/usePass';
 import { queryClient } from 'lib/queryClient';
 import { type ComponentProps, useCallback, useEffect, useRef, useState } from 'react';
@@ -25,6 +26,7 @@ import {
   validateFoodCheckText,
 } from 'utils/foodCheckInput';
 import { requireOnline } from 'utils/network';
+import { isPassOnSale } from 'utils/passScreen';
 import { showErrorToast, showInfoToast } from 'utils/showToast';
 
 type PhotoSource = 'camera' | 'library';
@@ -151,6 +153,7 @@ const HistoryItem = ({ check, disabled }: { check: FoodCheckRecord; disabled: bo
 export default function FoodCheckScreen() {
   const uid = useUserStore((state) => state.id);
   const { status: passStatus } = usePass();
+  const billingAvailable = useBillingAvailable();
   const { data: quota } = usePremiumQuota();
   const { data: history, isLoading: isHistoryLoading } = useFoodChecks();
   // 결과 화면의 [성분표 찍고 더 정확히 보기]가 photoType=label로 돌아온다
@@ -190,10 +193,13 @@ export default function FoodCheckScreen() {
             });
             return;
           case 'locked':
-            // 패스가 만료됐을 수 있다. 상태를 다시 받고, 팔고 있으면 결제 화면으로
+            // 패스가 만료됐을 수 있다. 상태를 다시 받고, 이 빌드에서 살 수 있으면 결제 화면으로
             void queryClient.invalidateQueries({ queryKey: [QueryKey.pass] });
-            showInfoToast({ textType: 'CUSTOM', title: '패스가 필요한 기능이에요' });
-            if (passStatus?.sales.onSale) router.push('/pass');
+            if (isPassOnSale(passStatus?.sales, billingAvailable)) {
+              router.push('/pass');
+            } else {
+              showInfoToast({ textType: 'CUSTOM', title: '패스가 필요한 기능이에요' });
+            }
             return;
           case 'quotaExceeded':
             void queryClient.invalidateQueries({ queryKey: [QueryKey.premiumQuota] });
@@ -210,7 +216,7 @@ export default function FoodCheckScreen() {
         setChecking(false);
       }
     },
-    [uid, passStatus]
+    [uid, passStatus, billingAvailable]
   );
 
   // 진행 중 표시/재진입 가드를 걸고 action을 실행한다. 오프라인이면 토스트만

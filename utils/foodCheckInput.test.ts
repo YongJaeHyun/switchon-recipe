@@ -16,8 +16,8 @@ describe('isImageBase64TooLarge', () => {
     expect(isImageBase64TooLarge('a'.repeat(MAX_IMAGE_BASE64_LENGTH + 1))).toBe(true);
   });
 
-  it('한도는 약 4MB(5,300,000자)', () => {
-    expect(MAX_IMAGE_BASE64_LENGTH).toBe(5_300_000);
+  it('한도는 서버 본문 한도(4MB)에서 JSON 감싸개 여유 1KB를 뺀 값', () => {
+    expect(MAX_IMAGE_BASE64_LENGTH).toBe(4 * 1024 * 1024 - 1024);
   });
 
   it('안내 문구', () => {

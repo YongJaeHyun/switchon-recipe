@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  classifyFoodCheckRequestError,
+  FOOD_CHECK_TIMEOUT_MESSAGE,
   interpretFoodCheckResponse,
   parsePremiumQuotaStatus,
   toFoodCheckRecord,
@@ -163,5 +165,51 @@ describe('parsePremiumQuotaStatus', () => {
   it('모양이 어긋나면 null', () => {
     expect(parsePremiumQuotaStatus(null)).toBeNull();
     expect(parsePremiumQuotaStatus({ used: 3, limit: '30', remaining: 27 })).toBeNull();
+  });
+});
+
+describe('classifyFoodCheckRequestError', () => {
+  it('취소는 canceled', () => {
+    expect(classifyFoodCheckRequestError({ name: 'CanceledError', code: 'ERR_CANCELED' })).toBe(
+      'canceled'
+    );
+  });
+
+  it('axios 시간 초과(ECONNABORTED, ETIMEDOUT)는 timeout', () => {
+    expect(
+      classifyFoodCheckRequestError({
+        isAxiosError: true,
+        code: 'ECONNABORTED',
+        response: undefined,
+      })
+    ).toBe('timeout');
+    expect(
+      classifyFoodCheckRequestError({ isAxiosError: true, code: 'ETIMEDOUT', response: undefined })
+    ).toBe('timeout');
+  });
+
+  it('응답 없는 axios 오류는 network', () => {
+    expect(
+      classifyFoodCheckRequestError({
+        isAxiosError: true,
+        code: 'ERR_NETWORK',
+        response: undefined,
+      })
+    ).toBe('network');
+  });
+
+  it('fetch 네트워크 오류 문구도 network', () => {
+    expect(classifyFoodCheckRequestError(new Error('Network request failed'))).toBe('network');
+  });
+
+  it('그 밖은 unknown', () => {
+    expect(classifyFoodCheckRequestError(new Error('boom'))).toBe('unknown');
+    expect(classifyFoodCheckRequestError(null)).toBe('unknown');
+  });
+
+  it('시간 초과 안내 문구', () => {
+    expect(FOOD_CHECK_TIMEOUT_MESSAGE).toBe(
+      '판정이 오래 걸리고 있어요. 잠시 후 기록에서 확인해 주세요'
+    );
   });
 });
