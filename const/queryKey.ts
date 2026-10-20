@@ -10,4 +10,5 @@ export enum QueryKey {
   fasting,
   todoRateStatistics,
   ingredients,
+  recipeQuota,
 }

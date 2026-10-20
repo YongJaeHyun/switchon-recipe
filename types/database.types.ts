@@ -622,6 +622,7 @@ export type Database = {
           value: string;
         }[];
       };
+      get_recipe_quota: { Args: never; Returns: Json };
       ingredient_request_count_today: {
         Args: { p_uid: string };
         Returns: number;

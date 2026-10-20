@@ -13,6 +13,7 @@ import { QueryKey } from 'const/queryKey';
 import { getChoseong } from 'es-hangul';
 import { Link, router } from 'expo-router';
 import { useIngredients } from 'hooks/useIngredients';
+import { useRecipeQuota } from 'hooks/useRecipeQuota';
 import { useSelect } from 'hooks/useSelect';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { queryClient } from 'lib/queryClient';
@@ -29,6 +30,7 @@ import colors from 'tailwindcss/colors';
 import { RecipeCategory, RecipeMethod } from 'types/recipe';
 import { getWeekAndDay } from 'utils/date';
 import { getCreationLoadingKind } from 'utils/creationLoading';
+import { formatRemaining } from 'utils/recipeQuota';
 import { isCompletedHangul } from 'utils/hangul';
 
 export default function ZeroRecipeCreationScreen() {
@@ -115,15 +117,22 @@ export default function ZeroRecipeCreationScreen() {
     return recipe;
   };
 
+  const { quota } = useRecipeQuota();
+  const remainingText = quota ? formatRemaining(quota) : null;
+
   const handleCreateRecipe = async () => {
     setIsRecipeLoading(true);
 
-    const recipe = await createRecipeWithAI();
-    if (recipe) {
-      router.push(`/recipeDetail?recipe=${JSON.stringify(recipe)}`);
+    try {
+      const recipe = await createRecipeWithAI();
+      if (recipe) {
+        router.push(`/recipeDetail?recipe=${JSON.stringify(recipe)}`);
+      }
+    } finally {
+      setIsRecipeLoading(false);
+      // 성공·한도 초과 모두 남은 개수가 바뀌므로 다시 조회
+      void queryClient.invalidateQueries({ queryKey: [QueryKey.recipeQuota] });
     }
-
-    setIsRecipeLoading(false);
   };
 
   const handleReset = () => {
@@ -209,6 +218,9 @@ export default function ZeroRecipeCreationScreen() {
             </Text>
           </TouchableHighlight>
         </View>
+        {remainingText && (
+          <Text className="text-center text-sm text-neutral-500">{remainingText}</Text>
+        )}
       </View>
 
       {loadingKind === 'data' && (
