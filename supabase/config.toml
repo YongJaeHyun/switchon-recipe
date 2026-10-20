@@ -353,3 +353,9 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/slack-ingredient-action/deno.json"
 entrypoint = "./functions/slack-ingredient-action/index.ts"
+
+[functions.sentry-to-github]
+enabled = true
+verify_jwt = false
+import_map = "./functions/sentry-to-github/deno.json"
+entrypoint = "./functions/sentry-to-github/index.ts"
