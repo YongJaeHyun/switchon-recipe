@@ -67,10 +67,6 @@ export const verifySentrySignature = async (
   return timingSafeEqual(toHex(mac), signature.trim().toLowerCase());
 };
 
-// 앱 Sentry.init이 environment를 지정하지 않음 → RN SDK 릴리즈 빌드 기본값이 production
-export const isProductionEvent = (event: SentryEvent) =>
-  event.environment == null || event.environment === '' || event.environment === 'production';
-
 const EMAIL_RE = /[\w.+-]+@[\w-]+(?:\.[\w-]+)*\.[A-Za-z]{2,}/g;
 const IPV4_RE = /\b(?:\d{1,3}\.){3}\d{1,3}\b/g;
 const IPV6_RE =
@@ -106,6 +102,56 @@ const tagMap = (tags: unknown): Map<string, string> => {
   }
   return map;
 };
+
+// SENTRY_CLIENT_SECRET이 없으면 콜드 스타트(인스턴스)당 한 번만 로그를 남기고 항상 거부
+export const makeSignatureVerifier = (
+  getSecret: () => string | undefined,
+  logError: (message: string) => void
+) => {
+  let warned = false;
+  return (body: string, signature: string | null) => {
+    const secret = getSecret();
+    if (!secret) {
+      if (!warned) logError('SENTRY_CLIENT_SECRET not set');
+      warned = true;
+      return Promise.resolve(false);
+    }
+    return verifySentrySignature(body, signature, secret);
+  };
+};
+
+export const MAX_BODY_BYTES = 1024 * 1024;
+
+// content-length가 1MB를 넘으면 true. 없거나 숫자가 아니면 false (본문을 읽은 뒤 길이로 다시 확인)
+export const exceedsBodyLimit = (contentLength: string | null) => {
+  if (contentLength === null || !/^\d+$/.test(contentLength.trim())) return false;
+  return Number(contentLength) > MAX_BODY_BYTES;
+};
+
+// 최상위 environment가 없으면 environment 태그로 대체
+const environmentOf = (event: SentryEvent): string | null =>
+  str(event.environment) ?? tagMap(event.tags).get('environment') ?? null;
+
+// 앱 Sentry.init이 environment를 지정하지 않음 → RN SDK 릴리즈 빌드 기본값이 production.
+// 최상위 값과 태그가 모두 없을 때만 production으로 간주
+export const isProductionEvent = (event: SentryEvent) => {
+  const environment = environmentOf(event);
+  return environment === null || environment === 'production';
+};
+
+// 내용 중 가장 긴 backtick 연속보다 1개 긴 펜스 (최소 3개) → 내용이 블록을 닫지 못함
+const codeBlock = (content: string) => {
+  const longest = Math.max(0, ...(content.match(/`+/g) ?? []).map((run) => run.length));
+  const fence = '`'.repeat(Math.max(3, longest + 1));
+  return [fence, content, fence];
+};
+
+// 표 셀: | 이스케이프, 줄바꿈 제거
+const tableCell = (text: string) => text.replace(/\r?\n/g, ' ').replace(/\|/g, '\\|');
+
+// @멘션 무력화: 단어 문자 뒤가 아닌 @ 다음에 zero-width space 삽입 (release 이름의 @ 등은 그대로)
+const neutralizeMentions = (text: string) =>
+  text.replace(/(^|[^\w`])@(?=[A-Za-z0-9])/g, '$1@\u200B');
 
 // 이벤트 URL(.../issues/{id}/events/{eventId}/)에서 이슈 웹 URL을 얻는다.
 // issue_url은 API URL이라 사람이 보기 어려움
@@ -154,14 +200,17 @@ export const buildIssue = (event: SentryEvent): { title: string; body: string } 
   lines.push('| 항목 | 값 |');
   lines.push('| --- | --- |');
   const rows: [string, unknown][] = [
-    ['환경', event.environment ?? 'production (미지정)'],
+    ['환경', environmentOf(event) ?? 'production (미지정)'],
     ['릴리즈', event.release],
     ['레벨', event.level],
     ['플랫폼', event.platform],
-    ['최초 발생', event.datetime],
+    ['발생 시각', event.datetime],
     ['Sentry 이슈 ID', event.issue_id],
   ];
-  for (const [label, value] of rows) lines.push(`| ${label} | ${str(value) ?? '-'} |`);
+  for (const [label, value] of rows) {
+    const cell = str(value);
+    lines.push(`| ${label} | ${cell ? tableCell(cell) : '-'} |`);
+  }
   lines.push('');
 
   const culprit = str(event.culprit);
@@ -177,9 +226,7 @@ export const buildIssue = (event: SentryEvent): { title: string; body: string } 
     const rawValue = str(exception.value);
     const value = rawValue && truncate(rawValue, EXCEPTION_VALUE_LIMIT);
     lines.push('## 예외');
-    lines.push('```');
-    lines.push([type, value].filter(Boolean).join(': ') || '(내용 없음)');
-    lines.push('```');
+    lines.push(...codeBlock([type, value].filter(Boolean).join(': ') || '(내용 없음)'));
     lines.push('');
 
     const frames = exception.stacktrace?.frames;
@@ -187,9 +234,7 @@ export const buildIssue = (event: SentryEvent): { title: string; body: string } 
       const selected = selectFrames(frames);
       const inApp = selected.some((f) => f.in_app === true);
       lines.push(`## 스택 트레이스 (${inApp ? '앱 코드' : '전체'}, 최신 ${selected.length}개)`);
-      lines.push('```');
-      for (const frame of selected) lines.push(formatFrame(frame));
-      lines.push('```');
+      lines.push(...codeBlock(selected.map(formatFrame).join('\n')));
       lines.push('');
     }
   }
@@ -206,6 +251,6 @@ export const buildIssue = (event: SentryEvent): { title: string; body: string } 
   lines.push('---');
   lines.push('_Sentry 알림으로 자동 생성된 이슈입니다._');
 
-  const body = scrubPii(lines.join('\n'));
+  const body = neutralizeMentions(scrubPii(lines.join('\n')));
   return { title, body: truncate(body, BODY_LIMIT) };
 };

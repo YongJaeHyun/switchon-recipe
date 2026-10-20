@@ -12,10 +12,11 @@ create table public.sentry_github_link (
   last_error text,
   -- 마지막 시도 시각. 시도 중인 행을 다른 요청이 동시에 재시도하지 않도록 하는 임대 기준
   attempted_at timestamptz not null default now(),
-  created_at timestamptz default now()
+  created_at timestamptz not null default now()
 );
 
 alter table public.sentry_github_link enable row level security;
+revoke all on public.sentry_github_link from anon, authenticated;
 
 create index sentry_github_link_pending_idx
   on public.sentry_github_link (created_at)

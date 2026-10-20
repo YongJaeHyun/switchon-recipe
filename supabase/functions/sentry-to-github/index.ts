@@ -2,7 +2,7 @@
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { verifySentrySignature } from '../_shared/sentry.ts';
+import { exceedsBodyLimit, makeSignatureVerifier, MAX_BODY_BYTES } from '../_shared/sentry.ts';
 import { handleSentryWebhook } from './handler.ts';
 
 declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void };
@@ -20,6 +20,17 @@ const supabase = createClient(requireEnv('SUPABASE_URL'), requireEnv('SUPABASE_S
 
 const LINK_TABLE = 'sentry_github_link';
 
+const verify = makeSignatureVerifier(
+  () => Deno.env.get('SENTRY_CLIENT_SECRET'),
+  (message) => console.error(message)
+);
+
+const tooLarge = () =>
+  new Response(JSON.stringify({ ok: false, accepted: false, error: 'payload too large' }), {
+    status: 413,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
 // Sentry Internal Integration 웹훅 주소. Sentry는 Supabase JWT를 보내지 않으므로 verify_jwt = false,
 // 대신 Sentry-Hook-Signature(SENTRY_CLIENT_SECRET)로 검증한다.
 // Sentry는 약 1초 안에 응답을 받아야 하므로 GitHub 호출과 DB 작업은 EdgeRuntime.waitUntil로 응답 후에 처리
@@ -27,13 +38,17 @@ serve(async (req: Request) => {
   try {
     if (req.method !== 'POST') return new Response(null, { status: 405 });
 
+    // 1MB 초과는 본문을 읽기 전에 거부
+    if (exceedsBodyLimit(req.headers.get('content-length'))) return tooLarge();
+
     // 서명은 원문 바이트 기준이므로 파싱 전에 text로 읽는다
     const body = await req.text();
+    // content-length 없이(chunked) 온 경우 대비
+    if (new TextEncoder().encode(body).length > MAX_BODY_BYTES) return tooLarge();
 
     const result = await handleSentryWebhook(
       {
-        verify: (raw, signature) =>
-          verifySentrySignature(raw, signature, Deno.env.get('SENTRY_CLIENT_SECRET') ?? ''),
+        verify,
         linkStore: {
           claim: async (sentryIssueId, payload) => {
             // insert ... on conflict do nothing: 새로 들어간 행만 돌려받는다

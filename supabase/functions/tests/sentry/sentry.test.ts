@@ -1,6 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   buildIssue,
+  exceedsBodyLimit,
+  makeSignatureVerifier,
+  MAX_BODY_BYTES,
   isProductionEvent,
   type SentryEvent,
   verifySentrySignature,
@@ -211,5 +214,140 @@ describe('buildIssue', () => {
       })
     );
     expect(body.length).toBeLessThanOrEqual(60_000);
+  });
+});
+
+describe('isProductionEvent with environment tag fallback', () => {
+  it('skips when top-level environment is missing but the tag says development', () => {
+    expect(
+      isProductionEvent(
+        baseEvent({ environment: undefined, tags: [['environment', 'development']] })
+      )
+    ).toBe(false);
+  });
+
+  it('uses the tag when top-level is missing and the tag says production', () => {
+    expect(
+      isProductionEvent(baseEvent({ environment: null, tags: [['environment', 'production']] }))
+    ).toBe(true);
+  });
+
+  it('prefers the top-level value over the tag', () => {
+    expect(
+      isProductionEvent(
+        baseEvent({ environment: 'production', tags: [['environment', 'development']] })
+      )
+    ).toBe(true);
+  });
+
+  it('treats the event as production only when both are missing', () => {
+    expect(isProductionEvent(baseEvent({ environment: undefined, tags: [] }))).toBe(true);
+  });
+
+  it('shows the tag environment in the body', () => {
+    const { body } = buildIssue(
+      baseEvent({ environment: undefined, tags: [['environment', 'production']] })
+    );
+    expect(body).toMatch(/\| 환경 \| production \|/);
+  });
+});
+
+describe('buildIssue body safety', () => {
+  const fenceBlocks = (body: string) => {
+    // 여는 펜스와 같은 길이의 닫는 펜스까지를 한 블록으로 본다 (GitHub/CommonMark 규칙)
+    const blocks: { fence: string; content: string[] }[] = [];
+    let open: { fence: string; content: string[] } | null = null;
+    for (const line of body.split('\n')) {
+      const m = line.match(/^(`{3,})\s*$/);
+      if (open) {
+        if (m && m[1].length >= open.fence.length) {
+          blocks.push(open);
+          open = null;
+        } else open.content.push(line);
+      } else if (m) open = { fence: m[1], content: [] };
+    }
+    expect(open).toBeNull();
+    return blocks;
+  };
+
+  it('keeps an exception value containing ``` inside its fence', () => {
+    const value = 'bad\n```\n## injected heading\n````` more';
+    const { body } = buildIssue(
+      baseEvent({ exception: { values: [{ type: 'Error', value, stacktrace: { frames: [] } }] } })
+    );
+    const blocks = fenceBlocks(body);
+    const exceptionBlock = blocks.find((b) => b.content.join('\n').includes('injected'));
+    expect(exceptionBlock).toBeDefined();
+    expect(exceptionBlock!.content.join('\n')).toBe(`Error: ${value}`);
+    expect(exceptionBlock!.fence.length).toBe(6);
+  });
+
+  it('uses a 3-backtick fence when the content has no backticks', () => {
+    const { body } = buildIssue(baseEvent());
+    expect(fenceBlocks(body).every((b) => b.fence === '```')).toBe(true);
+  });
+
+  it('neutralizes @mentions', () => {
+    const { body } = buildIssue(
+      baseEvent({
+        title: 'ping @octocat',
+        culprit: 'from @octocat',
+        exception: { values: [{ type: 'Error', value: 'hi @octocat and @org/team' }] },
+      })
+    );
+    expect(body).not.toMatch(/(^|[^\w])@octocat/);
+    expect(body).not.toMatch(/(^|[^\w])@org\/team/);
+    expect(body).toContain('@​octocat');
+  });
+
+  it('leaves non-mention @ such as release names alone', () => {
+    expect(buildIssue(baseEvent()).body).toContain('com.switchon.recipe@1.4.0+42');
+  });
+
+  it('escapes | in table cells', () => {
+    const { body } = buildIssue(baseEvent({ release: 'a|b', platform: 'x\ny' }));
+    expect(body).toContain('| 릴리즈 | a\\|b |');
+    expect(body).toContain('| 플랫폼 | x y |');
+  });
+
+  it('labels the datetime as 발생 시각', () => {
+    const { body } = buildIssue(baseEvent());
+    expect(body).toContain('| 발생 시각 | 2026-10-20T01:02:03.000000Z |');
+    expect(body).not.toContain('최초 발생');
+  });
+});
+
+describe('exceedsBodyLimit', () => {
+  it('rejects a content-length over 1MB', () => {
+    expect(MAX_BODY_BYTES).toBe(1024 * 1024);
+    expect(exceedsBodyLimit(String(MAX_BODY_BYTES + 1))).toBe(true);
+  });
+
+  it('allows up to 1MB and a missing or invalid header', () => {
+    expect(exceedsBodyLimit(String(MAX_BODY_BYTES))).toBe(false);
+    expect(exceedsBodyLimit('1234')).toBe(false);
+    expect(exceedsBodyLimit(null)).toBe(false);
+    expect(exceedsBodyLimit('abc')).toBe(false);
+  });
+});
+
+describe('makeSignatureVerifier', () => {
+  const body = '{"a":1}';
+
+  it('logs once per instance when the secret is unset and still rejects', async () => {
+    const logError = vi.fn();
+    const verify = makeSignatureVerifier(() => undefined, logError);
+    expect(await verify(body, await sign(body))).toBe(false);
+    expect(await verify(body, await sign(body))).toBe(false);
+    expect(logError).toHaveBeenCalledTimes(1);
+    expect(logError).toHaveBeenCalledWith('SENTRY_CLIENT_SECRET not set');
+  });
+
+  it('verifies with the secret and does not log', async () => {
+    const logError = vi.fn();
+    const verify = makeSignatureVerifier(() => SECRET, logError);
+    expect(await verify(body, await sign(body))).toBe(true);
+    expect(await verify(body, 'bad')).toBe(false);
+    expect(logError).not.toHaveBeenCalled();
   });
 });
