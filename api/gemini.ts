@@ -1,7 +1,7 @@
-import axios, { isCancel } from 'axios';
+import axios, { isAxiosError, isCancel } from 'axios';
 import { RecipeDB } from 'types/database';
 import { isNetworkError } from 'utils/sendError';
-import { showErrorToast } from 'utils/showToast';
+import { showErrorToast, showInfoToast } from 'utils/showToast';
 import { Maybe } from '../types/common';
 import { UserAPI } from './UserAPI';
 
@@ -36,7 +36,15 @@ export const createRecipe = async ({
 
     return response.data;
   } catch (error) {
-    if (isNetworkError(error)) {
+    // 서버의 하루 생성 한도 초과(429): 다시 시도해도 안 되므로 서버 안내 문구를 그대로 보여준다
+    if (isAxiosError(error) && error.response?.status === 429) {
+      const message = (error.response.data as { error?: string } | undefined)?.error;
+      showInfoToast({
+        textType: 'CUSTOM',
+        title: message ?? '오늘 레시피를 모두 만들었어요.',
+        subtitle: '내일 다시 만들 수 있어요.',
+      });
+    } else if (isNetworkError(error)) {
       showErrorToast({ textType: 'NETWORK_ERROR' });
     } else if (isCancel(error)) {
       showErrorToast({ textType: 'RECIPE_CREATION_CANCELED' });
