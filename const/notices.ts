@@ -19,6 +19,16 @@ export const getLatestNotices = (
 
 export const allNotices = [
   {
+    version: 'v6.0.0',
+    changes: [
+      '✨ 오프라인에서도 마지막으로 본 화면 유지',
+      '✨ 레시피 생성 화면에 오늘 남은 무료 레시피 표시',
+      '✨ 광고를 보고 레시피를 더 만들 수 있어요',
+      '💄 태블릿 화면 개선',
+    ],
+    updatedAt: '2026.10.20',
+  },
+  {
     version: 'v5.0.5',
     changes: [
       '✨ 재료 요청 시, 스위치온 기준에 맞는 재료는 자동으로 바로 추가',
