@@ -7,10 +7,9 @@ const APP_MAJOR_VERSION = `v${semver.major(APP_VERSION)}`;
 const appEnv = process.env.APP_ENV || 'production';
 
 // AdMob 안드로이드 앱 ID: 개발은 Google 테스트 앱 ID.
-// TODO: 운영 앱 ID는 운영자가 AdMob 콘솔에서 발급해 알려주면 교체한다 (그 전까지는 운영도 테스트 ID).
-// 주의: 운영 앱 ID와 const/ads.ts의 운영 보상형 광고 단위 ID는 반드시 함께 교체한다.
+// 운영 앱 ID와 const/ads.ts의 운영 보상형 광고 단위 ID는 반드시 함께 바꾼다.
 const ADMOB_TEST_ANDROID_APP_ID = 'ca-app-pub-3940256099942544~3347511713';
-const ADMOB_PRODUCTION_ANDROID_APP_ID = ADMOB_TEST_ANDROID_APP_ID;
+const ADMOB_PRODUCTION_ANDROID_APP_ID = 'ca-app-pub-3149926343798483~2482822909';
 const admobAndroidAppId =
   appEnv === 'development' ? ADMOB_TEST_ANDROID_APP_ID : ADMOB_PRODUCTION_ANDROID_APP_ID;
 
