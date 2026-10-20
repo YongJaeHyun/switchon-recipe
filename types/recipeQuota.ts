@@ -13,3 +13,11 @@ export interface QuotaExceeded {
   canWatchAd: boolean;
   isPass: boolean;
 }
+
+export const QUOTA_EXCEEDED_MESSAGE = '오늘 레시피를 모두 만들었어요. 내일 다시 만들 수 있어요.';
+
+export const isQuotaExceeded = (result: unknown): result is QuotaExceeded =>
+  typeof result === 'object' &&
+  result !== null &&
+  'quotaExceeded' in result &&
+  result.quotaExceeded === true;

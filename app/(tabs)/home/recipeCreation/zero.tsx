@@ -27,6 +27,8 @@ import {
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { RecipeCategory, RecipeMethod } from 'types/recipe';
+import { isQuotaExceeded, QUOTA_EXCEEDED_MESSAGE } from 'types/recipeQuota';
+import { showInfoToast } from 'utils/showToast';
 import { getWeekAndDay } from 'utils/date';
 import { getCreationLoadingKind } from 'utils/creationLoading';
 import { isCompletedHangul } from 'utils/hangul';
@@ -111,6 +113,11 @@ export default function ZeroRecipeCreationScreen() {
       signal: controller.current.signal,
     });
     if (!recipe) return null;
+    if (isQuotaExceeded(recipe)) {
+      // Task 5: 모달로 교체
+      showInfoToast({ textType: 'CUSTOM', title: QUOTA_EXCEEDED_MESSAGE });
+      return null;
+    }
 
     queryClient.removeQueries({ queryKey: [QueryKey.recentRecipes] });
     return recipe;

@@ -23,7 +23,11 @@ const loadLib = (): Promise<AdsLib> => {
   if (!libPromise) {
     libPromise =
       Platform.OS === 'android' && REWARDED_AD_UNIT_ID
-        ? import('react-native-google-mobile-ads')
+        ? import('react-native-google-mobile-ads').then(async (lib) => {
+            // 광고 SDK 초기화는 한 번만 (libPromise가 메모이즈한다)
+            await lib.default().initialize();
+            return lib;
+          })
         : Promise.reject(new Error('광고는 Android + 광고 단위 ID가 있을 때만 사용'));
     // 실패는 캐시하지 않는다(다음 호출에서 재시도)
     libPromise.catch(() => {
@@ -57,7 +61,12 @@ export async function isAdsAvailable(): Promise<boolean> {
 // 보상형 광고를 불러와 보여준다.
 // 'earned': 보상(EARNED_REWARD)을 받고 광고를 닫음, 'closed': 보상 없이 닫음.
 // 모듈이 없으면 AdsUnavailableError, 광고 로드 실패는 해당 오류로 reject
-export async function showRewardedAd(uid: string): Promise<'earned' | 'closed'> {
+const LOAD_TIMEOUT_MS = 20_000;
+
+export async function showRewardedAd(
+  uid: string,
+  loadTimeoutMs = LOAD_TIMEOUT_MS
+): Promise<'earned' | 'closed'> {
   let lib: AdsLib;
   try {
     lib = await loadLib();
@@ -71,14 +80,21 @@ export async function showRewardedAd(uid: string): Promise<'earned' | 'closed'> 
   return new Promise<'earned' | 'closed'>((resolve, reject) => {
     let earned = false;
     const unsubscribes: (() => void)[] = [];
-    const cleanup = () => unsubscribes.forEach((off) => off());
+    let loadTimer: ReturnType<typeof setTimeout> | undefined;
+    const cleanup = () => {
+      clearTimeout(loadTimer);
+      unsubscribes.forEach((off) => off());
+    };
 
     unsubscribes.push(
       ad.addAdEventListener(RewardedAdEventType.LOADED, () => {
-        ad.show().catch((error: unknown) => {
-          cleanup();
-          reject(error);
-        });
+        clearTimeout(loadTimer);
+        Promise.resolve()
+          .then(() => ad.show())
+          .catch((error: unknown) => {
+            cleanup();
+            reject(error);
+          });
       }),
       ad.addAdEventListener(RewardedAdEventType.EARNED_REWARD, () => {
         earned = true;
@@ -93,6 +109,10 @@ export async function showRewardedAd(uid: string): Promise<'earned' | 'closed'> 
       })
     );
 
+    loadTimer = setTimeout(() => {
+      cleanup();
+      reject(new Error('rewarded ad load timeout'));
+    }, loadTimeoutMs);
     ad.load();
   });
 }
