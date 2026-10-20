@@ -8,11 +8,13 @@ import { IngredientRequest } from 'components/recipeCreation/IngredientRequest';
 import { IngredientsLoadError } from 'components/recipeCreation/IngredientsLoadError';
 import Ingredients, { IngredientsProps } from 'components/recipeCreation/Ingredients';
 import Loading from 'components/recipeCreation/Loading';
+import QuotaExceededModal from 'components/recipeCreation/QuotaExceededModal';
 import SelectedIngredient from 'components/recipeCreation/SelectedIngredient';
 import { QueryKey } from 'const/queryKey';
 import { getChoseong } from 'es-hangul';
 import { Link, router } from 'expo-router';
 import { useIngredients } from 'hooks/useIngredients';
+import { useQuotaGate } from 'hooks/useQuotaGate';
 import { useSelect } from 'hooks/useSelect';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { queryClient } from 'lib/queryClient';
@@ -27,8 +29,7 @@ import {
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { RecipeCategory, RecipeMethod } from 'types/recipe';
-import { isQuotaExceeded, QUOTA_EXCEEDED_MESSAGE } from 'types/recipeQuota';
-import { showInfoToast } from 'utils/showToast';
+import { isQuotaExceeded } from 'types/recipeQuota';
 import { getWeekAndDay } from 'utils/date';
 import { getCreationLoadingKind } from 'utils/creationLoading';
 import { isCompletedHangul } from 'utils/hangul';
@@ -57,6 +58,8 @@ export default function LowRecipeCreationScreen() {
   const controller = useRef<AbortController>(null);
 
   const [resetTrigger, setResetTrigger] = useState(false);
+
+  const quotaGate = useQuotaGate();
 
   const getUserWeek = () => {
     const startDate = useUserStore.getState().start_date;
@@ -105,16 +108,20 @@ export default function LowRecipeCreationScreen() {
     command += '\nRemove Switch-On week or carbohydrate from the recipe name.';
     command += '\nYou may freely use sauces or seasonings.';
 
-    const recipe = await createRecipe({
-      command,
-      week: recipeWeek,
-      isZeroCarb: false,
-      signal: controller.current.signal,
-    });
+    let recipe;
+    try {
+      recipe = await createRecipe({
+        command,
+        week: recipeWeek,
+        isZeroCarb: false,
+        signal: controller.current.signal,
+      });
+    } finally {
+      void quotaGate.invalidateQuota();
+    }
     if (!recipe) return null;
     if (isQuotaExceeded(recipe)) {
-      // Task 5: 모달로 교체
-      showInfoToast({ textType: 'CUSTOM', title: QUOTA_EXCEEDED_MESSAGE });
+      quotaGate.showExceeded(recipe);
       return null;
     }
 
@@ -143,7 +150,7 @@ export default function LowRecipeCreationScreen() {
   }, []);
 
   const loadingKind = getCreationLoadingKind({
-    isRecipeLoading,
+    isRecipeLoading: isRecipeLoading || quotaGate.isWaitingBonus,
     isDataLoading: isIngredientsLoading || isIngredientListLoading,
   });
 
@@ -225,6 +232,9 @@ export default function LowRecipeCreationScreen() {
             </Text>
           </TouchableHighlight>
         </View>
+        {quotaGate.remainingText && (
+          <Text className="text-center text-sm text-neutral-500">{quotaGate.remainingText}</Text>
+        )}
       </View>
       {loadingKind === 'data' && (
         <View className="absolute inset-0 z-50 items-center justify-center">
@@ -247,6 +257,13 @@ export default function LowRecipeCreationScreen() {
           </View>
         </View>
       )}
+      <QuotaExceededModal
+        visible={!!quotaGate.exceeded}
+        actions={quotaGate.actions}
+        onWatchAd={() => void quotaGate.watchAd(handleCreateRecipe)}
+        onPass={quotaGate.goPass}
+        onClose={quotaGate.close}
+      />
     </SafeAreaViewWithNav>
   );
 }
