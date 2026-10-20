@@ -33,9 +33,9 @@ describe('formatRemaining', () => {
       '오늘 무료 레시피 3/5개 남았어요'
     );
   });
-  it('무료는 다 써도 표시한다', () => {
+  it('무료를 다 쓰면 자정에 다시 채워진다고 알려준다', () => {
     expect(formatRemaining({ isPass: false, remaining: 0, limit: 5 })).toBe(
-      '오늘 무료 레시피 0/5개 남았어요'
+      '오늘 무료 레시피를 모두 만들었어요 · 자정에 다시 채워져요'
     );
   });
   it('광고 보상을 받으면 늘어난 한도로 보여준다', () => {
@@ -45,6 +45,11 @@ describe('formatRemaining', () => {
   });
   it('패스는 넉넉할 때 숨긴다', () => {
     expect(formatRemaining({ isPass: true, remaining: 12, limit: 20 })).toBeNull();
+  });
+  it('패스도 다 쓰면 자정에 다시 채워진다고 알려준다', () => {
+    expect(formatRemaining({ isPass: true, remaining: 0, limit: 20 })).toBe(
+      '오늘 레시피를 모두 만들었어요 · 자정에 다시 채워져요'
+    );
   });
   it('패스는 5개 이하로 남으면 보여준다', () => {
     expect(formatRemaining({ isPass: true, remaining: 4, limit: 20 })).toBe(

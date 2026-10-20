@@ -6,6 +6,9 @@ const PASS_REMAINING_NOTICE_THRESHOLD = 5;
 export const formatRemaining = (
   q: Pick<RecipeQuota, 'isPass' | 'remaining' | 'limit'>
 ): string | null => {
+  if (q.remaining <= 0) {
+    return `오늘 ${q.isPass ? '' : '무료 '}레시피를 모두 만들었어요 · 자정에 다시 채워져요`;
+  }
   if (q.isPass) {
     if (q.remaining > PASS_REMAINING_NOTICE_THRESHOLD) return null;
     return `오늘 ${q.remaining}/${q.limit}개 남았어요`;
