@@ -233,7 +233,12 @@ export default function LowRecipeCreationScreen() {
           </TouchableHighlight>
         </View>
         {quotaGate.remainingText && (
-          <Text className="text-center text-sm text-neutral-500">{quotaGate.remainingText}</Text>
+          <View className="items-center gap-0.5">
+            <Text className="text-sm text-neutral-500">{quotaGate.remainingText}</Text>
+            {quotaGate.adBonusText && (
+              <Text className="text-xs text-green-600">{quotaGate.adBonusText}</Text>
+            )}
+          </View>
         )}
       </View>
       {loadingKind === 'data' && (
@@ -260,6 +265,7 @@ export default function LowRecipeCreationScreen() {
       <QuotaExceededModal
         visible={!!quotaGate.exceeded}
         actions={quotaGate.actions}
+        adBonusText={quotaGate.adBonusText}
         onWatchAd={requireOnline(() => void quotaGate.watchAd(handleCreateRecipe))}
         onPass={quotaGate.goPass}
         onClose={quotaGate.close}

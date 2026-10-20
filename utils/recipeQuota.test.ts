@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  formatAdBonusLeft,
   formatRemaining,
   getQuotaModalActions,
   runAdBonusFlow,
@@ -27,14 +28,28 @@ describe('getQuotaModalActions', () => {
 });
 
 describe('formatRemaining', () => {
-  it('무료 3 → 오늘 3개 남았어요', () => {
-    expect(formatRemaining({ isPass: false, remaining: 3 })).toBe('오늘 3개 남았어요');
+  it('무료는 하루 무료 개수와 남은 개수를 함께 보여준다', () => {
+    expect(formatRemaining({ isPass: false, remaining: 3, limit: 5 })).toBe(
+      '오늘 무료 레시피 3/5개 남았어요'
+    );
   });
-  it('패스 12 → null', () => {
-    expect(formatRemaining({ isPass: true, remaining: 12 })).toBeNull();
+  it('무료는 다 써도 표시한다', () => {
+    expect(formatRemaining({ isPass: false, remaining: 0, limit: 5 })).toBe(
+      '오늘 무료 레시피 0/5개 남았어요'
+    );
   });
-  it('패스 4 → 오늘 4개 남았어요', () => {
-    expect(formatRemaining({ isPass: true, remaining: 4 })).toBe('오늘 4개 남았어요');
+  it('광고 보상을 받으면 늘어난 한도로 보여준다', () => {
+    expect(formatRemaining({ isPass: false, remaining: 1, limit: 6 })).toBe(
+      '오늘 무료 레시피 1/6개 남았어요'
+    );
+  });
+  it('패스는 넉넉할 때 숨긴다', () => {
+    expect(formatRemaining({ isPass: true, remaining: 12, limit: 20 })).toBeNull();
+  });
+  it('패스는 5개 이하로 남으면 보여준다', () => {
+    expect(formatRemaining({ isPass: true, remaining: 4, limit: 20 })).toBe(
+      '오늘 4/20개 남았어요'
+    );
   });
 });
 
@@ -129,5 +144,25 @@ describe('runAdBonusFlow', () => {
 
     finishRetry();
     expect(await flow).toBe('retried');
+  });
+});
+
+describe('formatAdBonusLeft', () => {
+  const base = { isPass: false, adBonusLeft: 3 };
+
+  it('무료 이용자에게 남은 광고 보상 횟수를 알려준다', () => {
+    expect(formatAdBonusLeft(base, true)).toBe('광고 보고 3개 더 만들 수 있어요');
+  });
+
+  it('광고 보상을 다 썼으면 표시하지 않는다', () => {
+    expect(formatAdBonusLeft({ ...base, adBonusLeft: 0 }, true)).toBeNull();
+  });
+
+  it('패스 이용자에게는 표시하지 않는다', () => {
+    expect(formatAdBonusLeft({ ...base, isPass: true }, true)).toBeNull();
+  });
+
+  it('광고를 쓸 수 없는 앱에서는 표시하지 않는다', () => {
+    expect(formatAdBonusLeft(base, false)).toBeNull();
   });
 });

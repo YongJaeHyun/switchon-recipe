@@ -2,10 +2,24 @@ import type { RecipeQuota } from 'types/recipeQuota';
 
 const PASS_REMAINING_NOTICE_THRESHOLD = 5;
 
-// 무료: 항상 표시, 패스: 남은 개수가 적을 때만 표시
-export const formatRemaining = (q: Pick<RecipeQuota, 'isPass' | 'remaining'>): string | null => {
-  if (q.isPass && q.remaining > PASS_REMAINING_NOTICE_THRESHOLD) return null;
-  return `오늘 ${q.remaining}개 남았어요`;
+// 무료: 하루 무료 개수(광고 보상 포함)와 남은 개수를 항상 표시, 패스: 남은 개수가 적을 때만 표시
+export const formatRemaining = (
+  q: Pick<RecipeQuota, 'isPass' | 'remaining' | 'limit'>
+): string | null => {
+  if (q.isPass) {
+    if (q.remaining > PASS_REMAINING_NOTICE_THRESHOLD) return null;
+    return `오늘 ${q.remaining}/${q.limit}개 남았어요`;
+  }
+  return `오늘 무료 레시피 ${q.remaining}/${q.limit}개 남았어요`;
+};
+
+// 무료 이용자에게 오늘 남은 광고 보상 횟수 (패스·광고 불가 앱·소진 시 숨김)
+export const formatAdBonusLeft = (
+  q: Pick<RecipeQuota, 'isPass' | 'adBonusLeft'>,
+  adsAvailable: boolean
+): string | null => {
+  if (q.isPass || !adsAvailable || q.adBonusLeft <= 0) return null;
+  return `광고 보고 ${q.adBonusLeft}개 더 만들 수 있어요`;
 };
 
 export type QuotaModalAction = 'watchAd' | 'pass';

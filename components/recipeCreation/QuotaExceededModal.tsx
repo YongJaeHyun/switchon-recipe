@@ -5,6 +5,7 @@ import type { QuotaModalAction } from 'utils/recipeQuota';
 type QuotaExceededModalProps = {
   visible: boolean;
   actions: QuotaModalAction[];
+  adBonusText: string | null;
   onWatchAd: () => void;
   onPass: () => void;
   onClose: () => void;
@@ -13,6 +14,7 @@ type QuotaExceededModalProps = {
 export default function QuotaExceededModal({
   visible,
   actions,
+  adBonusText,
   onWatchAd,
   onPass,
   onClose,
@@ -29,6 +31,9 @@ export default function QuotaExceededModal({
               <TouchableOpacity className="rounded-xl bg-green-600 py-3" onPress={onWatchAd}>
                 <Text className="text-center font-medium text-white">광고 보고 1개 더 만들기</Text>
               </TouchableOpacity>
+            )}
+            {actions.includes('watchAd') && adBonusText && (
+              <Text className="-mt-1 text-center text-xs text-neutral-500">{adBonusText}</Text>
             )}
             {actions.includes('pass') && (
               <TouchableOpacity

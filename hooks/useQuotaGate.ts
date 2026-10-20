@@ -7,6 +7,7 @@ import { isAdsAvailable, showRewardedAd } from 'services/ads';
 import { useUserStore } from 'stores/userStore';
 import type { QuotaExceeded } from 'types/recipeQuota';
 import {
+  formatAdBonusLeft,
   formatRemaining,
   getQuotaModalActions,
   runAdBonusFlow,
@@ -39,7 +40,6 @@ export const useQuotaGate = () => {
     };
   }, []);
 
-  const remainingText = quota ? formatRemaining(quota) : null;
   const onSale = isPassOnSale(status?.sales, billingAvailable);
 
   useEffect(() => {
@@ -51,6 +51,9 @@ export const useQuotaGate = () => {
       cancelled = true;
     };
   }, []);
+
+  const remainingText = quota ? formatRemaining(quota) : null;
+  const adBonusText = quota ? formatAdBonusLeft(quota, adsAvailable) : null;
 
   const invalidateQuota = useCallback(
     () => queryClient.invalidateQueries({ queryKey: [QueryKey.recipeQuota] }),
@@ -109,6 +112,7 @@ export const useQuotaGate = () => {
 
   return {
     remainingText,
+    adBonusText,
     exceeded,
     showExceeded: setExceeded,
     actions,
