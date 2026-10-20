@@ -41,6 +41,17 @@ describe('weekRuleText', () => {
     expect(t).toContain('단백질 위주: 두부·계란·닭가슴살·돼지 안심/등심·해산물·곤약');
     expect(t).toContain('일반 원칙:');
   });
+  it('저탄수 끼니에는 밥을 소량 허용, 밥을 일괄 금지하지 않음', () => {
+    for (const w of [1, 2, 3, 4]) {
+      const t = weekRuleText(w);
+      expect(t).toContain('밥을 소량');
+      expect(t).not.toContain('밥, 빵, 면');
+    }
+    expect(weekRuleText(1)).toContain('소량');
+    expect(weekRuleText(2)).toContain('무탄수');
+    expect(weekRuleText(2)).toContain('메밀');
+    expect(weekRuleText(3)).toContain('통밀');
+  });
   it('2~4주차 핵심 규칙', () => {
     expect(weekRuleText(2)).toContain('블랙커피');
     expect(weekRuleText(2)).toContain('견과류');
