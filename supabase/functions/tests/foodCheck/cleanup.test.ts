@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { selectExpired } from '../../_shared/foodCheckCleanup.ts';
+import { partitionRemoved, selectExpired } from '../../_shared/foodCheckCleanup.ts';
 
 const NOW = new Date('2026-11-20T00:00:00Z');
 
@@ -25,5 +25,31 @@ describe('selectExpired', () => {
       { id: 2, image_path: 'u/2.jpg', created_at: '2026-11-14T00:00:00Z' },
     ];
     expect(selectExpired(rows, NOW, 7)).toEqual([{ id: 1, image_path: 'u/1.jpg' }]);
+  });
+});
+
+describe('partitionRemoved', () => {
+  const requested = [
+    { id: 1, image_path: 'u/1.jpg' },
+    { id: 2, image_path: 'u/2.jpg' },
+    { id: 3, image_path: 'u/3.jpg' },
+  ];
+
+  it('전부 삭제됨', () => {
+    expect(partitionRemoved(requested, ['u/1.jpg', 'u/2.jpg', 'u/3.jpg'])).toEqual({
+      removedIds: [1, 2, 3],
+      notRemoved: [],
+    });
+  });
+
+  it('일부만 삭제됨: 3개 중 1개 누락', () => {
+    expect(partitionRemoved(requested, ['u/1.jpg', 'u/3.jpg'])).toEqual({
+      removedIds: [1, 3],
+      notRemoved: [{ id: 2, image_path: 'u/2.jpg' }],
+    });
+  });
+
+  it('하나도 안 돌아옴', () => {
+    expect(partitionRemoved(requested, [])).toEqual({ removedIds: [], notRemoved: requested });
   });
 });
