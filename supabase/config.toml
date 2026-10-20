@@ -370,6 +370,12 @@ verify_jwt = true
 import_map = "./functions/get-pass-status/deno.json"
 entrypoint = "./functions/get-pass-status/index.ts"
 
+[functions.food-check]
+enabled = true
+verify_jwt = true
+import_map = "./functions/food-check/deno.json"
+entrypoint = "./functions/food-check/index.ts"
+
 [functions.sync-voided-purchases]
 enabled = true
 verify_jwt = true

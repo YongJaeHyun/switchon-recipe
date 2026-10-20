@@ -58,10 +58,12 @@ export function quotaExceededBody(decision: QuotaDecision): {
 // 한도를 차감(consume)하고 generate를 실행한다. 거절되면 generate를 실행하지 않고 decision을 돌려준다.
 // generate가 실패하면 차감을 되돌리고(release) 같은 오류를 다시 던진다. release 자체가 실패해도
 // 로그만 남기고 generate의 원래 오류를 그대로 던진다 (release 실패로 원인이 가려지면 안 되므로).
-export async function runWithQuota<T>(
-  deps: { consume: () => Promise<QuotaDecision>; release: () => Promise<void> },
+// decision 타입은 allowed만 보고 판단하므로 제네릭으로 둔다 (레시피 QuotaDecision, 구독 기능
+// PremiumQuotaDecision 모두 사용). 기본값은 기존 레시피 호출부와 같은 QuotaDecision.
+export async function runWithQuota<T, D extends { allowed: boolean } = QuotaDecision>(
+  deps: { consume: () => Promise<D>; release: () => Promise<void> },
   generate: () => Promise<T>
-): Promise<{ status: 'ok'; value: T } | { status: 'exceeded'; decision: QuotaDecision }> {
+): Promise<{ status: 'ok'; value: T } | { status: 'exceeded'; decision: D }> {
   const decision = await deps.consume();
 
   if (!decision.allowed) {
