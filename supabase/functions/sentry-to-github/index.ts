@@ -5,6 +5,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { verifySentrySignature } from '../_shared/sentry.ts';
 import { handleSentryWebhook } from './handler.ts';
 
+declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void };
+
 const GITHUB_TIMEOUT_MS = 15_000;
 
 const requireEnv = (key: string) => {
@@ -19,7 +21,8 @@ const supabase = createClient(requireEnv('SUPABASE_URL'), requireEnv('SUPABASE_S
 const LINK_TABLE = 'sentry_github_link';
 
 // Sentry Internal Integration 웹훅 주소. Sentry는 Supabase JWT를 보내지 않으므로 verify_jwt = false,
-// 대신 Sentry-Hook-Signature(SENTRY_CLIENT_SECRET)로 검증한다
+// 대신 Sentry-Hook-Signature(SENTRY_CLIENT_SECRET)로 검증한다.
+// Sentry는 약 1초 안에 응답을 받아야 하므로 GitHub 호출과 DB 작업은 EdgeRuntime.waitUntil로 응답 후에 처리
 serve(async (req: Request) => {
   try {
     if (req.method !== 'POST') return new Response(null, { status: 405 });
@@ -32,28 +35,62 @@ serve(async (req: Request) => {
         verify: (raw, signature) =>
           verifySentrySignature(raw, signature, Deno.env.get('SENTRY_CLIENT_SECRET') ?? ''),
         linkStore: {
-          claim: async (sentryIssueId) => {
+          claim: async (sentryIssueId, payload) => {
+            // insert ... on conflict do nothing: 새로 들어간 행만 돌려받는다
             const { data, error } = await supabase
               .from(LINK_TABLE)
               .upsert(
-                { sentry_issue_id: sentryIssueId },
+                {
+                  sentry_issue_id: sentryIssueId,
+                  payload,
+                  attempts: 1,
+                  attempted_at: new Date().toISOString(),
+                },
                 { onConflict: 'sentry_issue_id', ignoreDuplicates: true }
               )
               .select('sentry_issue_id');
             if (error) throw error;
             return (data ?? []).length > 0;
           },
-          setIssueNumber: async (sentryIssueId, issueNumber) => {
+          listPending: async (limit, maxAttempts, staleBefore) => {
+            const { data, error } = await supabase
+              .from(LINK_TABLE)
+              .select('sentry_issue_id, attempts, payload')
+              .is('github_issue_number', null)
+              .lt('attempts', maxAttempts)
+              .lt('attempted_at', new Date(staleBefore).toISOString())
+              .order('created_at', { ascending: true })
+              .limit(limit);
+            if (error) throw error;
+            return (data ?? []).map((row) => ({
+              sentryIssueId: row.sentry_issue_id,
+              attempts: row.attempts,
+              payload: row.payload,
+            }));
+          },
+          lease: async (sentryIssueId, seenAttempts) => {
+            // attempts 값이 그대로일 때만 갱신 → 동시에 온 웹훅 중 하나만 재시도
+            const { data, error } = await supabase
+              .from(LINK_TABLE)
+              .update({ attempts: seenAttempts + 1, attempted_at: new Date().toISOString() })
+              .eq('sentry_issue_id', sentryIssueId)
+              .eq('attempts', seenAttempts)
+              .is('github_issue_number', null)
+              .select('sentry_issue_id');
+            if (error) throw error;
+            return (data ?? []).length > 0;
+          },
+          markCreated: async (sentryIssueId, issueNumber) => {
             const { error } = await supabase
               .from(LINK_TABLE)
-              .update({ github_issue_number: issueNumber })
+              .update({ github_issue_number: issueNumber, last_error: null })
               .eq('sentry_issue_id', sentryIssueId);
             if (error) throw error;
           },
-          release: async (sentryIssueId) => {
+          markFailed: async (sentryIssueId, message) => {
             const { error } = await supabase
               .from(LINK_TABLE)
-              .delete()
+              .update({ last_error: message })
               .eq('sentry_issue_id', sentryIssueId);
             if (error) throw error;
           },
@@ -77,6 +114,8 @@ serve(async (req: Request) => {
           const json = await res.json();
           return { number: json.number };
         },
+        background: (promise) => EdgeRuntime.waitUntil(promise),
+        now: () => Date.now(),
         env: { GITHUB_REPO: Deno.env.get('GITHUB_REPO') },
       },
       {
@@ -92,7 +131,7 @@ serve(async (req: Request) => {
     });
   } catch (error) {
     console.error(error);
-    return new Response(JSON.stringify({ ok: false, created: false }), {
+    return new Response(JSON.stringify({ ok: false, accepted: false }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });

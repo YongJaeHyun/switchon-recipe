@@ -67,14 +67,41 @@ npx supabase secrets set GITHUB_ISSUES_TOKEN=<2단계의 토큰>
 
 ## 확인
 
-- 테스트용 운영 오류를 일으키거나 Sentry 알림 규칙 화면의 **Send Test Notification**을 누른다
-  (테스트 알림의 이벤트는 가짜 issue_id라 GitHub 이슈가 하나 만들어질 수 있다. 확인 후 닫으면 된다)
+- 테스트용 운영 오류를 일으키거나, 아래 **테스트 알림**을 보낸다
 - 로그: Supabase 대시보드 → Edge Functions → `sentry-to-github` → Logs
-- 응답
-  - `200 {"ok":true,"created":true,"issueNumber":N}`: GitHub 이슈 생성
-  - `200 {"ok":true,"created":false}`: 무시 (production 아님, 이미 등록됨, installation 등 다른 웹훅)
+- 응답 (Sentry는 약 1초 안에 응답을 받아야 해서, 서명·필터만 확인하고 바로 응답한다.
+  GitHub 이슈 생성은 응답 후 백그라운드에서 진행되므로 결과는 로그와 `sentry_github_link` 테이블로 확인한다)
+  - `200 {"ok":true,"accepted":true}`: 접수. 곧 GitHub 이슈가 만들어진다
+  - `200 {"ok":true,"accepted":false}`: 무시 (production 아님, installation 등 다른 웹훅)
   - `401`: 서명 불일치 → `SENTRY_CLIENT_SECRET` 확인
-  - `500`: GitHub 호출 실패 → `GITHUB_ISSUES_TOKEN` 권한/만료 확인. 중복 방지 행을 지우므로 다음 알림 때 다시 시도한다
+  - 이미 GitHub 이슈를 만든 Sentry 이슈는 `accepted:true`여도 새로 만들지 않는다
+
+### "Send Test Notification" 버튼은 진짜 GitHub 이슈를 만든다
+
+알림 규칙 화면의 **Send Test Notification**은 실제와 같은 `event_alert` 웹훅을 서명까지 해서 보낸다.
+테스트 이벤트도 environment가 production이거나 비어 있으면 함수는 진짜 오류와 구분할 수 없으므로,
+`[Sentry] ...` 제목의 GitHub 이슈가 **실제로 하나 생성된다**. 연결 확인용으로는 좋지만 할 일 목록에 남지 않게 정리한다.
+
+1. GitHub 저장소 → Issues → 라벨 `sentry`로 방금 생긴 이슈를 연다
+2. 본문의 Sentry 링크가 테스트 이벤트인지 확인한 뒤 **Close issue → Close as not planned**로 닫는다
+   (코멘트로 "Sentry 테스트 알림"이라고 남겨 두면 나중에 헷갈리지 않는다)
+3. 같은 테스트 알림을 다시 보내도 같은 Sentry 이슈 ID면 새 GitHub 이슈는 만들어지지 않는다.
+   다시 생성해 보고 싶으면 SQL Editor에서 해당 행을 지운다:
+   `delete from sentry_github_link where sentry_issue_id = '<Sentry 이슈 ID>';`
+
+## 실패와 재시도
+
+Sentry는 웹훅 실패 시 재전송을 보장하지 않으므로 함수가 직접 재시도한다.
+
+- GitHub 이슈 생성이 실패하면 `sentry_github_link` 행은 남기고 `github_issue_number = null`, `last_error`(오류 메시지),
+  `attempts`(시도 횟수)를 기록한다. 이슈 제목·본문은 `payload`에 저장되어 있다
+- 이후 **어떤 웹훅이든** 서명이 맞게 들어오면, 백그라운드에서 실패한 행을 오래된 순으로 최대 3개 다시 시도한다
+  (`attempts < 5`, 마지막 시도 후 2분 이상 지난 행만)
+- 5번 모두 실패한 행은 더 시도하지 않는다. 확인 쿼리:
+  `select * from sentry_github_link where github_issue_number is null order by created_at;`
+  원인(`last_error`, 보통 토큰 만료·권한)을 고친 뒤 `update sentry_github_link set attempts = 0 where github_issue_number is null;`
+  하면 다음 웹훅 때 다시 시도한다
+- 새 오류가 뜸해서 웹훅이 오지 않으면 재시도도 그만큼 늦어진다
 
 ## 참고
 
@@ -82,3 +109,4 @@ npx supabase secrets set GITHUB_ISSUES_TOKEN=<2단계의 토큰>
   `os`/`device`/`app.version` 태그만 들어간다. 사용자 정보(user 태그, 이메일, IP)는 넣지 않는다
 - 앱 `Sentry.init`이 `environment`를 지정하지 않아서, environment가 없는 이벤트도 production으로 취급한다
 - 이미 GitHub 이슈를 만든 Sentry 이슈를 다시 등록하고 싶으면 `sentry_github_link`에서 해당 행을 지운다
+- 드물게 GitHub 이슈는 만들어졌는데 번호 저장(DB)만 실패하면, 2분 뒤 재시도에서 같은 내용의 이슈가 한 번 더 생길 수 있다. 중복은 닫으면 된다
