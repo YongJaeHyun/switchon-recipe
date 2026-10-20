@@ -75,6 +75,16 @@ export default {
       'expo-build-properties',
       'expo-notifications',
       'expo-iap',
+      // 냉장고 사진으로 재료 고르기(추후 OTA로 배포)용 네이티브 모듈
+      [
+        'expo-image-picker',
+        {
+          photosPermission: '냉장고 사진으로 재료를 고르기 위해 사진·카메라 접근이 필요해요.',
+          cameraPermission: '냉장고 사진으로 재료를 고르기 위해 사진·카메라 접근이 필요해요.',
+          // 사진만 쓰므로 동영상 녹화용 마이크(RECORD_AUDIO) 권한은 막는다
+          microphonePermission: false,
+        },
+      ],
       ['react-native-google-mobile-ads', { androidAppId: admobAndroidAppId }],
     ],
     orientation: 'portrait',
