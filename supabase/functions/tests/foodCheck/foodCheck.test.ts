@@ -3,6 +3,8 @@ import {
   basisOf,
   buildFoodCheckPrompt,
   DEFAULT_REASON,
+  filterAlternatives,
+  FORBIDDEN_ALT_KEYWORDS,
   parseFoodCheckResponse,
   verdictOf,
   weekRuleText,
@@ -228,5 +230,52 @@ describe('parseFoodCheckResponse', () => {
   it('필드 누락/설명문 invalid', () => {
     expect(parseFoodCheckResponse(good({ productName: undefined }), 'text').status).toBe('invalid');
     expect(parseFoodCheckResponse('죄송합니다', 'text').status).toBe('invalid');
+  });
+});
+
+describe('filterAlternatives', () => {
+  it('금지 키워드가 든 대체 추천은 제거하고 안전한 것은 남긴다', () => {
+    expect(filterAlternatives(['닭가슴살 소시지', '삶은 달걀'], 1)).toEqual(['삶은 달걀']);
+  });
+
+  it('키워드 목록에 소시지·햄·빵이 있다', () => {
+    expect(FORBIDDEN_ALT_KEYWORDS).toEqual(expect.arrayContaining(['소시지', '햄', '빵']));
+  });
+});
+
+describe('parseFoodCheckResponse 대체 추천 안전망', () => {
+  const avoid = (week: number, alternatives: string[]) =>
+    parseFoodCheckResponse(good({ score: 2, alternatives }), 'text', week);
+
+  it('소시지는 빠지고 달걀은 남는다', () => {
+    const r = avoid(1, ['닭가슴살 소시지', '삶은 달걀']);
+    expect(r.status === 'ok' && r.result.alternatives).toEqual(['삶은 달걀']);
+  });
+
+  it('전부 걸러지면 1주차 기본 목록은 견과류를 뺀다', () => {
+    const r = avoid(1, ['소시지', '컵라면']);
+    expect(r.status === 'ok' && r.result.alternatives).toEqual(['삶은 달걀', '무가당 두유']);
+  });
+
+  it('2주차 이상 기본 목록에는 견과류가 들어간다', () => {
+    const r = avoid(2, ['햄']);
+    expect(r.status === 'ok' && r.result.alternatives).toEqual([
+      '삶은 달걀',
+      '무가당 두유',
+      '견과류',
+    ]);
+  });
+
+  it('ok 판정이면 대체 추천은 계속 빈 배열이다', () => {
+    const r = parseFoodCheckResponse(good({ score: 8, alternatives: ['햄'] }), 'text', 1);
+    expect(r.status === 'ok' && r.result.alternatives).toEqual([]);
+  });
+});
+
+describe('buildFoodCheckPrompt 대체 추천 지시', () => {
+  it('이번 주차·끼니에 허용되는 식품만 추천하라고 안내한다', () => {
+    const p = buildFoodCheckPrompt({ type: 'text', text: '과자' }, 1);
+    expect(p).toContain('대체 상품은 사용자의 이번 주차와 끼니에 허용되는 식품이어야 해요');
+    expect(p).toContain('가공 소시지 X');
   });
 });

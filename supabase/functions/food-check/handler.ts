@@ -259,7 +259,7 @@ export async function handleFoodCheck(req: Request, deps: FoodCheckDeps): Promis
           const week = programWeekOf(startDate, now);
           const day = programDayOf(startDate, now);
           const text = await deps.askGemini(buildFoodCheckPrompt(input, week, day), input);
-          const parsed = parseFoodCheckResponse(text, input.type);
+          const parsed = parseFoodCheckResponse(text, input.type, week);
           if (parsed.status === 'unrecognized') throw new UnrecognizedError();
           if (parsed.status === 'invalid') {
             throw new Error(`Gemini 응답 형식이 올바르지 않습니다: ${text.slice(0, 200)}`);

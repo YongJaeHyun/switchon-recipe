@@ -39,6 +39,36 @@ const PROGRAM_FORBIDDEN = [
   '- 당이 많은 소스: 일반 케첩, 일반 굴소스, 일반 칠리소스 (저당·무가당 제품은 괜찮아요)',
 ].join('\n');
 
+// 대체 추천 안전망용 금지 키워드. 위 PROGRAM_FORBIDDEN과 반드시 함께 맞춘다 (한쪽을 고치면 다른 쪽도 고친다).
+export const FORBIDDEN_ALT_KEYWORDS = [
+  '소시지',
+  '햄',
+  '베이컨',
+  '스팸',
+  '맛살',
+  '어묵',
+  '탄산',
+  '콜라',
+  '사이다',
+  '주스',
+  '라면',
+  '빵',
+  '과자',
+  '초콜릿',
+  '아이스크림',
+  '맥주',
+  '소주',
+  '와인',
+];
+
+export function filterAlternatives(alts: string[], week: number): string[] {
+  void week; // 키워드 필터는 주차와 무관하다. 주차별 기본값은 defaultAlternatives가 맡는다
+  return alts.filter((a) => !FORBIDDEN_ALT_KEYWORDS.some((k) => a.includes(k)));
+}
+
+const defaultAlternatives = (week: number): string[] =>
+  normalizeWeek(week) >= 2 ? ['삶은 달걀', '무가당 두유', '견과류'] : ['삶은 달걀', '무가당 두유'];
+
 // 끼니 구성: const/baseTodos.ts의 BASE_TODOS 단계. 1주차 1~3일은 1단계, 4일차부터 2단계, w주차(2~4)는 w+1단계
 const MEAL_STEPS: Record<1 | 2 | 3 | 4 | 5, string> = {
   1: '하루 4끼 모두 프로틴쉐이크(아침·점심·오후간식·저녁)예요. 일반식은 먹지 않아요.',
@@ -138,6 +168,8 @@ export function buildFoodCheckPrompt(input: FoodCheckInput, week: number, day?: 
     '',
     '위 규칙에 얼마나 맞는지 1~10점(정수)으로 점수를 매기세요. 5점 이상이면 먹어도 되는 상품이에요.',
     '프로그램 내내 금지인 식품이 주재료면 낮은 점수를 주세요.',
+    '대체 상품은 사용자의 이번 주차와 끼니에 허용되는 식품이어야 해요. 위 [프로그램 내내 금지] 목록에 있는 것(가공육 햄·소시지·베이컨, 단 음료·가당 요거트, 정제 밀가루, 당이 많은 소스 등)이 들어간 상품은 절대 추천하지 마세요.',
+    '대체 상품은 편의점에서 파는 가공이 적은 통식품을 우선하세요. 예: 삶은 달걀, 닭가슴살(가공 소시지 X), 무가당 두유, 이번 주차에 허용되면 견과류.',
     '식품 상품을 식별할 수 없으면 recognized를 false로 하세요.',
     '의료적 조언(진단, 치료, 약, 질환 관련 조언)은 하지 마세요.',
     '',
@@ -178,7 +210,8 @@ const cleanStrings = (v: unknown, max: number): string[] =>
 
 export function parseFoodCheckResponse(
   text: string,
-  type: FoodCheckInput['type']
+  type: FoodCheckInput['type'],
+  week = 1
 ): ParsedFoodCheck {
   const stripped = text
     .trim()
@@ -215,6 +248,11 @@ export function parseFoodCheckResponse(
   const reasons = cleanedReasons.length > 0 ? cleanedReasons : [DEFAULT_REASON];
 
   const verdict = verdictOf(score);
+  let alternatives: string[] = [];
+  if (verdict === 'avoid') {
+    alternatives = filterAlternatives(cleanStrings(d.alternatives, 3), week);
+    if (alternatives.length < 1) alternatives = defaultAlternatives(week);
+  }
   return {
     status: 'ok',
     result: {
@@ -223,7 +261,7 @@ export function parseFoodCheckResponse(
       verdict,
       basis: basisOf(type),
       reasons,
-      alternatives: verdict === 'ok' ? [] : cleanStrings(d.alternatives, 3),
+      alternatives,
     },
   };
 }
