@@ -10,6 +10,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { requireEnv } from './auth.ts';
 import { parseQuotaDecision, quotaExceededBody, runWithQuota } from './quota.ts';
 import { requestRecipeImage } from './recipeImage.ts';
+import { RECIPE_TAG_SCHEMA_PROMPT, parseRecipeTags } from './recipeTags.ts';
 
 const RecipeSchema = z.object({
   recipeName: z.string(),
@@ -159,13 +160,25 @@ export async function handleCreateRecipe(req: Request): Promise<Response> {
                       type: 'STRING',
                     },
                   },
+                  spicy: {
+                    type: 'BOOLEAN',
+                  },
+                  cuisine: {
+                    type: 'STRING',
+                    enum: ['korean', 'western', 'chinese', 'japanese', 'other'],
+                  },
+                  method: {
+                    type: 'STRING',
+                    enum: ['stir_fry', 'grill', 'soup', 'steam', 'salad', 'rice_bowl', 'other'],
+                  },
                 },
               },
             },
             system_instruction: {
               parts: [
                 {
-                  text: 'You are an AI assistant specialized in generating cooking recipes for the Switch-On Diet. When a user requests a recipe, you should create a suitable recipe. Ingredient quantities should be as specific as possible. All responses must always be in Korean.',
+                  text: 'You are an AI assistant specialized in generating cooking recipes for the Switch-On Diet. When a user requests a recipe, you should create a suitable recipe. Ingredient quantities should be as specific as possible. All responses must always be in Korean. ' +
+                    RECIPE_TAG_SCHEMA_PROMPT,
                 },
               ],
             },
@@ -192,6 +205,8 @@ export async function handleCreateRecipe(req: Request): Promise<Response> {
 
       const recipeJson = JSON.parse(contentText);
       const validated = validateRecipe(recipeJson);
+      // 태그는 RecipeSchema 밖에서 따로 검증한다. 잘못된 태그가 레시피 생성을 막지 않도록 null로 저장한다.
+      const tags = parseRecipeTags(recipeJson);
 
       // 🔹 2. 이미지 생성
       const imageBase64 = await requestRecipeImage(validated.recipeName, geminiKey);
@@ -237,6 +252,9 @@ export async function handleCreateRecipe(req: Request): Promise<Response> {
           image_uri: validated.imageUri,
           is_zero_carb,
           week,
+          spicy: tags?.spicy ?? null,
+          cuisine: tags?.cuisine ?? null,
+          method: tags?.method ?? null,
         })
         .select()
         .single();

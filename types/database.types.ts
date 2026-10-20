@@ -349,12 +349,15 @@ export type Database = {
           cooking_steps: string | null;
           cooking_time: number | null;
           created_at: string;
+          cuisine: string | null;
           id: number;
           image_uri: string | null;
           ingredients: string | null;
           is_zero_carb: boolean | null;
+          method: string | null;
           nutrition: string | null;
           recipe_name: string | null;
+          spicy: boolean | null;
           uid: string | null;
           week: number | null;
         };
@@ -362,12 +365,15 @@ export type Database = {
           cooking_steps?: string | null;
           cooking_time?: number | null;
           created_at?: string;
+          cuisine?: string | null;
           id?: number;
           image_uri?: string | null;
           ingredients?: string | null;
           is_zero_carb?: boolean | null;
+          method?: string | null;
           nutrition?: string | null;
           recipe_name?: string | null;
+          spicy?: boolean | null;
           uid?: string | null;
           week?: number | null;
         };
@@ -375,12 +381,15 @@ export type Database = {
           cooking_steps?: string | null;
           cooking_time?: number | null;
           created_at?: string;
+          cuisine?: string | null;
           id?: number;
           image_uri?: string | null;
           ingredients?: string | null;
           is_zero_carb?: boolean | null;
+          method?: string | null;
           nutrition?: string | null;
           recipe_name?: string | null;
+          spicy?: boolean | null;
           uid?: string | null;
           week?: number | null;
         };
@@ -641,6 +650,32 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: 'user_pass_uid_fkey';
+            columns: ['uid'];
+            isOneToOne: true;
+            referencedRelation: 'user';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      user_recipe_preference: {
+        Row: {
+          excluded_ingredients: string[];
+          uid: string;
+          updated_at: string;
+        };
+        Insert: {
+          excluded_ingredients?: string[];
+          uid: string;
+          updated_at?: string;
+        };
+        Update: {
+          excluded_ingredients?: string[];
+          uid?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'user_recipe_preference_uid_fkey';
             columns: ['uid'];
             isOneToOne: true;
             referencedRelation: 'user';
