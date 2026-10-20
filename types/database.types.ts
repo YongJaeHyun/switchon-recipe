@@ -719,6 +719,7 @@ export type Database = {
           value: string;
         }[];
       };
+      get_recipe_quota: { Args: never; Returns: Json };
       has_premium_access: { Args: never; Returns: boolean };
       has_premium_access_for: { Args: { p_uid: string }; Returns: boolean };
       ingredient_request_count_today: {

@@ -6,6 +6,13 @@ const APP_MAJOR_VERSION = `v${semver.major(APP_VERSION)}`;
 
 const appEnv = process.env.APP_ENV || 'production';
 
+// AdMob 안드로이드 앱 ID: 개발은 Google 테스트 앱 ID.
+// TODO: 운영 앱 ID는 운영자가 AdMob 콘솔에서 발급해 알려주면 교체한다 (그 전까지는 운영도 테스트 ID).
+const ADMOB_TEST_ANDROID_APP_ID = 'ca-app-pub-3940256099942544~3347511713';
+const ADMOB_PRODUCTION_ANDROID_APP_ID = ADMOB_TEST_ANDROID_APP_ID;
+const admobAndroidAppId =
+  appEnv === 'development' ? ADMOB_TEST_ANDROID_APP_ID : ADMOB_PRODUCTION_ANDROID_APP_ID;
+
 export default {
   expo: {
     name: appEnv === 'development' ? '스위치온 레시피 개발용' : '스위치온 레시피',
@@ -68,6 +75,7 @@ export default {
       'expo-build-properties',
       'expo-notifications',
       'expo-iap',
+      ['react-native-google-mobile-ads', { androidAppId: admobAndroidAppId }],
     ],
     orientation: 'portrait',
     icon: './assets/icon.png',

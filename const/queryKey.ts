@@ -12,4 +12,5 @@ export enum QueryKey {
   ingredients,
   pass,
   billingAvailable,
+  recipeQuota,
 }
