@@ -38,9 +38,14 @@ describe('formatRemaining', () => {
       '오늘 무료 레시피를 모두 만들었어요 · 자정에 다시 채워져요'
     );
   });
-  it('광고 보상을 받으면 늘어난 한도로 보여준다', () => {
-    expect(formatRemaining({ isPass: false, remaining: 1, limit: 6 })).toBe(
-      '오늘 무료 레시피 1/6개 남았어요'
+  it('광고 보상을 받아도 최대 개수는 기본 한도로 고정한다', () => {
+    expect(formatRemaining({ isPass: false, remaining: 1, limit: 6, dailyLimit: 5 })).toBe(
+      '오늘 무료 레시피 1/5개 남았어요'
+    );
+  });
+  it('패스 최대 개수도 기본 한도로 보여준다', () => {
+    expect(formatRemaining({ isPass: true, remaining: 3, limit: 20, dailyLimit: 20 })).toBe(
+      '오늘 3/20개 남았어요'
     );
   });
   it('패스는 넉넉할 때 숨긴다', () => {

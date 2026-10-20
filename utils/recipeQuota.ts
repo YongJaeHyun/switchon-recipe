@@ -2,18 +2,20 @@ import type { RecipeQuota } from 'types/recipeQuota';
 
 const PASS_REMAINING_NOTICE_THRESHOLD = 5;
 
-// 무료: 하루 무료 개수(광고 보상 포함)와 남은 개수를 항상 표시, 패스: 남은 개수가 적을 때만 표시
+// 무료: 기본 하루 개수와 남은 개수를 항상 표시, 패스: 남은 개수가 적을 때만 표시.
+// 최대 개수는 광고 보상과 상관없이 기본 한도(dailyLimit)로 고정한다
 export const formatRemaining = (
-  q: Pick<RecipeQuota, 'isPass' | 'remaining' | 'limit'>
+  q: Pick<RecipeQuota, 'isPass' | 'remaining' | 'limit' | 'dailyLimit'>
 ): string | null => {
+  const max = q.dailyLimit ?? q.limit;
   if (q.remaining <= 0) {
     return `오늘 ${q.isPass ? '' : '무료 '}레시피를 모두 만들었어요 · 자정에 다시 채워져요`;
   }
   if (q.isPass) {
     if (q.remaining > PASS_REMAINING_NOTICE_THRESHOLD) return null;
-    return `오늘 ${q.remaining}/${q.limit}개 남았어요`;
+    return `오늘 ${q.remaining}/${max}개 남았어요`;
   }
-  return `오늘 무료 레시피 ${q.remaining}/${q.limit}개 남았어요`;
+  return `오늘 무료 레시피 ${q.remaining}/${max}개 남았어요`;
 };
 
 // 무료 이용자에게 오늘 남은 광고 보상 횟수 (패스·광고 불가 앱·소진 시 숨김)
