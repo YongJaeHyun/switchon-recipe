@@ -43,6 +43,9 @@ export default {
         {
           android: {
             extraMavenRepos: ['https://devrepo.kakao.com/nexus/content/groups/public/'],
+            // Google Play: 2026-11-01부터 업데이트는 Android 16(API 36) 타겟 필수
+            compileSdkVersion: 36,
+            targetSdkVersion: 36,
           },
         },
       ],
@@ -75,12 +78,12 @@ export default {
       'expo-build-properties',
       'expo-notifications',
       'expo-iap',
-      // 냉장고 사진으로 재료 고르기(추후 OTA로 배포)용 네이티브 모듈
+      // 편의점 판정(구독 기능, 추후 OTA로 배포)의 사진 입력용 네이티브 모듈
       [
         'expo-image-picker',
         {
-          photosPermission: '냉장고 사진으로 재료를 고르기 위해 사진·카메라 접근이 필요해요.',
-          cameraPermission: '냉장고 사진으로 재료를 고르기 위해 사진·카메라 접근이 필요해요.',
+          photosPermission: '편의점 제품 사진으로 먹어도 되는지 확인하기 위해 사진 접근이 필요해요.',
+          cameraPermission: '편의점 제품 사진으로 먹어도 되는지 확인하기 위해 카메라 접근이 필요해요.',
           // 사진만 쓰므로 동영상 녹화용 마이크(RECORD_AUDIO) 권한은 막는다
           microphonePermission: false,
         },
