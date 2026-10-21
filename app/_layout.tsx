@@ -75,6 +75,7 @@ function RootLayout() {
               <Stack.Screen name="profile" options={{ headerShown: false }} />
               <Stack.Screen name="pass" options={{ headerShown: false }} />
               <Stack.Screen name="foodCheck" options={{ headerShown: false }} />
+              <Stack.Screen name="recommend" options={{ headerShown: false }} />
               <Stack.Screen name="kakaolink" options={{ headerShown: false }} />
             </Stack>
           </PortalProvider>

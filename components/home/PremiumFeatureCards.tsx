@@ -7,8 +7,12 @@ import { usePass } from 'hooks/usePass';
 import { usePremiumGate } from 'hooks/usePremiumGate';
 import { type ComponentProps } from 'react';
 import { View } from 'react-native';
+import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
+import { RECOMMEND_LOCKED_MESSAGE } from 'types/recommend';
+import { getWeekAndDay } from 'utils/date';
 import { shouldShowPremiumEntry } from 'utils/passScreen';
+import { isRecommendLocked } from 'utils/recommendForm';
 
 type IconName = ComponentProps<typeof MaterialIcons>['name'];
 
@@ -17,6 +21,8 @@ interface PremiumFeature {
   description: string;
   icon: IconName;
   href: Href;
+  // 지금 주차·일차에 쓸 수 없으면 설명 대신 보여줄 안내
+  notice?(week: number, day: number): string | null;
 }
 
 // 구독 전용 기능 목록. 새 기능(냉장고 사진, 주간 식단표 등)은 여기에 카드를 추가한다
@@ -26,6 +32,13 @@ const PREMIUM_FEATURES: PremiumFeature[] = [
     description: '먹어도 되는지 바로 확인',
     icon: 'storefront',
     href: '/foodCheck',
+  },
+  {
+    title: '맞춤 레시피 추천',
+    description: '먹고 싶은 걸 고르면 레시피를 골라 드려요',
+    icon: 'restaurant-menu',
+    href: '/recommend',
+    notice: (week, day) => (isRecommendLocked(week, day) ? RECOMMEND_LOCKED_MESSAGE : null),
   },
 ];
 
@@ -78,9 +91,11 @@ export function PremiumFeatureCards() {
   const { status } = usePass();
   const billingAvailable = useBillingAvailable();
   const gate = usePremiumGate();
+  const startDate = useUserStore((state) => state.start_date);
 
   if (!shouldShowPremiumEntry(status, billingAvailable)) return null;
   const locked = status?.hasAccess !== true;
+  const { week, day } = getWeekAndDay(startDate);
 
   return (
     <View className="gap-3">
@@ -88,7 +103,7 @@ export function PremiumFeatureCards() {
         <PremiumFeatureCard
           key={feature.title}
           title={feature.title}
-          description={feature.description}
+          description={feature.notice?.(week, day) ?? feature.description}
           icon={feature.icon}
           locked={locked}
           onPress={gate(() => router.push(feature.href))}

@@ -1,12 +1,9 @@
-import { Text } from 'components/common/Text';
-import { Image } from 'expo-image';
 import { useLastPathname } from 'hooks/useLastPathname';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import React from 'react';
-import { TouchableHighlight, View } from 'react-native';
-import colors from 'tailwindcss/colors';
 import { RecipeType } from 'types/database';
 import { Ingredient as IngredientType } from 'types/recipe';
+import IngredientTile from './IngredientTile';
 
 interface IngredientProps extends IngredientType {
   isSelected: boolean;
@@ -17,35 +14,21 @@ function Ingredient({ name, image, week, isSelected, isCarbohydrate, disabled }:
   const type = useLastPathname() as RecipeType;
   const { toggleIngredient } = useSelectedIngredients({ type });
 
-  const isSelectedLow = isSelected && type === 'low';
-  const isSelectedZero = isSelected && type === 'zero';
   const isZeroAndCarboHydrate = type === 'zero' && isCarbohydrate;
 
   const toggleSelect = () => {
     toggleIngredient({ name, image, week });
   };
   return (
-    <TouchableHighlight
-      className={`h-32 min-w-24 items-center justify-center rounded-lg ${(disabled || isZeroAndCarboHydrate) && 'opacity-40'}`}
+    <IngredientTile
+      name={name}
+      image={image}
+      isSelected={isSelected}
+      disabled={disabled || !!isZeroAndCarboHydrate}
+      tone={type === 'zero' ? 'zero' : 'low'}
+      overlayLabel={isZeroAndCarboHydrate ? '저탄수' : undefined}
       onPress={toggleSelect}
-      underlayColor={colors.neutral[200]}
-      disabled={disabled || isZeroAndCarboHydrate}>
-      <View className="relative items-center gap-1">
-        <View
-          className={`h-20 w-20 overflow-hidden rounded-full
-          ${isSelectedZero && 'border-[4px] border-green-700/80'} 
-          ${isSelectedLow && 'border-[4px] border-amber-600'} 
-          ${!isSelected && 'border-2 border-neutral-200'}`}>
-          {isZeroAndCarboHydrate && (
-            <View className="absolute left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2">
-              <Text className="text-md font-bold">저탄수</Text>
-            </View>
-          )}
-          <Image style={{ width: '100%', height: '100%', objectFit: 'cover' }} source={image} />
-        </View>
-        <Text className={`h-6 w-full ${isSelected ? 'font-bold' : 'font-semibold'}`}>{name}</Text>
-      </View>
-    </TouchableHighlight>
+    />
   );
 }
 

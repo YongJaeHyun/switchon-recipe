@@ -1,24 +1,19 @@
-import { createRecipe } from 'api/gemini';
 import { CustomSelect } from 'components/common/CustomSelect';
-import RippleButton from 'components/common/RippleButton';
 import { SafeAreaViewWithNav } from 'components/common/SafeAreaViewWithNav';
 import { SearchInput } from 'components/common/SearchInput';
 import { Text } from 'components/common/Text';
 import { IngredientRequest } from 'components/recipeCreation/IngredientRequest';
+import CreationLoadingOverlay from 'components/recipeCreation/CreationLoadingOverlay';
 import { IngredientsLoadError } from 'components/recipeCreation/IngredientsLoadError';
 import Ingredients from 'components/recipeCreation/Ingredients';
-import Loading from 'components/recipeCreation/Loading';
 import QuotaExceededModal from 'components/recipeCreation/QuotaExceededModal';
 import SelectedIngredient from 'components/recipeCreation/SelectedIngredient';
-import { QueryKey } from 'const/queryKey';
 import { getChoseong } from 'es-hangul';
-import { Link, router } from 'expo-router';
 import { useIngredients } from 'hooks/useIngredients';
-import { useQuotaGate } from 'hooks/useQuotaGate';
+import { useRecipeCreation } from 'hooks/useRecipeCreation';
 import { useSelect } from 'hooks/useSelect';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
-import { queryClient } from 'lib/queryClient';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -29,11 +24,9 @@ import {
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { RecipeCategory, RecipeMethod } from 'types/recipe';
-import { isQuotaExceeded } from 'types/recipeQuota';
 import { getWeekAndDay } from 'utils/date';
 import { getCreationLoadingKind } from 'utils/creationLoading';
 import { isCompletedHangul } from 'utils/hangul';
-import { requireOnline } from 'utils/network';
 
 export default function ZeroRecipeCreationScreen() {
   const {
@@ -55,12 +48,8 @@ export default function ZeroRecipeCreationScreen() {
   const [method, toggleMethod] = useSelect<RecipeMethod>(null);
 
   const [keyword, setKeyword] = useState('');
-  const [isRecipeLoading, setIsRecipeLoading] = useState(false);
-  const controller = useRef<AbortController>(null);
 
   const [resetTrigger, setResetTrigger] = useState(false);
-
-  const quotaGate = useQuotaGate();
 
   const getUserWeek = () => {
     const startDate = useUserStore.getState().start_date;
@@ -88,8 +77,8 @@ export default function ZeroRecipeCreationScreen() {
       return isMatch;
     });
 
-  const createRecipeWithAI = async () => {
-    controller.current = new AbortController();
+  // 기존 명령문 그대로. 생성·한도·이동 흐름은 useRecipeCreation이 맡는다
+  const buildRequest = () => {
     const ingredients = selectedIngredients.map((ingredients) => ingredients.name).join(', ');
 
     const userWeek = getUserWeek();
@@ -109,51 +98,19 @@ export default function ZeroRecipeCreationScreen() {
     command += '\nRemove Switch-On week or carbohydrate from the recipe name.';
     command += '\nYou may freely use sauces or seasonings.';
 
-    let recipe;
-    try {
-      recipe = await createRecipe({
-        command,
-        week: Math.min(recipeWeek, 3),
-        isZeroCarb: true,
-        signal: controller.current.signal,
-      });
-    } finally {
-      void quotaGate.invalidateQuota();
-    }
-    if (!recipe) return null;
-    if (isQuotaExceeded(recipe)) {
-      quotaGate.showExceeded(recipe);
-      return null;
-    }
-
-    queryClient.removeQueries({ queryKey: [QueryKey.recentRecipes] });
-    return recipe;
+    return { command, week: Math.min(recipeWeek, 3), isZeroCarb: true };
   };
 
-  const handleCreateRecipe = async () => {
-    setIsRecipeLoading(true);
-
-    try {
-      const recipe = await createRecipeWithAI();
-      if (recipe) {
-        router.push(`/recipeDetail?recipe=${JSON.stringify(recipe)}`);
-      }
-    } finally {
-      setIsRecipeLoading(false);
-    }
-  };
+  const creation = useRecipeCreation(buildRequest);
+  const { quotaGate } = creation;
 
   const handleReset = () => {
     resetIngredients();
     setResetTrigger((prev) => !prev);
   };
 
-  useEffect(() => {
-    return () => controller.current?.abort();
-  }, []);
-
   const loadingKind = getCreationLoadingKind({
-    isRecipeLoading: isRecipeLoading || quotaGate.isWaitingBonus,
+    isRecipeLoading: creation.isCreating,
     isDataLoading: isIngredientsLoading || isIngredientListLoading,
   });
 
@@ -213,14 +170,14 @@ export default function ZeroRecipeCreationScreen() {
           <TouchableOpacity
             className="flex-[3.5] items-center justify-center rounded-lg border border-green-600 py-4"
             onPress={handleReset}
-            disabled={isRecipeLoading}>
+            disabled={creation.isRecipeLoading}>
             <Text className="text-lg font-semibold text-green-600">재료 초기화</Text>
           </TouchableOpacity>
           <TouchableHighlight
             className="flex-[6.5] items-center justify-center rounded-lg bg-green-600 py-4"
             underlayColor="#379237"
-            onPress={requireOnline(handleCreateRecipe)}
-            disabled={isRecipeLoading || quotaGate.isWaitingBonus}>
+            onPress={creation.create}
+            disabled={creation.isCreating}>
             <Text className="text-lg font-semibold text-white">
               {selectedIngredients.length > 0 ? '레시피 제작' : `랜덤 레시피 제작`}
             </Text>
@@ -241,30 +198,8 @@ export default function ZeroRecipeCreationScreen() {
           <ActivityIndicator size="large" color={colors.green[600]} />
         </View>
       )}
-      {loadingKind === 'recipe' && (
-        <View className="absolute inset-0 z-50 items-center justify-center">
-          <View className="absolute inset-0 bg-black/40" />
-          <View className="translate-y-8">
-            <Loading />
-            <Link href={'/(tabs)/explore'} asChild>
-              <RippleButton outerClassName="bg-white self-center mb-6" className="px-4 py-3">
-                <Text className="text-green-600">다른 레시피 둘러보기</Text>
-              </RippleButton>
-            </Link>
-            <Text className="border-b-4 border-green-300 font-bold text-white">
-              Tip. 아래 탐색 탭으로도 이동할 수 있어요!
-            </Text>
-          </View>
-        </View>
-      )}
-      <QuotaExceededModal
-        visible={!!quotaGate.exceeded}
-        actions={quotaGate.actions}
-        adBonusText={quotaGate.adBonusText}
-        onWatchAd={requireOnline(() => void quotaGate.watchAd(handleCreateRecipe))}
-        onPass={quotaGate.goPass}
-        onClose={quotaGate.close}
-      />
+      {loadingKind === 'recipe' && <CreationLoadingOverlay />}
+      <QuotaExceededModal {...creation.quotaModalProps} />
     </SafeAreaViewWithNav>
   );
 }
