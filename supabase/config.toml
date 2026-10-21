@@ -409,3 +409,9 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/tag-recipes/deno.json"
 entrypoint = "./functions/tag-recipes/index.ts"
+
+[functions.sentry-to-github]
+enabled = true
+verify_jwt = false
+import_map = "./functions/sentry-to-github/deno.json"
+entrypoint = "./functions/sentry-to-github/index.ts"
