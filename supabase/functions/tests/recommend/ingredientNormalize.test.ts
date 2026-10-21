@@ -44,6 +44,17 @@ describe('buildIngredientNormalizer', () => {
     expect(n('Olive OIL')).toBe('oliveoil');
   });
 
+  it('한 글자 등록 키는 더 긴 미등록 이름을 잡지 않는다 (정확히 같을 때만)', () => {
+    const n = buildIngredientNormalizer([
+      { name: '파', sub_keywords: [] },
+      { name: '대파', sub_keywords: ['파'] },
+    ]);
+    expect(n('양파')).toBe('양파');
+    expect(n('양파 1/2개')).toBe('양파1/2개');
+    expect(n('대파 (흰 부분)')).toBe('대파');
+    expect(n('파')).not.toBe('양파');
+  });
+
   it('빈 키워드는 무시한다', () => {
     const n = buildIngredientNormalizer([{ name: '두부', sub_keywords: ['', ' '] }]);
     expect(n('양파')).toBe('양파');
@@ -84,7 +95,10 @@ describe('excludeByContainment', () => {
   it('(c) 상위 재료를 빼면 하위도 빠진다', () => {
     const rows = [row(1, '돼지목살'), row(2, '닭가슴살'), row(3, '두부')];
     expect(ids(excludeByContainment(rows, ['돼지'], registry))).toEqual([2, 3]);
-    expect(ids(excludeByContainment(rows, ['닭'], registry))).toEqual([1, 3]);
+    // 한 글자 제외어(닭)는 포함 비교를 하지 않으므로, 등록 가족(sub_keyword 닭)으로 맞춰질 때만 하위가 빠진다
+    const withChicken = [{ name: '닭가슴살', sub_keywords: ['닭'] }, ...registry];
+    expect(ids(excludeByContainment(rows, ['닭'], withChicken))).toEqual([1, 3]);
+    expect(ids(excludeByContainment(rows, ['닭'], registry))).toEqual([1, 2, 3]);
   });
 
   it('등록 재료의 sub_keyword 표기도 잡는다 (띄어쓰기·대소문자 무시)', () => {
@@ -101,5 +115,27 @@ describe('excludeByContainment', () => {
   it('빈 제외어는 무시한다', () => {
     const rows = [row(1, '두부')];
     expect(ids(excludeByContainment(rows, ['', ' ', '()'], registry))).toEqual([1]);
+  });
+
+  it('한 글자 제외어는 포함 여부로 쓰지 않는다: 파 → 양파·파프리카 유지, "파"만 뺀다', () => {
+    const rows = [row(1, '양파'), row(2, '파프리카'), row(3, '파'), row(4, '김치'), row(5, '소금')];
+    expect(ids(excludeByContainment(rows, ['파', '김', '소'], registry))).toEqual([1, 2, 4, 5]);
+  });
+
+  it('한 글자 sub_keyword는 키로 쓰지 않는다: 대파(sub 파) 제외해도 양파 유지', () => {
+    const reg = [{ name: '대파', sub_keywords: ['파', '대 파'] }];
+    const rows = [row(1, '양파'), row(2, '대파 1대'), row(3, '대 파')];
+    expect(ids(excludeByContainment(rows, ['대파'], reg))).toEqual([1]);
+  });
+
+  it('한 글자 제외어도 등록 가족의 두 글자 이상 키로는 거른다', () => {
+    const reg = [{ name: '대파', sub_keywords: ['파'] }];
+    const rows = [row(1, '양파'), row(2, '대파 1대')];
+    expect(ids(excludeByContainment(rows, ['파'], reg))).toEqual([1]);
+  });
+
+  it('상위 재료를 빼면 하위 재료의 sub_keyword 표기도 빠진다: 돼지 → "목살 200g"', () => {
+    const rows = [row(1, '목살 200g'), row(2, '두부')];
+    expect(ids(excludeByContainment(rows, ['돼지'], registry))).toEqual([2]);
   });
 });
