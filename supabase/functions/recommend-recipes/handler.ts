@@ -1,7 +1,7 @@
 // 맞춤 레시피 추천 요청 처리 본체. 외부 의존성(인증, 패스, DB)은 deps로 받아 Vitest(node)에서
 // 가짜로 테스트한다. URL import를 두지 않는다 (실제 연결은 index.ts).
 // 흐름: 인증 -> 본문 검증(값 목록 밖이면 400) -> 패스 확인(402) -> 주차·끼니 계산(쉐이크면 빈 목록)
-// -> 저장된 제외 재료 합치기 -> 후보 조회(week <= min(주차,4), 이미지 있는 레시피) -> 재료 정규화 필터
+// -> 제외 재료(요청 목록, 생략 시 저장된 목록) -> 후보 조회(week <= min(주차,4), 이미지 있는 레시피) -> 재료 정규화 필터
 // -> 무작위 5개 -> 카드용 행 조회 + 저장 여부·저장 수를 붙여 recipe_with_is_saved 행 모양으로 응답.
 
 import {
@@ -140,7 +140,11 @@ export const parseConditions = (body: unknown): RecommendConditions => {
     maxMinutes: oneOf(b.maxMinutes, MAX_MINUTES, 'maxMinutes'),
     meal: oneOf<Meal>(b.meal, MEALS, 'meal'),
     mustInclude: stringList(b.mustInclude, 'mustInclude', MAX_MUST_INCLUDE),
-    exclude: stringList(b.exclude, 'exclude', MAX_EXCLUDE),
+    // 생략(undefined/null)과 빈 배열을 구분한다: 생략이면 저장된 제외 재료를 쓴다
+    exclude:
+      b.exclude === undefined || b.exclude === null
+        ? undefined
+        : stringList(b.exclude, 'exclude', MAX_EXCLUDE),
   };
 };
 
@@ -216,14 +220,14 @@ export async function handleRecommend(req: Request, deps: RecommendDeps): Promis
       return json({ recipes: [], totalMatches: 0, reason: 'shake' }, 200);
     }
 
-    const [stored, registered, candidates] = await Promise.all([
-      deps.getExcludedIngredients(uid),
+    // 요청에 exclude가 있으면 그 목록 그대로(앱이 화면의 목록을 보낸다), 생략했으면 저장된 목록
+    const requested = conditions.exclude;
+    const [excludeSource, registered, candidates] = await Promise.all([
+      requested ? Promise.resolve(requested) : deps.getExcludedIngredients(uid),
       deps.getRegisteredIngredients(),
       deps.fetchCandidates(Math.min(week, MAX_RECOMMEND_WEEK)),
     ]);
-    const exclude = [
-      ...new Set([...(conditions.exclude ?? []), ...stored.map((s) => s.trim()).filter(Boolean)]),
-    ];
+    const exclude = [...new Set(excludeSource.map((s) => s.trim()).filter(Boolean))];
     const normalize = buildIngredientNormalizer(registered);
     const rows = candidates.map(toRecipeRow).filter((r): r is RecipeRow => r !== null);
     // 제외는 포함 여부로 먼저 거른다 (정확 일치만 보면 "닭가슴살 소시지"·"양념장 (고추장, …)"이 빠져나감).

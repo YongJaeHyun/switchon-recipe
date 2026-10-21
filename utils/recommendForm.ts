@@ -135,3 +135,37 @@ export function buildRecipeCommand(
 
   return { command: lines.join('\n'), isZeroCarb };
 }
+
+// ---- 빼고 싶은 재료·꼭 넣을 재료 ----
+
+// 저장된 빼고 싶은 재료가 도착했을 때 화면 목록. 아직 손대지 않았으면 저장된 목록,
+// 이미 고쳤으면 합집합(화면 목록 순서 먼저) — 늦게 온 저장 목록이 고친 것을 덮지 않게 한다
+export function mergeSavedExclude(current: string[], saved: string[], touched: boolean): string[] {
+  if (!touched) return [...saved];
+  return [...new Set([...current, ...saved])];
+}
+
+// 무탄수 끼니가 되면 꼭 넣을 재료에서 탄수화물 재료를 뺀다
+export function removeCarbMustInclude(
+  mustInclude: string[],
+  ingredients: { name: string; isCarbohydrate?: boolean }[],
+  zeroCarb: boolean
+): { kept: string[]; removed: string[] } {
+  if (!zeroCarb) return { kept: [...mustInclude], removed: [] };
+  const carbs = new Set(ingredients.filter((i) => i.isCarbohydrate).map((i) => i.name));
+  return {
+    kept: mustInclude.filter((n) => !carbs.has(n)),
+    removed: mustInclude.filter((n) => carbs.has(n)),
+  };
+}
+
+// 추천 요청 본문. 서버는 exclude가 있으면 그 목록만 쓰고, 없으면 저장된 목록을 쓴다.
+// 화면 목록을 늘 그대로 보내되, 저장 목록을 아직 못 받은 동안만 exclude를 뺀다
+export function toRecommendRequest(
+  c: RecommendConditions,
+  { savedLoaded }: { savedLoaded: boolean }
+): RecommendConditions {
+  if (savedLoaded) return c;
+  const { exclude: _omit, ...rest } = c;
+  return rest;
+}

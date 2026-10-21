@@ -46,10 +46,13 @@ import {
   MAX_MINUTES_OPTIONS,
   MAX_MUST_INCLUDE,
   MEAL_LABELS,
+  mergeSavedExclude,
   METHOD_OPTIONS,
   parseMealParam,
   recipeWeekOf,
+  removeCarbMustInclude,
   SPICY_OPTIONS,
+  toRecommendRequest,
 } from 'utils/recommendForm';
 import { showInfoToast } from 'utils/showToast';
 
@@ -284,11 +287,24 @@ export default function RecommendScreen() {
   const excluded = useExcludedIngredients();
   const { result, isLoading: isRecommending, recommend } = useRecommend();
 
-  // 저장된 빼고 싶은 재료로 처음 한 번 채운다 (그 전에 고친 것은 덮지 않는다)
+  // 저장된 빼고 싶은 재료가 오면 한 번 채운다. 그 전에 고쳤으면 합집합 (고친 것을 덮지 않는다)
   const excludeTouched = useRef(false);
+  const savedMerged = useRef(false);
   useEffect(() => {
-    if (excluded.saved && !excludeTouched.current) setExclude(excluded.saved);
-  }, [excluded.saved]);
+    if (!excluded.isLoaded || !excluded.saved || savedMerged.current) return;
+    savedMerged.current = true;
+    const saved = excluded.saved;
+    setExclude((current) => mergeSavedExclude(current, saved, excludeTouched.current));
+  }, [excluded.isLoaded, excluded.saved]);
+
+  // 무탄수 끼니가 되면 꼭 넣을 재료에서 탄수화물 재료를 뺀다
+  const zeroCarb = isZeroCarbMeal(meal, week, day);
+  useEffect(() => {
+    const { kept, removed } = removeCarbMustInclude(mustInclude, ingredients, zeroCarb);
+    if (removed.length === 0) return;
+    setMustInclude(kept);
+    showInfoToast({ textType: 'CUSTOM', title: '무탄수 끼니라 탄수화물 재료는 뺐어요' });
+  }, [zeroCarb, ingredients, mustInclude]);
 
   const conditions: RecommendConditions = {
     spicy,
@@ -309,13 +325,15 @@ export default function RecommendScreen() {
   const { quotaGate } = creation;
 
   const busy = isRecommending || creation.isCreating;
-  const savedExclude = excluded.saved ?? [];
-  const excludeDirty = !sameList(exclude, savedExclude);
-  // 서버는 저장된 재료를 늘 함께 뺀다. 저장된 재료를 지웠다면 [저장]해야 반영된다
-  const removedSaved = savedExclude.some((name) => !exclude.includes(name));
+  // [저장]은 "다음에도 기억"만 뜻한다. 저장 목록을 받기 전에는 덮어쓰지 않도록 막는다
+  const excludeDirty = excluded.isLoaded && !sameList(exclude, excluded.saved ?? []);
+  const saveDisabled = !excludeDirty || excluded.isSaving || busy;
 
+  // 추천·새로 만들기 모두 화면의 목록을 쓴다 (저장 목록을 받기 전에만 서버의 저장 목록에 맡긴다)
   const handleRecommend = requireOnline(async () => {
-    const outcome = await recommend(conditions);
+    const outcome = await recommend(
+      toRecommendRequest(conditions, { savedLoaded: excluded.isLoaded })
+    );
     if (outcome === 'shake') setMeal(null);
   });
 
@@ -474,10 +492,10 @@ export default function RecommendScreen() {
             <View className="flex-row items-center justify-between">
               <Text className="font-bold text-neutral-700">빼고 싶은 재료</Text>
               <RippleButton
-                outerClassName={`bg-green-600 ${!excludeDirty || excluded.isSaving ? 'opacity-40' : ''}`}
+                outerClassName={`bg-green-600 ${saveDisabled ? 'opacity-40' : ''}`}
                 rounded="lg"
                 className="px-3 py-1.5"
-                disabled={!excludeDirty || excluded.isSaving || busy}
+                disabled={saveDisabled}
                 onPress={handleSaveExclude}>
                 <Text className="text-sm font-bold text-white">저장</Text>
               </RippleButton>
@@ -492,11 +510,7 @@ export default function RecommendScreen() {
                 setExclude(exclude.filter((n) => n !== name));
               }}
             />
-            <Text className="text-xs text-neutral-400">
-              {removedSaved
-                ? '저장한 재료를 지웠어요. [저장]을 눌러야 추천에서 다시 나와요'
-                : '저장하면 다음에도 빼고 추천해요'}
-            </Text>
+            <Text className="text-xs text-neutral-400">저장하면 다음에도 빼고 추천해요</Text>
           </View>
         </View>
 
@@ -562,7 +576,7 @@ export default function RecommendScreen() {
         selected={picker === 'must' ? mustInclude : exclude}
         blocked={picker === 'must' ? exclude : mustInclude}
         userWeek={week}
-        zeroCarb={isZeroCarbMeal(meal, week, day)}
+        zeroCarb={zeroCarb}
         isLoading={isIngredientsLoading}
         isError={isIngredientsError}
         onRetry={refetchIngredients}

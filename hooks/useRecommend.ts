@@ -48,7 +48,14 @@ export const useExcludedIngredients = () => {
     },
   });
 
-  return { saved: query.data, isLoading: query.isLoading, save, isSaving };
+  // isLoaded: 저장 목록 조회가 성공했는지 (행이 없어도 [] 로 성공)
+  return {
+    saved: query.data,
+    isLoaded: query.isSuccess,
+    isLoading: query.isLoading,
+    save,
+    isSaving,
+  };
 };
 
 // 추천 요청 상태. 같은 조건으로 다시 부르면 서버가 다시 섞는다 (결과는 캐시하지 않는다)

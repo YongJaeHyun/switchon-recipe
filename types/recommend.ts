@@ -19,7 +19,8 @@ export interface RecommendConditions {
 }
 
 export const SHAKE_MEAL_REASON = '이 끼니는 프로틴쉐이크예요';
-export const RECOMMEND_LOCKED_MESSAGE = '2주차부터 쓸 수 있어요';
+// 스펙은 "2주차부터"지만 BASE_TODOS상 1주차 4일차부터 점심이 저탄수식이라 그때 열린다
+export const RECOMMEND_LOCKED_MESSAGE = '1주차 4일차부터 쓸 수 있어요';
 
 export interface MealOption {
   meal: Meal;

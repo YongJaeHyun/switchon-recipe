@@ -108,7 +108,6 @@ describe('handleRecommend', () => {
 
   it('제외 재료는 포함 여부로 거른다 (복합 이름·괄호 안·상위 재료)', async () => {
     const deps = makeDeps({
-      getExcludedIngredients: vi.fn(async () => ['소시지']),
       fetchCandidates: vi.fn(async () => [
         candidate({ id: 1, ingredients: JSON.stringify(['닭가슴살 소시지']) }),
         candidate({ id: 2, ingredients: JSON.stringify(['양념장 (고추장, 마늘)']) }),
@@ -116,7 +115,9 @@ describe('handleRecommend', () => {
         candidate({ id: 4, ingredients: JSON.stringify(['두부']) }),
       ]),
     });
-    const { body } = await read(await handleRecommend(req({ exclude: ['고추장', '돼지'] }), deps));
+    const { body } = await read(
+      await handleRecommend(req({ exclude: ['소시지', '고추장', '돼지'] }), deps)
+    );
     expect(body.totalMatches).toBe(1);
     expect(body.recipes.map((r: { id: number }) => r.id)).toEqual([4]);
   });
@@ -133,17 +134,41 @@ describe('handleRecommend', () => {
     expect(body.recipes.map((r: { id: number }) => r.id)).toEqual([3]);
   });
 
-  it('저장된 제외 재료와 요청 제외 재료를 합쳐 거른다 (정규화 포함)', async () => {
+  const excludeCandidates = () =>
+    vi.fn(async () => [
+      candidate({ id: 1, ingredients: JSON.stringify(['닭 가슴살 (껍질 제거)']) }),
+      candidate({ id: 2, ingredients: JSON.stringify([{ name: '오이 1/2개', amount: '' }]) }),
+      candidate({ id: 3, ingredients: JSON.stringify(['두부']) }),
+    ]);
+
+  it('요청에 exclude가 있으면 그 목록만 쓴다 (저장된 목록은 무시, 정규화 포함)', async () => {
     const deps = makeDeps({
       getExcludedIngredients: vi.fn(async () => ['닭가슴살']),
-      fetchCandidates: vi.fn(async () => [
-        candidate({ id: 1, ingredients: JSON.stringify(['닭 가슴살 (껍질 제거)']) }),
-        candidate({ id: 2, ingredients: JSON.stringify([{ name: '오이 1/2개', amount: '' }]) }),
-        candidate({ id: 3, ingredients: JSON.stringify(['두부']) }),
-      ]),
+      fetchCandidates: excludeCandidates(),
     });
     const { status, body } = await read(await handleRecommend(req({ exclude: ['오이'] }), deps));
     expect(status).toBe(200);
+    expect(deps.getExcludedIngredients).not.toHaveBeenCalled();
+    expect(body.totalMatches).toBe(2);
+    expect(body.recipes.map((r: { id: number }) => r.id).sort()).toEqual([1, 3]);
+  });
+
+  it('요청 exclude가 빈 배열이면 아무것도 빼지 않는다 (저장된 목록을 화면에서 지운 경우)', async () => {
+    const deps = makeDeps({
+      getExcludedIngredients: vi.fn(async () => ['닭가슴살']),
+      fetchCandidates: excludeCandidates(),
+    });
+    const { body } = await read(await handleRecommend(req({ exclude: [] }), deps));
+    expect(deps.getExcludedIngredients).not.toHaveBeenCalled();
+    expect(body.totalMatches).toBe(3);
+  });
+
+  it('exclude를 빼고 보내면 저장된 제외 재료를 쓴다', async () => {
+    const deps = makeDeps({
+      getExcludedIngredients: vi.fn(async () => ['닭가슴살', '오이']),
+      fetchCandidates: excludeCandidates(),
+    });
+    const { body } = await read(await handleRecommend(req({}), deps));
     expect(deps.getExcludedIngredients).toHaveBeenCalledWith(UID);
     expect(body.totalMatches).toBe(1);
     expect(body.recipes.map((r: { id: number }) => r.id)).toEqual([3]);

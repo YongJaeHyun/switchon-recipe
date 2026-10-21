@@ -11,6 +11,9 @@ import {
   CUISINE_OPTIONS,
   isRecommendLocked,
   isZeroCarbMeal,
+  mergeSavedExclude,
+  removeCarbMustInclude,
+  toRecommendRequest,
   mealKind,
   METHOD_OPTIONS,
   parseMealParam,
@@ -60,7 +63,7 @@ describe('buildRecipeCommand', () => {
       { week: 3, day: 1 }
     );
     expect(isZeroCarb).toBe(true);
-    expect(command).toContain('spicy');
+    expect(command.split('\n')).toContain('Taste: spicy');
     expect(command).toContain('15 minutes');
     expect(command).toContain('zero-carb');
     expect(command).toContain('Switch-On week 3');
@@ -137,6 +140,60 @@ describe('isZeroCarbMeal', () => {
     expect(isZeroCarbMeal('lunch', 2, 1)).toBe(false);
     expect(isZeroCarbMeal(null, 2, 1)).toBe(true);
     expect(isZeroCarbMeal(null, 5, 1)).toBe(false);
+  });
+});
+
+describe('mergeSavedExclude', () => {
+  it('손대지 않았으면 저장된 목록 그대로', () => {
+    expect(mergeSavedExclude(['오이'], ['버섯', '양파'], false)).toEqual(['버섯', '양파']);
+  });
+
+  it('이미 고쳤으면 합집합 (화면 목록 순서 먼저, 중복 없음)', () => {
+    expect(mergeSavedExclude(['오이', '버섯'], ['버섯', '양파'], true)).toEqual([
+      '오이',
+      '버섯',
+      '양파',
+    ]);
+  });
+});
+
+describe('removeCarbMustInclude', () => {
+  const ingredients = [
+    { name: '현미밥', isCarbohydrate: true },
+    { name: '고구마', isCarbohydrate: true },
+    { name: '두부' },
+  ];
+
+  it('무탄수면 탄수화물 재료를 뺀다', () => {
+    expect(removeCarbMustInclude(['현미밥', '두부'], ingredients, true)).toEqual({
+      kept: ['두부'],
+      removed: ['현미밥'],
+    });
+  });
+
+  it('저탄수면 그대로', () => {
+    expect(removeCarbMustInclude(['현미밥', '두부'], ingredients, false)).toEqual({
+      kept: ['현미밥', '두부'],
+      removed: [],
+    });
+  });
+
+  it('목록에 없는 재료는 남긴다', () => {
+    expect(removeCarbMustInclude(['낯선재료'], ingredients, true).kept).toEqual(['낯선재료']);
+  });
+});
+
+describe('toRecommendRequest', () => {
+  const c = { spicy: true, meal: 'lunch' as const, mustInclude: ['두부'], exclude: [] };
+
+  it('저장 목록을 받았으면 화면 목록을 그대로 보낸다 (빈 배열 포함)', () => {
+    expect(toRecommendRequest(c, { savedLoaded: true })).toEqual(c);
+  });
+
+  it('저장 목록을 아직 못 받았으면 exclude를 뺀다 (서버가 저장된 목록을 쓴다)', () => {
+    const body = toRecommendRequest({ ...c, exclude: ['오이'] }, { savedLoaded: false });
+    expect('exclude' in body).toBe(false);
+    expect(body).toEqual({ spicy: true, meal: 'lunch', mustInclude: ['두부'] });
   });
 });
 
