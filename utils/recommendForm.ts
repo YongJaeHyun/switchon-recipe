@@ -10,6 +10,7 @@ import {
   type MealOption,
   type Method,
   type RecommendConditions,
+  type RecommendRequest,
   SHAKE_MEAL_REASON,
 } from 'types/recommend';
 
@@ -18,10 +19,13 @@ export const MAX_MUST_INCLUDE = 2;
 export const MAX_EXCLUDE = 30;
 
 // hooks/useTodos와 같은 단계 계산. 4주차 이후(유지기)는 5단계
+// 미래 시작일이면 주차가 0 이하일 수 있어 1..5로 맞춘다 (mealKind가 던지지 않게)
 export function stepOf(week: number, day: number): number {
   if (week === 1) return day <= 3 ? 1 : 2;
-  return Math.min(week + 1, 5);
+  return clampStep(week + 1);
 }
+
+const clampStep = (step: number): number => Math.min(Math.max(step, 1), 5);
 
 // const/baseTodos.ts의 BASE_TODOS[step] 항목 0(아침)·1(점심)·3(저녁)
 const MEAL_KINDS: Record<number, Record<Meal, MealKind>> = {
@@ -33,7 +37,7 @@ const MEAL_KINDS: Record<number, Record<Meal, MealKind>> = {
 };
 
 export function mealKind(step: number, meal: Meal): MealKind {
-  return MEAL_KINDS[step][meal];
+  return MEAL_KINDS[clampStep(step)][meal];
 }
 
 export function availableMeals(week: number, day: number): MealOption[] {
@@ -139,10 +143,10 @@ export function buildRecipeCommand(
 // ---- 빼고 싶은 재료·꼭 넣을 재료 ----
 
 // 저장된 빼고 싶은 재료가 도착했을 때 화면 목록. 아직 손대지 않았으면 저장된 목록,
-// 이미 고쳤으면 합집합(화면 목록 순서 먼저) — 늦게 온 저장 목록이 고친 것을 덮지 않게 한다
+// 이미 고쳤으면 합집합(화면 목록 순서 먼저, 최대 MAX_EXCLUDE개) — 늦게 온 저장 목록이 고친 것을 덮지 않게 한다
 export function mergeSavedExclude(current: string[], saved: string[], touched: boolean): string[] {
   if (!touched) return [...saved];
-  return [...new Set([...current, ...saved])];
+  return [...new Set([...current, ...saved])].slice(0, MAX_EXCLUDE);
 }
 
 // 무탄수 끼니가 되면 꼭 넣을 재료에서 탄수화물 재료를 뺀다
@@ -160,12 +164,16 @@ export function removeCarbMustInclude(
 }
 
 // 추천 요청 본문. 서버는 exclude가 있으면 그 목록만 쓰고, 없으면 저장된 목록을 쓴다.
-// 화면 목록을 늘 그대로 보내되, 저장 목록을 아직 못 받은 동안만 exclude를 뺀다
+// mergeSaved: true면 exclude ∪ 저장된 목록(최대 30개)을 쓴다.
+// - 저장 목록을 받았으면 화면 목록을 그대로 보낸다
+// - 못 받았고(로딩·오류) 손댔으면 화면 목록 + mergeSaved (고친 것도, 저장된 것도 빠지지 않게)
+// - 못 받았고 손대지 않았으면 exclude를 뺀다 (서버가 저장된 목록을 쓴다)
 export function toRecommendRequest(
   c: RecommendConditions,
-  { savedLoaded }: { savedLoaded: boolean }
-): RecommendConditions {
+  { savedLoaded, touched }: { savedLoaded: boolean; touched: boolean }
+): RecommendRequest {
   if (savedLoaded) return c;
+  if (touched) return { ...c, exclude: c.exclude ?? [], mergeSaved: true };
   const { exclude: _omit, ...rest } = c;
   return rest;
 }

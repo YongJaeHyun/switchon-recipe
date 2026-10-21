@@ -174,6 +174,61 @@ describe('handleRecommend', () => {
     expect(body.recipes.map((r: { id: number }) => r.id)).toEqual([3]);
   });
 
+  it('mergeSaved면 요청 exclude와 저장된 목록의 합집합을 쓴다', async () => {
+    const deps = makeDeps({
+      getExcludedIngredients: vi.fn(async () => ['닭가슴살']),
+      fetchCandidates: excludeCandidates(),
+    });
+    const { status, body } = await read(
+      await handleRecommend(req({ exclude: ['오이'], mergeSaved: true }), deps)
+    );
+    expect(status).toBe(200);
+    expect(deps.getExcludedIngredients).toHaveBeenCalledWith(UID);
+    expect(body.totalMatches).toBe(1);
+    expect(body.recipes.map((r: { id: number }) => r.id)).toEqual([3]);
+  });
+
+  it('mergeSaved 합집합은 중복을 뺀 뒤 30개까지 (요청 목록이 먼저)', async () => {
+    const fillers = Array.from({ length: 29 }, (_, i) => `없는재료${i}`);
+    const deps = makeDeps({
+      // 요청 30개(채움 29 + 오이) 뒤에 오는 저장 목록은 중복(오이)을 빼도 31번째라 잘린다
+      getExcludedIngredients: vi.fn(async () => ['오이', '닭가슴살']),
+      fetchCandidates: excludeCandidates(),
+    });
+    const { body } = await read(
+      await handleRecommend(req({ exclude: [...fillers, '오이'], mergeSaved: true }), deps)
+    );
+    expect(deps.getExcludedIngredients).toHaveBeenCalledWith(UID);
+    // 오이(id 2)만 빠지고 닭가슴살(id 1)은 남는다
+    expect(body.recipes.map((r: { id: number }) => r.id).sort()).toEqual([1, 3]);
+  });
+
+  it('mergeSaved인데 exclude를 빼고 보내면 저장된 목록만 쓴다', async () => {
+    const deps = makeDeps({
+      getExcludedIngredients: vi.fn(async () => ['오이']),
+      fetchCandidates: excludeCandidates(),
+    });
+    const { body } = await read(await handleRecommend(req({ mergeSaved: true }), deps));
+    expect(body.recipes.map((r: { id: number }) => r.id).sort()).toEqual([1, 3]);
+  });
+
+  it('mergeSaved가 boolean이 아니면 400', async () => {
+    const deps = makeDeps();
+    const { status } = await read(await handleRecommend(req({ mergeSaved: 'yes' }), deps));
+    expect(status).toBe(400);
+  });
+
+  it('저장된 목록은 빈 문자열을 버리고 30개까지만 쓴다', async () => {
+    const fillers = Array.from({ length: 30 }, (_, i) => `없는재료${i}`);
+    const deps = makeDeps({
+      getExcludedIngredients: vi.fn(async () => ['', '  ', ...fillers, '오이']),
+      fetchCandidates: excludeCandidates(),
+    });
+    const { body } = await read(await handleRecommend(req({}), deps));
+    // 오이는 31번째라 잘린다 → 아무것도 빠지지 않는다
+    expect(body.totalMatches).toBe(3);
+  });
+
   it('필수 재료도 정규화해 비교한다', async () => {
     const deps = makeDeps({
       fetchCandidates: vi.fn(async () => [

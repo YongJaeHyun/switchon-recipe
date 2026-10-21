@@ -8,7 +8,8 @@ alter table public.recipe
 
 create table public.user_recipe_preference (
   uid uuid primary key references public.user (id) on delete cascade,
-  excluded_ingredients text[] not null default '{}',
+  excluded_ingredients text[] not null default '{}'
+    check (cardinality(excluded_ingredients) <= 30),
   updated_at timestamptz not null default now()
 );
 

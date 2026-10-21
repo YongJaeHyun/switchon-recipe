@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRecipeStore } from 'stores/recipeStore';
 import { useUserStore } from 'stores/userStore';
 import type { RecipeDB } from 'types/database';
-import { type RecommendConditions, SHAKE_MEAL_REASON } from 'types/recommend';
+import { type RecommendRequest, SHAKE_MEAL_REASON } from 'types/recommend';
 import { failFastWhenOffline } from 'utils/failFastWhenOffline';
 import { isPassOnSale } from 'utils/passScreen';
 import { savedEntriesOf } from 'utils/recommendResponse';
@@ -74,7 +74,7 @@ export const useRecommend = () => {
 
   // 반환값: 쉐이크 끼니라 추천할 수 없었으면 'shake' (화면이 끼니 선택을 비운다)
   const recommend = useCallback(
-    async (conditions: RecommendConditions): Promise<'shake' | void> => {
+    async (conditions: RecommendRequest): Promise<'shake' | void> => {
       if (inFlightRef.current) return;
       inFlightRef.current = true;
       const controller = new AbortController();

@@ -10,7 +10,12 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { requireEnv } from './auth.ts';
 import { parseQuotaDecision, quotaExceededBody, runWithQuota } from './quota.ts';
 import { requestRecipeImage } from './recipeImage.ts';
-import { RECIPE_TAG_SCHEMA_PROMPT, parseRecipeTags } from './recipeTags.ts';
+import {
+  RECIPE_TAG_REQUIRED,
+  RECIPE_TAG_RESPONSE_PROPERTIES,
+  RECIPE_TAG_SCHEMA_PROMPT,
+  parseRecipeTags,
+} from './recipeTags.ts';
 
 const RecipeSchema = z.object({
   recipeName: z.string(),
@@ -160,18 +165,12 @@ export async function handleCreateRecipe(req: Request): Promise<Response> {
                       type: 'STRING',
                     },
                   },
-                  spicy: {
-                    type: 'BOOLEAN',
-                  },
-                  cuisine: {
-                    type: 'STRING',
-                    enum: ['korean', 'western', 'chinese', 'japanese', 'other'],
-                  },
-                  method: {
-                    type: 'STRING',
-                    enum: ['stir_fry', 'grill', 'soup', 'steam', 'salad', 'rice_bowl', 'other'],
-                  },
+                  ...RECIPE_TAG_RESPONSE_PROPERTIES,
                 },
+                // 다른 필드는 지금까지처럼 required 없이 둔다 (동작 유지). 태그만 required로 요청한다.
+                // 그래도 태그는 RecipeSchema(zod) 밖에서 parseRecipeTags로 해석하므로 빠지거나
+                // 잘못돼도 생성은 실패하지 않고 null로 저장된다
+                required: [...RECIPE_TAG_REQUIRED],
               },
             },
             system_instruction: {

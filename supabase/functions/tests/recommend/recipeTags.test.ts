@@ -1,8 +1,11 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   CUISINES,
   METHODS,
   RECIPE_TAG_BATCH_RESPONSE_SCHEMA,
+  RECIPE_TAG_REQUIRED,
+  RECIPE_TAG_RESPONSE_PROPERTIES,
   RECIPE_TAG_SCHEMA_PROMPT,
   buildRecipeTagBatchPrompt,
   parseRecipeTagBatchResponse,
@@ -137,5 +140,36 @@ describe('RECIPE_TAG_BATCH_RESPONSE_SCHEMA', () => {
         required: ['id', 'spicy', 'cuisine', 'method'],
       },
     });
+  });
+});
+
+describe('생성 responseSchema의 태그 필드', () => {
+  it('값 목록은 CUISINES·METHODS, 세 태그는 required', () => {
+    expect(RECIPE_TAG_RESPONSE_PROPERTIES).toEqual({
+      spicy: { type: 'BOOLEAN' },
+      cuisine: { type: 'STRING', enum: [...CUISINES] },
+      method: { type: 'STRING', enum: [...METHODS] },
+    });
+    expect(RECIPE_TAG_REQUIRED).toEqual(['spicy', 'cuisine', 'method']);
+  });
+
+  // createRecipe.ts는 URL import(Deno) 때문에 Vitest에서 로드할 수 없어 소스로 확인한다
+  const source = readFileSync(new URL('../../_shared/createRecipe.ts', import.meta.url), 'utf8');
+
+  it('createRecipe.ts가 공용 태그 스키마를 쓰고 enum 값을 따로 적지 않는다', () => {
+    expect(source).toContain('...RECIPE_TAG_RESPONSE_PROPERTIES');
+    expect(source).toContain('required: [...RECIPE_TAG_REQUIRED]');
+    expect(source).not.toMatch(/'stir_fry'|'korean'/);
+  });
+
+  it('태그는 zod(RecipeSchema) 밖에서 해석해 빠져도 생성이 실패하지 않는다', () => {
+    const zodBlock = source.slice(
+      source.indexOf('const RecipeSchema'),
+      source.indexOf('type Recipe =')
+    );
+    expect(zodBlock).not.toMatch(/spicy|cuisine|method/);
+    expect(source).toContain('parseRecipeTags(recipeJson)');
+    // 태그가 빠진 응답은 null → DB에는 null로 저장된다
+    expect(parseRecipeTags({ recipeName: '두부조림', cookingTime: 10 })).toBeNull();
   });
 });

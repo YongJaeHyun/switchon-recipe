@@ -129,6 +129,14 @@ export function parseRecipeTagBatchResponse(
   return result;
 }
 
+// 생성(createRecipe.ts) responseSchema에 넣는 태그 필드. 값 목록은 위 CUISINES·METHODS 그대로
+export const RECIPE_TAG_RESPONSE_PROPERTIES = {
+  spicy: { type: 'BOOLEAN' },
+  cuisine: { type: 'STRING', enum: [...CUISINES] },
+  method: { type: 'STRING', enum: [...METHODS] },
+};
+export const RECIPE_TAG_REQUIRED = ['spicy', 'cuisine', 'method'] as const;
+
 // Gemini responseSchema: 배치 응답을 {id, spicy, cuisine, method} 배열로 강제한다 (검증은 그래도 parse에서 한다)
 export const RECIPE_TAG_BATCH_RESPONSE_SCHEMA = {
   type: 'ARRAY',

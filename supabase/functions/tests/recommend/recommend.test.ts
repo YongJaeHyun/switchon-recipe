@@ -29,6 +29,14 @@ describe('stepOf', () => {
     expect(stepOf(4, 7)).toBe(5);
     expect(stepOf(7, 1)).toBe(5);
   });
+
+  it('미래 시작일(0주차 이하)은 1단계로 맞추고 mealKind도 던지지 않는다', () => {
+    expect(stepOf(0, 1)).toBe(1);
+    expect(stepOf(-2, 5)).toBe(1);
+    expect(mealKind(stepOf(-2, 5), 'lunch')).toBe('shake');
+    expect(mealKind(0, 'dinner')).toBe('shake');
+    expect(mealKind(9, 'dinner')).toBe('low');
+  });
 });
 
 describe('mealKind', () => {

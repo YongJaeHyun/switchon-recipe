@@ -27,10 +27,13 @@ export interface RecipeRow {
 }
 
 // hooks/useTodos와 같은 단계 계산. 4주차 이후(유지기)는 5단계.
+// 미래 시작일이면 주차가 0 이하일 수 있어 1..5로 맞춘다 (mealKind가 던지지 않게)
 export function stepOf(week: number, day: number): number {
   if (week === 1) return day <= 3 ? 1 : 2;
-  return Math.min(week + 1, 5);
+  return clampStep(week + 1);
 }
+
+const clampStep = (step: number): number => Math.min(Math.max(step, 1), 5);
 
 // const/baseTodos.ts의 BASE_TODOS[step] 항목 0(아침)·1(점심)·3(저녁)에 대응.
 // 앱 쪽 const/baseTodos.mealRule.test.ts가 문구와 일치하는지 검증한다.
@@ -43,7 +46,7 @@ const MEAL_KINDS: Record<number, Record<Meal, MealKind>> = {
 };
 
 export function mealKind(step: number, meal: Meal): MealKind {
-  return MEAL_KINDS[step][meal];
+  return MEAL_KINDS[clampStep(step)][meal];
 }
 
 export function filterRecipes(

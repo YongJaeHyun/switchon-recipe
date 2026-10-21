@@ -155,6 +155,14 @@ describe('mergeSavedExclude', () => {
       '양파',
     ]);
   });
+
+  it('합집합은 30개까지, 화면 목록을 먼저 남긴다', () => {
+    const current = Array.from({ length: 28 }, (_, i) => `화면${i}`);
+    const merged = mergeSavedExclude(current, ['저장1', '저장2', '저장3'], true);
+    expect(merged).toHaveLength(30);
+    expect(merged.slice(0, 28)).toEqual(current);
+    expect(merged.slice(28)).toEqual(['저장1', '저장2']);
+  });
 });
 
 describe('removeCarbMustInclude', () => {
@@ -186,14 +194,24 @@ describe('removeCarbMustInclude', () => {
 describe('toRecommendRequest', () => {
   const c = { spicy: true, meal: 'lunch' as const, mustInclude: ['두부'], exclude: [] };
 
-  it('저장 목록을 받았으면 화면 목록을 그대로 보낸다 (빈 배열 포함)', () => {
-    expect(toRecommendRequest(c, { savedLoaded: true })).toEqual(c);
+  it('저장 목록을 받았으면 화면 목록을 그대로 보낸다 (빈 배열 포함, mergeSaved 없음)', () => {
+    expect(toRecommendRequest(c, { savedLoaded: true, touched: false })).toEqual(c);
+    expect(toRecommendRequest(c, { savedLoaded: true, touched: true })).toEqual(c);
   });
 
-  it('저장 목록을 아직 못 받았으면 exclude를 뺀다 (서버가 저장된 목록을 쓴다)', () => {
-    const body = toRecommendRequest({ ...c, exclude: ['오이'] }, { savedLoaded: false });
+  it('못 받았고 손대지 않았으면 exclude를 뺀다 (서버가 저장된 목록을 쓴다)', () => {
+    const body = toRecommendRequest({ ...c, exclude: [] }, { savedLoaded: false, touched: false });
     expect('exclude' in body).toBe(false);
+    expect('mergeSaved' in body).toBe(false);
     expect(body).toEqual({ spicy: true, meal: 'lunch', mustInclude: ['두부'] });
+  });
+
+  it('못 받았는데(로딩·오류) 손댔으면 화면 목록을 mergeSaved와 함께 보낸다', () => {
+    const body = toRecommendRequest(
+      { ...c, exclude: ['오이'] },
+      { savedLoaded: false, touched: true }
+    );
+    expect(body).toEqual({ ...c, exclude: ['오이'], mergeSaved: true });
   });
 });
 
@@ -207,6 +225,16 @@ describe('parseMealParam', () => {
 });
 
 describe('recipeWeekOf', () => {
+  it('미래 시작일(0주차 이하)에도 던지지 않고 잠김', () => {
+    expect(stepOf(0, 1)).toBe(1);
+    expect(stepOf(-2, 3)).toBe(1);
+    expect(() => isRecommendLocked(0, 1)).not.toThrow();
+    expect(isRecommendLocked(0, 1)).toBe(true);
+    expect(isRecommendLocked(-2, 3)).toBe(true);
+    expect(mealKind(0, 'lunch')).toBe('shake');
+    expect(isZeroCarbMeal(null, -2, 1)).toBe(false);
+  });
+
   it('생성 레시피 주차는 3으로 묶는다 (기존 생성 화면과 같음)', () => {
     expect(recipeWeekOf(1)).toBe(1);
     expect(recipeWeekOf(3)).toBe(3);
@@ -234,7 +262,7 @@ describe('끼니 규칙 일치', () => {
   }
 
   it('stepOf가 서버와 같음', () => {
-    for (let week = 1; week <= 8; week++) {
+    for (let week = -2; week <= 8; week++) {
       for (let day = 1; day <= 7; day++) {
         expect(stepOf(week, day)).toBe(shared.stepOf(week, day));
       }

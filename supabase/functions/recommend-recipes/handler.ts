@@ -1,7 +1,7 @@
 // 맞춤 레시피 추천 요청 처리 본체. 외부 의존성(인증, 패스, DB)은 deps로 받아 Vitest(node)에서
 // 가짜로 테스트한다. URL import를 두지 않는다 (실제 연결은 index.ts).
 // 흐름: 인증 -> 본문 검증(값 목록 밖이면 400) -> 패스 확인(402) -> 주차·끼니 계산(쉐이크면 빈 목록)
-// -> 제외 재료(요청 목록, 생략 시 저장된 목록) -> 후보 조회(week <= min(주차,4), 이미지 있는 레시피) -> 재료 정규화 필터
+// -> 제외 재료(요청 목록, 생략 시 저장된 목록, mergeSaved면 둘의 합집합. 최대 30개) -> 후보 조회(week <= min(주차,4), 이미지 있는 레시피) -> 재료 정규화 필터
 // -> 무작위 5개 -> 카드용 행 조회 + 저장 여부·저장 수를 붙여 recipe_with_is_saved 행 모양으로 응답.
 
 import {
@@ -125,13 +125,23 @@ const stringList = (value: unknown, field: string, max: number): string[] => {
   return list;
 };
 
-export const parseConditions = (body: unknown): RecommendConditions => {
+// mergeSaved: true면 요청 exclude ∪ 저장된 목록 (앱이 저장 목록을 못 받은 채 화면 목록을 고친 경우)
+export type RecommendRequest = RecommendConditions & { mergeSaved: boolean };
+
+// 공백을 다듬고 빈 문자열·중복을 뺀 뒤 MAX_EXCLUDE개까지 (앞쪽이 먼저 남는다)
+const capExclude = (list: string[]): string[] =>
+  [...new Set(list.map((s) => s.trim()).filter(Boolean))].slice(0, MAX_EXCLUDE);
+
+export const parseConditions = (body: unknown): RecommendRequest => {
   if (typeof body !== 'object' || body === null || Array.isArray(body)) {
     throw new BadRequestError('잘못된 요청입니다');
   }
   const b = body as Record<string, unknown>;
   if (b.spicy !== undefined && b.spicy !== null && typeof b.spicy !== 'boolean') {
     throw new BadRequestError('spicy 값이 올바르지 않습니다');
+  }
+  if (b.mergeSaved !== undefined && b.mergeSaved !== null && typeof b.mergeSaved !== 'boolean') {
+    throw new BadRequestError('mergeSaved 값이 올바르지 않습니다');
   }
   return {
     spicy: (b.spicy as boolean | null | undefined) ?? null,
@@ -145,6 +155,7 @@ export const parseConditions = (body: unknown): RecommendConditions => {
       b.exclude === undefined || b.exclude === null
         ? undefined
         : stringList(b.exclude, 'exclude', MAX_EXCLUDE),
+    mergeSaved: b.mergeSaved === true,
   };
 };
 
@@ -196,13 +207,14 @@ export async function handleRecommend(req: Request, deps: RecommendDeps): Promis
     const uid = await deps.getUid(req);
     if (!uid) return json({ error: 'unauthorized' }, 401);
 
-    let conditions: RecommendConditions;
+    let request: RecommendRequest;
     try {
-      conditions = parseConditions(await readBody(req));
+      request = parseConditions(await readBody(req));
     } catch (error) {
       if (error instanceof BadRequestError) return json({ error: error.message }, 400);
       throw error;
     }
+    const { mergeSaved, ...conditions } = request;
 
     try {
       await assertPremium(deps.premiumClient, uid);
@@ -220,14 +232,20 @@ export async function handleRecommend(req: Request, deps: RecommendDeps): Promis
       return json({ recipes: [], totalMatches: 0, reason: 'shake' }, 200);
     }
 
-    // 요청에 exclude가 있으면 그 목록 그대로(앱이 화면의 목록을 보낸다), 생략했으면 저장된 목록
+    // 요청에 exclude가 있으면 그 목록 그대로(앱이 화면의 목록을 보낸다), 생략했으면 저장된 목록.
+    // mergeSaved면 요청 목록 ∪ 저장된 목록 (요청 목록이 먼저). 어느 경우든 MAX_EXCLUDE개까지
     const requested = conditions.exclude;
+    const loadExclude = async (): Promise<string[]> => {
+      if (requested && !mergeSaved) return requested;
+      const stored = await deps.getExcludedIngredients(uid);
+      return requested ? [...requested, ...stored] : stored;
+    };
     const [excludeSource, registered, candidates] = await Promise.all([
-      requested ? Promise.resolve(requested) : deps.getExcludedIngredients(uid),
+      loadExclude(),
       deps.getRegisteredIngredients(),
       deps.fetchCandidates(Math.min(week, MAX_RECOMMEND_WEEK)),
     ]);
-    const exclude = [...new Set(excludeSource.map((s) => s.trim()).filter(Boolean))];
+    const exclude = capExclude(excludeSource);
     const normalize = buildIngredientNormalizer(registered);
     const rows = candidates.map(toRecipeRow).filter((r): r is RecipeRow => r !== null);
     // 제외는 포함 여부로 먼저 거른다 (정확 일치만 보면 "닭가슴살 소시지"·"양념장 (고추장, …)"이 빠져나감).

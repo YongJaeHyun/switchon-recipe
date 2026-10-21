@@ -329,10 +329,14 @@ export default function RecommendScreen() {
   const excludeDirty = excluded.isLoaded && !sameList(exclude, excluded.saved ?? []);
   const saveDisabled = !excludeDirty || excluded.isSaving || busy;
 
-  // 추천·새로 만들기 모두 화면의 목록을 쓴다 (저장 목록을 받기 전에만 서버의 저장 목록에 맡긴다)
+  // 추천·새로 만들기 모두 화면의 목록을 쓴다. 저장 목록을 받기 전에는 손댔으면 서버가 합치고(mergeSaved),
+  // 손대지 않았으면 서버의 저장 목록에 맡긴다
   const handleRecommend = requireOnline(async () => {
     const outcome = await recommend(
-      toRecommendRequest(conditions, { savedLoaded: excluded.isLoaded })
+      toRecommendRequest(conditions, {
+        savedLoaded: excluded.isLoaded,
+        touched: excludeTouched.current,
+      })
     );
     if (outcome === 'shake') setMeal(null);
   });
