@@ -336,8 +336,22 @@ describe('generateWeeklyReports', () => {
     expect(db.reports[0].content?.good).toBe('체중을 꾸준히 기록했어요');
   });
 
-  it('기록이 없으면 empty로 저장하고 AI 호출·푸시 없음', async () => {
+  it('그 주 기록이 하나도 없으면 리포트를 만들지 않는다 (대상 = 기록 1개 이상)', async () => {
     const { deps, db } = makeDeps({ fetchWeekData: vi.fn(async () => emptyWeek()) });
+    const result = await generateWeeklyReports(deps, TODAY);
+    expect(deps.askGemini).not.toHaveBeenCalled();
+    expect(db.reports).toHaveLength(0);
+    expect(db.notifications).toHaveLength(0);
+    expect(result).toMatchObject({ generated: 0, empty: 0, skipped: 1, notified: 0 });
+  });
+
+  it('체중·할 일 기록 없이 다른 기록만 있으면 empty로 저장하고 AI 호출·푸시 없음', async () => {
+    const { deps, db } = makeDeps({
+      fetchWeekData: vi.fn(async () => ({
+        ...emptyWeek(),
+        recipes: [{ created_at: '2026-10-09T03:00:00Z', is_zero_carb: true }],
+      })),
+    });
     const result = await generateWeeklyReports(deps, TODAY);
     expect(deps.askGemini).not.toHaveBeenCalled();
     expect(db.reports).toHaveLength(1);

@@ -91,7 +91,8 @@ export interface GenerateResult {
   noAccess: number;
   existing: number; // 이미 리포트가 있어 건너뜀
   generated: number; // 기록이 있어 문장까지 만든 리포트
-  empty: number; // 기록이 없어 status='empty'로 저장
+  empty: number; // 체중·할 일 기록이 없어 status='empty'로 저장
+  skipped: number; // 그 주 기록이 하나도 없어 만들지 않음
   notified: number;
   failed: number;
 }
@@ -150,7 +151,15 @@ const writeContent = async (
   return fallbackContent(stats, nextWeekChanges);
 };
 
-type Outcome = 'noAccess' | 'existing' | 'generated' | 'empty';
+type Outcome = 'noAccess' | 'existing' | 'generated' | 'empty' | 'skipped';
+
+// 리포트 대상은 그 주 기록이 1개 이상인 유저 (설계 §6). 앱을 열지 않은 주에 빈 리포트를 쌓지 않는다
+const hasAnyRecord = (stats: WeeklyStats) =>
+  stats.weight.daysLogged > 0 ||
+  stats.todo.items.some((item) => item.appeared > 0) ||
+  stats.fasting.success + stats.fasting.broken > 0 ||
+  stats.recipes.total > 0 ||
+  stats.foodChecks.total > 0;
 
 const processUser = async (
   deps: GenerateReportsDeps,
@@ -185,6 +194,8 @@ const processUser = async (
     fastingStartTime: data.fastingPlanStartTime,
     now: deps.now(),
   });
+
+  if (!hasAnyRecord(stats)) return { outcome: 'skipped', notified: false, failed: false };
 
   const content = stats.isEmpty ? null : await writeContent(deps, stats, uid);
   const inserted = await deps.insertReport({
@@ -245,6 +256,7 @@ export async function generateWeeklyReports(
     existing: 0,
     generated: 0,
     empty: 0,
+    skipped: 0,
     notified: 0,
     failed: 0,
   };
