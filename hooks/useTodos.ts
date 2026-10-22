@@ -1,15 +1,17 @@
 import { useMutation } from '@tanstack/react-query';
 import { StatisticsAPI } from 'api/StatisticsAPI';
 import { TodoAPI } from 'api/TodoAPI';
+import { TodoDailyAPI } from 'api/TodoDailyAPI';
 import { BASE_TODOS } from 'const/baseTodos';
 import { FASTING_DAYS, FASTING_START_TIMES } from 'const/fastingDays';
 import { QueryKey } from 'const/queryKey';
 import { queryClient } from 'lib/queryClient';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useUserStore } from 'stores/userStore';
 import { Todo } from 'types/todo';
-import { getKoreanDate, getWeekAndDay } from 'utils/date';
+import { getKoreanDate, getKoreanDateString, getWeekAndDay } from 'utils/date';
 import { orEmptyArray } from 'utils/stableDefaults';
+import { todoDailySnapshot } from 'utils/todoDaily';
 import { useQueryWith402Retry } from './useCustomQuery';
 import { useFasting } from './useFasting';
 
@@ -102,9 +104,16 @@ export const useTodos = () => {
       : [...checkedIds, todoId];
 
     upsertTodo(updatedCheckedIds);
+
+    // 주간 리포트 재료: 오늘 목록·체크 기록. 실패해도 할 일 화면에는 영향 없음 (fire-and-forget)
+    void TodoDailyAPI.upsert({
+      day: getKoreanDateString({ formatType: 'date' }),
+      ...todoDailySnapshot(getTodayTodos(), updatedCheckedIds),
+    });
   };
 
-  useEffect(() => {
+  // 오늘 보이는 할 일 (단식일·단식 다음 날은 단식 시간에 걸린 끼니를 뺀다)
+  const getTodayTodos = useCallback(() => {
     let todos = [...baseTodos];
     const currentDay = getKoreanDate().getDay();
 
@@ -119,6 +128,11 @@ export const useTodos = () => {
         todos = todos.slice(startTimeIndex);
       }
     }
+    return todos;
+  }, [baseTodos, fastingStartTime, fastingDays, fastingNextDays]);
+
+  useEffect(() => {
+    const todos = getTodayTodos();
 
     const checkedTodos = todos.map((todo) =>
       checkedIds.includes(todo.id) ? { ...todo, checked: true } : todo
@@ -132,7 +146,7 @@ export const useTodos = () => {
 
     const completedRate = Math.round((checkedIds.length / todos.length) * 100);
     setCompletedRate(completedRate);
-  }, [checkedIds, baseTodos, fastingStartTime, fastingDays, fastingNextDays]);
+  }, [checkedIds, getTodayTodos]);
 
   return {
     todos,

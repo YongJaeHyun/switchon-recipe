@@ -18,4 +18,5 @@ export enum QueryKey {
   recipePreference,
   weightLogs,
   userSetting,
+  fastingResult,
 }

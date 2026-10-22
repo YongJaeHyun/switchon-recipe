@@ -1,9 +1,10 @@
 import { Text } from 'components/common/Text';
 import { router } from 'expo-router';
 import { useFasting } from 'hooks/useFasting';
+import { useFastingResult } from 'hooks/useFastingResult';
 import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { getFastingStatus } from 'utils/dietGuide';
+import { fastingResultWindow, getFastingStatus } from 'utils/dietGuide';
 
 const MINUTE_MS = 60 * 1000;
 
@@ -17,6 +18,47 @@ const formatRemaining = (ms: number) => {
 const formatClock = (date: Date) =>
   date.toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Seoul' });
 
+// 단식 결과 응답: 단식 중 ~ 종료 후 48시간(다음 단식 시작 전까지). 응답하면 결과 표시로 바뀜
+function FastingResultPrompt({ day }: { day: string }) {
+  const { result, isLoading, saveResult, isSaving } = useFastingResult(day);
+  if (isLoading) return null;
+
+  if (result) {
+    return (
+      <View className="mt-3 flex-row items-center justify-between rounded-lg bg-white px-3 py-2">
+        <Text className="text-sm text-neutral-700">
+          {result === 'success' ? '✅ 단식 성공으로 기록했어요' : '🍽️ 중간에 먹었다고 기록했어요'}
+        </Text>
+        <Pressable
+          disabled={isSaving}
+          onPress={() => saveResult(result === 'success' ? 'broken' : 'success')}>
+          <Text className="text-xs text-neutral-400">바꾸기</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  return (
+    <View className="mt-3">
+      <Text className="text-sm text-neutral-700">이번 단식은 어땠나요?</Text>
+      <View className="mt-2 flex-row gap-2">
+        <Pressable
+          disabled={isSaving}
+          className="flex-1 items-center rounded-lg bg-indigo-500 py-2"
+          onPress={() => saveResult('success')}>
+          <Text className="text-sm font-bold text-white">성공했어요</Text>
+        </Pressable>
+        <Pressable
+          disabled={isSaving}
+          className="flex-1 items-center rounded-lg border border-neutral-300 bg-white py-2"
+          onPress={() => saveResult('broken')}>
+          <Text className="text-sm font-bold text-neutral-600">중간에 먹었어요</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
 // 단식일 전용 가이드: 시작 전 안내 → 진행 중 카운트다운 → 끝나면 첫 끼 추천
 export function FastingCard() {
   const { days, startTime } = useFasting();
@@ -28,7 +70,14 @@ export function FastingCard() {
   }, []);
 
   const status = getFastingStatus(now, days, startTime);
-  if (status.phase === 'none') return null;
+  const resultDay = fastingResultWindow(now, days, startTime)?.day ?? null;
+  const resultPrompt = resultDay ? <FastingResultPrompt key={resultDay} day={resultDay} /> : null;
+
+  if (status.phase === 'none') {
+    // 단식이 끝나고 하루 이상 지났어도 48시간 안이면 결과를 물어본다
+    if (!resultPrompt) return null;
+    return <View className="mx-4 mt-4 rounded-xl bg-indigo-50 p-4">{resultPrompt}</View>;
+  }
 
   if (status.phase === 'upcoming') {
     return (
@@ -37,6 +86,7 @@ export function FastingCard() {
         <Text className="mt-1 text-sm text-neutral-600">
           {formatClock(status.startsAt)} 전에 단백질 위주로 든든하게 드세요.
         </Text>
+        {resultPrompt}
       </View>
     );
   }
@@ -58,6 +108,7 @@ export function FastingCard() {
         <Text className="mt-3 text-sm text-neutral-700">
           마셔도 돼요: 물, 탄산수, 무가당 차, 블랙커피(오전 1잔)
         </Text>
+        {resultPrompt}
       </View>
     );
   }
@@ -71,6 +122,7 @@ export function FastingCard() {
         onPress={() => router.push('/(tabs)/home/recipeCreation/zero')}>
         <Text className="text-sm font-bold text-white">고단백 레시피 만들기</Text>
       </Pressable>
+      {resultPrompt}
     </View>
   );
 }
