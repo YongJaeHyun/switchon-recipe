@@ -33,7 +33,7 @@ export function Category({ keyword, ingredient, recipe }: CategoryProps) {
     return (
       <Link
         key={`${recipe.recipe_name}-${ingredientName}`}
-        href={`/(tabs)/explore/searchResult?keyword=${ingredientName}&week=${recipe.week}`}
+        href={`/(tabs)/recipes/searchResult?keyword=${ingredientName}&week=${recipe.week}`}
         asChild>
         <RippleButton
           onPress={pressCategory}

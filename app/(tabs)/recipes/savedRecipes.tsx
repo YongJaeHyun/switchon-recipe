@@ -101,7 +101,7 @@ export default function SavedRecipes() {
             ListEmptyComponent={
               <ListEmptyText
                 emptyListName="savedRecipes"
-                href={'/(tabs)/home/recipeCreation/low'}
+                href={'/(tabs)/recipes/recipeCreation/low'}
               />
             }
             contentContainerClassName={`items-start gap-4 py-4 flex-grow mx-auto ${recipes.length === 0 ? 'justify-center' : 'justify-start'}`}

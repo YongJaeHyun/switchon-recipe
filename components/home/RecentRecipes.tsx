@@ -28,7 +28,10 @@ export default function RecentRecipes({ recipes, refreshing }: RecentRecipesProp
           keyExtractor={(item) => 'RecentRecipes' + item.id?.toString()}
           renderItem={({ item }) => <RecipeCard {...item} />}
           ListEmptyComponent={
-            <ListEmptyText href={'/(tabs)/home/recipeCreation/low'} emptyListName="recentRecipes" />
+            <ListEmptyText
+              href={'/(tabs)/recipes/recipeCreation/low'}
+              emptyListName="recentRecipes"
+            />
           }
           showsHorizontalScrollIndicator={false}
           horizontal

@@ -3,7 +3,6 @@ import { Filter } from 'components/common/Filter';
 import { SafeAreaViewWithNav } from 'components/common/SafeAreaViewWithNav';
 import { SearchInput } from 'components/common/SearchInput';
 import { Sort } from 'components/common/Sort';
-import { Text } from 'components/common/Text';
 import { RecipeCard } from 'components/explore/RecipeCard';
 import { Tabs } from 'components/explore/Tabs';
 import { RECIPE_FILTERS, RecipeFilterType } from 'const/filter';
@@ -41,9 +40,8 @@ export default function ExploreScreen() {
 
   return (
     <SafeAreaViewWithNav className="flex-1 bg-neutral-50 ">
-      <Link href={'/(tabs)/explore/search'} className="px-5">
+      <Link href={'/(tabs)/recipes/search'} className="px-5">
         <View className="w-full">
-          <Text className="pt-5 text-center text-lg font-bold">탐색</Text>
           <SearchInput
             keyword={keyword}
             onChangeText={setKeyword}

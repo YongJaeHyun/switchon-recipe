@@ -30,7 +30,7 @@ export default function SearchScreen() {
     insertKeyword(keyword);
 
     router.push({
-      pathname: '/(tabs)/explore/searchResult',
+      pathname: '/(tabs)/recipes/searchResult',
       params: { keyword },
     });
   });

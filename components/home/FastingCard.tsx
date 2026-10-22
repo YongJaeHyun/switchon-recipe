@@ -122,7 +122,7 @@ export function FastingCard() {
       <Text className="mt-1 text-sm text-neutral-600">첫 끼는 고단백으로 근손실을 막아주세요.</Text>
       <Pressable
         className="mt-3 self-start rounded-lg bg-green-600 px-3 py-2"
-        onPress={() => router.push('/(tabs)/home/recipeCreation/zero')}>
+        onPress={() => router.push('/(tabs)/recipes/recipeCreation/zero')}>
         <Text className="text-sm font-bold text-white">고단백 레시피 만들기</Text>
       </Pressable>
       {resultPrompt}
