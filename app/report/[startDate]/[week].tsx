@@ -77,7 +77,8 @@ export default function ReportDetailScreen() {
   const { report, isLoading, isError, refetch } = useWeeklyReport(startDate, weekIndex);
 
   const title = Number.isInteger(weekIndex) ? `${weekIndex}주차 리포트` : '주간 리포트';
-  const isPrevious = !!report && report.start_date !== currentStartDate;
+  // 시작일을 아직 모르면(사용자 정보 불러오는 중) 이전 프로그램으로 표시하지 않는다
+  const isPrevious = !!report && !!currentStartDate && report.start_date !== currentStartDate;
   // 문장이 없거나 깨진 행이어도 숫자는 보여준다 (빈 칸은 숨김)
   const content = report?.content ?? EMPTY_CONTENT;
 

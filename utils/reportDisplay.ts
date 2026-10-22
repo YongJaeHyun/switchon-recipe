@@ -186,3 +186,8 @@ export function shouldShowReportPreview(
 ): boolean {
   return !!status && !status.hasAccess && isPassOnSale(status.sales, billingAvailable);
 }
+
+// 주간 리포트 알림의 이동 경로인지 (/report/{start_date}/{week_index})
+export function isReportHref(href: unknown): boolean {
+  return typeof href === 'string' && href.startsWith('/report/');
+}

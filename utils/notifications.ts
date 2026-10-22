@@ -55,6 +55,19 @@ export const registerForPushNotificationsAsync = async (channelId: Channel) => {
   return true;
 };
 
+// 알림 권한이 이미 있을 때만 채널을 등록한다 (권한 요청 창을 띄우지 않는다).
+// 화면을 열 때처럼 사용자가 알림을 고른 적 없는 곳에서 쓴다. 실패해도 throw하지 않는다
+export const registerChannelIfPermitted = async (channelId: Channel): Promise<boolean> => {
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status !== 'granted') return false;
+    return await registerForPushNotificationsAsync(channelId);
+  } catch (error) {
+    captureError({ error, prefix: '[registerChannelIfPermitted]: ' });
+    return false;
+  }
+};
+
 export async function registerWeeklyFastingAlarms(fasting: Maybe<FastingDB>) {
   await Notifications.cancelAllScheduledNotificationsAsync();
   if (!fasting?.days) return [];

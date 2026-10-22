@@ -4,6 +4,7 @@ import {
   formatWeightDiff,
   groupReportsByProgram,
   isEmptyReport,
+  isReportHref,
   parseReportContent,
   parseReportStats,
   shouldShowReportPreview,
@@ -161,4 +162,12 @@ describe('isEmptyReport', () => {
     expect(isEmptyReport({ status: 'ready', stats, content: null })).toBe(false));
   it('ready인데 문장도 숫자도 없으면 빈 주로 본다', () =>
     expect(isEmptyReport({ status: 'ready', stats: null, content: null })).toBe(true));
+});
+
+describe('isReportHref', () => {
+  it('리포트 알림 경로만 true', () => {
+    expect(isReportHref('/report/2026-10-01/2')).toBe(true);
+    expect(isReportHref('/(inquiry)')).toBe(false);
+    expect(isReportHref(undefined)).toBe(false);
+  });
 });

@@ -13,7 +13,7 @@ import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import type { WeeklyReport } from 'types/report';
 import { getWeekColorHex } from 'utils/getWeekColor';
-import { registerForPushNotificationsAsync } from 'utils/notifications';
+import { registerChannelIfPermitted } from 'utils/notifications';
 import {
   formatProgramStart,
   formatReportRange,
@@ -69,17 +69,20 @@ const ReportRow = ({ report, muted }: { report: WeeklyReport; muted?: boolean })
 export default function ReportListScreen() {
   const startDate = useUserStore((state) => state.start_date) || null;
   const { status } = usePass();
-  const { reports, isLoading, isError, refetch } = useWeeklyReports();
+  const { reports, isLoading, isError, refetch } = useWeeklyReports({ refetchOnMount: 'always' });
   // 시작일을 바꾸면 예전 시작일의 리포트는 지우지 않고 "이전 프로그램"으로 내려간다
   const { current, previous } = useMemo(
     () => groupReportsByProgram(reports, startDate),
     [reports, startDate]
   );
 
-  // 패스 유저가 목록을 열면 리포트 알림 채널을 등록한다 (화면을 막지 않는다)
+  // 시작일을 아직 모르면(사용자 정보 불러오는 중) 이번/이전을 나누지 않고 시작일만 보여준다
+  const programKnown = !!startDate;
+
+  // 패스 유저가 목록을 열면 리포트 알림 채널을 등록한다. 권한이 이미 있을 때만 (요청 창을 띄우지 않는다)
   const hasAccess = status?.hasAccess === true;
   useEffect(() => {
-    if (hasAccess) registerForPushNotificationsAsync(CHANNELS.REPORT).catch(() => {});
+    if (hasAccess) registerChannelIfPermitted(CHANNELS.REPORT);
   }, [hasAccess]);
 
   return (
@@ -122,14 +125,20 @@ export default function ReportListScreen() {
             )}
             {previous.map((group) => (
               <View key={group.startDate} className="gap-3">
-                <View className="gap-0.5">
-                  <Text className="text-lg font-bold text-neutral-800">이전 프로그램</Text>
-                  <Text className="text-sm text-neutral-500">
+                {programKnown ? (
+                  <View className="gap-0.5">
+                    <Text className="text-lg font-bold text-neutral-800">이전 프로그램</Text>
+                    <Text className="text-sm text-neutral-500">
+                      {formatProgramStart(group.startDate)}
+                    </Text>
+                  </View>
+                ) : (
+                  <Text className="text-lg font-bold text-neutral-800">
                     {formatProgramStart(group.startDate)}
                   </Text>
-                </View>
+                )}
                 {group.reports.map((report) => (
-                  <ReportRow key={report.week_index} report={report} muted />
+                  <ReportRow key={report.week_index} report={report} muted={programKnown} />
                 ))}
               </View>
             ))}
