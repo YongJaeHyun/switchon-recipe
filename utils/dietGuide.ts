@@ -129,7 +129,7 @@ export const getFastingStatus = (
 };
 
 // ── 단식 결과 응답 창 ──────────────────────────────────────────
-// 단식 시작부터 종료 후 48시간까지(= 시작 후 72시간), 단, 다음 단식이 시작되면 그 단식으로 넘어감.
+// 단식이 끝난 뒤부터 48시간까지(= 시작 후 24~72시간), 단, 다음 단식이 시작되면 닫힘.
 // day = 단식 시작일(KST 날짜). 응답할 단식이 없으면 null.
 // 주차가 바뀌면 단식 설정이 초기화되므로 week(이번 주차 첫날 from)를 받으면
 // from 이전 날짜에는 현재 설정을 쓰지 않고, 지난 주차 계획(previous, fasting_plan)이 있을 때만 그것으로 본다.
@@ -167,6 +167,8 @@ export const fastingResultWindow = (
 
     const start = midnight + FASTING_START_HOUR[plan.startTime] * HOUR_MS;
     if (start > t) continue;
+    // 단식 중에는 아직 묻지 않는다 (끝난 뒤부터 응답). 진행 중인 단식이 있으면 이전 단식도 닫힘
+    if (t < start + DAY_MS) return null;
     if (t >= start + RESULT_WINDOW_MS) return null;
     return { day };
   }

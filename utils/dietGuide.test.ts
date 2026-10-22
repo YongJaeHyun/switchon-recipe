@@ -110,11 +110,10 @@ describe('fastingResultWindow', () => {
     expect(fastingResultWindow(kst('2026-10-19T18:59:00'), [1], '저녁 식후')).toBeNull();
   });
 
-  it('opens during the fast, keyed by the start day', () => {
-    expect(fastingResultWindow(kst('2026-10-19T19:00:00'), [1], '저녁 식후')).toEqual({
-      day: '2026-10-19',
-    });
-    expect(fastingResultWindow(kst('2026-10-20T10:00:00'), [1], '저녁 식후')).toEqual({
+  it('is closed during the fast and opens when it ends, keyed by the start day', () => {
+    expect(fastingResultWindow(kst('2026-10-19T19:00:00'), [1], '저녁 식후')).toBeNull();
+    expect(fastingResultWindow(kst('2026-10-20T18:59:00'), [1], '저녁 식후')).toBeNull();
+    expect(fastingResultWindow(kst('2026-10-20T19:00:00'), [1], '저녁 식후')).toEqual({
       day: '2026-10-19',
     });
   });
@@ -129,19 +128,20 @@ describe('fastingResultWindow', () => {
     expect(fastingResultWindow(kst('2026-10-22T19:00:00'), [1], '저녁 식후')).toBeNull();
   });
 
-  it('closes when the next fast starts and switches to it', () => {
-    // 월·수 단식: 수 19시에 다음 단식이 시작되면 월 단식 응답은 닫힌다
+  it('closes when the next fast starts and asks about it after it ends', () => {
+    // 월·수 단식: 수 19시에 다음 단식이 시작되면 월 단식 응답은 닫히고, 수 단식은 끝난 뒤에 묻는다
     expect(fastingResultWindow(kst('2026-10-21T18:59:00'), [1, 3], '저녁 식후')).toEqual({
       day: '2026-10-19',
     });
-    expect(fastingResultWindow(kst('2026-10-21T19:00:00'), [1, 3], '저녁 식후')).toEqual({
+    expect(fastingResultWindow(kst('2026-10-21T19:00:00'), [1, 3], '저녁 식후')).toBeNull();
+    expect(fastingResultWindow(kst('2026-10-22T19:00:00'), [1, 3], '저녁 식후')).toEqual({
       day: '2026-10-21',
     });
   });
 
   it('uses the KST date of a morning start across the week boundary', () => {
-    // 일(0) 아침 식후: 10-25 09시 시작. KST 일요일 = UTC 일요일 00시
-    expect(fastingResultWindow(kst('2026-10-26T08:00:00'), [0], '아침 식후')).toEqual({
+    // 일(0) 아침 식후: 10-25 09시 시작 → 10-26 09시 종료. KST 일요일 = UTC 일요일 00시
+    expect(fastingResultWindow(kst('2026-10-26T10:00:00'), [0], '아침 식후')).toEqual({
       day: '2026-10-25',
     });
   });
@@ -192,9 +192,15 @@ describe('fastingResultWindow across a week change', () => {
   });
 
   it('a new fast in the current week takes over the previous one', () => {
-    // 새 주차 화(2) 저녁 단식이 시작되면 지난 주 일요일 단식 응답은 닫힌다
+    // 새 주차 화(2) 저녁 단식이 시작되면 지난 주 일요일 단식 응답은 닫히고, 화 단식은 끝난 뒤에 묻는다
     expect(
       fastingResultWindow(kst('2026-10-27T19:00:00'), [2], '저녁 식후', {
+        from: '2026-10-26',
+        previous,
+      })
+    ).toBeNull();
+    expect(
+      fastingResultWindow(kst('2026-10-28T19:00:00'), [2], '저녁 식후', {
         from: '2026-10-26',
         previous,
       })

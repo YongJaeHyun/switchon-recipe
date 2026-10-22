@@ -19,7 +19,7 @@ const formatRemaining = (ms: number) => {
 const formatClock = (date: Date) =>
   date.toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Seoul' });
 
-// 단식 결과 응답: 단식 중 ~ 종료 후 48시간(다음 단식 시작 전까지). 응답하면 결과 표시로 바뀜
+// 단식 결과 응답: 단식이 끝난 뒤 48시간(다음 단식 시작 전까지). 응답하면 결과 표시로 바뀜
 function FastingResultPrompt({ day }: { day: string }) {
   const { result, isLoading, saveResult, isSaving } = useFastingResult(day);
   if (isLoading) return null;
