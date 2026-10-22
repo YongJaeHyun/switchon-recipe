@@ -14,7 +14,7 @@ import colors from 'tailwindcss/colors';
 import { getKoreanDateString } from 'utils/date';
 import { chartPoints, formatWeightDiff, prefillWeight, weightChange } from 'utils/weight';
 
-// 홈 체중 카드: 오늘 값 / 기록 버튼 / 시작일부터의 미니 그래프. 누르면 전체 그래프 화면
+// 홈 체중 카드: 오늘 값 / 기록 버튼 / 시작일부터의 미니 그래프. 누르면 기록 탭 체중 칸
 export function WeightCard() {
   const startDate = useUserStore((state) => state.start_date);
   const { logs } = useWeights();
@@ -37,7 +37,7 @@ export function WeightCard() {
     <>
       <Pressable
         className="gap-3 rounded-xl border border-neutral-200 bg-white p-4"
-        onPress={() => router.push('/weight')}>
+        onPress={() => router.push({ pathname: '/(tabs)/records', params: { view: 'weight' } })}>
         <View className="flex-row items-center justify-between">
           <View className="flex-1 flex-row items-center gap-3">
             <View className="h-11 w-11 items-center justify-center rounded-full bg-green-50">
