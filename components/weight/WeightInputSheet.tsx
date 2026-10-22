@@ -5,12 +5,14 @@ import ConfirmModal from 'components/common/ConfirmModal';
 import { CustomBottomSheet } from 'components/common/CustomBottomSheet';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
+import { CHANNELS } from 'const/channels';
 import { useUserSetting, useWeights } from 'hooks/useWeights';
 import { useEffect, useState } from 'react';
 import { Keyboard, View } from 'react-native';
 import colors from 'tailwindcss/colors';
 import { Nullable } from 'types/common';
 import { requireOnline } from 'utils/network';
+import { registerForPushNotificationsAsync } from 'utils/notifications';
 import { showSuccessToast } from 'utils/showToast';
 import { MAX_WEIGHT_KG, MIN_WEIGHT_KG, parseWeightInput } from 'utils/weight';
 
@@ -77,6 +79,8 @@ export function WeightInputSheet({ bottomSheetRef, target }: WeightInputSheetPro
 
   const answerReminder = async (on: boolean) => {
     setAskReminder(false);
+    // 체중·리포트 알림 채널 등록 (권한 요청 포함). 저장 결과와 상관없이, 화면을 막지 않는다
+    if (on) registerForPushNotificationsAsync(CHANNELS.REPORT).catch(() => {});
     await updateSetting({ weight_reminder: on, weight_reminder_asked: true });
     if (on) {
       showSuccessToast({ textType: 'CUSTOM', title: '매일 아침 9시에 알려드릴게요' });

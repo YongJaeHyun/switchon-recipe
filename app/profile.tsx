@@ -15,6 +15,8 @@ import { Link, router } from 'expo-router';
 import { useQueryWith402Retry } from 'hooks/useCustomQuery';
 import { useBillingAvailable } from 'hooks/useBillingAvailable';
 import { usePass } from 'hooks/usePass';
+import { useWeeklyReports } from 'hooks/useWeeklyReports';
+import { ReportPreviewCard } from 'components/report/ReportPreviewCard';
 import { queryClient } from 'lib/queryClient';
 import React, { ReactNode, useEffect, useState } from 'react';
 import {
@@ -39,6 +41,7 @@ import { UserAPI } from '../api/UserAPI';
 import { requireOnline } from 'utils/network';
 import { formatPassRemaining } from 'utils/passDisplay';
 import { getDeleteAccountMessage, getPassRemainingDays, isPassOnSale } from 'utils/passScreen';
+import { shouldShowReportPreview } from 'utils/reportDisplay';
 import { clearCachedUser } from 'utils/userCache';
 
 interface MenuButtonProps {
@@ -181,6 +184,11 @@ export default function Profile() {
   const billingAvailable = useBillingAvailable();
   // 결제를 못 쓰는 빌드면 "패스 구매"를 숨기고 이용 중 표시도 결제 화면으로 보내지 않는다
   const passOnSale = isPassOnSale(passStatus?.sales, billingAvailable);
+  // 받은 리포트는 패스가 끝나도 열람할 수 있다. 무료 유저에게는 판매 중일 때만 미리보기 카드
+  const { reports: weeklyReports } = useWeeklyReports();
+  const showWeeklyReport = passStatus?.hasAccess === true || weeklyReports.length > 0;
+  const showReportPreview =
+    !showWeeklyReport && shouldShowReportPreview(passStatus, billingAvailable);
 
   const { data: todoRateStatistics, isLoading } = useQueryWith402Retry({
     queryKey: [QueryKey.todoRateStatistics, id],
@@ -227,7 +235,22 @@ export default function Profile() {
       </View>
 
       <View className="mb-4 min-h-[30.3rem] flex-1 px-5">
-        <Text className="mb-6 text-lg font-bold">나의 4주 리포트</Text>
+        <View className="mb-6 flex-row items-center justify-between">
+          <Text className="text-lg font-bold">나의 4주 리포트</Text>
+          {showWeeklyReport && (
+            <TouchableOpacity
+              className="flex-row items-center rounded-full border border-green-600 py-1 pl-3 pr-1"
+              onPress={() => router.push('/report')}>
+              <Text className="text-sm font-bold text-green-600">주간 리포트</Text>
+              <MaterialIcons name="navigate-next" size={18} color={colors.green[600]} />
+            </TouchableOpacity>
+          )}
+        </View>
+        {showReportPreview && (
+          <View className="mb-6">
+            <ReportPreviewCard />
+          </View>
+        )}
         {isLoading ? (
           <View className="flex-1 items-center justify-center">
             <ActivityIndicator size={56} color={colors.emerald[300]} />

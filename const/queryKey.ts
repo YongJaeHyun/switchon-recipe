@@ -20,4 +20,5 @@ export enum QueryKey {
   userSetting,
   fastingResult,
   fastingPlan,
+  weeklyReports,
 }

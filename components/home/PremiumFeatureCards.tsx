@@ -5,14 +5,17 @@ import { type Href, router } from 'expo-router';
 import { useBillingAvailable } from 'hooks/useBillingAvailable';
 import { usePass } from 'hooks/usePass';
 import { usePremiumGate } from 'hooks/usePremiumGate';
+import { useWeeklyReports } from 'hooks/useWeeklyReports';
 import { type ComponentProps } from 'react';
 import { View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { RECOMMEND_LOCKED_MESSAGE } from 'types/recommend';
+import { ReportPreviewCard } from 'components/report/ReportPreviewCard';
 import { getWeekAndDay } from 'utils/date';
 import { shouldShowPremiumEntry } from 'utils/passScreen';
 import { isRecommendLocked } from 'utils/recommendForm';
+import { groupReportsByProgram, shouldShowReportPreview } from 'utils/reportDisplay';
 
 type IconName = ComponentProps<typeof MaterialIcons>['name'];
 
@@ -85,30 +88,53 @@ function PremiumFeatureCard({
   );
 }
 
+// 주간 리포트 카드 설명: 이번 프로그램의 최신 리포트가 있으면 그 주차, 없으면 기능 소개
+const reportDescription = (latestWeek: number | undefined) =>
+  latestWeek ? `${latestWeek}주차 리포트가 도착했어요` : '한 주 기록을 정리해 드려요';
+
 // 홈의 구독 전용 기능 진입 카드 묶음. 패스를 팔지 않고 권한도 없으면 통째로 숨긴다.
-// 권한이 없으면 누를 때 usePremiumGate가 결제 화면으로 보낸다
+// 권한이 없으면 누를 때 usePremiumGate가 결제 화면으로 보낸다.
+// 주간 리포트: 권한 있으면 카드, 무료 + 판매 중이면 미리보기 카드, 권한이 끝났어도 받은 리포트가 있으면 카드(열람만)
 export function PremiumFeatureCards() {
   const { status } = usePass();
   const billingAvailable = useBillingAvailable();
   const gate = usePremiumGate();
   const startDate = useUserStore((state) => state.start_date);
+  const { reports } = useWeeklyReports();
 
-  if (!shouldShowPremiumEntry(status, billingAvailable)) return null;
+  const showFeatures = shouldShowPremiumEntry(status, billingAvailable);
+  const showPreview = shouldShowReportPreview(status, billingAvailable);
+  const showReportCard = !!status && (status.hasAccess || reports.length > 0);
+  if (!showFeatures && !showPreview && !showReportCard) return null;
+
   const locked = status?.hasAccess !== true;
   const { week, day } = getWeekAndDay(startDate);
+  const latestWeek = groupReportsByProgram(reports, startDate || null).current[0]?.week_index;
 
   return (
     <View className="gap-3">
-      {PREMIUM_FEATURES.map((feature) => (
+      {showFeatures &&
+        PREMIUM_FEATURES.map((feature) => (
+          <PremiumFeatureCard
+            key={feature.title}
+            title={feature.title}
+            description={feature.notice?.(week, day) ?? feature.description}
+            icon={feature.icon}
+            locked={locked}
+            onPress={gate(() => router.push(feature.href))}
+          />
+        ))}
+      {showReportCard ? (
         <PremiumFeatureCard
-          key={feature.title}
-          title={feature.title}
-          description={feature.notice?.(week, day) ?? feature.description}
-          icon={feature.icon}
-          locked={locked}
-          onPress={gate(() => router.push(feature.href))}
+          title="주간 리포트"
+          description={reportDescription(latestWeek)}
+          icon="insights"
+          locked={false}
+          onPress={() => router.push('/report')}
         />
-      ))}
+      ) : (
+        showPreview && <ReportPreviewCard />
+      )}
     </View>
   );
 }
