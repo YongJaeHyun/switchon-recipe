@@ -25,6 +25,14 @@ export function formatItemRate(i: { name: string; done: number; appeared: number
   return `${i.name} ${i.done}/${i.appeared}`;
 }
 
+// 단식 칸: "3번 중 1번 성공" + "중단 N번", "응답 대기 N번"(있을 때만), "성공한 날 …"
+export function formatFastingStat(f: WeeklyStats['fasting']): { value: string; details: string[] } {
+  const details = [`중단 ${f.broken}번`];
+  if (f.pending > 0) details.push(`응답 대기 ${f.pending}번`);
+  if (f.successWeekdays.length > 0) details.push(`성공한 날 ${f.successWeekdays.join(', ')}`);
+  return { value: `${f.planned}번 중 ${f.success}번 성공`, details };
+}
+
 // "10월 1일 ~ 10월 7일"
 export function formatReportRange(range: { from: string; to: string }): string {
   const label = (day: string) => {
@@ -143,6 +151,7 @@ export function parseReportStats(value: unknown): WeeklyStats | null {
       planned: num(fasting.planned),
       success: num(fasting.success),
       broken: num(fasting.broken),
+      pending: num(fasting.pending),
       successWeekdays: weekdays.filter((d): d is string => typeof d === 'string'),
     },
     recipes: { total: num(recipes.total), low: num(recipes.low), zero: num(recipes.zero) },

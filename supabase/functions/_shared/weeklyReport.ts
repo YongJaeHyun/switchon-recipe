@@ -166,18 +166,26 @@ const todoLines = (t: WeeklyStats['todo']): string[] => {
   return lines;
 };
 
-const fastingLine = (f: WeeklyStats['fasting']): string => {
-  if (f.planned === 0) return '- 단식: 이번 주 계획 없음';
-  const noRecord = Math.max(f.planned - f.success - f.broken, 0);
+const fastingLines = (f: WeeklyStats['fasting']): string[] => {
+  if (f.planned === 0) return ['- 단식: 이번 주 계획 없음'];
+  const pending = f.pending;
+  const noRecord = Math.max(f.planned - f.success - f.broken - pending, 0);
   const days =
     f.successWeekdays.length > 0 ? ` (성공한 요일: ${f.successWeekdays.join(', ')})` : '';
-  return `- 단식: 계획 ${f.planned}회 중 성공 ${f.success}회${days}, 중단 ${f.broken}회, 결과 기록 없음 ${noRecord}회`;
+  const lines = [
+    `- 단식: 계획 ${f.planned}회 중 성공 ${f.success}회${days}, 중단 ${f.broken}회, 응답 대기 ${pending}회, 결과 기록 없음 ${noRecord}회`,
+  ];
+  if (pending > 0)
+    lines.push(
+      '  - 응답 대기는 아직 결과를 답할 수 있는 기간인 단식이에요. 실패나 놓친 것으로 보지 말고, 아쉬운 점의 근거로도 쓰지 마세요.'
+    );
+  return lines;
 };
 
 const statsLines = (s: WeeklyStats): string[] => [
   ...weightLines(s.weight),
   ...todoLines(s.todo),
-  fastingLine(s.fasting),
+  ...fastingLines(s.fasting),
   `- 만든 레시피: ${s.recipes.total}개 (저탄수 ${s.recipes.low}개, 무탄수 ${s.recipes.zero}개)`,
   `- 편의점 판정: ${s.foodChecks.total}회 중 "피하세요" ${s.foodChecks.avoid}회`,
 ];
@@ -269,46 +277,116 @@ const numKey = (n: number) => Math.round(n * 10);
 const numbersIn = (text: string): number[] =>
   (text.match(/\d+(?:\.\d+)?/g) ?? []).map(Number).filter(Number.isFinite);
 
-// stats에서 문장에 나올 수 있는 모든 숫자 (그대로 값, 부호를 뗀 값, 놓친 횟수 등 보이는 형태 포함)
-function allowedNumbers(stats: WeeklyStats): Set<number> {
-  const set = new Set<number>();
-  const add = (n: number | null | undefined) => {
-    if (n === null || n === undefined || !Number.isFinite(n)) return;
-    set.add(numKey(n));
-    set.add(numKey(Math.abs(n)));
-  };
-
-  for (let i = 1; i <= 7; i++) add(i); // 요일 수·횟수
-  add(stats.weekIndex);
-  add(stats.weekIndex + 1);
-
-  const w = stats.weight;
-  [w.start, w.end, w.diff, w.totalDiff, w.daysLogged].forEach(add);
-
-  const t = stats.todo;
-  add(t.avgRate);
-  add(t.best?.rate);
-  add(t.worst?.rate);
-  for (const i of t.items) {
-    add(i.done);
-    add(i.appeared);
-    add(i.appeared - i.done);
-    numbersIn(i.name).forEach(add); // "물 2L 마시기" 같은 이름 속 숫자
-  }
-
-  const f = stats.fasting;
-  [f.planned, f.success, f.broken, f.planned - f.success - f.broken].forEach(add);
-  [stats.recipes.total, stats.recipes.low, stats.recipes.zero].forEach(add);
-  [
-    stats.foodChecks.total,
-    stats.foodChecks.avoid,
-    stats.foodChecks.total - stats.foodChecks.avoid,
-  ].forEach(add);
-  return set;
+// 문장 속 숫자는 뒤에 붙은 단위로 어떤 통계와 맞춰볼지 정한다 (단위가 없으면 통계 숫자 전체).
+//   kg·킬로 → 체중(주 첫·마지막 기록, 이번 주·누적 변화의 크기)
+//   %       → 완료율(평균·최고·최저)
+//   주차    → 이번 주·다음 주 주차
+//   N번·N회 → 같은 구절에 "단식"이 있으면 단식 횟수, 아니면 통계의 횟수(할 일·단식·레시피·판정)
+//   N일     → 일 수(1~7, 7일 중 N일)
+//   주 N회  → 아래 "주 N회" 검사가 따로 본다
+interface NumberRules {
+  any: Set<number>; // 단위 없는 숫자
+  weight: Set<number>;
+  rate: Set<number>;
+  week: Set<number>;
+  fasting: Set<number>;
+  count: Set<number>;
+  free: Set<number>; // 단위와 상관없이 허용 (다음 주 규칙 문구의 숫자)
+  names: string[]; // 할 일 이름 (이름 속 숫자는 검사하지 않는다)
 }
 
-const onlyAllowed = (text: string, allowed: Set<number>) =>
-  numbersIn(text).every((n) => allowed.has(numKey(n)));
+const setOf = (values: (number | null | undefined)[]): Set<number> => {
+  const set = new Set<number>();
+  for (const n of values) {
+    if (n === null || n === undefined || !Number.isFinite(n)) continue;
+    set.add(numKey(n));
+    set.add(numKey(Math.abs(n)));
+  }
+  return set;
+};
+
+// 단식 횟수: 계획·성공·중단·응답 대기·기록 없음, 결과가 정해진 단식(계획 - 응답 대기)
+const fastingCounts = (f: WeeklyStats['fasting']): number[] => {
+  const pending = f.pending;
+  return [
+    f.planned,
+    f.success,
+    f.broken,
+    pending,
+    f.planned - pending,
+    Math.max(f.planned - f.success - f.broken - pending, 0),
+  ];
+};
+
+function numberRules(stats: WeeklyStats, free: string[] = []): NumberRules {
+  const w = stats.weight;
+  const t = stats.todo;
+  const r = stats.recipes;
+  const c = stats.foodChecks;
+  const nameNumbers = t.items.flatMap((i) => numbersIn(i.name)); // "물 2L 마시기" 같은 이름 속 숫자
+  const weight = [w.start, w.end, w.diff, w.totalDiff];
+  const rate = [t.avgRate, t.best?.rate, t.worst?.rate];
+  const week = [stats.weekIndex, stats.weekIndex + 1];
+  const fasting = fastingCounts(stats.fasting);
+  const count = [
+    ...t.items.flatMap((i) => [i.done, i.appeared, i.appeared - i.done]),
+    ...fasting,
+    r.total,
+    r.low,
+    r.zero,
+    c.total,
+    c.avoid,
+    c.total - c.avoid,
+    w.daysLogged,
+  ];
+  return {
+    any: setOf([...weight, ...rate, ...week, ...count, ...nameNumbers]),
+    weight: setOf(weight),
+    rate: setOf(rate),
+    week: setOf(week),
+    fasting: setOf(fasting),
+    count: setOf(count),
+    free: setOf(free.flatMap(numbersIn)),
+    names: t.items
+      .flatMap((i) => [i.name, cleanName(i.name), itemLabel(i.name)])
+      .filter((n) => n.length > 0)
+      .sort((a, b) => b.length - a.length),
+  };
+}
+
+const CLAUSE_SPLIT_RE = /[.,!?\n]/;
+
+const numbersOk = (text: string, rules: NumberRules): boolean => {
+  let masked = text;
+  for (const name of rules.names) masked = masked.split(name).join(' '.repeat(name.length));
+
+  for (const m of masked.matchAll(/\d+(?:\.\d+)?/g)) {
+    const value = Number(m[0]);
+    const key = numKey(value);
+    if (rules.free.has(key)) continue;
+    const before = masked.slice(0, m.index);
+    const after = masked.slice((m.index ?? 0) + m[0].length);
+
+    if (/^\s*(?:kg|킬로)/i.test(after)) {
+      if (!rules.weight.has(key)) return false;
+    } else if (/^\s*%/.test(after)) {
+      if (!rules.rate.has(key)) return false;
+    } else if (/^\s*주차/.test(after)) {
+      if (!rules.week.has(key)) return false;
+    } else if (/^\s*회/.test(after) && /주\s*$/.test(before)) {
+      // "주 N회": weeklyCountsIn 검사가 본다
+    } else if (/^\s*(?:번|회)/.test(after)) {
+      const clause = before.split(CLAUSE_SPLIT_RE).pop() ?? '';
+      const allowed = clause.includes('단식') ? rules.fasting : rules.count;
+      if (!allowed.has(key)) return false;
+    } else if (/^\s*일(?!요일)/.test(after)) {
+      if (!Number.isInteger(value) || value < 1 || value > 7) return false;
+    } else if (!rules.any.has(key)) {
+      return false;
+    }
+  }
+  return true;
+};
 
 // 칸 하나의 최대 길이 (넘으면 카드가 깨지므로 기본 문장으로)
 export const MAX_FIELD_LENGTH = 200;
@@ -363,7 +441,7 @@ const directionOk = (text: string, w: WeeklyStats['weight']): boolean => {
   return true;
 };
 
-// 통계에 없는 숫자가 든 칸 → fallbackContent의 같은 칸. 아쉬운 점·행동·링크는 한 묶음으로 바꾼다.
+// 통계에 없는 숫자(단위별로 맞춰봄, numbersOk)가 든 칸 → fallbackContent의 같은 칸. 아쉬운 점·행동·링크는 한 묶음으로 바꾼다.
 // 다음 주 칸은 다음 주 규칙 문구(24시간, 주 3회 등)의 숫자도 허용한다.
 export function sanitizeContent(
   content: ReportContent,
@@ -371,9 +449,8 @@ export function sanitizeContent(
   nextWeekChanges: string[] = nextWeekChangesFor(stats.weekIndex)
 ): ReportContent {
   const fb = fallbackContent(stats, nextWeekChanges);
-  const allowed = allowedNumbers(stats);
-  const nextAllowed = new Set(allowed);
-  nextWeekChanges.forEach((c) => numbersIn(c).forEach((n) => nextAllowed.add(numKey(n))));
+  const rules = numberRules(stats);
+  const nextRules = numberRules(stats, nextWeekChanges);
 
   const weekdays = allowedWeekdays(stats);
   const weeklyCounts = allowedWeeklyCounts(stats, nextWeekChanges);
@@ -384,7 +461,7 @@ export function sanitizeContent(
     (text.match(WEEKDAY_RE) ?? []).every((d) => weekdays.has(d)) &&
     weeklyCountsIn(text).every((n) => weeklyCounts.has(n)) &&
     directionOk(text, stats.weight);
-  const ok = (text: string) => common(text) && onlyAllowed(text, allowed);
+  const ok = (text: string) => common(text) && numbersOk(text, rules);
   const improveOk = ok(content.improve) && ok(content.action);
 
   return {
@@ -400,7 +477,7 @@ export function sanitizeContent(
           ? content.weightNote
           : fb.weightNote,
     nextWeek:
-      common(content.nextWeek) && onlyAllowed(content.nextWeek, nextAllowed)
+      common(content.nextWeek) && numbersOk(content.nextWeek, nextRules)
         ? content.nextWeek
         : fb.nextWeek,
   };
@@ -414,13 +491,17 @@ const fallbackSummary = (s: WeeklyStats): string => {
     parts.push(s.weight.diff === 0 ? '체중 변화 없음' : `체중 ${diffText(s.weight.diff)}`);
   }
   if (s.todo.avgRate !== null) parts.push(`할 일 평균 ${s.todo.avgRate}%`);
-  if (s.fasting.planned > 0) {
+  // 응답 대기 단식은 성공률에서 뺀다 (아직 답할 수 있는 단식을 실패로 세지 않는다)
+  const pending = s.fasting.pending;
+  const decided = s.fasting.planned - pending;
+  if (decided > 0) {
     parts.push(
-      s.fasting.success === s.fasting.planned
-        ? `단식 ${s.fasting.planned}번 모두 성공`
-        : `단식 ${s.fasting.planned}번 중 ${s.fasting.success}번 성공`
+      s.fasting.success === decided
+        ? `단식 ${decided}번 모두 성공`
+        : `단식 ${decided}번 중 ${s.fasting.success}번 성공`
     );
   }
+  if (pending > 0) parts.push(`단식 응답 대기 ${pending}번`);
   return parts.length > 0 ? `${parts.join(', ')}.` : `${s.weekIndex}주차 기록을 정리했어요.`;
 };
 
@@ -470,7 +551,7 @@ const fallbackImprove = (
   }
   if (s.fasting.broken > 0) {
     return {
-      improve: `단식 ${s.fasting.planned}번 중 ${s.fasting.broken}번은 중간에 먹었어요.`,
+      improve: `단식 ${s.fasting.planned - s.fasting.pending}번 중 ${s.fasting.broken}번은 중간에 먹었어요.`,
       action: '단식 전날 저녁은 단백질 위주로 든든하게 먹고, 단식 날 일정을 가볍게 잡아보세요.',
       actionLink: null,
     };

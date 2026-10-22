@@ -36,7 +36,13 @@ export interface WeeklyStats {
     worst: TodoDayRate | null;
     items: { name: string; done: number; appeared: number }[];
   };
-  fasting: { planned: number; success: number; broken: number; successWeekdays: string[] };
+  fasting: {
+    planned: number;
+    success: number;
+    broken: number;
+    pending: number; // 리포트 생성 시점에 아직 결과를 답할 수 있던 단식 (실패가 아님)
+    successWeekdays: string[];
+  };
   recipes: { total: number; low: number; zero: number };
   foodChecks: { total: number; avoid: number };
   isEmpty: boolean;

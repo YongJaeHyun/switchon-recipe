@@ -4,7 +4,8 @@
 // Deno 엣지 함수와 Vitest(node) 양쪽에서 로드되므로 외부 import를 두지 않는다.
 
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
-const DAY_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
 const WEEKDAYS = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
 
 export interface WeeklyInputs {
@@ -14,6 +15,10 @@ export interface WeeklyInputs {
   todoDays: { day: string; items: string[]; checked: number[] }[];
   fastingPlannedDays: string[]; // 그 주에 계획된 단식 시작일들
   fastingResults: { day: string; result: 'success' | 'broken' }[];
+  // 그 주 단식 시작 시간(fasting_plan.start_time, '아침 식후' 등)과 리포트 생성 시각.
+  // 둘 다 있어야 응답 대기(pending)를 센다
+  fastingStartTime?: string | null;
+  now?: Date;
   recipes: { created_at: string; is_zero_carb: boolean }[];
   foodChecks: { created_at: string; verdict: 'ok' | 'avoid' }[];
 }
@@ -40,7 +45,13 @@ export interface WeeklyStats {
     worst: TodoDayRate | null; // 기록 2일 이상이고 최고보다 낮을 때만
     items: { name: string; done: number; appeared: number }[];
   };
-  fasting: { planned: number; success: number; broken: number; successWeekdays: string[] };
+  fasting: {
+    planned: number;
+    success: number;
+    broken: number;
+    pending: number; // 결과가 없고 생성 시점에 아직 응답 기간(시작 후 72시간, 다음 단식 전)인 단식
+    successWeekdays: string[];
+  };
   recipes: { total: number; low: number; zero: number };
   foodChecks: { total: number; avoid: number };
   isEmpty: boolean; // 체중 0일 && 할 일 체크 0일
@@ -154,6 +165,37 @@ const todoStats = (input: WeeklyInputs, range: { from: string; to: string }) => 
   };
 };
 
+// 앱 utils/dietGuide.ts FASTING_START_HOUR·RESULT_WINDOW_MS와 같은 값 (KST 시각).
+// 앱은 단식 시작부터 72시간(종료 후 48시간)까지, 다음 단식이 시작되기 전까지 결과를 묻는다
+const FASTING_START_HOUR: Record<string, number> = {
+  '아침 식후': 9,
+  '점심 식후': 13,
+  '저녁 식후': 19,
+};
+const RESULT_WINDOW_MS = 72 * HOUR_MS;
+
+// 결과가 없는 계획 단식 중 now에 아직 응답 창이 열려 있는 것의 수.
+// 다음 단식은 같은 주 계획 안에서만 본다 (다음 주 계획은 리포트 시점에 대개 아직 없다)
+const pendingFasts = (
+  plannedDays: string[],
+  answered: Set<string>,
+  startTime: string | null | undefined,
+  now: Date | undefined
+): number => {
+  const hour = startTime ? FASTING_START_HOUR[startTime] : undefined;
+  if (hour === undefined || !now) return 0;
+  const t = now.getTime();
+  const startOf = (day: string) => dayToUtc(day) - KST_OFFSET_MS + hour * HOUR_MS;
+  const sorted = [...plannedDays].sort();
+  return sorted.filter((day, i) => {
+    if (answered.has(day)) return false;
+    const start = startOf(day);
+    const next = sorted[i + 1];
+    const end = Math.min(start + RESULT_WINDOW_MS, next ? startOf(next) : Infinity);
+    return t < end;
+  }).length;
+};
+
 const fastingStats = (input: WeeklyInputs, range: { from: string; to: string }) => {
   const results = input.fastingResults.filter((r) => inRange(r.day, range)).sort(byDay);
   // 결과가 있는 날은 계획에 없었더라도(요일 변경, 계획 기록 없음) 계획한 단식으로 센다
@@ -166,6 +208,12 @@ const fastingStats = (input: WeeklyInputs, range: { from: string; to: string }) 
     planned: planned.size,
     success: success.length,
     broken: results.filter((r) => r.result === 'broken').length,
+    pending: pendingFasts(
+      [...new Set(input.fastingPlannedDays.filter((d) => inRange(d, range)))],
+      new Set(results.map((r) => r.day)),
+      input.fastingStartTime,
+      input.now
+    ),
     successWeekdays: success.map((r) => WEEKDAYS[weekdayOf(r.day)]),
   };
 };

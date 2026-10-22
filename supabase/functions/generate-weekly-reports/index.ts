@@ -1,6 +1,7 @@
 /// <reference lib="deno.ns" />
 
 // 주간 리포트 생성 엣지 함수: 매일 08:00 KST cron이 service role로 호출한다 (확인은 handler).
+// 새 주차 1일차에 놓친 리포트는 2·3일차 실행이 보충한다.
 // 실제 의존성(Supabase, Gemini)을 연결해 handleGenerateWeeklyReports를 서비스한다.
 // DB는 유저 헤더가 없는 service role 클라이언트로만 접근한다.
 // 테스트용: ?today=yyyy-MM-dd (service role 호출만)
@@ -12,6 +13,7 @@ import { fetchAllPages } from '../_shared/pagination.ts';
 import { REPORT_RESPONSE_SCHEMA } from '../_shared/weeklyReport.ts';
 import {
   handleGenerateWeeklyReports,
+  latestReportableStartDate,
   type GenerateReportsDeps,
   type ReportUserRow,
 } from './handler.ts';
@@ -26,12 +28,14 @@ const deps: GenerateReportsDeps = {
   now: () => new Date(),
 
   fetchUsers(today) {
+    // 1주차가 끝난 유저만. 주차 일차(1~3일차) 필터는 handler가 한다
+    const latest = latestReportableStartDate(today);
     return fetchAllPages(async (from, to) => {
       const { data, error } = await supabase
         .from('user')
         .select('id, start_date')
         .not('start_date', 'is', null)
-        .lt('start_date', today)
+        .lte('start_date', latest)
         .order('id')
         .range(from, to);
       if (error) throw error;
@@ -79,7 +83,7 @@ const deps: GenerateReportsDeps = {
         .lte('day', range.to),
       supabase
         .from('fasting_plan')
-        .select('days')
+        .select('days, start_time')
         .eq('uid', uid)
         .eq('start_date', startDate)
         .eq('week_index', weekIndex)
@@ -122,6 +126,7 @@ const deps: GenerateReportsDeps = {
       weights,
       todoDays: todoDays.data ?? [],
       fastingPlanDays: plan.data?.days ?? null,
+      fastingPlanStartTime: plan.data?.start_time ?? null,
       fastingResults: fastingResults.data ?? [],
       recipes,
       foodChecks,

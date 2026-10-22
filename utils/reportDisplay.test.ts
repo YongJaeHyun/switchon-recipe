@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  formatFastingStat,
   formatItemRate,
   formatWeightDiff,
   groupReportsByProgram,
@@ -108,6 +109,56 @@ describe('parseReportStats', () => {
     });
     expect(stats?.todo.items).toEqual([]);
     expect(stats?.fasting.planned).toBe(0);
+    expect(stats?.fasting.pending).toBe(0); // pending이 없던 예전 행
+  });
+
+  it('pending을 읽는다', () => {
+    const stats = parseReportStats({
+      range: { from: '2026-10-01', to: '2026-10-07' },
+      fasting: { planned: 2, success: 1, broken: 0, pending: 1, successWeekdays: ['월요일'] },
+    });
+    expect(stats?.fasting).toEqual({
+      planned: 2,
+      success: 1,
+      broken: 0,
+      pending: 1,
+      successWeekdays: ['월요일'],
+    });
+  });
+});
+
+describe('formatFastingStat', () => {
+  const f = (over = {}) => ({
+    planned: 3,
+    success: 1,
+    broken: 1,
+    pending: 0,
+    successWeekdays: ['월요일'],
+    ...over,
+  });
+
+  it('계획 중 성공, 중단 횟수, 성공한 요일', () => {
+    expect(formatFastingStat(f())).toEqual({
+      value: '3번 중 1번 성공',
+      details: ['중단 1번', '성공한 날 월요일'],
+    });
+  });
+
+  it('중단이 0번이어도 보여준다', () => {
+    expect(formatFastingStat(f({ broken: 0 })).details).toContain('중단 0번');
+  });
+
+  it('응답 대기가 있으면 보여주고, 없으면 숨긴다', () => {
+    expect(formatFastingStat(f({ pending: 1 })).details).toEqual([
+      '중단 1번',
+      '응답 대기 1번',
+      '성공한 날 월요일',
+    ]);
+    expect(formatFastingStat(f()).details.some((d) => d.includes('응답 대기'))).toBe(false);
+  });
+
+  it('성공한 요일이 없으면 요일 줄은 없다', () => {
+    expect(formatFastingStat(f({ success: 0, successWeekdays: [] })).details).toEqual(['중단 1번']);
   });
 });
 

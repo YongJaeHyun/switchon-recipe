@@ -28,10 +28,25 @@ const stats = (over: Partial<WeeklyStats> = {}): WeeklyStats => ({
       { name: '저녁 무탄수식 먹기', done: 3, appeared: 5 },
     ],
   },
-  fasting: { planned: 2, success: 2, broken: 0, successWeekdays: ['목요일', '일요일'] },
+  fasting: {
+    planned: 2,
+    success: 2,
+    broken: 0,
+    pending: 0,
+    successWeekdays: ['목요일', '일요일'],
+  },
   recipes: { total: 3, low: 2, zero: 1 },
   foodChecks: { total: 4, avoid: 1 },
   isEmpty: false,
+  ...over,
+});
+
+const fasting = (over: Partial<WeeklyStats['fasting']> = {}): WeeklyStats['fasting'] => ({
+  planned: 0,
+  success: 0,
+  broken: 0,
+  pending: 0,
+  successWeekdays: [],
   ...over,
 });
 
@@ -126,7 +141,7 @@ describe('sanitizeContent: 숫자 검증', () => {
     expect(sanitizeContent(c, s)).toEqual(c);
   });
 
-  it('놓친 횟수(나온 날 - 지킨 날)와 1~7 정수는 허용', () => {
+  it('놓친 횟수(나온 날 - 지킨 날)와 "N일"의 일 수(1~7)는 허용', () => {
     const c = content({ improve: '저녁 무탄수식을 2번 놓쳤어요. 7일 중 6일은 점심을 지켰어요.' });
     expect(sanitizeContent(c, stats()).improve).toBe(c.improve);
   });
@@ -181,11 +196,130 @@ describe('sanitizeContent: 숫자 검증', () => {
       stats(),
       stats({ weight: { start: 70, end: 70.4, diff: 0.4, daysLogged: 2, totalDiff: 0.4 } }),
       stats({ todo: { avgRate: null, best: null, worst: null, items: [] } }),
-      stats({ fasting: { planned: 3, success: 1, broken: 2, successWeekdays: ['월요일'] } }),
+      stats({
+        fasting: fasting({ planned: 3, success: 1, broken: 2, successWeekdays: ['월요일'] }),
+      }),
     ]) {
       const fb = fallbackContent(s);
       expect(sanitizeContent(fb, s)).toEqual(fb);
     }
+  });
+});
+
+describe('sanitizeContent: 단위별 숫자 검증', () => {
+  // 리뷰 재현: diff -1.2, totalDiff -2.5, 단식 1번 중 1번 성공
+  const probe = () =>
+    stats({
+      weight: { start: 69.4, end: 68.2, diff: -1.2, daysLogged: 4, totalDiff: -2.5 },
+      fasting: fasting({ planned: 1, success: 1, successWeekdays: ['목요일'] }),
+    });
+
+  it('지어낸 단식 횟수·정수 kg은 바꾼다 ("단식 2번 모두 성공, 체중 3kg 감량.")', () => {
+    const s = probe();
+    const fb = fallbackContent(s);
+    expect(
+      sanitizeContent(content({ summary: '단식 2번 모두 성공, 체중 3kg 감량.' }), s).summary
+    ).toBe(fb.summary);
+    expect(sanitizeContent(content({ summary: '단식 2번 모두 성공했어요.' }), s).summary).toBe(
+      fb.summary
+    );
+    expect(sanitizeContent(content({ summary: '체중 3kg 감량했어요.' }), s).summary).toBe(
+      fb.summary
+    );
+  });
+
+  it('정수 kg 체중 해석("5kg 줄었어요")은 바꾼다', () => {
+    const s = probe();
+    expect(
+      sanitizeContent(content({ weightNote: '주 초반보다 5kg 줄었어요.' }), s).weightNote
+    ).toBe(fallbackContent(s).weightNote);
+  });
+
+  it('kg에는 체중 값만, %에는 완료율만 허용한다 (다른 통계 숫자라도)', () => {
+    const s = probe(); // 할 일 done/appeared에 7, 레시피 3개
+    const fb = fallbackContent(s);
+    expect(sanitizeContent(content({ summary: '7kg 감량했어요.' }), s).summary).toBe(fb.summary);
+    expect(sanitizeContent(content({ good: '할 일을 7% 더 지켰어요.' }), s).good).toBe(fb.good);
+    expect(sanitizeContent(content({ good: '평균 3%였어요.' }), s).good).toBe(fb.good);
+  });
+
+  it('실제 통계로 쓴 문장은 그대로 둔다', () => {
+    const s = probe();
+    const c = content({
+      summary: '단식 1번 성공, 1.2kg 감량. 저녁 무탄수식이 가장 약했어요.',
+      good: '아침 프로틴쉐이크 7/7, 금요일에는 100%를 지켰어요.',
+      improve: '화요일 완료율이 50%였고 평균은 82%예요. 저녁 무탄수식을 2번 놓쳤어요.',
+      action: '저녁 메뉴를 전날 미리 정해두세요.',
+      weightNote: '주 초반보다 1.2kg 줄었고 시작 이후 2.5kg 빠졌어요.',
+      nextWeek: '24시간 단식이 주 3회로 늘어요. 목요일 단식을 유지해보세요.',
+    });
+    expect(sanitizeContent(c, s)).toEqual(c);
+  });
+
+  it('"N일"이 아닌 곳에서는 통계에 없는 1~7을 허용하지 않는다', () => {
+    // 통계에 2·5·6이 없는 주 (할 일 7/7, 레시피 1개, 체중 4일, 3주차)
+    const s = stats({
+      ...probe(),
+      todo: {
+        avgRate: 100,
+        best: null,
+        worst: null,
+        items: [{ name: '아침 쉐이크', done: 7, appeared: 7 }],
+      },
+      recipes: { total: 1, low: 1, zero: 0 },
+      foodChecks: { total: 0, avoid: 0 },
+    });
+    expect(sanitizeContent(content({ good: '레시피를 5개 만들었어요.' }), s).good).toBe(
+      fallbackContent(s).good
+    );
+    expect(sanitizeContent(content({ good: '6번째 주예요.' }), s).good).toBe(
+      fallbackContent(s).good
+    );
+    expect(sanitizeContent(content({ good: '레시피를 1개 만들었어요.' }), s).good).toBe(
+      '레시피를 1개 만들었어요.'
+    );
+    // "N일"은 일 수로 본다
+    expect(sanitizeContent(content({ good: '5일 연속 지켰어요.' }), s).good).toBe(
+      '5일 연속 지켰어요.'
+    );
+  });
+
+  it('단식 뒤의 횟수는 다른 통계(레시피 3개)에 있어도 단식 횟수가 아니면 바꾼다', () => {
+    const s = probe();
+    expect(sanitizeContent(content({ good: '단식을 3번 성공했어요.' }), s).good).toBe(
+      fallbackContent(s).good
+    );
+    expect(sanitizeContent(content({ good: '단식을 1번 성공했어요.' }), s).good).toBe(
+      '단식을 1번 성공했어요.'
+    );
+  });
+});
+
+describe('sanitizeContent: 단식 응답 대기', () => {
+  // 3번 계획: 1번 성공, 2번은 아직 응답 기간
+  const s = () =>
+    stats({
+      fasting: fasting({ planned: 3, success: 1, pending: 2, successWeekdays: ['목요일'] }),
+    });
+
+  it('응답 대기 횟수는 단식 횟수로 허용한다', () => {
+    const c = content({ summary: '단식 1번 성공, 2번은 아직 결과를 기다리고 있어요.' });
+    expect(sanitizeContent(c, s()).summary).toBe(c.summary);
+  });
+
+  it('기본 문장은 응답 대기를 실패로 세지 않는다', () => {
+    const fb = fallbackContent(s());
+    expect(fb.summary).toMatch(/단식 1번 (모두 )?성공/);
+    expect(fb.summary).toContain('응답 대기 2번');
+    expect(fb.summary).not.toContain('3번 중 1번');
+    expect(sanitizeContent(fb, s())).toEqual(fb);
+  });
+
+  it('프롬프트는 응답 대기를 따로 적고 실패로 보지 말라고 한다', () => {
+    const p = buildReportPrompt(s(), nextWeekChangesFor(3));
+    expect(p).toContain('응답 대기 2회');
+    expect(p).toContain('결과 기록 없음 0회');
+    expect(p).toMatch(/응답 대기.*실패/);
   });
 });
 
@@ -205,7 +339,7 @@ describe('sanitizeContent: 요일·증감·횟수·길이 검증', () => {
     const s = stats({
       weekIndex: 1,
       todo: { avgRate: 80, best: null, worst: null, items: [] },
-      fasting: { planned: 0, success: 0, broken: 0, successWeekdays: [] },
+      fasting: fasting({ planned: 0, success: 0, broken: 0, successWeekdays: [] }),
     });
     const fb = fallbackContent(s);
     const echoed = content({
@@ -291,7 +425,7 @@ describe('fallbackContent', () => {
     const c = fallbackContent(
       stats({
         todo: { avgRate: null, best: null, worst: null, items: [] },
-        fasting: { planned: 0, success: 0, broken: 0, successWeekdays: [] },
+        fasting: fasting({ planned: 0, success: 0, broken: 0, successWeekdays: [] }),
       })
     );
     expect(c.improve).toBe('이번 주는 할 일 체크 기록이 없었어요.');
@@ -308,7 +442,7 @@ describe('fallbackContent', () => {
           worst: null,
           items: [],
         },
-        fasting: { planned: 0, success: 0, broken: 0, successWeekdays: [] },
+        fasting: fasting({ planned: 0, success: 0, broken: 0, successWeekdays: [] }),
       })
     );
     expect(c.good).not.toContain('20%');
@@ -331,7 +465,7 @@ describe('fallbackContent', () => {
       stats({
         weight: { start: 70, end: 70, diff: null, daysLogged: 1, totalDiff: null },
         todo: { avgRate: null, best: null, worst: null, items: [] },
-        fasting: { planned: 0, success: 0, broken: 0, successWeekdays: [] },
+        fasting: fasting({ planned: 0, success: 0, broken: 0, successWeekdays: [] }),
         recipes: { total: 0, low: 0, zero: 0 },
         foodChecks: { total: 0, avoid: 0 },
       })
@@ -368,7 +502,7 @@ describe('fallbackContent', () => {
           worst: null,
           items: [{ name: '아침 프로틴쉐이크 마시기', done: 7, appeared: 7 }],
         },
-        fasting: { planned: 2, success: 1, broken: 1, successWeekdays: ['목요일'] },
+        fasting: fasting({ planned: 2, success: 1, broken: 1, successWeekdays: ['목요일'] }),
       })
     );
     expect(c.improve).toContain('단식');

@@ -6,6 +6,7 @@ import {
   parseWeightInput,
   prefillWeight,
   shiftDay,
+  shouldAskWeightReminder,
   weekOfDay,
   weightChange,
 } from './weight';
@@ -148,5 +149,40 @@ describe('prefillWeight', () => {
     expect(prefillWeight(logs, '2026-10-22')).toBe(68.5);
     expect(prefillWeight(logs, '2026-10-21')).toBe(68.9);
     expect(prefillWeight(logs, '2026-10-25')).toBeNull();
+  });
+});
+
+describe('shouldAskWeightReminder', () => {
+  it('설정을 불러왔고 아직 묻지 않았으면 묻는다 (행 없음 = null 포함)', () => {
+    expect(shouldAskWeightReminder({ isFetched: true, isError: false, setting: null })).toBe(true);
+    expect(
+      shouldAskWeightReminder({
+        isFetched: true,
+        isError: false,
+        setting: { weight_reminder_asked: false },
+      })
+    ).toBe(true);
+  });
+
+  it('이미 물었으면 묻지 않는다', () => {
+    expect(
+      shouldAskWeightReminder({
+        isFetched: true,
+        isError: false,
+        setting: { weight_reminder_asked: true },
+      })
+    ).toBe(false);
+  });
+
+  it('설정 조회가 실패했거나 아직이면 묻지 않는다 (다른 기기에서 이미 답했을 수 있다)', () => {
+    expect(shouldAskWeightReminder({ isFetched: true, isError: true, setting: undefined })).toBe(
+      false
+    );
+    expect(shouldAskWeightReminder({ isFetched: true, isError: false, setting: undefined })).toBe(
+      false
+    );
+    expect(shouldAskWeightReminder({ isFetched: false, isError: false, setting: undefined })).toBe(
+      false
+    );
   });
 });

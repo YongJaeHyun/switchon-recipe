@@ -4,7 +4,7 @@ import { type ComponentProps, type ReactNode } from 'react';
 import { View } from 'react-native';
 import colors from 'tailwindcss/colors';
 import type { WeeklyStats } from 'types/report';
-import { formatItemRate, formatWeightDiff } from 'utils/reportDisplay';
+import { formatFastingStat, formatItemRate, formatWeightDiff } from 'utils/reportDisplay';
 
 type IconName = ComponentProps<typeof MaterialIcons>['name'];
 
@@ -82,12 +82,10 @@ export function ReportStats({ stats }: { stats: WeeklyStats }) {
 
       {fasting.planned > 0 && (
         <StatRow icon="timer" label="단식">
-          <Value>
-            {fasting.planned}번 중 {fasting.success}번 성공
-          </Value>
-          {fasting.successWeekdays.length > 0 && (
-            <Sub>성공한 날 {fasting.successWeekdays.join(', ')}</Sub>
-          )}
+          <Value>{formatFastingStat(fasting).value}</Value>
+          {formatFastingStat(fasting).details.map((line) => (
+            <Sub key={line}>{line}</Sub>
+          ))}
         </StatRow>
       )}
 

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   generateWeeklyReports,
   handleGenerateWeeklyReports,
+  latestReportableStartDate,
   reportWeekOf,
   type GenerateReportsDeps,
   type NotificationRow,
@@ -21,6 +22,7 @@ const filledWeek = (): WeekData => ({
   ],
   todoDays: [{ day: '2026-10-09', items: ['아침 쉐이크 마시기', '물 2L'], checked: [0] }],
   fastingPlanDays: [3],
+  fastingPlanStartTime: null,
   fastingResults: [{ day: '2026-10-14', result: 'success' }],
   recipes: [{ created_at: '2026-10-09T03:00:00Z', is_zero_carb: true }],
   foodChecks: [{ created_at: '2026-10-10T03:00:00Z', verdict: 'avoid' }],
@@ -30,6 +32,7 @@ const emptyWeek = (): WeekData => ({
   weights: [],
   todoDays: [],
   fastingPlanDays: null,
+  fastingPlanStartTime: null,
   fastingResults: [],
   recipes: [],
   foodChecks: [],
@@ -89,11 +92,17 @@ const makeDeps = (
 };
 
 describe('reportWeekOf', () => {
-  it('새 주차 1일차면 끝난 주차를, 아니면 null', () => {
-    expect(reportWeekOf('2026-10-01', '2026-10-08')).toBe(1);
+  it('새 주차 1~3일차면 끝난 주차를, 아니면 null (놓친 리포트를 이틀 더 보충)', () => {
+    expect(reportWeekOf('2026-10-01', '2026-10-08')).toBe(1); // 2주차 1일차
+    expect(reportWeekOf('2026-10-01', '2026-10-09')).toBe(1); // 2일차
+    expect(reportWeekOf('2026-10-01', '2026-10-10')).toBe(1); // 3일차
+    expect(reportWeekOf('2026-10-01', '2026-10-11')).toBeNull(); // 4일차
+    expect(reportWeekOf('2026-10-01', '2026-10-14')).toBeNull(); // 7일차
     expect(reportWeekOf('2026-10-01', '2026-10-15')).toBe(2);
+    expect(reportWeekOf('2026-10-01', '2026-10-17')).toBe(2);
     expect(reportWeekOf('2026-10-01', '2026-10-01')).toBeNull();
-    expect(reportWeekOf('2026-10-01', '2026-10-09')).toBeNull();
+    expect(reportWeekOf('2026-10-01', '2026-10-02')).toBeNull(); // 1주차 2일차: 끝난 주 없음
+    expect(reportWeekOf('2026-10-01', '2026-10-03')).toBeNull();
     expect(reportWeekOf('2026-10-20', '2026-10-13')).toBeNull();
     expect(reportWeekOf(null, '2026-10-13')).toBeNull();
   });
@@ -104,7 +113,93 @@ describe('reportWeekOf', () => {
   });
 });
 
+describe('latestReportableStartDate', () => {
+  it('1주차가 끝났을 수 있는 가장 늦은 시작일 (오늘 - 7일)', () => {
+    expect(latestReportableStartDate('2026-10-15')).toBe('2026-10-08');
+    expect(latestReportableStartDate('2026-11-03')).toBe('2026-10-27');
+  });
+});
+
+describe('generateWeeklyReports: 놓친 리포트 보충', () => {
+  // TODAY 10-15 기준
+  const users = [
+    { id: 'day2', start_date: '2026-10-07' }, // 8일 → 2주차 2일차, 1주차 리포트 보충
+    { id: 'day3', start_date: '2026-10-06' }, // 9일 → 2주차 3일차
+    { id: 'day4', start_date: '2026-10-05' }, // 10일 → 2주차 4일차, 대상 아님
+  ];
+
+  it('새 주차 2·3일차에 리포트가 없으면 만들고 푸시한다', async () => {
+    const { deps, db } = makeDeps({ fetchUsers: vi.fn(async () => users) });
+    const result = await generateWeeklyReports(deps, TODAY);
+    expect(db.reports.map((r) => [r.uid, r.start_date, r.week_index])).toEqual([
+      ['day2', '2026-10-07', 1],
+      ['day3', '2026-10-06', 1],
+    ]);
+    expect(db.notifications.map((n) => n.href).sort()).toEqual([
+      '/report/2026-10-06/1',
+      '/report/2026-10-07/1',
+    ]);
+    expect(result).toMatchObject({ candidates: 2, generated: 2, notified: 2 });
+  });
+
+  it('보충할 리포트가 이미 있으면 AI·저장·푸시 없음', async () => {
+    const { deps, db } = makeDeps({ fetchUsers: vi.fn(async () => users.slice(0, 1)) });
+    db.reports.push({
+      uid: 'day2',
+      start_date: '2026-10-07',
+      week_index: 1,
+      stats: {} as WeeklyReportRow['stats'],
+      content: null,
+      status: 'ready',
+    });
+    const result = await generateWeeklyReports(deps, TODAY);
+    expect(deps.askGemini).not.toHaveBeenCalled();
+    expect(deps.insertReport).not.toHaveBeenCalled();
+    expect(db.notifications).toHaveLength(0);
+    expect(result).toMatchObject({ candidates: 1, existing: 1, generated: 0 });
+  });
+
+  it('1일차에 만든 리포트는 2·3일차 실행에서 다시 만들지 않는다', async () => {
+    const { deps, db } = makeDeps({
+      fetchUsers: vi.fn(async () => [{ id: 'a', start_date: '2026-10-01' }]),
+    });
+    await generateWeeklyReports(deps, '2026-10-15');
+    await generateWeeklyReports(deps, '2026-10-16');
+    await generateWeeklyReports(deps, '2026-10-17');
+    expect(db.reports).toHaveLength(1);
+    expect(deps.askGemini).toHaveBeenCalledTimes(1);
+    expect(db.notifications).toHaveLength(1);
+  });
+
+  it('4일차에는 보충하지 않는다', async () => {
+    const { deps, db } = makeDeps({ fetchUsers: vi.fn(async () => users.slice(2)) });
+    const result = await generateWeeklyReports(deps, TODAY);
+    expect(deps.hasPremiumAccess).not.toHaveBeenCalled();
+    expect(db.reports).toHaveLength(0);
+    expect(result.candidates).toBe(0);
+  });
+});
+
 describe('generateWeeklyReports', () => {
+  it('생성 시점에 응답 창이 열린 단식은 pending으로 저장한다 (실패로 세지 않음)', async () => {
+    const { deps, db } = makeDeps({
+      fetchWeekData: vi.fn(async () => ({
+        ...filledWeek(),
+        fastingPlanStartTime: '저녁 식후', // 수(10-14) 19:00 시작 → 08:00 KST엔 아직 단식 중
+        fastingResults: [],
+      })),
+    });
+    await generateWeeklyReports(deps, TODAY);
+    expect(db.reports[0].stats.fasting).toMatchObject({
+      planned: 1,
+      success: 0,
+      broken: 0,
+      pending: 1,
+    });
+    const prompt = vi.mocked(deps.askGemini).mock.calls[0][0];
+    expect(prompt).toContain('응답 대기 1회');
+  });
+
   it('주차 1일차·패스 유저만 지난 주차 리포트를 만들고 푸시한다', async () => {
     const { deps, db } = makeDeps();
     const result = await generateWeeklyReports(deps, TODAY);

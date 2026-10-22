@@ -1,8 +1,9 @@
 // 주간 리포트 생성 배치 본체. 외부 의존성(DB, Gemini)은 deps로 받아 Vitest(node)에서 가짜로
 // 테스트한다. URL import를 두지 않는다 (실제 연결은 index.ts).
-// 매일 08:00 KST cron이 service role로 호출한다. 오늘(KST)이 start_date 기준 새 주차 1일차인 유저 중
-// 이용 권한이 있는 유저의 지난 주차 리포트를 만든다.
-// 같은 날 다시 실행해도 안전하다: 이미 있는 리포트는 AI 호출 전에 건너뛰고, 저장은 키
+// 매일 08:00 KST cron이 service role로 호출한다. 오늘(KST)이 start_date 기준 새 주차 1~3일차인 유저 중
+// 이용 권한이 있는 유저의 지난 주차 리포트를 만든다 (1일차 실행이 실패·시간 초과로 놓친 리포트를
+// 2·3일차 실행이 보충한다).
+// 여러 번 실행해도 안전하다: 이미 있는 리포트는 AI 호출 전에 건너뛰고, 저장은 키
 // (uid, start_date, week_index) 충돌 시 무시하며, 실제로 새로 들어간 경우에만 푸시한다.
 
 import { isServiceRoleRequest } from '../_shared/serviceRole.ts';
@@ -45,6 +46,7 @@ export interface WeekData {
   weights: { day: string; weight_kg: number | string }[]; // start_date ~ range.to
   todoDays: { day: string; items: string[]; checked: number[] }[]; // range 안
   fastingPlanDays: number[] | null; // fasting_plan(uid, start_date, week_index).days
+  fastingPlanStartTime: string | null; // 같은 행의 start_time ('아침 식후' 등)
   fastingResults: { day: string; result: string }[]; // range 안
   recipes: { created_at: string; is_zero_carb: boolean | null }[]; // [fromIso, toIso)
   foodChecks: { created_at: string; verdict: string | null }[]; // [fromIso, toIso)
@@ -70,7 +72,8 @@ export interface NotificationRow {
 
 export interface GenerateReportsDeps {
   now(): Date;
-  // start_date가 today보다 이전인 유저 (전부, 페이지 처리는 구현이)
+  // start_date가 latestReportableStartDate(today) 이하인 유저 (전부, 페이지 처리는 구현이).
+  // 주차 일차 필터(reportWeekOf)는 handler가 한다
   fetchUsers(today: string): Promise<ReportUserRow[]>;
   hasPremiumAccess(uid: string): Promise<boolean>;
   reportExists(uid: string, startDate: string, weekIndex: number): Promise<boolean>;
@@ -84,7 +87,7 @@ export interface GenerateReportsDeps {
 
 export interface GenerateResult {
   today: string;
-  candidates: number; // 오늘이 새 주차 1일차인 유저
+  candidates: number; // 오늘이 새 주차 1~3일차인 유저
   noAccess: number;
   existing: number; // 이미 리포트가 있어 건너뜀
   generated: number; // 기록이 있어 문장까지 만든 리포트
@@ -95,14 +98,22 @@ export interface GenerateResult {
 
 const dayMs = (day: string) => Date.parse(`${day.slice(0, 10)}T00:00:00Z`);
 
-// 오늘이 새 주차 1일차면 끝난 주차 번호, 아니면 null (시작일 당일·시작 전 제외)
+// 새 주차 몇 일차까지 지난 주차 리포트를 만들지 (1일차 + 보충 2일)
+export const CATCH_UP_DAYS = 3;
+
+// 오늘이 새 주차 1~3일차면 끝난 주차 번호, 아니면 null (1주차 중·시작 전 제외)
 export function reportWeekOf(startDate: string | null, today: string): number | null {
   if (!startDate) return null;
   const start = dayMs(startDate);
   if (Number.isNaN(start)) return null;
   const diff = Math.round((dayMs(today) - start) / DAY_MS);
-  if (diff <= 0 || diff % 7 !== 0) return null;
-  return diff / 7;
+  if (diff < 7 || diff % 7 >= CATCH_UP_DAYS) return null;
+  return Math.floor(diff / 7);
+}
+
+// 리포트 대상이 될 수 있는 가장 늦은 시작일 (1주차가 끝난 유저만, DB 조회 필터용)
+export function latestReportableStartDate(today: string): string {
+  return new Date(dayMs(today) - 7 * DAY_MS).toISOString().slice(0, 10);
 }
 
 const normalizeWeekData = (data: WeekData) => ({
@@ -172,6 +183,9 @@ const processUser = async (
     weekIndex,
     ...known,
     fastingPlannedDays: plannedFastingDays(range, data.fastingPlanDays, weekIndex),
+    // 아직 결과를 답할 수 있는 단식은 실패가 아니라 응답 대기로 센다
+    fastingStartTime: data.fastingPlanStartTime,
+    now: deps.now(),
   });
 
   const content = stats.isEmpty ? null : await writeContent(deps, stats, uid);

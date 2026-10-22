@@ -61,6 +61,7 @@ export const useUserSetting = () => {
     setting: query.data,
     isLoading: query.isLoading,
     isFetched: query.isFetched,
+    isError: query.isError,
     updateSetting,
   };
 };

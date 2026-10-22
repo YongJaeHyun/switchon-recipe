@@ -176,6 +176,7 @@ describe('computeWeeklyStats: 단식', () => {
       planned: 2,
       success: 1,
       broken: 0,
+      pending: 0,
       successWeekdays: ['금요일'],
     });
   });
@@ -213,6 +214,67 @@ describe('computeWeeklyStats: 단식', () => {
     );
     expect(stats.fasting).toMatchObject({ planned: 2, success: 1, broken: 1 });
     expect(stats.fasting.successWeekdays).toEqual(['월요일']);
+  });
+});
+
+describe('computeWeeklyStats: 단식 응답 대기 (pending)', () => {
+  // 2주차 = 10-08(목) ~ 10-14(수). 리포트는 10-15(목) 08:00 KST에 만든다
+  const at = (iso: string) => new Date(iso);
+  const REPORT_TIME = at('2026-10-14T23:00:00Z'); // 10-15 08:00 KST
+
+  it('주 마지막 날 저녁 단식은 생성 시점에 아직 응답 대기', () => {
+    const stats = computeWeeklyStats(
+      base({
+        fastingPlannedDays: ['2026-10-14'],
+        fastingStartTime: '저녁 식후',
+        now: REPORT_TIME,
+      })
+    );
+    expect(stats.fasting).toMatchObject({ planned: 1, success: 0, broken: 0, pending: 1 });
+  });
+
+  it('응답 창(시작 후 72시간)이 닫혔으면 대기가 아니다', () => {
+    // 10-14 09:00 시작 → 10-17 09:00까지
+    const input = base({ fastingPlannedDays: ['2026-10-14'], fastingStartTime: '아침 식후' });
+    expect(computeWeeklyStats({ ...input, now: at('2026-10-16T23:59:00Z') }).fasting.pending).toBe(
+      1
+    ); // 10-17 08:59 KST
+    expect(computeWeeklyStats({ ...input, now: at('2026-10-17T00:00:00Z') }).fasting.pending).toBe(
+      0
+    ); // 10-17 09:00 KST
+  });
+
+  it('다음 단식이 시작되면 앞 단식의 응답 창은 닫힌다 (앱 fastingResultWindow와 같음)', () => {
+    // 10-12(월) 19:00 단식 창은 10-14(수) 19:00 단식 시작으로 닫힌다
+    const stats = computeWeeklyStats(
+      base({
+        fastingPlannedDays: ['2026-10-12', '2026-10-14'],
+        fastingStartTime: '저녁 식후',
+        now: REPORT_TIME,
+      })
+    );
+    expect(stats.fasting).toMatchObject({ planned: 2, pending: 1 });
+  });
+
+  it('결과가 있는 단식은 대기가 아니다', () => {
+    const stats = computeWeeklyStats(
+      base({
+        fastingPlannedDays: ['2026-10-14'],
+        fastingResults: [{ day: '2026-10-14', result: 'success' }],
+        fastingStartTime: '저녁 식후',
+        now: REPORT_TIME,
+      })
+    );
+    expect(stats.fasting).toMatchObject({ planned: 1, success: 1, pending: 0 });
+  });
+
+  it('시작 시간을 모르면(앱도 응답을 묻지 않음) 대기로 세지 않는다', () => {
+    for (const fastingStartTime of [null, undefined, '이상한 값']) {
+      const stats = computeWeeklyStats(
+        base({ fastingPlannedDays: ['2026-10-14'], fastingStartTime, now: REPORT_TIME })
+      );
+      expect(stats.fasting.pending).toBe(0);
+    }
   });
 });
 
