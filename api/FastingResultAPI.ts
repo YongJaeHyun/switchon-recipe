@@ -41,4 +41,19 @@ const upsert = async ({ day, result }: { day: string; result: FastingResult }) =
     return data;
   });
 
-export const FastingResultAPI = { selectOne, upsert };
+// fromDay(포함) 이후의 단식 결과. 실패 시 throw
+const selectSince = async (fromDay: string): Promise<{ day: string; result: FastingResult }[]> => {
+  const uid = useUserStore.getState().id;
+  if (!uid) return [];
+
+  const { data, error } = await supabase
+    .from('fasting_result')
+    .select('day, result')
+    .eq('uid', uid)
+    .gte('day', fromDay);
+
+  if (error) throw error;
+  return (data ?? []).map((row) => ({ day: row.day, result: row.result as FastingResult }));
+};
+
+export const FastingResultAPI = { selectOne, upsert, selectSince };

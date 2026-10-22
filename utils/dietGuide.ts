@@ -68,7 +68,7 @@ export const WEEK_CHANGES: Record<number, string[]> = {
 
 // ── 단식일 카운트다운 ───────────────────────────────────────────
 // 앱에는 끼니 단위만 있어 시각을 기준값으로 정함 (KST)
-const FASTING_START_HOUR: Record<FastingTime, number> = {
+export const FASTING_START_HOUR: Record<FastingTime, number> = {
   '아침 식후': 9,
   '점심 식후': 13,
   '저녁 식후': 19,

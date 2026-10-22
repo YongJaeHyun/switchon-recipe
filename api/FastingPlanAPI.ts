@@ -70,4 +70,21 @@ const selectOne = async ({
   return data;
 };
 
-export const FastingPlanAPI = { upsert, insertIfAbsent, selectOne };
+// 그 시작일의 모든 주차 계획. 실패 시 throw
+const selectAll = async (
+  startDate: string
+): Promise<{ week_index: number; days: number[]; start_time: string | null }[]> => {
+  const uid = useUserStore.getState().id;
+  if (!uid) return [];
+
+  const { data, error } = await supabase
+    .from('fasting_plan')
+    .select('week_index, days, start_time')
+    .eq('uid', uid)
+    .eq('start_date', startDate);
+
+  if (error) throw error;
+  return data ?? [];
+};
+
+export const FastingPlanAPI = { upsert, insertIfAbsent, selectOne, selectAll };

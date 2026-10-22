@@ -21,6 +21,7 @@ export const useFastingResult = (day: string | null) => {
     mutationFn: (result: FastingResult) => FastingResultAPI.upsert({ day: day as string, result }),
     onSuccess: (row) => {
       if (row) queryClient.setQueryData(queryKey, row.result as FastingResult);
+      void queryClient.invalidateQueries({ queryKey: [QueryKey.fastingHistory] });
     },
   });
 
