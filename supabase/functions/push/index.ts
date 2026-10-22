@@ -1,9 +1,6 @@
 /// <reference lib="deno.ns" />
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { buildPushMessage } from './message.ts';
-
-type NotificationType = 'INQUIRY';
-type ChannelType = 'INQUIRY';
+import { buildPushMessage, type ChannelType, type NotificationType } from './message.ts';
 
 interface Notification {
   id: string;
