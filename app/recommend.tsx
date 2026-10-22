@@ -572,7 +572,7 @@ export default function RecommendScreen() {
           <Text className="font-bold text-white">추천 레시피를 고르는 중...</Text>
         </View>
       )}
-      {creation.isCreating && <CreationLoadingOverlay showTabTip={false} />}
+      {creation.isCreating && <CreationLoadingOverlay />}
 
       <IngredientPicker
         mode={picker}

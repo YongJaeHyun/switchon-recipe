@@ -198,7 +198,7 @@ export default function ZeroRecipeCreationScreen() {
           <ActivityIndicator size="large" color={colors.green[600]} />
         </View>
       )}
-      {loadingKind === 'recipe' && <CreationLoadingOverlay showTabTip={false} />}
+      {loadingKind === 'recipe' && <CreationLoadingOverlay />}
       <QuotaExceededModal {...creation.quotaModalProps} />
     </SafeAreaViewWithNav>
   );

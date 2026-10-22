@@ -205,7 +205,7 @@ export default function LowRecipeCreationScreen() {
           <ActivityIndicator size="large" color={colors.amber[500]} />
         </View>
       )}
-      {loadingKind === 'recipe' && <CreationLoadingOverlay showTabTip={false} />}
+      {loadingKind === 'recipe' && <CreationLoadingOverlay />}
       <QuotaExceededModal {...creation.quotaModalProps} />
     </SafeAreaViewWithNav>
   );
