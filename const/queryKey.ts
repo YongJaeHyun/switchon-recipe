@@ -16,4 +16,6 @@ export enum QueryKey {
   foodChecks,
   premiumQuota,
   recipePreference,
+  weightLogs,
+  userSetting,
 }

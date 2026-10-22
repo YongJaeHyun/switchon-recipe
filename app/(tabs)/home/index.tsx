@@ -7,6 +7,7 @@ import RecentRecipes from 'components/home/RecentRecipes';
 import RecipeCreation from 'components/home/RecipeCreation';
 import SavedRecipes from 'components/home/SavedRecipes';
 import { StartDateBottomSheet } from 'components/home/StartDateBottomSheet';
+import { WeightCard } from 'components/home/WeightCard';
 import { WeekGuide } from 'components/home/WeekGuide';
 import { getLatestNotices } from 'const/notices';
 import { QueryKey } from 'const/queryKey';
@@ -75,6 +76,7 @@ export default function HomeScreen() {
                 subtitle="탄수화물 추가로 포만감 있게!"
               />
             </View>
+            <WeightCard />
             <PremiumFeatureCards />
           </View>
           <SavedRecipes recipes={savedRecipes} refreshing={refreshing} />
