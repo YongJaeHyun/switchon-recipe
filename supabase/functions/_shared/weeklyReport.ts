@@ -96,6 +96,14 @@ const itemLabel = (name: string) => cleanName(name).replace(/\s*(마시기|먹�
 
 type Item = WeeklyStats['todo']['items'][number];
 
+// 받침 유무로 조사 고르기 (한글이 아니면 받침 없는 쪽)
+const hasFinal = (word: string) => {
+  const code = word.charCodeAt(word.length - 1) - 0xac00;
+  return code >= 0 && code <= 11171 && code % 28 !== 0;
+};
+const eulReul = (word: string) => `${word}${hasFinal(word) ? '을' : '를'}`;
+const eunNeun = (word: string) => `${word}${hasFinal(word) ? '은' : '는'}`;
+
 // 가장 약한 할 일: 놓친 날이 있는 항목 중 달성 비율이 가장 낮은 것 (동률이면 놓친 날이 많은 것)
 const weakestItem = (items: Item[]): Item | null => {
   const missed = items.filter((i) => i.appeared > 0 && i.done < i.appeared);
@@ -200,15 +208,17 @@ export function buildReportPrompt(stats: WeeklyStats, nextWeekChanges: string[])
     '- 모든 문장은 친근한 존댓말(~요)로, 각 칸은 1~2문장으로 짧게 쓰세요.',
     '',
     '[각 칸]',
-    '- summary: 한 줄 요약. 이번 주 가장 눈에 띄는 숫자 1~2개와 가장 약했던 점을 함께 (예: "단식 2번 모두 성공, 1.2kg 감량. 저녁 무탄수식이 가장 약했어요.").',
-    '- good: 잘한 점 1개. 위 숫자 하나를 근거로 (예: "아침 프로틴쉐이크를 7일 모두 지켰어요.").',
+    '아래 형식의 {…}는 위 기록의 실제 값으로 바꿔 쓰세요. 기록에 없는 부분은 빼고, {…}를 그대로 남기지 마세요.',
+    '- summary: 한 줄 요약. 이번 주 가장 눈에 띄는 숫자 1~2개와 가장 약했던 점을 함께 (형식: "{가장 눈에 띄는 기록}, {체중 변화}. {가장 약한 할 일}이 가장 약했어요.").',
+    '- good: 잘한 점 1개. 위 숫자 하나를 근거로 (형식: "{할 일 이름}을 {나온 날 수}일 모두 지켰어요.").',
     '- improve: 아쉬운 점 1개. "가장 약한 할 일"이 있으면 그것을, 없으면 단식 중단이나 완료율이 가장 낮은 요일을 근거로.',
-    '- action: improve를 고칠 수 있는, 다음 주에 바로 할 수 있는 구체적인 행동 1개 (예: "저녁 메뉴를 전날 미리 정해두세요."). 시간·양 같은 새 숫자는 넣지 마세요.',
+    '- action: improve를 고칠 수 있는, 다음 주에 바로 할 수 있는 구체적인 행동 1개 (형식: "{끼니} 메뉴를 전날 미리 정해두세요."). 시간·양 같은 새 숫자는 넣지 마세요.',
     '- actionLink: action이 아침·점심·저녁의 일반식(저탄수식·무탄수식) 메뉴에 관한 것이면 {"meal": "breakfast"|"lunch"|"dinner"}, 쉐이크·간식·단식·체중 등 그 밖이면 null.',
     few
       ? `- weightNote: 체중 기록이 2일 미만이므로 정확히 "${WEIGHT_NOTE_TOO_FEW}"라고 쓰세요.`
       : '- weightNote: 체중 변화 해석. 탓하지 말고, 하루 체중은 수분·염분·단식 다음 날 측정 등으로 오르내린다는 점을 근거와 함께 설명.',
-    '- nextWeek: 다음 주에 달라지는 점을 이번 주 기록과 연결해서 (예: "다음 주부터 단식이 주 3회로 늘어요. 이번 주 목요일·일요일 단식을 성공했으니 같은 요일을 유지해보세요.").',
+    '- nextWeek: [다음 주에 달라지는 점]을 이번 주 기록과 연결해서 (형식: "다음 주부터 {달라지는 점}. 이번 주 {단식 성공 요일} 단식을 성공했으니 같은 요일을 유지해보세요."). 단식 횟수는 [다음 주에 달라지는 점]에 적힌 그대로 쓰세요.',
+    '- 요일은 [이번 주 기록]에 나온 요일만 쓰세요.',
     '',
     '반드시 아래 키만 가진 JSON 객체 하나로만 답하세요. 설명문이나 코드블록은 쓰지 마세요.',
     '{"summary": "...", "good": "...", "improve": "...", "action": "...", "actionLink": {"meal": "dinner"} 또는 null, "weightNote": "...", "nextWeek": "..."}',
@@ -300,6 +310,59 @@ function allowedNumbers(stats: WeeklyStats): Set<number> {
 const onlyAllowed = (text: string, allowed: Set<number>) =>
   numbersIn(text).every((n) => allowed.has(numKey(n)));
 
+// 칸 하나의 최대 길이 (넘으면 카드가 깨지므로 기본 문장으로)
+export const MAX_FIELD_LENGTH = 200;
+
+const WEEKDAY_RE = /[월화수목금토일]요일/g;
+
+// 통계에 나온 요일만 허용 (최고·최저 요일, 단식 성공 요일)
+const allowedWeekdays = (s: WeeklyStats): Set<string> =>
+  new Set(
+    [s.todo.best?.weekday, s.todo.worst?.weekday, ...s.fasting.successWeekdays].filter(
+      (d): d is string => typeof d === 'string'
+    )
+  );
+
+// "주 N회"의 N: 이번 주 계획 횟수, 이번·다음 주 규칙 문구의 횟수만 허용
+const WEEKLY_COUNT_RE = /주\s*(\d+)\s*회/g;
+const weeklyCountsIn = (text: string): number[] =>
+  [...text.matchAll(WEEKLY_COUNT_RE)].map((m) => Number(m[1]));
+const allowedWeeklyCounts = (s: WeeklyStats, nextWeekChanges: string[]): Set<number> => {
+  const set = new Set<number>();
+  [s.fasting.planned, s.fasting.success, s.fasting.broken]
+    .filter((n) => n > 0)
+    .forEach((n) => set.add(n));
+  [...(WEEK_CHANGES[s.weekIndex] ?? []), ...nextWeekChanges].forEach((c) =>
+    weeklyCountsIn(c).forEach((n) => set.add(n))
+  );
+  return set;
+};
+
+const UP_RE = /증가|늘|올랐|올라|찌/;
+const DOWN_RE = /감량|감소|줄|빠|내려|떨어/;
+
+// "1.2kg 증가"처럼 kg 값 뒤의 증감 표현이 diff·totalDiff 부호와 반대면 false.
+// 같은 크기가 diff와 totalDiff에 서로 다른 부호로 있으면 어느 쪽인지 알 수 없어 넘어간다.
+const directionOk = (text: string, w: WeeklyStats['weight']): boolean => {
+  const signs = new Map<number, Set<number>>();
+  for (const d of [w.diff, w.totalDiff]) {
+    if (d === null || d === 0 || !Number.isFinite(d)) continue;
+    const key = numKey(Math.abs(d));
+    signs.set(key, (signs.get(key) ?? new Set()).add(Math.sign(d)));
+  }
+  for (const m of text.matchAll(/(\d+(?:\.\d+)?)\s*(?:kg|킬로)([^\d]{0,12})/gi)) {
+    const sign = signs.get(numKey(Number(m[1])));
+    if (!sign || sign.size !== 1) continue;
+    const after = m[2];
+    const up = after.search(UP_RE);
+    const down = after.search(DOWN_RE);
+    if (up === -1 && down === -1) continue;
+    const saysUp = up !== -1 && (down === -1 || up < down);
+    if (saysUp !== sign.has(1)) return false;
+  }
+  return true;
+};
+
 // 통계에 없는 숫자가 든 칸 → fallbackContent의 같은 칸. 아쉬운 점·행동·링크는 한 묶음으로 바꾼다.
 // 다음 주 칸은 다음 주 규칙 문구(24시간, 주 3회 등)의 숫자도 허용한다.
 export function sanitizeContent(
@@ -312,7 +375,16 @@ export function sanitizeContent(
   const nextAllowed = new Set(allowed);
   nextWeekChanges.forEach((c) => numbersIn(c).forEach((n) => nextAllowed.add(numKey(n))));
 
-  const ok = (text: string) => onlyAllowed(text, allowed);
+  const weekdays = allowedWeekdays(stats);
+  const weeklyCounts = allowedWeeklyCounts(stats, nextWeekChanges);
+  // 숫자 외 공통 검사: 길이, 예시 틀 그대로, 통계에 없는 요일, 틀린 "주 N회", 체중 증감 방향
+  const common = (text: string) =>
+    text.length <= MAX_FIELD_LENGTH &&
+    !/[{}]/.test(text) &&
+    (text.match(WEEKDAY_RE) ?? []).every((d) => weekdays.has(d)) &&
+    weeklyCountsIn(text).every((n) => weeklyCounts.has(n)) &&
+    directionOk(text, stats.weight);
+  const ok = (text: string) => common(text) && onlyAllowed(text, allowed);
   const improveOk = ok(content.improve) && ok(content.action);
 
   return {
@@ -327,7 +399,10 @@ export function sanitizeContent(
         : ok(content.weightNote)
           ? content.weightNote
           : fb.weightNote,
-    nextWeek: onlyAllowed(content.nextWeek, nextAllowed) ? content.nextWeek : fb.nextWeek,
+    nextWeek:
+      common(content.nextWeek) && onlyAllowed(content.nextWeek, nextAllowed)
+        ? content.nextWeek
+        : fb.nextWeek,
   };
 }
 
@@ -349,14 +424,18 @@ const fallbackSummary = (s: WeeklyStats): string => {
   return parts.length > 0 ? `${parts.join(', ')}.` : `${s.weekIndex}주차 기록을 정리했어요.`;
 };
 
+// 이 완료율 이상인 날만 잘한 점으로 든다
+const GOOD_DAY_RATE = 50;
+
 const fallbackGood = (s: WeeklyStats): string => {
   const strong = strongestItem(s.todo.items);
-  if (strong) return `${itemLabel(strong.name)}, 나온 ${strong.appeared}일 모두 지켰어요.`;
+  if (strong) return `${eulReul(itemLabel(strong.name))} ${strong.appeared}일 모두 지켰어요.`;
   if (s.fasting.success > 0) {
     const days = s.fasting.successWeekdays.join('·');
     return `단식을 ${s.fasting.success}번 성공했어요${days ? ` (${days})` : ''}.`;
   }
-  if (s.todo.best) return `${s.todo.best.weekday}에 할 일을 ${s.todo.best.rate}% 지켰어요.`;
+  if (s.todo.best && s.todo.best.rate >= GOOD_DAY_RATE)
+    return `${s.todo.best.weekday}에 할 일을 ${s.todo.best.rate}% 지켰어요.`;
   if (s.weight.daysLogged > 0) return `체중을 ${s.weight.daysLogged}일 기록했어요.`;
   return '이번 주도 기록을 남겼어요.';
 };
@@ -367,7 +446,7 @@ const fallbackImprove = (
   const weak = weakestItem(s.todo.items);
   if (weak) {
     const label = itemLabel(weak.name);
-    const improve = `${label}, 나온 ${weak.appeared}일 중 ${weak.done}일 지켰어요. 이번 주 가장 아쉬운 항목이에요.`;
+    const improve = `${eunNeun(label)} ${weak.appeared}일 중 ${weak.done}일 지켰어요. 이번 주 가장 아쉬운 항목이에요.`;
     const meal = mealOfItem(weak.name);
     if (meal) {
       return {
@@ -403,6 +482,13 @@ const fallbackImprove = (
       actionLink: null,
     };
   }
+  if (s.todo.avgRate === null) {
+    return {
+      improve: '이번 주는 할 일 체크 기록이 없었어요.',
+      action: '하루 한 번 할 일을 체크해보세요.',
+      actionLink: null,
+    };
+  }
   return {
     improve: '크게 아쉬운 점은 없었어요.',
     action: '다음 주에도 지금처럼 매일 할 일을 체크해보세요.',
@@ -433,7 +519,7 @@ export function fallbackContent(
     weightNote: fallbackWeightNote(stats),
     nextWeek:
       nextWeekChanges.length > 0
-        ? nextWeekChanges.join(' ')
+        ? nextWeekChanges.join('\n')
         : '다음 주에도 이번 주 규칙을 이어가요.',
   };
 }

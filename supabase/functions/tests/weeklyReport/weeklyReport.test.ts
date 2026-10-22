@@ -189,6 +189,82 @@ describe('sanitizeContent: 숫자 검증', () => {
   });
 });
 
+describe('sanitizeContent: 요일·증감·횟수·길이 검증', () => {
+  it('통계에 없는 요일을 쓴 칸은 바꾼다', () => {
+    const s = stats();
+    const fb = fallbackContent(s);
+    // 단식 성공 요일은 목·일, 최고 금, 최저 화
+    expect(sanitizeContent(content({ good: '수요일에 할 일을 모두 지켰어요.' }), s).good).toBe(
+      fb.good
+    );
+    const ok = content({ good: '금요일에 가장 잘했고, 목요일·일요일 단식을 성공했어요.' });
+    expect(sanitizeContent(ok, s).good).toBe(ok.good);
+  });
+
+  it('1주차 리포트가 예시(주 3회, 목요일·일요일)를 그대로 따라 써도 바꾼다', () => {
+    const s = stats({
+      weekIndex: 1,
+      todo: { avgRate: 80, best: null, worst: null, items: [] },
+      fasting: { planned: 0, success: 0, broken: 0, successWeekdays: [] },
+    });
+    const fb = fallbackContent(s);
+    const echoed = content({
+      nextWeek:
+        '다음 주부터 단식이 주 3회로 늘어요. 이번 주 목요일·일요일 단식을 성공했으니 같은 요일을 유지해보세요.',
+    });
+    expect(sanitizeContent(echoed, s).nextWeek).toBe(fb.nextWeek);
+    // 요일이 없어도 다음 주 규칙(주 1회)과 다른 "주 3회"는 바꾼다
+    expect(
+      sanitizeContent(content({ nextWeek: '다음 주부터 단식이 주 3회로 늘어요.' }), s).nextWeek
+    ).toBe(fb.nextWeek);
+    const real = content({ nextWeek: '다음 주부터 주 1회 24시간 단식이 시작돼요.' });
+    expect(sanitizeContent(real, s).nextWeek).toBe(real.nextWeek);
+  });
+
+  it('예시 틀({…})을 그대로 남긴 칸은 바꾼다', () => {
+    const s = stats();
+    expect(sanitizeContent(content({ good: '{할 일 이름}을 7일 모두 지켰어요.' }), s).good).toBe(
+      fallbackContent(s).good
+    );
+  });
+
+  it('체중이 줄었는데 늘었다고 쓰면 바꾼다 (diff -1.2)', () => {
+    const s = stats();
+    const fb = fallbackContent(s);
+    for (const text of ['이번 주 1.2kg 증가했어요.', '체중이 1.2kg 늘었어요.', '1.2kg 올랐어요.']) {
+      expect(sanitizeContent(content({ summary: text }), s).summary).toBe(fb.summary);
+      expect(sanitizeContent(content({ weightNote: text }), s).weightNote).toBe(fb.weightNote);
+    }
+    const ok = content({ summary: '1.2kg 줄었어요.', weightNote: '1.2kg 빠졌어요.' });
+    expect(sanitizeContent(ok, s)).toEqual(ok);
+  });
+
+  it('체중이 늘었는데 줄었다고 쓰면 바꾼다 (diff +0.4)', () => {
+    const s = stats({ weight: { start: 70, end: 70.4, diff: 0.4, daysLogged: 3, totalDiff: 0.9 } });
+    const fb = fallbackContent(s);
+    expect(sanitizeContent(content({ summary: '0.4kg 감량했어요.' }), s).summary).toBe(fb.summary);
+    expect(sanitizeContent(content({ summary: '0.4kg 늘었어요.' }), s).summary).toBe(
+      '0.4kg 늘었어요.'
+    );
+  });
+
+  it('누적 변화(totalDiff)의 방향도 확인한다', () => {
+    const s = stats(); // totalDiff -2.3
+    const fb = fallbackContent(s);
+    expect(sanitizeContent(content({ good: '시작보다 2.3kg 늘었어요.' }), s).good).toBe(fb.good);
+    expect(sanitizeContent(content({ good: '시작보다 2.3kg 줄었어요.' }), s).good).toBe(
+      '시작보다 2.3kg 줄었어요.'
+    );
+  });
+
+  it('200자를 넘는 칸은 바꾼다', () => {
+    const s = stats();
+    expect(sanitizeContent(content({ good: '잘했어요. '.repeat(40) }), s).good).toBe(
+      fallbackContent(s).good
+    );
+  });
+});
+
 describe('fallbackContent', () => {
   const filled = (c: ReportContent) => {
     for (const f of FIELDS) expect(c[f].trim().length).toBeGreaterThan(0);
@@ -203,6 +279,43 @@ describe('fallbackContent', () => {
     expect(c.actionLink).toEqual({ meal: 'dinner' });
     expect(c.weightNote).toContain('1.2kg');
     expect(c.nextWeek).toContain(WEEK_CHANGES[4][0]);
+  });
+
+  it('기본 문장은 조사를 붙여 자연스럽게 쓴다', () => {
+    const c = fallbackContent(stats());
+    expect(c.good).toBe('아침 프로틴쉐이크를 7일 모두 지켰어요.');
+    expect(c.improve.startsWith('저녁 무탄수식은 5일 중 3일 지켰어요.')).toBe(true);
+  });
+
+  it('할 일 체크 기록이 없으면 "아쉬운 점 없음" 대신 체크를 권한다', () => {
+    const c = fallbackContent(
+      stats({
+        todo: { avgRate: null, best: null, worst: null, items: [] },
+        fasting: { planned: 0, success: 0, broken: 0, successWeekdays: [] },
+      })
+    );
+    expect(c.improve).toBe('이번 주는 할 일 체크 기록이 없었어요.');
+    expect(c.action).toBe('하루 한 번 할 일을 체크해보세요.');
+  });
+
+  it('완료율이 낮은 날은 칭찬하지 않는다', () => {
+    const c = fallbackContent(
+      stats({
+        weight: { start: 70, end: 70, diff: null, daysLogged: 1, totalDiff: null },
+        todo: {
+          avgRate: 20,
+          best: { day: '2026-10-16', weekday: '금요일', rate: 20 },
+          worst: null,
+          items: [],
+        },
+        fasting: { planned: 0, success: 0, broken: 0, successWeekdays: [] },
+      })
+    );
+    expect(c.good).not.toContain('20%');
+  });
+
+  it('다음 주 기본 문장은 줄마다 나눈다', () => {
+    expect(fallbackContent(stats({ weekIndex: 1 })).nextWeek).toBe(WEEK_CHANGES[2].join('\n'));
   });
 
   it('체중이 늘어도 탓하지 않는다', () => {
