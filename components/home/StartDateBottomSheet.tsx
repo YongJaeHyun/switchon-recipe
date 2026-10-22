@@ -8,7 +8,7 @@ import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import useKoreanToday from 'hooks/useKoreanToday';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { TouchableOpacity, View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import { getWeekAndDay } from 'utils/date';
@@ -29,6 +29,13 @@ export function StartDateBottomSheet({ bottomSheetRef }: StartDateBottomSheetPro
 
   const [calendarKey, setCalendarKey] = useState(false); // 캘린더 리렌더링용 키
   const [selectedDate, setSelectedDate] = useState<string>(startDate ?? today);
+
+  // 오늘 탭과 내 정보 탭에 시트가 하나씩 있어서, 다른 쪽에서 바꾼 시작일을 따라간다
+  useEffect(() => {
+    if (!startDate) return;
+    setSelectedDate(startDate);
+    setCalendarKey((prev) => !prev);
+  }, [startDate]);
 
   const setDateToToday = () => {
     setSelectedDate(today);

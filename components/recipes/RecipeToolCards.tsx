@@ -28,17 +28,17 @@ interface Tool {
 // 레시피 탭의 구독 전용 도구 목록
 const TOOLS: Tool[] = [
   {
-    title: '편의점 판정',
-    description: '먹어도 되는지 바로 확인',
-    icon: 'storefront',
-    href: '/foodCheck',
-  },
-  {
     title: '맞춤 레시피 추천',
     description: '먹고 싶은 걸 고르면 레시피를 골라 드려요',
     icon: 'restaurant-menu',
     href: '/recommend',
     notice: (week, day) => (isRecommendLocked(week, day) ? RECOMMEND_LOCKED_MESSAGE : null),
+  },
+  {
+    title: '편의점 판정',
+    description: '먹어도 되는지 바로 확인',
+    icon: 'storefront',
+    href: '/foodCheck',
   },
 ];
 
