@@ -49,6 +49,35 @@ export function nextWeekChangesFor(weekIndex: number): string[] {
   return WEEK_CHANGES[Math.min(Math.max(next, 2), 5)] ?? [];
 }
 
+// 주차별로 흔한 몸의 변화 (박용우 『스위치온 다이어트 레시피북』 기준). 5는 유지기(5주차 이후).
+// 체중 해석(이번 주)·다음 주 칸에 쓰고, 그 칸에서만 이 문구의 숫자를 허용한다
+export const WEEK_BODY_CONTEXT: Record<number, string> = {
+  1: '탄수화물을 제한한 첫 주에는 근육도 함께 빠질 수 있어요. 체중이 많이 줄었어도 그중 일부는 근육일 수 있으니, 단백질 쉐이크를 하루 네 번 꼭 챙겨주세요. 인바디를 잴 수 있다면 체중보다 근육량과 체지방량을 함께 보세요.',
+  2: '1주차에 빠진 근육을 회복하면서, 주 1회 24시간 단식으로 지방을 쓰기 시작하는 시기예요. 점심과 저녁을 배불리 먹어야 단식 효과가 제대로 나요. 첫 단식이 힘들면 18시간부터 조금씩 늘려가도 괜찮아요.',
+  3: '단식이 주 2회로 늘어요. 근육이 회복되고 체지방이 잘 빠지는 시기예요. 근육량이 시작할 때만큼 회복되지 않았다면, 4주차로 넘어가기 전에 3주차를 한 번 더 해도 괜찮아요.',
+  4: '근육 손실 없이 체지방, 특히 허리둘레가 빠지는 시기예요. 체중계 숫자보다 근육량·체지방량·허리둘레 변화를 보세요.',
+  5: '유지기에는 체중이 크게 변하지 않는 게 목표예요. 주 1회 24시간 단식과 14시간 공복을 이어가고, 근육을 지키려면 주 4회 이상 운동과 충분한 수면을 챙겨주세요.',
+};
+
+const WEEK_PHASE: Record<number, string> = {
+  1: '도입기',
+  2: '가속기',
+  3: '진행기',
+  4: '안정기',
+  5: '유지기',
+};
+
+const contextWeek = (weekIndex: number) => Math.min(Math.max(Math.floor(weekIndex), 1), 5);
+
+// weekIndex주차의 몸 변화 문구 (1 미만은 1주차, 5 이상은 유지기)
+export function weekBodyContextFor(weekIndex: number): string {
+  return WEEK_BODY_CONTEXT[contextWeek(weekIndex)];
+}
+
+// "~요. ~요." → 문장 배열
+const sentencesOf = (text: string): string[] =>
+  text.split(/(?<=[.!?])\s+/).filter((t) => t.length > 0);
+
 const MEALS: ReportMeal[] = ['breakfast', 'lunch', 'dinner'];
 const MEAL_KO: Record<ReportMeal, string> = { breakfast: '아침', lunch: '점심', dinner: '저녁' };
 
@@ -195,6 +224,8 @@ const statsLines = (s: WeeklyStats): string[] => [
 
 export function buildReportPrompt(stats: WeeklyStats, nextWeekChanges: string[]): string {
   const few = stats.weight.daysLogged < 2;
+  const week = stats.weekIndex;
+  const firstWeekDrop = contextWeek(week) === 1 && (stats.weight.diff ?? 0) < 0;
   return [
     `당신은 스위치온 다이어트(4주 프로그램, 이후 유지기) 사용자에게 ${stats.weekIndex}주차 주간 리포트를 써 주는 코치예요.`,
     '아래 [이번 주 기록]은 서버가 계산한 정확한 값이에요. 이 값을 근거로 구체적으로 쓰세요.',
@@ -208,8 +239,15 @@ export function buildReportPrompt(stats: WeeklyStats, nextWeekChanges: string[])
       ? nextWeekChanges.map((c) => `- ${c}`)
       : ['- 이번 주 규칙을 그대로 이어가요']),
     '',
+    `[이번 주차(${week}주차, ${WEEK_PHASE[contextWeek(week)]})에 흔한 몸의 변화]`,
+    `- ${weekBodyContextFor(week)}`,
+    '',
+    `[다음 주 안내] (${week + 1}주차, ${WEEK_PHASE[contextWeek(week + 1)]})`,
+    `- ${weekBodyContextFor(week + 1)}`,
+    '',
     '[작성 규칙]',
     '- 숫자는 [이번 주 기록]·[다음 주에 달라지는 점]에 적힌 값만 그대로 쓰세요. 새 숫자를 계산하거나 지어내지 마세요 (합계·평균·비율을 새로 내지 말고, 반올림도 바꾸지 마세요).',
+    '- [이번 주차에 흔한 몸의 변화]의 숫자는 weightNote에서만, [다음 주 안내]의 숫자는 nextWeek에서만 쓸 수 있어요.',
     '- 체중 변화는 위 표현 그대로 쓰세요 (예: "1.2kg 감량"). 날짜 대신 요일로 말하세요.',
     '- 막연한 칭찬·격려만으로 채우지 말고, 할 일 이름·요일·횟수를 짚어서 구체적으로 쓰세요.',
     '- 사용자를 탓하거나 다그치는 말투는 쓰지 마세요. 체중이 늘었어도 수분·측정 시점 같은 이유로 차분히 설명하세요.',
@@ -225,8 +263,11 @@ export function buildReportPrompt(stats: WeeklyStats, nextWeekChanges: string[])
     '- actionLink: action이 아침·점심·저녁의 일반식(저탄수식·무탄수식) 메뉴에 관한 것이면 {"meal": "breakfast"|"lunch"|"dinner"}, 쉐이크·간식·단식·체중 등 그 밖이면 null.',
     few
       ? `- weightNote: 체중 기록이 2일 미만이므로 정확히 "${WEIGHT_NOTE_TOO_FEW}"라고 쓰세요.`
-      : '- weightNote: 체중 변화 해석. 탓하지 말고, 하루 체중은 수분·염분·단식 다음 날 측정 등으로 오르내린다는 점을 근거와 함께 설명.',
-    '- nextWeek: [다음 주에 달라지는 점]을 이번 주 기록과 연결해서 (형식: "다음 주부터 {달라지는 점}. 이번 주 {단식 성공 요일} 단식을 성공했으니 같은 요일을 유지해보세요."). 단식 횟수는 [다음 주에 달라지는 점]에 적힌 그대로 쓰세요.',
+      : '- weightNote: 체중 변화 해석. [이번 주차에 흔한 몸의 변화]에 비춰 이번 주 체중 변화를 해석하세요. 탓하지 말고, 하루 체중은 수분·염분·단식 다음 날 측정 등으로 오르내린다는 점을 근거와 함께 설명.' +
+        (firstWeekDrop
+          ? ' 1주차에 체중이 줄었으므로, 줄어든 체중의 일부는 근육일 수 있다는 점과 단백질 쉐이크를 꼭 챙기라는 점을 반드시 말하세요.'
+          : ''),
+    '- nextWeek: [다음 주에 달라지는 점]을 이번 주 기록과 연결해서 (형식: "다음 주부터 {달라지는 점}. 이번 주 {단식 성공 요일} 단식을 성공했으니 같은 요일을 유지해보세요."). 단식 횟수는 [다음 주에 달라지는 점]에 적힌 그대로 쓰세요. [다음 주 안내]에서 한 문장을 더해도 좋아요.',
     '- 요일은 [이번 주 기록]에 나온 요일만 쓰세요.',
     '',
     '반드시 아래 키만 가진 JSON 객체 하나로만 답하세요. 설명문이나 코드블록은 쓰지 마세요.',
@@ -354,7 +395,7 @@ function numberRules(stats: WeeklyStats, free: string[] = []): NumberRules {
     fastingSuccess: setOf([stats.fasting.success]),
     fastingBroken: setOf([stats.fasting.broken]),
     count: setOf(count),
-    free: setOf(free.flatMap(numbersIn)),
+    free: setOf(free.flatMap((t) => numbersIn(koreanCountsToDigits(t)))),
     names: t.items
       .flatMap((i) => [i.name, cleanName(i.name), itemLabel(i.name)])
       .filter((n) => n.length > 0)
@@ -474,8 +515,13 @@ const allowedWeekdays = (s: WeeklyStats): Set<string> =>
 const WEEKLY_COUNT_RE = /주\s*(\d+)\s*회/g;
 const weeklyCountsIn = (text: string): number[] =>
   [...text.matchAll(WEEKLY_COUNT_RE)].map((m) => Number(m[1]));
-const allowedWeeklyCounts = (s: WeeklyStats, nextWeekChanges: string[]): Set<number> => {
+const allowedWeeklyCounts = (
+  s: WeeklyStats,
+  nextWeekChanges: string[],
+  extra: string[] = []
+): Set<number> => {
   const set = new Set<number>();
+  extra.forEach((c) => weeklyCountsIn(koreanCountsToDigits(c)).forEach((n) => set.add(n)));
   [s.fasting.planned, s.fasting.success, s.fasting.broken]
     .filter((n) => n > 0)
     .forEach((n) => set.add(n));
@@ -535,31 +581,38 @@ const linkForAction = (
 };
 
 // 통계에 없는 숫자(단위별로 맞춰봄, numbersOk)가 든 칸 → fallbackContent의 같은 칸. 아쉬운 점·행동·링크는 한 묶음으로 바꾼다.
-// 다음 주 칸은 다음 주 규칙 문구(24시간, 주 3회 등)의 숫자도 허용한다.
+// 다음 주 칸은 다음 주 규칙 문구(24시간, 주 3회 등)와 다음 주 몸 변화 문구의 숫자도,
+// 체중 해석 칸은 이번 주 몸 변화 문구(WEEK_BODY_CONTEXT)의 숫자도 허용한다.
 export function sanitizeContent(
   content: ReportContent,
   stats: WeeklyStats,
   nextWeekChanges: string[] = nextWeekChangesFor(stats.weekIndex)
 ): ReportContent {
   const fb = fallbackContent(stats, nextWeekChanges);
+  const weekContext = [weekBodyContextFor(stats.weekIndex)];
+  const nextFree = [...nextWeekChanges, weekBodyContextFor(stats.weekIndex + 1)];
   const rules = numberRules(stats);
-  const nextRules = numberRules(stats, nextWeekChanges);
+  const weightRules = numberRules(stats, weekContext);
+  const nextRules = numberRules(stats, nextFree);
 
   const weekdays = allowedWeekdays(stats);
   const weeklyCounts = allowedWeeklyCounts(stats, nextWeekChanges);
+  const weightWeeklyCounts = allowedWeeklyCounts(stats, nextWeekChanges, weekContext);
+  const nextWeeklyCounts = allowedWeeklyCounts(stats, nextWeekChanges, nextFree);
   // 숫자 외 공통 검사: 길이, 예시 틀 그대로, 통계에 없는 요일, 틀린 "주 N회", 체중 증감 방향.
   // 길이·틀은 원문으로, 나머지는 할 일 이름을 가리고 한글 수를 바꾼 문장(prepare)으로 본다
-  const common = (text: string) => {
+  const common = (text: string, counts: Set<number> = weeklyCounts) => {
     const p = prepare(text, rules);
     return (
       text.length <= MAX_FIELD_LENGTH &&
       !/[{}]/.test(text) &&
       weekdaysIn(p).every((d) => weekdays.has(d)) &&
-      weeklyCountsIn(p).every((n) => weeklyCounts.has(n)) &&
+      weeklyCountsIn(p).every((n) => counts.has(n)) &&
       directionOk(p, stats.weight)
     );
   };
-  const ok = (text: string) => common(text) && numbersOk(prepare(text, rules), rules);
+  const ok = (text: string, r: NumberRules = rules, counts: Set<number> = weeklyCounts) =>
+    common(text, counts) && numbersOk(prepare(text, r), r);
   const improveOk = ok(content.improve) && ok(content.action);
 
   return {
@@ -571,15 +624,12 @@ export function sanitizeContent(
       ? linkForAction(content.action, parseLink(content.actionLink))
       : fb.actionLink,
     weightNote:
-      stats.weight.daysLogged < 2
-        ? WEIGHT_NOTE_TOO_FEW
-        : ok(content.weightNote)
+      stats.weight.daysLogged < 2 || stats.weight.diff === null
+        ? fb.weightNote
+        : ok(content.weightNote, weightRules, weightWeeklyCounts)
           ? content.weightNote
           : fb.weightNote,
-    nextWeek:
-      common(content.nextWeek) && numbersOk(prepare(content.nextWeek, nextRules), nextRules)
-        ? content.nextWeek
-        : fb.nextWeek,
+    nextWeek: ok(content.nextWeek, nextRules, nextWeeklyCounts) ? content.nextWeek : fb.nextWeek,
   };
 }
 
@@ -677,9 +727,30 @@ const fallbackImprove = (
   };
 };
 
+// 앞 문장 뒤에 덧붙일 후보 중 MAX_FIELD_LENGTH 안에 드는 첫 번째 (없으면 앞 문장만)
+const appendWithin = (head: string, sep: string, candidates: string[]): string => {
+  for (const c of candidates) {
+    const text = `${head}${sep}${c}`;
+    if (text.length <= MAX_FIELD_LENGTH) return text;
+  }
+  return head;
+};
+
+// 체중 해석 + 이번 주 몸 변화 문구 (길면 앞 두 문장, 그래도 길면 첫 문장).
+// 기록이 적으면 고정 문구 뒤에 첫 문장만
 const fallbackWeightNote = (s: WeeklyStats): string => {
+  const sentences = sentencesOf(weekBodyContextFor(s.weekIndex));
   const { diff, daysLogged } = s.weight;
-  if (daysLogged < 2 || diff === null) return WEIGHT_NOTE_TOO_FEW;
+  if (daysLogged < 2 || diff === null)
+    return appendWithin(WEIGHT_NOTE_TOO_FEW, '. ', [sentences[0]]);
+  return appendWithin(weightInterpretation(diff), ' ', [
+    sentences.join(' '),
+    sentences.slice(0, 2).join(' '),
+    sentences[0],
+  ]);
+};
+
+const weightInterpretation = (diff: number): string => {
   if (diff < 0) {
     return `주 초반보다 ${round1(-diff)}kg 줄었어요. 하루 체중은 수분 영향으로 오르내리니 주 단위 흐름으로 보세요.`;
   }
@@ -698,9 +769,13 @@ export function fallbackContent(
     good: fallbackGood(stats),
     ...fallbackImprove(stats),
     weightNote: fallbackWeightNote(stats),
-    nextWeek:
+    // 다음 주 규칙 변화 줄 + 다음 주 몸 변화 첫 문장 (200자 안에 들 때만)
+    nextWeek: appendWithin(
       nextWeekChanges.length > 0
         ? nextWeekChanges.join('\n')
         : '다음 주에도 이번 주 규칙을 이어가요.',
+      '\n',
+      [sentencesOf(weekBodyContextFor(stats.weekIndex + 1))[0]]
+    ),
   };
 }

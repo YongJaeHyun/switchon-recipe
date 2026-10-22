@@ -3,11 +3,14 @@ import type { WeeklyStats } from '../../_shared/weeklyStats.ts';
 import {
   buildReportPrompt,
   fallbackContent,
+  MAX_FIELD_LENGTH,
   nextWeekChangesFor,
   parseReportContent,
   REPORT_RESPONSE_SCHEMA,
   sanitizeContent,
+  WEEK_BODY_CONTEXT,
   WEEK_CHANGES,
+  weekBodyContextFor,
   WEIGHT_NOTE_TOO_FEW,
   type ReportContent,
 } from '../../_shared/weeklyReport.ts';
@@ -187,7 +190,10 @@ describe('sanitizeContent: 숫자 검증', () => {
     const s = stats({
       weight: { start: 69, end: 69, diff: null, daysLogged: 1, totalDiff: -0.5 },
     });
-    expect(sanitizeContent(content(), s).weightNote).toBe(WEIGHT_NOTE_TOO_FEW);
+    // 고정 문구 + 이번 주(3주차) 몸 변화 첫 문장
+    expect(sanitizeContent(content(), s).weightNote).toBe(
+      `${WEIGHT_NOTE_TOO_FEW}. 단식이 주 2회로 늘어요.`
+    );
     expect(WEIGHT_NOTE_TOO_FEW).toBe('체중을 2일 이상 기록하면 변화를 분석해드려요');
   });
 
@@ -449,7 +455,12 @@ describe('fallbackContent', () => {
   });
 
   it('다음 주 기본 문장은 줄마다 나눈다', () => {
-    expect(fallbackContent(stats({ weekIndex: 1 })).nextWeek).toBe(WEEK_CHANGES[2].join('\n'));
+    expect(fallbackContent(stats({ weekIndex: 1 })).nextWeek).toBe(
+      [
+        ...WEEK_CHANGES[2],
+        '1주차에 빠진 근육을 회복하면서, 주 1회 24시간 단식으로 지방을 쓰기 시작하는 시기예요.',
+      ].join('\n')
+    );
   });
 
   it('체중이 늘어도 탓하지 않는다', () => {
@@ -471,7 +482,7 @@ describe('fallbackContent', () => {
       })
     );
     filled(c);
-    expect(c.weightNote).toBe(WEIGHT_NOTE_TOO_FEW);
+    expect(c.weightNote.startsWith(WEIGHT_NOTE_TOO_FEW)).toBe(true);
     expect(c.actionLink).toBeNull();
   });
 
@@ -735,5 +746,127 @@ describe('sanitizeContent: 남은 리뷰 지적 (숫자 정밀도·한글 수·�
     expect(keep('식사 메뉴를 미리 정해두세요.', 'breakfast').actionLink).toEqual({
       meal: 'breakfast',
     });
+  });
+});
+
+describe('주차별 몸 변화 (WEEK_BODY_CONTEXT)', () => {
+  const W1_MUSCLE = '탄수화물을 제한한 첫 주에는 근육도 함께 빠질 수 있어요.';
+  const w = (weekIndex: number, over: Partial<WeeklyStats> = {}) => stats({ weekIndex, ...over });
+
+  it('책 문구 5개를 그대로 두고, weekBodyContextFor는 1~5로 자른다', () => {
+    expect(Object.keys(WEEK_BODY_CONTEXT).map(Number)).toEqual([1, 2, 3, 4, 5]);
+    expect(WEEK_BODY_CONTEXT[1].startsWith(W1_MUSCLE)).toBe(true);
+    expect(WEEK_BODY_CONTEXT[3]).toContain('근육량이 시작할 때만큼 회복되지 않았다면');
+    expect(WEEK_BODY_CONTEXT[5]).toContain('14시간 공복');
+    expect(weekBodyContextFor(1)).toBe(WEEK_BODY_CONTEXT[1]);
+    expect(weekBodyContextFor(4)).toBe(WEEK_BODY_CONTEXT[4]);
+    expect(weekBodyContextFor(5)).toBe(WEEK_BODY_CONTEXT[5]);
+    expect(weekBodyContextFor(9)).toBe(WEEK_BODY_CONTEXT[5]);
+    expect(weekBodyContextFor(0)).toBe(WEEK_BODY_CONTEXT[1]);
+    expect(weekBodyContextFor(-3)).toBe(WEEK_BODY_CONTEXT[1]);
+  });
+
+  it('프롬프트: 이번 주(1주차, 도입기) 몸 변화와 다음 주(2주차) 안내를 넣고 체중 해석에 쓰라고 한다', () => {
+    const p = buildReportPrompt(w(1), nextWeekChangesFor(1));
+    expect(p).toContain('이번 주차(1주차, 도입기)에 흔한 몸의 변화');
+    expect(p).toContain(WEEK_BODY_CONTEXT[1]);
+    expect(p).toContain('다음 주 안내');
+    expect(p).toContain(WEEK_BODY_CONTEXT[2]);
+    expect(p).toMatch(/weightNote:.*몸의 변화/);
+    expect(p).toMatch(/근육일 수 있/);
+    expect(p).toMatch(/단백질/);
+    expect(p).toMatch(/nextWeek:.*다음 주 안내/);
+    // 기존 규칙 유지
+    expect(p).toMatch(/탓/);
+    expect(p).toMatch(/의료/);
+  });
+
+  it('프롬프트: 유지기 이후 단계명과 문구', () => {
+    const p = buildReportPrompt(w(6), nextWeekChangesFor(6));
+    expect(p).toContain('이번 주차(6주차, 유지기)에 흔한 몸의 변화');
+    expect(p).toContain(WEEK_BODY_CONTEXT[5]);
+    const p3 = buildReportPrompt(w(3), nextWeekChangesFor(3));
+    expect(p3).toContain('이번 주차(3주차, 진행기)');
+    expect(p3).toContain(WEEK_BODY_CONTEXT[4]);
+  });
+
+  it('몸 변화 문구의 숫자는 체중 해석(이번 주)·다음 주(다음 주 문구)에서만 허용한다', () => {
+    // 1주차 리포트: 18은 다음 주(2주차) 문구에만 있다
+    const s1 = w(1);
+    const fb1 = fallbackContent(s1);
+    const c = content({
+      summary: '첫 단식은 18시간부터 해도 괜찮아요.',
+      weightNote: '1.2kg 줄었어요. 첫 단식은 18시간부터 해도 괜찮아요.',
+      nextWeek: '첫 단식이 힘들면 18시간부터 조금씩 늘려가도 괜찮아요.',
+    });
+    const out1 = sanitizeContent(c, s1);
+    expect(out1.nextWeek).toBe(c.nextWeek);
+    expect(out1.summary).toBe(fb1.summary);
+    expect(out1.weightNote).toBe(fb1.weightNote);
+    // 2주차 리포트: 18이 이번 주 문구에 있어 체중 해석에서 허용
+    const s2 = w(2);
+    expect(sanitizeContent(c, s2).weightNote).toBe(c.weightNote);
+    expect(sanitizeContent(c, s2).summary).toBe(fallbackContent(s2).summary);
+  });
+
+  it('1주차 "하루 네 번"은 체중 해석에서 허용, 다른 칸에서는 바꾼다', () => {
+    // 4가 다른 통계(판정 횟수·기록 일수)에 없도록 맞춘다
+    const s = w(1, {
+      weight: { start: 69.4, end: 68.2, diff: -1.2, daysLogged: 3, totalDiff: -2.3 },
+      foodChecks: { total: 6, avoid: 1 },
+    });
+    const fb = fallbackContent(s);
+    const note = '1.2kg 줄었어요. 단백질 쉐이크를 하루 네 번 꼭 챙겨주세요.';
+    const out = sanitizeContent(content({ weightNote: note, good: note }), s);
+    expect(out.weightNote).toBe(note);
+    expect(out.good).toBe(fb.good);
+  });
+
+  it('유지기 "주 4회 이상 운동"은 다음 주 칸에서 허용, 요약에서는 바꾼다', () => {
+    const s = w(4);
+    const text = '주 4회 이상 운동과 충분한 수면을 챙겨주세요. 14시간 공복도 이어가요.';
+    const out = sanitizeContent(content({ nextWeek: text, summary: text }), s);
+    expect(out.nextWeek).toBe(text);
+    expect(out.summary).toBe(fallbackContent(s).summary);
+  });
+
+  it('기본 체중 해석: 1주차에 체중이 줄면 근육 이야기를 한다', () => {
+    const c = fallbackContent(w(1));
+    expect(c.weightNote).toContain('1.2kg');
+    expect(c.weightNote).toContain('근육');
+    expect(c.weightNote).toContain(W1_MUSCLE);
+  });
+
+  it('기본 체중 해석: 기록이 적으면 고정 문구 뒤에 이번 주 문구 첫 문장', () => {
+    const few = { start: 69, end: 69, diff: null, daysLogged: 1, totalDiff: null };
+    const c = fallbackContent(w(1, { weight: few }));
+    expect(c.weightNote.startsWith(WEIGHT_NOTE_TOO_FEW)).toBe(true);
+    expect(c.weightNote).toContain(W1_MUSCLE);
+    expect(sanitizeContent(content(), w(1, { weight: few })).weightNote).toBe(c.weightNote);
+  });
+
+  it('기본 다음 주: 규칙 변화 줄 + 다음 주 문구 첫 문장', () => {
+    const c = fallbackContent(w(1));
+    expect(c.nextWeek.startsWith(WEEK_CHANGES[2].join('\n'))).toBe(true);
+    expect(c.nextWeek).toContain('1주차에 빠진 근육을 회복하면서');
+    expect(c.nextWeek.split('\n')).toHaveLength(WEEK_CHANGES[2].length + 1);
+  });
+
+  it('1~6주차, 체중 증감·기록 부족 모두 기본 문장은 200자 이내이고 자기 검증을 통과한다', () => {
+    const weights: WeeklyStats['weight'][] = [
+      { start: 69.4, end: 68.2, diff: -1.2, daysLogged: 4, totalDiff: -2.3 },
+      { start: 70, end: 70.4, diff: 0.4, daysLogged: 3, totalDiff: 0.4 },
+      { start: 70, end: 70, diff: 0, daysLogged: 3, totalDiff: 0 },
+      { start: 70, end: 70, diff: null, daysLogged: 1, totalDiff: null },
+    ];
+    for (const weekIndex of [1, 2, 3, 4, 5, 6]) {
+      for (const weight of weights) {
+        const s = w(weekIndex, { weight });
+        const fb = fallbackContent(s);
+        for (const f of FIELDS) expect(fb[f].length).toBeLessThanOrEqual(MAX_FIELD_LENGTH);
+        expect(fb.weightNote).toContain(weekBodyContextFor(weekIndex).split('. ')[0]);
+        expect(sanitizeContent(fb, s)).toEqual(fb);
+      }
+    }
   });
 });
