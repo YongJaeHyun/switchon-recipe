@@ -27,7 +27,7 @@ export const HomeHeader = ({ bottomSheetRef }: HomeHeaderProps) => {
       <View className="mb-1 mt-4 flex-row items-center justify-between">
         <Text className="text-neutral-600">오늘도 파이팅!</Text>
         <View className="h-11 w-11 overflow-hidden rounded-full border-2 border-neutral-300">
-          <Link href={'/profile'}>
+          <Link href={'/(tabs)/me'}>
             <Image style={{ width: '100%', height: '100%' }} source={avatar_url ?? baseProfile} />
           </Link>
         </View>
