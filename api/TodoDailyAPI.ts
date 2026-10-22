@@ -34,4 +34,20 @@ const upsert = async ({
   }
 };
 
-export const TodoDailyAPI = { upsert };
+// 그날 첫 화면 진입 시 목록만 남긴다. 이미 행이 있으면(체크 기록) 건드리지 않는다
+const insertIfAbsent = async ({ day, items }: { day: string; items: string[] }): Promise<void> => {
+  try {
+    const uid = useUserStore.getState().id;
+    if (!uid || items.length === 0) return;
+
+    const { error } = await supabase
+      .from('todo_daily')
+      .upsert({ uid, day, items, checked: [] }, { onConflict: 'uid,day', ignoreDuplicates: true });
+
+    if (error) throw error;
+  } catch (error) {
+    if (!isOfflineError(error)) captureError({ error, prefix: '[TodoDailyAPI.insertIfAbsent]: ' });
+  }
+};
+
+export const TodoDailyAPI = { upsert, insertIfAbsent };

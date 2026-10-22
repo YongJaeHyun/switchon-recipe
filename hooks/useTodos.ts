@@ -15,6 +15,9 @@ import { todoDailySnapshot } from 'utils/todoDaily';
 import { useQueryWith402Retry } from './useCustomQuery';
 import { useFasting } from './useFasting';
 
+// 그날 첫 스냅샷을 이미 보냈는지 (useTodos는 할 일마다 불리므로 모듈 단위로 한 번만)
+let snapshotSentKey: string | null = null;
+
 export const useTodos = () => {
   const userId = useUserStore((state) => state.id);
   const startDate = useUserStore((state) => state.start_date);
@@ -22,7 +25,11 @@ export const useTodos = () => {
   const { week, day } = getWeekAndDay(startDate);
   const currentStep = week === 1 ? (day <= 3 ? 1 : 2) : week + 1;
 
-  const { days: fastingDays, startTime: fastingStartTime } = useFasting();
+  const {
+    days: fastingDays,
+    startTime: fastingStartTime,
+    isLoading: isFastingLoading,
+  } = useFasting();
   const fastingNextDays = useMemo(
     () => fastingDays.map((day) => (day + 1) % FASTING_DAYS.length),
     [fastingDays]
@@ -130,6 +137,19 @@ export const useTodos = () => {
     }
     return todos;
   }, [baseTodos, fastingStartTime, fastingDays, fastingNextDays]);
+
+  // 주간 리포트 재료: 그날 처음 목록을 불러오면 체크 없이 목록만 남긴다 (이미 있으면 그대로).
+  // 체크는 어제 값이 남아 있을 수 있어(초기화 전) 넣지 않는다. 실패해도 화면에는 영향 없음
+  useEffect(() => {
+    if (!userId || isLoading || isFastingLoading) return;
+    const today = getKoreanDateString({ formatType: 'date' });
+    const key = `${userId}:${today}`;
+    if (snapshotSentKey === key) return;
+    const { items } = todoDailySnapshot(getTodayTodos(), []);
+    if (items.length === 0) return;
+    snapshotSentKey = key;
+    void TodoDailyAPI.insertIfAbsent({ day: today, items });
+  }, [userId, isLoading, isFastingLoading, getTodayTodos]);
 
   useEffect(() => {
     const todos = getTodayTodos();

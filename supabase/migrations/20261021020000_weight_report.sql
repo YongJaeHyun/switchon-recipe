@@ -26,6 +26,18 @@ create table public.fasting_result (
   primary key (uid, day)
 );
 
+-- 주차별 단식 계획. 앱은 주차가 바뀌면 fasting(days)을 초기화하므로 그 주의 계획을 따로 남긴다
+-- (리포트의 계획 단식일, 지난 주 마지막 날 단식의 결과 응답에 사용)
+create table public.fasting_plan (
+  uid uuid not null references public.user (id) on delete cascade,
+  start_date date not null,
+  week_index integer not null,
+  days integer[] not null,
+  start_time text,
+  updated_at timestamptz not null default now(),
+  primary key (uid, start_date, week_index)
+);
+
 create table public.user_setting (
   uid uuid primary key references public.user (id) on delete cascade,
   weight_reminder boolean not null default false,
@@ -48,6 +60,7 @@ create table public.weekly_report (
 alter table public.weight_log enable row level security;
 alter table public.todo_daily enable row level security;
 alter table public.fasting_result enable row level security;
+alter table public.fasting_plan enable row level security;
 alter table public.user_setting enable row level security;
 alter table public.weekly_report enable row level security;
 
@@ -95,6 +108,27 @@ create policy "단식 결과는 본인만 전체 접근"
   to authenticated
   using (uid = auth.uid())
   with check (uid = auth.uid());
+
+create policy "단식 계획은 본인만 조회"
+  on public.fasting_plan for select
+  to authenticated
+  using (uid = auth.uid());
+
+create policy "단식 계획은 본인만 추가"
+  on public.fasting_plan for insert
+  to authenticated
+  with check (uid = auth.uid());
+
+create policy "단식 계획은 본인만 수정"
+  on public.fasting_plan for update
+  to authenticated
+  using (uid = auth.uid())
+  with check (uid = auth.uid());
+
+create policy "단식 계획은 본인만 삭제"
+  on public.fasting_plan for delete
+  to authenticated
+  using (uid = auth.uid());
 
 create policy "사용자 설정은 본인만 전체 접근"
   on public.user_setting for all

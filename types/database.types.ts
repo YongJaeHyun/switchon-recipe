@@ -43,6 +43,41 @@ export type Database = {
           },
         ];
       };
+      fasting_plan: {
+        Row: {
+          days: number[];
+          start_date: string;
+          start_time: string | null;
+          uid: string;
+          updated_at: string;
+          week_index: number;
+        };
+        Insert: {
+          days: number[];
+          start_date: string;
+          start_time?: string | null;
+          uid: string;
+          updated_at?: string;
+          week_index: number;
+        };
+        Update: {
+          days?: number[];
+          start_date?: string;
+          start_time?: string | null;
+          uid?: string;
+          updated_at?: string;
+          week_index?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'fasting_plan_uid_fkey';
+            columns: ['uid'];
+            isOneToOne: false;
+            referencedRelation: 'user';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       fasting_result: {
         Row: {
           day: string;

@@ -1,11 +1,13 @@
 import { useMutation } from '@tanstack/react-query';
 import { FastingAPI } from 'api/FastingAPI';
+import { FastingPlanAPI } from 'api/FastingPlanAPI';
 import { FastingTime } from 'const/fastingDays';
 import { QueryKey } from 'const/queryKey';
 import { queryClient } from 'lib/queryClient';
 import { useMemo } from 'react';
 import { useUserStore } from 'stores/userStore';
 import { FastingDB } from 'types/database';
+import { getWeekAndDay } from 'utils/date';
 import { cancelAllScheduledNotifications, registerWeeklyFastingAlarms } from 'utils/notifications';
 import { Maybe } from '../types/common';
 import { useQueryWith402Retry } from './useCustomQuery';
@@ -44,7 +46,19 @@ export const useFasting = () => {
   });
 
   const { mutate: upsertFasting } = useMutation({
-    mutationFn: (body: Partial<FastingDB>) => FastingAPI.upsert(body),
+    mutationFn: (body: Partial<FastingDB>) => {
+      // 주차가 바뀌면 fasting이 초기화되므로 이번 주차 계획을 따로 남긴다 (fire-and-forget)
+      const startDate = useUserStore.getState().start_date;
+      if (startDate && body.days) {
+        void FastingPlanAPI.upsert({
+          start_date: startDate.slice(0, 10),
+          week_index: getWeekAndDay(startDate).week,
+          days: body.days,
+          start_time: body.start_time,
+        });
+      }
+      return FastingAPI.upsert(body);
+    },
     onMutate: async (newData) => {
       await queryClient.cancelQueries({ queryKey: [QueryKey.fasting, userId] });
 

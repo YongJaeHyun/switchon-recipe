@@ -1,6 +1,7 @@
 import { Text } from 'components/common/Text';
 import { router } from 'expo-router';
 import { useFasting } from 'hooks/useFasting';
+import { usePreviousFastingPlan } from 'hooks/useFastingPlan';
 import { useFastingResult } from 'hooks/useFastingResult';
 import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
@@ -62,6 +63,7 @@ function FastingResultPrompt({ day }: { day: string }) {
 // 단식일 전용 가이드: 시작 전 안내 → 진행 중 카운트다운 → 끝나면 첫 끼 추천
 export function FastingCard() {
   const { days, startTime } = useFasting();
+  const previousPlan = usePreviousFastingPlan();
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -70,7 +72,7 @@ export function FastingCard() {
   }, []);
 
   const status = getFastingStatus(now, days, startTime);
-  const resultDay = fastingResultWindow(now, days, startTime)?.day ?? null;
+  const resultDay = fastingResultWindow(now, days, startTime, previousPlan)?.day ?? null;
   const resultPrompt = resultDay ? <FastingResultPrompt key={resultDay} day={resultDay} /> : null;
 
   if (status.phase === 'none') {

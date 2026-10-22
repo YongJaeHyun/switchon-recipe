@@ -1,0 +1,69 @@
+import { supabase } from 'lib/supabase';
+import { useUserStore } from 'stores/userStore';
+import { Maybe } from 'types/common';
+import { FastingPlanDB } from 'types/database';
+import { captureError } from 'utils/sendError';
+
+// supabase는 fetch 실패를 Error가 아닌 { message } 객체로 돌려주기도 한다
+const isOfflineError = (error: unknown) =>
+  String((error as { message?: unknown })?.message ?? error).includes('Network request failed');
+
+// 주차별 단식 계획 (start_date, week_index 기준). 단식 요일 저장 흐름을 막지 않도록
+// 실패해도 토스트 없이 넘어간다 (네트워크 오류는 Sentry에도 보내지 않음)
+const upsert = async ({
+  start_date,
+  week_index,
+  days,
+  start_time,
+}: {
+  start_date: string;
+  week_index: number;
+  days: number[];
+  start_time: Maybe<string>;
+}): Promise<void> => {
+  try {
+    const uid = useUserStore.getState().id;
+    if (!uid || !start_date) return;
+
+    const { error } = await supabase.from('fasting_plan').upsert(
+      {
+        uid,
+        start_date,
+        week_index,
+        days,
+        start_time: start_time ?? null,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'uid,start_date,week_index' }
+    );
+
+    if (error) throw error;
+  } catch (error) {
+    if (!isOfflineError(error)) captureError({ error, prefix: '[FastingPlanAPI.upsert]: ' });
+  }
+};
+
+// 그 주차의 단식 계획. 없으면 null. 실패 시 throw (React Query가 재시도/무시)
+const selectOne = async ({
+  start_date,
+  week_index,
+}: {
+  start_date: string;
+  week_index: number;
+}): Promise<FastingPlanDB | null> => {
+  const uid = useUserStore.getState().id;
+  if (!uid) return null;
+
+  const { data, error } = await supabase
+    .from('fasting_plan')
+    .select('*')
+    .eq('uid', uid)
+    .eq('start_date', start_date)
+    .eq('week_index', week_index)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+};
+
+export const FastingPlanAPI = { upsert, selectOne };

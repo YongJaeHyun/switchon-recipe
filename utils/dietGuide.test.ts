@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { fastingResultWindow, getFastingStatus, getTodoAction, WEEK_CHANGES } from './dietGuide';
+import {
+  fastingResultWindow,
+  getFastingStatus,
+  getTodoAction,
+  previousFastingWeek,
+  WEEK_CHANGES,
+} from './dietGuide';
 
 describe('getTodoAction', () => {
   it('links low-carb meals to the low-carb recipe screen', () => {
@@ -143,5 +149,59 @@ describe('fastingResultWindow', () => {
   it('is null without settings', () => {
     expect(fastingResultWindow(kst('2026-10-19T20:00:00'), [], '저녁 식후')).toBeNull();
     expect(fastingResultWindow(kst('2026-10-19T20:00:00'), [1], null)).toBeNull();
+  });
+});
+
+describe('fastingResultWindow across a week change', () => {
+  // 지난 주차 마지막 날 = 10-25(일). 일 저녁 식후 단식 → 10-26 19시 종료 → 10-28 19시까지 응답.
+  // 새 주차(10-26~)가 되면 단식 설정이 초기화돼 현재 요일 목록은 비어 있다
+  const kst = (iso: string) => new Date(`${iso}+09:00`);
+  const previous = { days: [0], startTime: '저녁 식후' as const, to: '2026-10-25' };
+
+  it('keeps the last-day fast of the previous week answerable after the reset', () => {
+    expect(fastingResultWindow(kst('2026-10-27T12:00:00'), [], null, previous)).toEqual({
+      day: '2026-10-25',
+    });
+    expect(fastingResultWindow(kst('2026-10-28T19:00:00'), [], null, previous)).toBeNull();
+  });
+
+  it('does not apply the previous week days after its last day', () => {
+    // 지난 주 단식이 월(1)이었어도 새 주차 10-26(월)에는 적용하지 않는다
+    const prevMonday = { days: [1], startTime: '저녁 식후' as const, to: '2026-10-25' };
+    expect(fastingResultWindow(kst('2026-10-26T20:00:00'), [], null, prevMonday)).toBeNull();
+  });
+
+  it('does not apply the current week days before the week starts', () => {
+    // 새 주차에 일(0)을 골라도 지난 주 10-25(일)은 지난 주 계획(토)으로만 본다
+    const prevSaturday = { days: [6], startTime: '아침 식후' as const, to: '2026-10-25' };
+    expect(fastingResultWindow(kst('2026-10-26T08:00:00'), [0], '저녁 식후', prevSaturday)).toEqual(
+      { day: '2026-10-24' }
+    );
+  });
+
+  it('a new fast in the current week takes over the previous one', () => {
+    // 새 주차 화(2) 저녁 단식이 시작되면 지난 주 일요일 단식 응답은 닫힌다
+    expect(fastingResultWindow(kst('2026-10-27T19:00:00'), [2], '저녁 식후', previous)).toEqual({
+      day: '2026-10-27',
+    });
+    expect(fastingResultWindow(kst('2026-10-27T18:00:00'), [2], '저녁 식후', previous)).toEqual({
+      day: '2026-10-25',
+    });
+  });
+});
+
+describe('previousFastingWeek', () => {
+  it('is the week before with its last day (KST date)', () => {
+    expect(previousFastingWeek('2026-10-01', 3)).toEqual({ weekIndex: 2, to: '2026-10-14' });
+    expect(previousFastingWeek('2026-10-01T00:00:00+09:00', 5)).toEqual({
+      weekIndex: 4,
+      to: '2026-10-28',
+    });
+  });
+
+  it('is null when the previous week had no fasting (week 1) or no start date', () => {
+    expect(previousFastingWeek('2026-10-01', 2)).toBeNull();
+    expect(previousFastingWeek('2026-10-01', 1)).toBeNull();
+    expect(previousFastingWeek('', 3)).toBeNull();
   });
 });
