@@ -105,12 +105,30 @@ export function prefillWeight(logs: WeightPoint[], day: string): number | null {
   return byDay(day) ?? byDay(shiftDay(day, -1)) ?? null;
 }
 
-// 체중 저장 직후 아침 알림을 받을지 물을지. 설정을 제대로 불러왔고(행 없음 = null) 아직 묻지 않았을 때만.
-// 조회가 실패하면 묻지 않는다 (다른 기기에서 이미 답했을 수 있다)
+// 체중 저장 직후 아침 알림을 받을지 물을지. 처음 기록한 직후(저장 전 기록 없음)이고,
+// 설정을 제대로 불러왔고(행 없음 = null) 아직 묻지 않았을 때만.
+// 조회가 실패하면 묻지 않는다 (다른 기기에서 이미 답했을 수 있다). 기록 목록을 모르면(undefined) 묻지 않는다
 export function shouldAskWeightReminder(q: {
   isFetched: boolean;
   isError: boolean;
   setting: { weight_reminder_asked: boolean } | null | undefined;
+  hadLogsBefore: boolean | undefined;
 }): boolean {
-  return q.isFetched && !q.isError && q.setting !== undefined && !q.setting?.weight_reminder_asked;
+  return (
+    q.hadLogsBefore === false &&
+    q.isFetched &&
+    !q.isError &&
+    q.setting !== undefined &&
+    !q.setting?.weight_reminder_asked
+  );
+}
+
+// 그래프 포인터 라벨에 보일 체중. gifted-charts는 yAxisOffset을 쓰면 값에서 offset을 뺀 항목을
+// 넘겨주므로(getSanitisedData → adjustToOffset), 그 값 대신 포인터 위치(index)의 원래 값을 쓴다
+export function pointerWeight(
+  points: { value: number }[],
+  index: number | undefined
+): number | null {
+  if (index === undefined || !Number.isInteger(index) || index < 0) return null;
+  return points[index]?.value ?? null;
 }

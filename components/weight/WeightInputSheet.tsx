@@ -38,9 +38,9 @@ const formatDayLabel = (day: string) => {
 };
 
 // 체중 입력 시트. 같은 날 다시 저장하면 그날 값을 바꾼다.
-// 처음 저장한 직후 한 번만 매일 아침 알림을 받을지 묻는다
+// 처음 기록한 직후(그 전에 기록이 없을 때) 한 번만 매일 아침 알림을 받을지 묻는다
 export function WeightInputSheet({ bottomSheetRef, target }: WeightInputSheetProps) {
-  const { saveWeight, isSaving } = useWeights();
+  const { logs, isLogsFetched, saveWeight, isSaving } = useWeights();
   const { setting, isFetched, isError, updateSetting } = useUserSetting();
 
   const [text, setText] = useState('');
@@ -72,6 +72,8 @@ export function WeightInputSheet({ bottomSheetRef, target }: WeightInputSheetPro
       return;
     }
 
+    // 처음 기록인지는 저장 전 목록으로 본다 (저장하면 목록을 다시 받는다). 목록을 못 받았으면 모름
+    const hadLogsBefore = isLogsFetched ? logs.length > 0 : undefined;
     const saved = await saveWeight({ day: target.day, weight_kg: weight });
     if (!saved) return; // 실패 안내는 API가 했다
 
@@ -79,7 +81,8 @@ export function WeightInputSheet({ bottomSheetRef, target }: WeightInputSheetPro
     bottomSheetRef.current?.close();
     showSuccessToast({ textType: 'CUSTOM', title: `${weight.toFixed(1)}kg 기록했어요` });
 
-    if (shouldAskWeightReminder({ isFetched, isError, setting })) setAskReminder(true);
+    if (shouldAskWeightReminder({ isFetched, isError, setting, hadLogsBefore }))
+      setAskReminder(true);
   });
 
   const answerReminder = async (on: boolean) => {

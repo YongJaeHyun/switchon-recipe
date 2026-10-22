@@ -5,6 +5,7 @@ import { Text } from 'components/common/Text';
 import { WeightChart } from 'components/weight/WeightChart';
 import { WeightInputSheet, type WeightInputTarget } from 'components/weight/WeightInputSheet';
 import { router } from 'expo-router';
+import useKoreanToday from 'hooks/useKoreanToday';
 import { useWeights } from 'hooks/useWeights';
 import { useMemo, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
@@ -20,7 +21,8 @@ export function WeightCard() {
   const sheetRef = useRef<BottomSheetMethods>(null);
   const [target, setTarget] = useState<WeightInputTarget | null>(null);
 
-  const today = getKoreanDateString({ formatType: 'date' });
+  // KST 자정이 지나거나 앱으로 돌아오면 다시 계산되는 오늘 (렌더 때만 계산하면 자정 뒤에도 어제로 남는다)
+  const today = useKoreanToday();
   const todayLog = logs.find((log) => log.day === today);
   const points = useMemo(() => chartPoints(logs, startDate), [logs, startDate]);
   const change = useMemo(() => weightChange(logs, startDate), [logs, startDate]);

@@ -15,7 +15,7 @@ import { ReportPreviewCard } from 'components/report/ReportPreviewCard';
 import { getWeekAndDay } from 'utils/date';
 import { shouldShowPremiumEntry } from 'utils/passScreen';
 import { isRecommendLocked } from 'utils/recommendForm';
-import { groupReportsByProgram, shouldShowReportPreview } from 'utils/reportDisplay';
+import { reportCardArrival, shouldShowReportPreview } from 'utils/reportDisplay';
 
 type IconName = ComponentProps<typeof MaterialIcons>['name'];
 
@@ -88,10 +88,6 @@ function PremiumFeatureCard({
   );
 }
 
-// 주간 리포트 카드 설명: 이번 프로그램의 최신 리포트가 있으면 그 주차, 없으면 기능 소개
-const reportDescription = (latestWeek: number | undefined) =>
-  latestWeek ? `${latestWeek}주차 리포트가 도착했어요` : '한 주 기록을 정리해 드려요';
-
 // 홈의 구독 전용 기능 진입 카드 묶음. 패스를 팔지 않고 권한도 없으면 통째로 숨긴다.
 // 권한이 없으면 누를 때 usePremiumGate가 결제 화면으로 보낸다.
 // 주간 리포트: 권한 있으면 카드, 무료 + 판매 중이면 미리보기 카드, 권한이 끝났어도 받은 리포트가 있으면 카드(열람만)
@@ -109,7 +105,8 @@ export function PremiumFeatureCards() {
 
   const locked = status?.hasAccess !== true;
   const { week, day } = getWeekAndDay(startDate);
-  const latestWeek = groupReportsByProgram(reports, startDate || null).current[0]?.week_index;
+  // 이번 프로그램 최신 주차. 같은 날 아침 시작일을 바꿨으면 방금 온 이전 프로그램 리포트를 알리고 그리로 보낸다
+  const arrival = reportCardArrival(reports, startDate || null, new Date());
 
   return (
     <View className="gap-3">
@@ -127,10 +124,10 @@ export function PremiumFeatureCards() {
       {showReportCard ? (
         <PremiumFeatureCard
           title="주간 리포트"
-          description={reportDescription(latestWeek)}
+          description={arrival.description}
           icon="insights"
           locked={false}
-          onPress={() => router.push('/report')}
+          onPress={() => router.push(arrival.href as Href)}
         />
       ) : (
         showPreview && <ReportPreviewCard />

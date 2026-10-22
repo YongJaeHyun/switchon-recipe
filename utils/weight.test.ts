@@ -6,6 +6,7 @@ import {
   parseWeightInput,
   prefillWeight,
   shiftDay,
+  pointerWeight,
   shouldAskWeightReminder,
   weekOfDay,
   weightChange,
@@ -154,12 +155,20 @@ describe('prefillWeight', () => {
 
 describe('shouldAskWeightReminder', () => {
   it('설정을 불러왔고 아직 묻지 않았으면 묻는다 (행 없음 = null 포함)', () => {
-    expect(shouldAskWeightReminder({ isFetched: true, isError: false, setting: null })).toBe(true);
+    expect(
+      shouldAskWeightReminder({
+        isFetched: true,
+        isError: false,
+        setting: null,
+        hadLogsBefore: false,
+      })
+    ).toBe(true);
     expect(
       shouldAskWeightReminder({
         isFetched: true,
         isError: false,
         setting: { weight_reminder_asked: false },
+        hadLogsBefore: false,
       })
     ).toBe(true);
   });
@@ -170,19 +179,60 @@ describe('shouldAskWeightReminder', () => {
         isFetched: true,
         isError: false,
         setting: { weight_reminder_asked: true },
+        hadLogsBefore: false,
       })
     ).toBe(false);
   });
 
   it('설정 조회가 실패했거나 아직이면 묻지 않는다 (다른 기기에서 이미 답했을 수 있다)', () => {
-    expect(shouldAskWeightReminder({ isFetched: true, isError: true, setting: undefined })).toBe(
-      false
-    );
-    expect(shouldAskWeightReminder({ isFetched: true, isError: false, setting: undefined })).toBe(
-      false
-    );
-    expect(shouldAskWeightReminder({ isFetched: false, isError: false, setting: undefined })).toBe(
-      false
-    );
+    expect(
+      shouldAskWeightReminder({
+        isFetched: true,
+        isError: true,
+        setting: undefined,
+        hadLogsBefore: false,
+      })
+    ).toBe(false);
+    expect(
+      shouldAskWeightReminder({
+        isFetched: true,
+        isError: false,
+        setting: undefined,
+        hadLogsBefore: false,
+      })
+    ).toBe(false);
+    expect(
+      shouldAskWeightReminder({
+        isFetched: false,
+        isError: false,
+        setting: undefined,
+        hadLogsBefore: false,
+      })
+    ).toBe(false);
+  });
+
+  it('처음 기록일 때만 묻는다: 저장 전에 기록이 있었거나 기록 목록을 모르면 묻지 않는다', () => {
+    const base = { isFetched: true, isError: false, setting: null };
+    expect(shouldAskWeightReminder({ ...base, hadLogsBefore: true })).toBe(false);
+    expect(shouldAskWeightReminder({ ...base, hadLogsBefore: undefined })).toBe(false);
+    expect(shouldAskWeightReminder({ ...base, hadLogsBefore: false })).toBe(true);
+  });
+});
+
+describe('pointerWeight', () => {
+  const points = [
+    { value: 65.4, label: '10/1', dataPointColor: '#000' },
+    { value: 64.9, label: '10/2', dataPointColor: '#000' },
+  ];
+
+  it('포인터 위치의 원래 체중을 돌려준다 (차트가 넘기는 yAxisOffset 뺀 값을 쓰지 않는다)', () => {
+    expect(pointerWeight(points, 1)).toBe(64.9);
+    expect(pointerWeight(points, 0)).toBe(65.4);
+  });
+
+  it('범위 밖이면 null', () => {
+    expect(pointerWeight(points, 2)).toBeNull();
+    expect(pointerWeight(points, -1)).toBeNull();
+    expect(pointerWeight(points, undefined)).toBeNull();
   });
 });

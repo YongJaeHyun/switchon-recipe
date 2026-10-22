@@ -18,7 +18,8 @@ import { Todo } from './Todo';
 export function WeekGuide() {
   const startDate = useUserStore((state) => state.start_date);
 
-  const { todos, completedRate, isLoading: isTodosLoading } = useTodos();
+  // 홈에 하나뿐이라 여기서 못 보낸 todo_daily 다시 보내기를 켠다
+  const { todos, completedRate, isLoading: isTodosLoading } = useTodos({ syncTodoDaily: true });
   const { isLoading: isFastingLoading } = useFasting();
   const isLoading = isTodosLoading || isFastingLoading;
 

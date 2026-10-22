@@ -33,6 +33,8 @@ export const useWeights = () => {
   return {
     logs: query.data ?? [],
     isLoading: query.isLoading,
+    // 목록을 제대로 받았는지 (실패·로딩 중이면 logs가 []여도 기록이 없다는 뜻이 아니다)
+    isLogsFetched: query.isSuccess,
     saveWeight,
     deleteWeight,
     isSaving,

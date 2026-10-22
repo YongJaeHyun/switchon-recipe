@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { LineChart } from 'react-native-gifted-charts';
 import colors from 'tailwindcss/colors';
+import { pointerWeight } from 'utils/weight';
 
 export interface WeightChartPoint {
   value: number;
@@ -90,16 +91,24 @@ export function WeightChart({ points, height = 180, compact = false }: WeightCha
                   shiftPointerLabelY: -8,
                   autoAdjustPointerLabelPosition: true,
                   activatePointersOnLongPress: false,
-                  pointerLabelComponent: (items: { value: number; label?: string }[]) => (
-                    <View className="items-center rounded-lg bg-neutral-800 px-2 py-1">
-                      <Text className="text-xs font-bold text-white">
-                        {(items[0].value + range.offset).toFixed(1)}kg
-                      </Text>
-                      {items[0].label ? (
-                        <Text className="text-[10px] text-neutral-300">{items[0].label}</Text>
-                      ) : null}
-                    </View>
-                  ),
+                  // gifted-charts는 yAxisOffset만큼 뺀 항목을 넘기고 셋째 인자로 포인터 index를 준다.
+                  // 넘겨받은 값에 offset을 더하지 않고 index로 원래 점을 찾는다
+                  pointerLabelComponent: (
+                    items: { value: number; label?: string }[],
+                    _secondary: unknown,
+                    index: number
+                  ) => {
+                    const weight = pointerWeight(points, index) ?? items[0].value + range.offset;
+                    const label = points[index]?.label ?? items[0].label;
+                    return (
+                      <View className="items-center rounded-lg bg-neutral-800 px-2 py-1">
+                        <Text className="text-xs font-bold text-white">{weight.toFixed(1)}kg</Text>
+                        {label ? (
+                          <Text className="text-[10px] text-neutral-300">{label}</Text>
+                        ) : null}
+                      </View>
+                    );
+                  },
                 }
           }
         />
