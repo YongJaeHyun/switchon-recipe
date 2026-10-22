@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fastingDayText, fastingResultQuestion, todayExtraRows } from './todayRows';
+import { fastingDayText, fastingResultQuestion, todayExtraRows, weekStepLabel } from './todayRows';
 
 // 2026-10-22 = 목(4), 2026-10-23 = 금(5)
 const thuEvening = { fastingDays: [4], startTime: '저녁 식후' as const };
@@ -9,6 +9,7 @@ describe('todayExtraRows', () => {
     expect(
       todayExtraRows({ week: 1, now: new Date('2026-10-23T09:00:00+09:00'), ...thuEvening })
     ).toEqual({
+      fastingUpcoming: false,
       fastingProgress: false,
       fastingResultDay: null,
       weight: true,
@@ -23,6 +24,7 @@ describe('todayExtraRows', () => {
       ...thuEvening,
     });
     expect(rows.fastingProgress).toBe(true);
+    expect(rows.fastingUpcoming).toBe(false);
     expect(rows.fastingResultDay).toBeNull();
     expect(rows.fastingDayLine).toBe('set');
   });
@@ -37,12 +39,13 @@ describe('todayExtraRows', () => {
     expect(rows.fastingResultDay).toBe('2026-10-22');
   });
 
-  it('단식 시작 전(목 오전)에는 진행 줄도 결과 질문도 없다', () => {
+  it('단식 시작 전(목 오전)에는 오늘 단식 안내 줄, 진행 줄·결과 질문 없음', () => {
     const rows = todayExtraRows({
       week: 2,
       now: new Date('2026-10-22T09:00:00+09:00'),
       ...thuEvening,
     });
+    expect(rows.fastingUpcoming).toBe(true);
     expect(rows.fastingProgress).toBe(false);
     expect(rows.fastingResultDay).toBeNull();
   });
@@ -77,6 +80,7 @@ describe('todayExtraRows', () => {
         weekContext: { from: '2026-10-19', previous: null },
       })
     ).toEqual({
+      fastingUpcoming: false,
       fastingProgress: false,
       fastingResultDay: null,
       weight: true,
@@ -97,6 +101,12 @@ describe('todayExtraRows', () => {
     expect(rows.fastingProgress).toBe(false);
     expect(rows.fastingDayLine).toBeNull();
   });
+});
+
+describe('weekStepLabel', () => {
+  it('1주차 1~3일', () => expect(weekStepLabel(1, 3)).toBe('(1 ~ 3일)'));
+  it('1주차 4~7일', () => expect(weekStepLabel(1, 4)).toBe('(4 ~ 7일)'));
+  it('2주차부터는 없음', () => expect(weekStepLabel(2, 1)).toBeNull());
 });
 
 describe('fastingResultQuestion', () => {

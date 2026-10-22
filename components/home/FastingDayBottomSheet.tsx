@@ -6,7 +6,6 @@ import { FASTING_DAYS, FASTING_START_TIMES, FastingDay, FastingTime } from 'cons
 import { useFasting } from 'hooks/useFasting';
 import { RefObject, useEffect, useState } from 'react';
 import { FlatList, View } from 'react-native';
-import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
 import { Maybe, Nullable } from '../../types/common';
 import { CustomBottomSheet } from '../common/CustomBottomSheet';
 
@@ -18,6 +17,8 @@ interface DayButtonProps {
 }
 interface FastingDayBottomSheetProps {
   bottomSheetRef: RefObject<Nullable<BottomSheetMethods>>;
+  // 줄(FastingDayLine)과 같은 주차 (시작일로 계산). 팝업 store 주차는 자정·앱 복귀 검증 전까지 늦을 수 있다
+  week: number;
 }
 interface StartTimeButtonProps {
   time: FastingTime;
@@ -55,9 +56,8 @@ const StartTimeButton = ({ time, isSelected, onPress }: StartTimeButtonProps) =>
 };
 
 // 단식 요일 설정 시트. 여는 줄은 FastingDayLine (오늘 탭 목록 아래)
-export const FastingDayBottomSheet = ({ bottomSheetRef }: FastingDayBottomSheetProps) => {
+export const FastingDayBottomSheet = ({ bottomSheetRef, week }: FastingDayBottomSheetProps) => {
   const { days, startTime, upsertFasting } = useFasting();
-  const week = useWeekCompletePopupStore((state) => state.week);
 
   const selectableDayNum = week - 1; // ex. 2주차 -> 1개 선택 가능
   const [selectedDays, setSelectedDays] = useState<number[]>(days);
@@ -93,7 +93,6 @@ export const FastingDayBottomSheet = ({ bottomSheetRef }: FastingDayBottomSheetP
     setSelectedTime(startTime);
   }, [days, startTime]);
 
-  if (week < 2) return null;
   return (
     <CustomBottomSheet ref={bottomSheetRef}>
       <BottomSheetView className="px-5">

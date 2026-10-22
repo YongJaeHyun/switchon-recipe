@@ -32,7 +32,12 @@ export function WeightRow() {
   return (
     <>
       <View className="flex-row items-center gap-4 py-2">
-        <MaterialIcons name="monitor-weight" size={20} color={colors.green[600]} />
+        {/* 오늘 기록했으면 단식 결과 줄과 같은 완료 표시 */}
+        <MaterialIcons
+          name={todayLog ? 'check-circle' : 'radio-button-unchecked'}
+          size={20}
+          color={todayLog ? colors.green[600] : colors.neutral[400]}
+        />
         <Pressable
           className="flex-1"
           onPress={() => router.push({ pathname: '/(tabs)/records', params: { view: 'weight' } })}>

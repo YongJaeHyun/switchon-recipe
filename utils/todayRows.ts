@@ -3,6 +3,7 @@ import { fastingResultWindow, getFastingStatus, type FastingWeekContext } from '
 
 // 오늘 탭 목록에서 식단 할 일 말고 더 보여줄 줄들
 export interface TodayExtraRows {
+  fastingUpcoming: boolean; // 오늘이 단식일이고 아직 시작 전 → 목록 위 "오늘 …부터 24시간 단식이에요" 줄
   fastingProgress: boolean; // 단식 진행 중 → 목록 위 남은 시간 줄
   fastingResultDay: string | null; // 결과 질문 줄 (답했어도 창 안이면 결과+바꾸기로 표시)
   weight: true; // 체중 줄은 항상
@@ -21,7 +22,13 @@ export function todayExtraRows(input: {
   const { week, now, fastingDays, startTime, weekContext } = input;
   // 1주차는 단식이 없다
   if (week < 2) {
-    return { fastingProgress: false, fastingResultDay: null, weight: true, fastingDayLine: null };
+    return {
+      fastingUpcoming: false,
+      fastingProgress: false,
+      fastingResultDay: null,
+      weight: true,
+      fastingDayLine: null,
+    };
   }
 
   const status = getFastingStatus(now, fastingDays, startTime);
@@ -32,6 +39,7 @@ export function todayExtraRows(input: {
     week < MAINTENANCE_WEEK ? (fastingDays.length > 0 ? 'set' : 'unset') : null;
 
   return {
+    fastingUpcoming: status.phase === 'upcoming',
     fastingProgress: status.phase === 'fasting',
     fastingResultDay: resultDay,
     weight: true,
@@ -56,4 +64,10 @@ export function fastingResultQuestion(day: string, now: Date): string {
 export function fastingDayText(days: number[], startTime: FastingTime | null | undefined): string {
   const dayText = days.map((d) => FASTING_DAYS[d]).join(' & ');
   return startTime ? `${dayText} ${startTime}` : dayText;
+}
+
+// 1주차는 1~3일·4~7일 할 일이 달라서 제목 옆에 단계 표시
+export function weekStepLabel(week: number, day: number): string | null {
+  if (week !== 1) return null;
+  return day <= 3 ? '(1 ~ 3일)' : '(4 ~ 7일)';
 }

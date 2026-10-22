@@ -12,7 +12,7 @@ import colors from 'tailwindcss/colors';
 import { getWeekAndDay } from 'utils/date';
 import { getFastingStatus, WEEK_CHANGES } from 'utils/dietGuide';
 import { getWeekColor, getWeekColorHex } from 'utils/getWeekColor';
-import { todayExtraRows } from 'utils/todayRows';
+import { todayExtraRows, weekStepLabel } from 'utils/todayRows';
 import { FastingDayLine } from './FastingDayLine';
 import { FastingProgressLine } from './FastingProgressLine';
 import { FastingResultRow } from './FastingResultRow';
@@ -40,20 +40,24 @@ export function TodayChecklist() {
     return () => clearInterval(id);
   }, []);
 
-  const { week } = getWeekAndDay(startDate);
+  const { week, day } = getWeekAndDay(startDate);
+  const stepLabel = weekStepLabel(week, day);
   const isMaintenance = week >= 5;
   const rows = todayExtraRows({ week, now, fastingDays: days, startTime, weekContext });
   const status = getFastingStatus(now, days, startTime);
 
   return (
     <View className="gap-3">
-      {rows.fastingProgress && status.phase === 'fasting' && (
-        <FastingProgressLine status={status} />
+      {((rows.fastingProgress && status.phase === 'fasting') ||
+        (rows.fastingUpcoming && status.phase === 'upcoming')) && (
+        <FastingProgressLine status={status} startTime={startTime} />
       )}
 
       <View className="rounded-xl border border-neutral-200 bg-white px-4 pb-2 pt-4">
         <View className="mb-1 flex-row items-center justify-between">
-          <Text className="text-lg font-bold text-neutral-800">오늘 할 일</Text>
+          <Text className="text-lg font-bold text-neutral-800">
+            오늘 할 일{stepLabel && <Text className="text-sm text-neutral-500"> {stepLabel}</Text>}
+          </Text>
           {todos.length > 0 && (
             <View className="flex-row items-center gap-1">
               {completedRate === 100 && (
@@ -104,7 +108,7 @@ export function TodayChecklist() {
       </View>
 
       {rows.fastingDayLine && (
-        <FastingDayLine state={rows.fastingDayLine} days={days} startTime={startTime} />
+        <FastingDayLine state={rows.fastingDayLine} week={week} days={days} startTime={startTime} />
       )}
 
       <TipBottomSheet />
