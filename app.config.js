@@ -59,6 +59,7 @@ export default {
         },
       ],
       'expo-router',
+      './plugins/withDisablePredictiveBack',
       [
         'expo-splash-screen',
         {
