@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { runStartupUpdate, type OtaDeps } from './otaUpdate';
+import { isUpdateNetworkError, runStartupUpdate, type OtaDeps } from './otaUpdate';
 
 const deps = (overrides: Partial<OtaDeps> = {}): OtaDeps => ({
   checkForUpdate: vi.fn(async () => true),
@@ -58,5 +58,26 @@ describe('runStartupUpdate', () => {
     });
     expect(await runStartupUpdate(d, 1000)).toBe('error');
     expect(d.reload).not.toHaveBeenCalled();
+  });
+});
+
+describe('isUpdateNetworkError', () => {
+  it('네트워크 때문에 업데이트 확인·다운로드가 실패한 경우는 true', () => {
+    expect(
+      isUpdateNetworkError(
+        new Error(
+          "Call to function 'ExpoUpdates.checkForUpdateAsync' has been rejected.\n→ Caused by: Failed to check for update"
+        )
+      )
+    ).toBe(true);
+    expect(isUpdateNetworkError(new Error('Failed to download new update'))).toBe(true);
+    expect(isUpdateNetworkError(new Error('Network request failed'))).toBe(true);
+    expect(isUpdateNetworkError(new Error('timeout of 5000ms exceeded'))).toBe(true);
+  });
+
+  it('그 밖의 오류는 false', () => {
+    expect(isUpdateNetworkError(new Error('Update is not compatible'))).toBe(false);
+    expect(isUpdateNetworkError('Failed to check for update')).toBe(false);
+    expect(isUpdateNetworkError(undefined)).toBe(false);
   });
 });

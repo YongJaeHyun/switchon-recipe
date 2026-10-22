@@ -5,7 +5,7 @@ import * as Updates from 'expo-updates';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, AppState, Linking } from 'react-native';
 import semver from 'semver';
-import { runStartupUpdate } from 'utils/otaUpdate';
+import { isUpdateNetworkError, runStartupUpdate } from 'utils/otaUpdate';
 import { captureError } from 'utils/sendError';
 
 const STARTUP_UPDATE_TIMEOUT_MS = 5000;
@@ -84,6 +84,7 @@ export const useAutoUpdate = () => {
           markReady();
         }
       } catch (error) {
+        if (isUpdateNetworkError(error)) return; // 다음 백그라운드 전환 때 다시 시도
         captureError({ error, prefix: '[OTA 업데이트 다운로드 실패]: ' });
       }
     };

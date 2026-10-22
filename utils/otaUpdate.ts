@@ -48,3 +48,11 @@ export const runStartupUpdate = async (
     clearTimeout(timer);
   }
 };
+
+// 백그라운드로 갈 때 네트워크가 끊기거나 느려서 업데이트 확인·다운로드가 실패한 경우.
+// 다음 기회에 다시 시도하면 되는 일이라 오류로 보고하지 않는다
+const UPDATE_NETWORK_ERROR =
+  /Failed to check for update|Failed to download|Network request failed|timeout/i;
+
+export const isUpdateNetworkError = (error: unknown): boolean =>
+  error instanceof Error && UPDATE_NETWORK_ERROR.test(error.message);
