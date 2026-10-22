@@ -7,10 +7,10 @@ export default function RecipesScreen() {
   return (
     <SafeAreaViewWithNav className="flex-1 gap-4 bg-neutral-50 px-5 pt-5">
       <Text className="text-center text-lg font-bold">레시피</Text>
-      <Link href={'/(tabs)/recipes/recipeCreation/zero'}>
+      <Link href={'/recipeCreation/zero'}>
         <Text className="text-green-600">무탄수 레시피 만들기</Text>
       </Link>
-      <Link href={'/(tabs)/recipes/recipeCreation/low'}>
+      <Link href={'/recipeCreation/low'}>
         <Text className="text-green-600">저탄수 레시피 만들기</Text>
       </Link>
       <Link href={'/(tabs)/recipes/savedRecipes'}>

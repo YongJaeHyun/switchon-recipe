@@ -5,7 +5,7 @@ import { Text } from 'components/common/Text';
 import { IngredientRequest } from 'components/recipeCreation/IngredientRequest';
 import CreationLoadingOverlay from 'components/recipeCreation/CreationLoadingOverlay';
 import { IngredientsLoadError } from 'components/recipeCreation/IngredientsLoadError';
-import Ingredients from 'components/recipeCreation/Ingredients';
+import Ingredients, { IngredientsProps } from 'components/recipeCreation/Ingredients';
 import QuotaExceededModal from 'components/recipeCreation/QuotaExceededModal';
 import SelectedIngredient from 'components/recipeCreation/SelectedIngredient';
 import { getChoseong } from 'es-hangul';
@@ -28,17 +28,16 @@ import { getWeekAndDay } from 'utils/date';
 import { getCreationLoadingKind } from 'utils/creationLoading';
 import { isCompletedHangul } from 'utils/hangul';
 
-export default function ZeroRecipeCreationScreen() {
+export default function LowRecipeCreationScreen() {
   const {
     selectedIngredients,
     resetIngredients,
     isLoading: isIngredientsLoading,
-  } = useSelectedIngredients({ type: 'zero' });
+  } = useSelectedIngredients({ type: 'low' });
 
   const {
     ingredients,
-    allWeekLists,
-    zeroLists,
+    lowLists,
     isLoading: isIngredientListLoading,
     isError: isIngredientListError,
     refetch: refetchIngredientList,
@@ -58,8 +57,8 @@ export default function ZeroRecipeCreationScreen() {
     return userWeek;
   };
 
-  const getSearchedIngredients = (index: number) =>
-    allWeekLists[index].ingredientList.filter((ingredient) => {
+  const getSearchedIngredients = (item: IngredientsProps) =>
+    item.ingredientList.filter((ingredient) => {
       const { name, subKeywords = [] } = ingredient;
       const trimmedKeyword = keyword.trim();
 
@@ -88,9 +87,9 @@ export default function ZeroRecipeCreationScreen() {
     let command = '';
 
     if (selectedIngredients.length === 0) {
-      command = `find a delicious zero-carb recipe randomly that can be eaten during Switch-On week ${availableWeek}.`;
+      command = `find a delicious low-carb recipe randomly that can be eaten during Switch-On week ${availableWeek}.`;
     } else {
-      command = `create a zero-carb recipe that can be eaten during Switch-On week ${availableWeek}. You must use only the ingredients listed below, and if possible, use all of them. \nIngredients: ${ingredients}`;
+      command = `create a low-carb recipe that can be eaten during Switch-On week ${availableWeek}. You must use only the ingredients listed below, and if possible, use all of them. \nIngredients: ${ingredients}`;
     }
 
     if (category) command += `\nCooking category: ${category}`;
@@ -98,7 +97,7 @@ export default function ZeroRecipeCreationScreen() {
     command += '\nRemove Switch-On week or carbohydrate from the recipe name.';
     command += '\nYou may freely use sauces or seasonings.';
 
-    return { command, week: Math.min(recipeWeek, 3), isZeroCarb: true };
+    return { command, week: recipeWeek, isZeroCarb: false };
   };
 
   const creation = useRecipeCreation(buildRequest);
@@ -127,7 +126,7 @@ export default function ZeroRecipeCreationScreen() {
           showsHorizontalScrollIndicator={false}
         />
         <Text className="ml-1 text-sm">
-          <Text className="font-bold text-green-600">최대 10개</Text>까지 재료를 선택할 수 있어요!
+          <Text className="font-bold text-amber-500">최대 10개</Text>까지 재료를 선택할 수 있어요!
         </Text>
       </View>
       {isIngredientListError && ingredients.length === 0 ? (
@@ -136,20 +135,19 @@ export default function ZeroRecipeCreationScreen() {
         <FlatList
           className="mb-4 flex-1"
           contentContainerClassName="gap-6"
-          data={zeroLists}
+          data={lowLists}
           extraData={resetTrigger ? 'reset-1' : 'reset-0'}
           ListFooterComponent={() => <IngredientRequest />}
-          renderItem={({ item, index }) => (
+          renderItem={({ item }) => (
             <Ingredients
               title={item.title}
               week={item.week}
-              ingredientList={
-                !!keyword.trim() ? getSearchedIngredients(index) : item.ingredientList
-              }
+              ingredientList={getSearchedIngredients(item)}
             />
           )}
         />
       )}
+
       <View className="mb-4 gap-4">
         <View className="flex-row gap-3">
           <CustomSelect
@@ -157,25 +155,35 @@ export default function ZeroRecipeCreationScreen() {
             options={['한식', '양식', '중식', '일식']}
             onSelect={toggleCategory}
             selectedValue={category}
+            itemBgColor="bg-amber-50"
+            bgColor="bg-amber-500"
+            itemTextColor="text-amber-500"
+            borderColor="border-amber-500"
+            rippleColor={colors.amber[600]}
           />
           <CustomSelect
             title="요리 방식"
             options={['샐러드류', '구이류', '볶음류', '덮밥류', '탕/국류', '찜류']}
             onSelect={toggleMethod}
             selectedValue={method}
+            itemBgColor="bg-amber-50"
+            bgColor="bg-amber-500"
+            itemTextColor="text-amber-500"
+            borderColor="border-amber-500"
+            rippleColor={colors.amber[600]}
           />
         </View>
 
         <View className="w-full flex-row gap-2">
           <TouchableOpacity
-            className="flex-[3.5] items-center justify-center rounded-lg border border-green-600 py-4"
+            className="flex-[3.5] items-center justify-center rounded-lg border border-amber-500 py-4"
             onPress={handleReset}
             disabled={creation.isRecipeLoading}>
-            <Text className="text-lg font-semibold text-green-600">재료 초기화</Text>
+            <Text className="text-lg font-semibold text-amber-500">재료 초기화</Text>
           </TouchableOpacity>
           <TouchableHighlight
-            className="flex-[6.5] items-center justify-center rounded-lg bg-green-600 py-4"
-            underlayColor="#379237"
+            className="flex-[6.5] items-center justify-center rounded-lg bg-amber-500 py-4"
+            underlayColor={colors.amber[600]}
             onPress={creation.create}
             disabled={creation.isCreating}>
             <Text className="text-lg font-semibold text-white">
@@ -192,13 +200,12 @@ export default function ZeroRecipeCreationScreen() {
           </View>
         )}
       </View>
-
       {loadingKind === 'data' && (
         <View className="absolute inset-0 z-50 items-center justify-center">
-          <ActivityIndicator size="large" color={colors.green[600]} />
+          <ActivityIndicator size="large" color={colors.amber[500]} />
         </View>
       )}
-      {loadingKind === 'recipe' && <CreationLoadingOverlay />}
+      {loadingKind === 'recipe' && <CreationLoadingOverlay showTabTip={false} />}
       <QuotaExceededModal {...creation.quotaModalProps} />
     </SafeAreaViewWithNav>
   );

@@ -1,7 +1,6 @@
 import { RecipeAPI } from 'api/RecipeAPI';
 import { Filter } from 'components/common/Filter';
 import ListEmptyText from 'components/common/ListEmptyText';
-import { SafeAreaViewWithNav } from 'components/common/SafeAreaViewWithNav';
 import { Text } from 'components/common/Text';
 import { RecipeCard } from 'components/home/RecipeCard';
 import { RECIPE_FILTERS, RecipeFilterType } from 'const/filter';
@@ -63,7 +62,7 @@ export default function SavedRecipes() {
   }, [refetch]);
 
   return (
-    <SafeAreaViewWithNav className="relative flex-1 gap-5 px-5">
+    <View className="relative flex-1 gap-5 px-5">
       <View className="flex-row justify-around rounded-xl bg-white px-4 py-3">
         {weekTabs.map((week: Week, index: number) => (
           <View
@@ -99,10 +98,7 @@ export default function SavedRecipes() {
             numColumns={2}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
             ListEmptyComponent={
-              <ListEmptyText
-                emptyListName="savedRecipes"
-                href={'/(tabs)/recipes/recipeCreation/low'}
-              />
+              <ListEmptyText emptyListName="savedRecipes" href={'/recipeCreation/low'} />
             }
             contentContainerClassName={`items-start gap-4 py-4 flex-grow mx-auto ${recipes.length === 0 ? 'justify-center' : 'justify-start'}`}
             columnWrapperClassName="justify-start gap-4"
@@ -112,6 +108,6 @@ export default function SavedRecipes() {
           />
         )}
       </View>
-    </SafeAreaViewWithNav>
+    </View>
   );
 }

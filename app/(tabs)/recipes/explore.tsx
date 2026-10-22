@@ -1,6 +1,5 @@
 import { FlashList } from '@shopify/flash-list';
 import { Filter } from 'components/common/Filter';
-import { SafeAreaViewWithNav } from 'components/common/SafeAreaViewWithNav';
 import { SearchInput } from 'components/common/SearchInput';
 import { Sort } from 'components/common/Sort';
 import { RecipeCard } from 'components/explore/RecipeCard';
@@ -39,7 +38,7 @@ export default function ExploreScreen() {
   const flattenedRecipes = useMemo(() => recipes?.pages.flatMap((page) => page) ?? [], [recipes]);
 
   return (
-    <SafeAreaViewWithNav className="flex-1 bg-neutral-50 ">
+    <View className="flex-1 bg-neutral-50 ">
       <Link href={'/(tabs)/recipes/search'} className="px-5">
         <View className="w-full">
           <SearchInput
@@ -83,6 +82,6 @@ export default function ExploreScreen() {
           renderItem={renderRecipeItem}
         />
       )}
-    </SafeAreaViewWithNav>
+    </View>
   );
 }

@@ -36,10 +36,7 @@ export default function SavedRecipes({ recipes, refreshing }: SavedRecipesProps)
           keyExtractor={(item) => 'SavedRecipes' + item.id?.toString()}
           renderItem={({ item }) => <RecipeCard {...item} />}
           ListEmptyComponent={
-            <ListEmptyText
-              href={'/(tabs)/recipes/recipeCreation/low'}
-              emptyListName="savedRecipes"
-            />
+            <ListEmptyText href={'/recipeCreation/low'} emptyListName="savedRecipes" />
           }
           showsHorizontalScrollIndicator={false}
           horizontal

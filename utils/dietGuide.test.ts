@@ -12,14 +12,14 @@ describe('getTodoAction', () => {
     expect(getTodoAction('점심 저탄수식 먹기')).toEqual({
       type: 'route',
       label: '레시피 만들기',
-      href: '/(tabs)/recipes/recipeCreation/low',
+      href: '/recipeCreation/low',
     });
   });
 
   it('links zero-carb meals to the zero-carb recipe screen', () => {
     expect(getTodoAction('저녁 무탄수식 먹기')).toMatchObject({
       type: 'route',
-      href: '/(tabs)/recipes/recipeCreation/zero',
+      href: '/recipeCreation/zero',
     });
   });
 

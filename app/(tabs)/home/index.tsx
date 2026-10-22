@@ -66,12 +66,12 @@ export default function HomeScreen() {
             <WeekGuide />
             <View className="flex-row gap-4">
               <RecipeCreation
-                href={'/(tabs)/recipes/recipeCreation/zero'}
+                href={'/recipeCreation/zero'}
                 title="무탄수"
                 subtitle="단백질 & 채소로만 건강하게!"
               />
               <RecipeCreation
-                href={'/(tabs)/recipes/recipeCreation/low'}
+                href={'/recipeCreation/low'}
                 title="저탄수"
                 subtitle="탄수화물 추가로 포만감 있게!"
               />

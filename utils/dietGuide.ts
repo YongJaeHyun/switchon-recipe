@@ -11,7 +11,7 @@ export type TodoAction =
   | {
       type: 'route';
       label: string;
-      href: '/(tabs)/recipes/recipeCreation/low' | '/(tabs)/recipes/recipeCreation/zero';
+      href: '/recipeCreation/low' | '/recipeCreation/zero';
     }
   | { type: 'tip'; label: string; tip: Tip };
 
@@ -35,9 +35,9 @@ const SHAKE_TIP: Tip = {
 
 export const getTodoAction = (todo: string): TodoAction | null => {
   if (todo.includes('저탄수식'))
-    return { type: 'route', label: '레시피 만들기', href: '/(tabs)/recipes/recipeCreation/low' };
+    return { type: 'route', label: '레시피 만들기', href: '/recipeCreation/low' };
   if (todo.includes('무탄수식'))
-    return { type: 'route', label: '레시피 만들기', href: '/(tabs)/recipes/recipeCreation/zero' };
+    return { type: 'route', label: '레시피 만들기', href: '/recipeCreation/zero' };
   if (todo.includes('프로틴쉐이크')) return { type: 'tip', label: '팁', tip: SHAKE_TIP };
   return null;
 };

@@ -5,7 +5,12 @@ import { describe, expect, it } from 'vitest';
 // 하단 탭 재구성으로 옮긴 화면의 옛 경로가 코드에 남아 있지 않은지 확인한다.
 const ROOT = join(__dirname, '..');
 const SCAN_DIRS = ['app', 'components', 'hooks', 'utils', 'const'];
-const OLD_ROUTES = ['/(tabs)/home/recipeCreation', '/(tabs)/home/savedRecipes', '/(tabs)/explore'];
+const OLD_ROUTES = [
+  '/(tabs)/home/recipeCreation',
+  '/(tabs)/recipes/recipeCreation',
+  '/(tabs)/home/savedRecipes',
+  '/(tabs)/explore',
+];
 
 function collectSourceFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
