@@ -12,6 +12,9 @@ import { cancelAllScheduledNotifications, registerWeeklyFastingAlarms } from 'ut
 import { Maybe } from '../types/common';
 import { useQueryWith402Retry } from './useCustomQuery';
 
+// 주차 변경 시 단식 초기화 진행 중인지 확인용 (useFastingPlanBackfill)
+export const RESET_FASTING_MUTATION_KEY = ['resetFasting'];
+
 export const useFasting = () => {
   const userId = useUserStore((state) => state.id);
 
@@ -22,6 +25,7 @@ export const useFasting = () => {
   });
 
   const { mutate: resetFasting } = useMutation({
+    mutationKey: RESET_FASTING_MUTATION_KEY,
     mutationFn: () =>
       FastingAPI.upsert({ days: [], start_time: null, was_sunday: fasting?.days?.includes(0) }),
     onMutate: async () => {
@@ -46,19 +50,7 @@ export const useFasting = () => {
   });
 
   const { mutate: upsertFasting } = useMutation({
-    mutationFn: (body: Partial<FastingDB>) => {
-      // 주차가 바뀌면 fasting이 초기화되므로 이번 주차 계획을 따로 남긴다 (fire-and-forget)
-      const startDate = useUserStore.getState().start_date;
-      if (startDate && body.days) {
-        void FastingPlanAPI.upsert({
-          start_date: startDate.slice(0, 10),
-          week_index: getWeekAndDay(startDate).week,
-          days: body.days,
-          start_time: body.start_time,
-        });
-      }
-      return FastingAPI.upsert(body);
-    },
+    mutationFn: (body: Partial<FastingDB>) => FastingAPI.upsert(body),
     onMutate: async (newData) => {
       await queryClient.cancelQueries({ queryKey: [QueryKey.fasting, userId] });
 
@@ -69,6 +61,17 @@ export const useFasting = () => {
       return { previousData };
     },
     onSuccess: async (data) => {
+      // 주차가 바뀌면 fasting이 초기화되므로 이번 주차 계획을 따로 남긴다 (fire-and-forget).
+      // 저장이 실패하면 sendError가 undefined를 돌려주므로 계획도 쓰지 않는다
+      const startDate = useUserStore.getState().start_date;
+      if (data && startDate) {
+        void FastingPlanAPI.upsert({
+          start_date: startDate.slice(0, 10),
+          week_index: getWeekAndDay(startDate).week,
+          days: data.days ?? [],
+          start_time: data.start_time,
+        });
+      }
       await registerWeeklyFastingAlarms(data);
     },
     onError: (err, newData, context) => {

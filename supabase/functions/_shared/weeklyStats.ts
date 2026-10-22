@@ -37,7 +37,7 @@ export interface WeeklyStats {
   todo: {
     avgRate: number | null;
     best: TodoDayRate | null;
-    worst: TodoDayRate | null; // 기록 2일 이상일 때만
+    worst: TodoDayRate | null; // 기록 2일 이상이고 최고보다 낮을 때만
     items: { name: string; done: number; appeared: number }[];
   };
   fasting: { planned: number; success: number; broken: number; successWeekdays: string[] };
@@ -148,14 +148,19 @@ const todoStats = (input: WeeklyInputs, range: { from: string; to: string }) => 
   return {
     avgRate: Math.round(avg * 100),
     best: toRate(best),
-    worst: rates.length >= 2 ? toRate(worst) : null,
+    // 하루뿐이거나 모든 날이 같으면 최저는 없다 (최고와 같은 날이 되지 않게)
+    worst: rates.length >= 2 && worst.ratio < best.ratio ? toRate(worst) : null,
     items: [...items.values()],
   };
 };
 
 const fastingStats = (input: WeeklyInputs, range: { from: string; to: string }) => {
-  const planned = new Set(input.fastingPlannedDays.filter((d) => inRange(d, range)));
   const results = input.fastingResults.filter((r) => inRange(r.day, range)).sort(byDay);
+  // 결과가 있는 날은 계획에 없었더라도(요일 변경, 계획 기록 없음) 계획한 단식으로 센다
+  const planned = new Set([
+    ...input.fastingPlannedDays.filter((d) => inRange(d, range)),
+    ...results.map((r) => r.day),
+  ]);
   const success = results.filter((r) => r.result === 'success');
   return {
     planned: planned.size,

@@ -131,14 +131,18 @@ export const getFastingStatus = (
 // ── 단식 결과 응답 창 ──────────────────────────────────────────
 // 단식 시작부터 종료 후 48시간까지(= 시작 후 72시간), 단, 다음 단식이 시작되면 그 단식으로 넘어감.
 // day = 단식 시작일(KST 날짜). 응답할 단식이 없으면 null.
-// 주차가 바뀌면 단식 설정이 초기화되므로, 지난 주차 계획(previous, fasting_plan)을 받으면
-// previous.to(지난 주차 마지막 날)까지는 지난 계획, 그 다음 날부터는 현재 설정으로 본다.
+// 주차가 바뀌면 단식 설정이 초기화되므로 week(이번 주차 첫날 from)를 받으면
+// from 이전 날짜에는 현재 설정을 쓰지 않고, 지난 주차 계획(previous, fasting_plan)이 있을 때만 그것으로 본다.
 const RESULT_WINDOW_MS = DAY_MS + 48 * HOUR_MS;
 
 export interface PreviousFastingPlan {
   days: number[];
   startTime: FastingTime | null | undefined;
-  to: string; // 지난 주차 마지막 날 (yyyy-MM-dd, KST)
+}
+
+export interface FastingWeekContext {
+  from: string; // 이번 주차 첫날 (yyyy-MM-dd, KST)
+  previous?: PreviousFastingPlan | null; // 지난 주차 계획. 없거나 불러오는 중이면 null
 }
 
 const kstDayString = (midnightUtc: number) =>
@@ -148,7 +152,7 @@ export const fastingResultWindow = (
   now: Date,
   fastingDays: number[],
   startTime: FastingTime | null | undefined,
-  previous?: PreviousFastingPlan | null
+  week?: FastingWeekContext
 ): { day: string } | null => {
   const today = kstMidnight(now);
   const t = now.getTime();
@@ -158,11 +162,8 @@ export const fastingResultWindow = (
     const midnight = today.utc - back * DAY_MS;
     const day = kstDayString(midnight);
     const weekday = (today.weekday - back + 7) % 7;
-    const plan =
-      previous && day <= previous.to
-        ? { days: previous.days, startTime: previous.startTime }
-        : { days: fastingDays, startTime };
-    if (!plan.startTime || !plan.days.includes(weekday)) continue;
+    const plan = week && day < week.from ? week.previous : { days: fastingDays, startTime };
+    if (!plan?.startTime || !plan.days.includes(weekday)) continue;
 
     const start = midnight + FASTING_START_HOUR[plan.startTime] * HOUR_MS;
     if (start > t) continue;
@@ -172,14 +173,14 @@ export const fastingResultWindow = (
   return null;
 };
 
-// 지금 week주차일 때 지난 주차(단식이 있는 2주차 이상)와 그 마지막 날(KST 날짜). 없으면 null
-export const previousFastingWeek = (
+// week주차의 첫날(KST 날짜)과, 단식이 있었던 지난 주차(2주차 이상) 번호. 시작일이 없으면 null
+export const fastingWeekBoundary = (
   startDate: string | null | undefined,
   week: number
-): { weekIndex: number; to: string } | null => {
+): { from: string; previousWeekIndex: number | null } | null => {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(startDate ?? '');
-  if (!m || week - 1 < 2) return null;
+  if (!m) return null;
   const start = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  const to = new Date(start + (7 * (week - 1) - 1) * DAY_MS).toISOString().slice(0, 10);
-  return { weekIndex: week - 1, to };
+  const from = new Date(start + 7 * (week - 1) * DAY_MS).toISOString().slice(0, 10);
+  return { from, previousWeekIndex: week - 1 >= 2 ? week - 1 : null };
 };

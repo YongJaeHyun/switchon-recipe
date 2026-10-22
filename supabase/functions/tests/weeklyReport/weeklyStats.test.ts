@@ -136,6 +136,19 @@ describe('computeWeeklyStats: 할 일', () => {
     expect(stats.todo.worst).toBeNull();
   });
 
+  it('모든 날의 달성률이 같으면 최저는 없다', () => {
+    const stats = computeWeeklyStats(
+      base({
+        todoDays: [
+          { day: '2026-10-08', items: [A], checked: [0] },
+          { day: '2026-10-09', items: [A], checked: [0] },
+        ],
+      })
+    );
+    expect(stats.todo.best).toEqual({ day: '2026-10-08', weekday: '목요일', rate: 100 });
+    expect(stats.todo.worst).toBeNull();
+  });
+
   it('범위 밖 인덱스와 중복 체크는 무시한다', () => {
     const stats = computeWeeklyStats(
       base({ todoDays: [{ day: '2026-10-08', items: [A, B], checked: [0, 0, 5, -1] }] })
@@ -165,6 +178,27 @@ describe('computeWeeklyStats: 단식', () => {
       broken: 0,
       successWeekdays: ['금요일'],
     });
+  });
+
+  it('계획에 없던 날의 결과도 계획으로 센다 (planned >= success + broken)', () => {
+    const stats = computeWeeklyStats(
+      base({
+        fastingPlannedDays: [],
+        fastingResults: [{ day: '2026-10-09', result: 'success' }],
+      })
+    );
+    expect(stats.fasting).toMatchObject({ planned: 1, success: 1, broken: 0 });
+
+    const changed = computeWeeklyStats(
+      base({
+        fastingPlannedDays: ['2026-10-12'],
+        fastingResults: [
+          { day: '2026-10-09', result: 'broken' },
+          { day: '2026-10-12', result: 'success' },
+        ],
+      })
+    );
+    expect(changed.fasting).toMatchObject({ planned: 2, success: 1, broken: 1 });
   });
 
   it('중단도 센다', () => {

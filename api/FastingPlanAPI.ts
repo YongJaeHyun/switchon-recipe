@@ -10,17 +10,18 @@ const isOfflineError = (error: unknown) =>
 
 // 주차별 단식 계획 (start_date, week_index 기준). 단식 요일 저장 흐름을 막지 않도록
 // 실패해도 토스트 없이 넘어간다 (네트워크 오류는 Sentry에도 보내지 않음)
-const upsert = async ({
-  start_date,
-  week_index,
-  days,
-  start_time,
-}: {
+interface PlanBody {
   start_date: string;
   week_index: number;
   days: number[];
   start_time: Maybe<string>;
-}): Promise<void> => {
+}
+
+// ignoreDuplicates = true면 이미 있는 계획은 그대로 둔다 (insert-if-absent)
+const write = async (
+  { start_date, week_index, days, start_time }: PlanBody,
+  ignoreDuplicates: boolean
+): Promise<void> => {
   try {
     const uid = useUserStore.getState().id;
     if (!uid || !start_date) return;
@@ -34,14 +35,17 @@ const upsert = async ({
         start_time: start_time ?? null,
         updated_at: new Date().toISOString(),
       },
-      { onConflict: 'uid,start_date,week_index' }
+      { onConflict: 'uid,start_date,week_index', ignoreDuplicates }
     );
 
     if (error) throw error;
   } catch (error) {
-    if (!isOfflineError(error)) captureError({ error, prefix: '[FastingPlanAPI.upsert]: ' });
+    if (!isOfflineError(error)) captureError({ error, prefix: '[FastingPlanAPI.write]: ' });
   }
 };
+
+const upsert = (body: PlanBody) => write(body, false);
+const insertIfAbsent = (body: PlanBody) => write(body, true);
 
 // 그 주차의 단식 계획. 없으면 null. 실패 시 throw (React Query가 재시도/무시)
 const selectOne = async ({
@@ -66,4 +70,4 @@ const selectOne = async ({
   return data;
 };
 
-export const FastingPlanAPI = { upsert, selectOne };
+export const FastingPlanAPI = { upsert, insertIfAbsent, selectOne };

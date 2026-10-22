@@ -3,7 +3,7 @@ import {
   fastingResultWindow,
   getFastingStatus,
   getTodoAction,
-  previousFastingWeek,
+  fastingWeekBoundary,
   WEEK_CHANGES,
 } from './dietGuide';
 
@@ -156,52 +156,102 @@ describe('fastingResultWindow across a week change', () => {
   // 지난 주차 마지막 날 = 10-25(일). 일 저녁 식후 단식 → 10-26 19시 종료 → 10-28 19시까지 응답.
   // 새 주차(10-26~)가 되면 단식 설정이 초기화돼 현재 요일 목록은 비어 있다
   const kst = (iso: string) => new Date(`${iso}+09:00`);
-  const previous = { days: [0], startTime: '저녁 식후' as const, to: '2026-10-25' };
+  const previous = { days: [0], startTime: '저녁 식후' as const };
 
   it('keeps the last-day fast of the previous week answerable after the reset', () => {
-    expect(fastingResultWindow(kst('2026-10-27T12:00:00'), [], null, previous)).toEqual({
+    expect(
+      fastingResultWindow(kst('2026-10-27T12:00:00'), [], null, { from: '2026-10-26', previous })
+    ).toEqual({
       day: '2026-10-25',
     });
-    expect(fastingResultWindow(kst('2026-10-28T19:00:00'), [], null, previous)).toBeNull();
+    expect(
+      fastingResultWindow(kst('2026-10-28T19:00:00'), [], null, { from: '2026-10-26', previous })
+    ).toBeNull();
   });
 
   it('does not apply the previous week days after its last day', () => {
     // 지난 주 단식이 월(1)이었어도 새 주차 10-26(월)에는 적용하지 않는다
-    const prevMonday = { days: [1], startTime: '저녁 식후' as const, to: '2026-10-25' };
-    expect(fastingResultWindow(kst('2026-10-26T20:00:00'), [], null, prevMonday)).toBeNull();
+    const prevMonday = { days: [1], startTime: '저녁 식후' as const };
+    expect(
+      fastingResultWindow(kst('2026-10-26T20:00:00'), [], null, {
+        from: '2026-10-26',
+        previous: prevMonday,
+      })
+    ).toBeNull();
   });
 
   it('does not apply the current week days before the week starts', () => {
     // 새 주차에 일(0)을 골라도 지난 주 10-25(일)은 지난 주 계획(토)으로만 본다
-    const prevSaturday = { days: [6], startTime: '아침 식후' as const, to: '2026-10-25' };
-    expect(fastingResultWindow(kst('2026-10-26T08:00:00'), [0], '저녁 식후', prevSaturday)).toEqual(
-      { day: '2026-10-24' }
-    );
+    const prevSaturday = { days: [6], startTime: '아침 식후' as const };
+    expect(
+      fastingResultWindow(kst('2026-10-26T08:00:00'), [0], '저녁 식후', {
+        from: '2026-10-26',
+        previous: prevSaturday,
+      })
+    ).toEqual({ day: '2026-10-24' });
   });
 
   it('a new fast in the current week takes over the previous one', () => {
     // 새 주차 화(2) 저녁 단식이 시작되면 지난 주 일요일 단식 응답은 닫힌다
-    expect(fastingResultWindow(kst('2026-10-27T19:00:00'), [2], '저녁 식후', previous)).toEqual({
+    expect(
+      fastingResultWindow(kst('2026-10-27T19:00:00'), [2], '저녁 식후', {
+        from: '2026-10-26',
+        previous,
+      })
+    ).toEqual({
       day: '2026-10-27',
     });
-    expect(fastingResultWindow(kst('2026-10-27T18:00:00'), [2], '저녁 식후', previous)).toEqual({
+    expect(
+      fastingResultWindow(kst('2026-10-27T18:00:00'), [2], '저녁 식후', {
+        from: '2026-10-26',
+        previous,
+      })
+    ).toEqual({
       day: '2026-10-25',
     });
   });
 });
 
-describe('previousFastingWeek', () => {
-  it('is the week before with its last day (KST date)', () => {
-    expect(previousFastingWeek('2026-10-01', 3)).toEqual({ weekIndex: 2, to: '2026-10-14' });
-    expect(previousFastingWeek('2026-10-01T00:00:00+09:00', 5)).toEqual({
-      weekIndex: 4,
-      to: '2026-10-28',
+describe('fastingResultWindow week boundary without a previous plan', () => {
+  const kst = (iso: string) => new Date(`${iso}+09:00`);
+
+  it('does not ask about a week-1 fast when week 2 days are picked on day 1', () => {
+    // 시작일 10-01(목). 2주차 첫날 10-08에 화(2) 저녁을 고름 → 10-06(1주차)은 단식이 아니다
+    expect(
+      fastingResultWindow(kst('2026-10-08T12:00:00'), [2], '저녁 식후', { from: '2026-10-08' })
+    ).toBeNull();
+  });
+
+  it('skips previous-week dates while the previous plan is missing', () => {
+    expect(
+      fastingResultWindow(kst('2026-10-27T12:00:00'), [0], '저녁 식후', {
+        from: '2026-10-26',
+        previous: null,
+      })
+    ).toBeNull();
+  });
+
+  it('still uses the current days inside the current week', () => {
+    expect(
+      fastingResultWindow(kst('2026-10-10T12:00:00'), [4], '저녁 식후', { from: '2026-10-08' })
+    ).toEqual({ day: '2026-10-08' });
+  });
+});
+
+describe('fastingWeekBoundary', () => {
+  it('is the current week first day and the previous fasting week', () => {
+    expect(fastingWeekBoundary('2026-10-01', 3)).toEqual({
+      from: '2026-10-15',
+      previousWeekIndex: 2,
+    });
+    expect(fastingWeekBoundary('2026-10-01T00:00:00+09:00', 2)).toEqual({
+      from: '2026-10-08',
+      previousWeekIndex: null,
     });
   });
 
-  it('is null when the previous week had no fasting (week 1) or no start date', () => {
-    expect(previousFastingWeek('2026-10-01', 2)).toBeNull();
-    expect(previousFastingWeek('2026-10-01', 1)).toBeNull();
-    expect(previousFastingWeek('', 3)).toBeNull();
+  it('is null without a start date', () => {
+    expect(fastingWeekBoundary('', 3)).toBeNull();
+    expect(fastingWeekBoundary(null, 3)).toBeNull();
   });
 });

@@ -18,6 +18,18 @@ import { useFasting } from './useFasting';
 // 그날 첫 스냅샷을 이미 보냈는지 (useTodos는 할 일마다 불리므로 모듈 단위로 한 번만)
 let snapshotSentKey: string | null = null;
 
+// 빠르게 여러 번 체크하면 요청 도착 순서가 뒤바뀔 수 있어, 마지막 상태만 잠깐 뒤에 보낸다
+const TODO_DAILY_DEBOUNCE_MS = 500;
+let todoDailyTimer: ReturnType<typeof setTimeout> | null = null;
+
+const queueTodoDailyUpsert = (body: Parameters<typeof TodoDailyAPI.upsert>[0]) => {
+  if (todoDailyTimer) clearTimeout(todoDailyTimer);
+  todoDailyTimer = setTimeout(() => {
+    todoDailyTimer = null;
+    void TodoDailyAPI.upsert(body);
+  }, TODO_DAILY_DEBOUNCE_MS);
+};
+
 export const useTodos = () => {
   const userId = useUserStore((state) => state.id);
   const startDate = useUserStore((state) => state.start_date);
@@ -113,7 +125,7 @@ export const useTodos = () => {
     upsertTodo(updatedCheckedIds);
 
     // 주간 리포트 재료: 오늘 목록·체크 기록. 실패해도 할 일 화면에는 영향 없음 (fire-and-forget)
-    void TodoDailyAPI.upsert({
+    queueTodoDailyUpsert({
       day: getKoreanDateString({ formatType: 'date' }),
       ...todoDailySnapshot(getTodayTodos(), updatedCheckedIds),
     });
