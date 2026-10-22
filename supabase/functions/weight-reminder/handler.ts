@@ -2,9 +2,10 @@
 // URL import를 두지 않는다 (실제 연결은 index.ts).
 // 매일 09:00 KST cron이 service role로 호출한다. 알림을 켠 유저(user_setting.weight_reminder) 중
 // 오늘(KST) weight_log가 없고 푸시 토큰이 있는 유저에게 notifications를 넣는다 (기존 push 함수가 발송).
-// 같은 날 다시 실행해도 오늘 이미 WEIGHT_REMINDER를 받은 유저는 건너뛴다.
+// 같은 날 다시(또는 동시에) 실행해도 한 번만 보낸다: 보내기 전에 weight_reminder_sent(uid, day)에
+// insert ... on conflict do nothing으로 자리를 잡고, 새로 잡힌 유저에게만 알림을 넣는다.
 
-import { kstMidnightIso, resolveToday } from '../_shared/kstToday.ts';
+import { resolveToday } from '../_shared/kstToday.ts';
 import { isServiceRoleRequest } from '../_shared/serviceRole.ts';
 
 export const CHUNK_SIZE = 100;
@@ -27,8 +28,9 @@ export interface WeightReminderDeps {
   fetchLoggedUids(uids: string[], day: string): Promise<Set<string>>;
   // uids 중 push_token이 있는 유저
   fetchPushableUids(uids: string[]): Promise<Set<string>>;
-  // uids 중 sinceIso 이후 WEIGHT_REMINDER 알림을 받은 유저
-  fetchRemindedUids(uids: string[], sinceIso: string): Promise<Set<string>>;
+  // weight_reminder_sent에 (uid, day)를 넣고(충돌 시 무시) 새로 들어간 유저만 돌려준다.
+  // 기본키가 막으므로 동시에 실행돼도 한 유저는 한 실행에서만 돌려받는다
+  claimReminders(uids: string[], day: string): Promise<Set<string>>;
   insertNotifications(rows: ReminderNotificationRow[]): Promise<void>;
 }
 
@@ -52,7 +54,6 @@ export async function sendWeightReminders(
   today: string
 ): Promise<ReminderResult> {
   const uids = [...new Set(await deps.fetchReminderUids())];
-  const since = kstMidnightIso(today);
 
   let sent = 0;
   for (let i = 0; i < uids.length; i += CHUNK_SIZE) {
@@ -65,8 +66,9 @@ export async function sendWeightReminders(
     targets = targets.filter((uid) => pushable.has(uid));
     if (targets.length === 0) continue;
 
-    const reminded = await deps.fetchRemindedUids(targets, since);
-    targets = targets.filter((uid) => !reminded.has(uid));
+    // 자리를 잡은 뒤 알림 저장이 실패하면 그날은 다시 보내지 않는다 (중복보다 누락을 택한다)
+    const claimed = await deps.claimReminders(targets, today);
+    targets = targets.filter((uid) => claimed.has(uid));
     if (targets.length === 0) continue;
 
     await deps.insertNotifications(targets.map(notificationFor));

@@ -12,26 +12,30 @@ const TODAY = '2026-10-15';
 
 interface FakeDb {
   notifications: (ReminderNotificationRow & { created_at: string })[];
+  sent: { uid: string; day: string }[]; // weight_reminder_sent (uid, day) 기본키
 }
 
-const makeDeps = (o: Partial<WeightReminderDeps> = {}, db: FakeDb = { notifications: [] }) => {
+const makeDeps = (
+  o: Partial<WeightReminderDeps> = {},
+  db: FakeDb = { notifications: [], sent: [] }
+) => {
   const deps: WeightReminderDeps = {
     now: () => NOW,
     // 알림 켠 유저: a(대상), b(오늘 기록함), c(푸시 토큰 없음), d(대상)
     fetchReminderUids: vi.fn(async () => ['a', 'b', 'c', 'd']),
     fetchLoggedUids: vi.fn(async (uids: string[]) => new Set(uids.filter((u) => u === 'b'))),
     fetchPushableUids: vi.fn(async (uids: string[]) => new Set(uids.filter((u) => u !== 'c'))),
-    fetchRemindedUids: vi.fn(
-      async (uids: string[], sinceIso: string) =>
-        new Set(
-          db.notifications
-            .filter(
-              (n) =>
-                uids.includes(n.uid) && n.type === 'WEIGHT_REMINDER' && n.created_at >= sinceIso
-            )
-            .map((n) => n.uid)
-        )
-    ),
+    // insert ... on conflict (uid, day) do nothing returning uid. 동시에 불려도 한 번만 들어간다
+    claimReminders: vi.fn(async (uids: string[], day: string) => {
+      await Promise.resolve();
+      const claimed = new Set<string>();
+      for (const uid of uids) {
+        if (db.sent.some((s) => s.uid === uid && s.day === day)) continue;
+        db.sent.push({ uid, day });
+        claimed.add(uid);
+      }
+      return claimed;
+    }),
     insertNotifications: vi.fn(async (rows: ReminderNotificationRow[]) => {
       db.notifications.push(...rows.map((r) => ({ ...r, created_at: NOW.toISOString() })));
     }),
@@ -46,10 +50,7 @@ describe('sendWeightReminders', () => {
     const result = await sendWeightReminders(deps, TODAY);
 
     expect(deps.fetchLoggedUids).toHaveBeenCalledWith(['a', 'b', 'c', 'd'], TODAY);
-    expect(deps.fetchRemindedUids).toHaveBeenCalledWith(
-      expect.any(Array),
-      '2026-10-14T15:00:00.000Z'
-    );
+    expect(deps.claimReminders).toHaveBeenCalledWith(['a', 'd'], TODAY);
     expect(db.notifications.map((n) => n.uid)).toEqual(['a', 'd']);
     expect(db.notifications[0]).toEqual({
       uid: 'a',
@@ -78,20 +79,18 @@ describe('sendWeightReminders', () => {
     expect(second.sent).toBe(0);
   });
 
+  it('같은 날 동시에 두 번 실행돼도 한 번만 보낸다 (리뷰 M4)', async () => {
+    const { deps, db } = makeDeps();
+    const [first, second] = await Promise.all([
+      sendWeightReminders(deps, TODAY),
+      sendWeightReminders(deps, TODAY),
+    ]);
+    expect(db.notifications.map((n) => n.uid).sort()).toEqual(['a', 'd']);
+    expect(first.sent + second.sent).toBe(2);
+  });
+
   it('어제 보낸 알림은 오늘 발송을 막지 않는다', async () => {
-    const db: FakeDb = {
-      notifications: [
-        {
-          uid: 'a',
-          title: 't',
-          body: 'b',
-          href: '/weight',
-          channel_id: 'REPORT',
-          type: 'WEIGHT_REMINDER',
-          created_at: '2026-10-14T00:00:00Z',
-        },
-      ],
-    };
+    const db: FakeDb = { notifications: [], sent: [{ uid: 'a', day: '2026-10-14' }] };
     const { deps } = makeDeps({}, db);
     expect((await sendWeightReminders(deps, TODAY)).sent).toBe(2);
   });

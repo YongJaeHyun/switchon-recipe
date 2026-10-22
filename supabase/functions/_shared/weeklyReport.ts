@@ -76,8 +76,9 @@ export const REPORT_RESPONSE_SCHEMA = {
 
 // ── 통계 표현 (프롬프트·기본 문장 공용) ─────────────────────────
 
-// 소수 한 자리 반올림. 'e' 표기로 올려 부동소수 오차를 피한다
-const round1 = (n: number) => Math.round(Number(`${n}e1`)) / 10;
+// 소수 한 자리 반올림. 10배 값을 소수 6자리로 먼저 잘라 부동소수 오차(1.15 → 11.4999…)를 없앤다
+// (문자열 'e' 표기는 1e-7 같은 값에서 NaN이 된다)
+const round1 = (n: number) => Math.round(Number((n * 10).toFixed(6))) / 10;
 
 // -1.2 → "1.2kg 감량", 0.4 → "0.4kg 증가", 0 → "변화 없음" (앱 formatWeightDiff와 같은 표현)
 const diffText = (diff: number) =>
@@ -281,15 +282,20 @@ const numbersIn = (text: string): number[] =>
 //   kg·킬로 → 체중(주 첫·마지막 기록, 이번 주·누적 변화의 크기)
 //   %       → 완료율(평균·최고·최저)
 //   주차    → 이번 주·다음 주 주차
-//   N번·N회 → 같은 구절에 "단식"이 있으면 단식 횟수, 아니면 통계의 횟수(할 일·단식·레시피·판정)
+//   N번·N회·N차례 → 같은 구절에 "단식"이 있으면 단식 횟수(바로 앞뒤에 "성공"이 있으면 성공 횟수,
+//            "중단·실패"가 있으면 중단 횟수), 아니면 통계의 횟수(할 일·단식·레시피·판정)
+//            한글 수("두 번", "세 번", 한~일곱)도 숫자로 바꿔 같은 규칙으로 본다
 //   N일     → 일 수(1~7, 7일 중 N일)
 //   주 N회  → 아래 "주 N회" 검사가 따로 본다
+// 통계는 소수 한 자리이므로 소수 둘째 자리 이하에 0이 아닌 숫자가 있으면(1.24) 어디서든 틀린 값이다
 interface NumberRules {
   any: Set<number>; // 단위 없는 숫자
   weight: Set<number>;
   rate: Set<number>;
   week: Set<number>;
   fasting: Set<number>;
+  fastingSuccess: Set<number>;
+  fastingBroken: Set<number>;
   count: Set<number>;
   free: Set<number>; // 단위와 상관없이 허용 (다음 주 규칙 문구의 숫자)
   names: string[]; // 할 일 이름 (이름 속 숫자는 검사하지 않는다)
@@ -345,6 +351,8 @@ function numberRules(stats: WeeklyStats, free: string[] = []): NumberRules {
     rate: setOf(rate),
     week: setOf(week),
     fasting: setOf(fasting),
+    fastingSuccess: setOf([stats.fasting.success]),
+    fastingBroken: setOf([stats.fasting.broken]),
     count: setOf(count),
     free: setOf(free.flatMap(numbersIn)),
     names: t.items
@@ -356,16 +364,66 @@ function numberRules(stats: WeeklyStats, free: string[] = []): NumberRules {
 
 const CLAUSE_SPLIT_RE = /[.,!?\n]/;
 
-const numbersOk = (text: string, rules: NumberRules): boolean => {
+// 할 일 이름은 공백으로 가린다 (이름 속 숫자·요일은 검사하지 않는다)
+const maskNames = (text: string, names: string[]): string => {
   let masked = text;
-  for (const name of rules.names) masked = masked.split(name).join(' '.repeat(name.length));
+  for (const name of names) masked = masked.split(name).join(' '.repeat(name.length));
+  return masked;
+};
 
-  for (const m of masked.matchAll(/\d+(?:\.\d+)?/g)) {
+// "두 번", "세 회", "다섯 차례" → "2번", "3회", "5차례" (한~일곱). "세요"·"네요"는 뒤에 단위가 없어 바뀌지 않는다.
+// "한 번"은 "하루 한 번", "한 번 더"처럼 말투로 많이 쓰므로 "단식"이 있는 구절에서만 수로 본다
+const KO_NUMBERS: Record<string, number> = {
+  한: 1,
+  두: 2,
+  세: 3,
+  네: 4,
+  다섯: 5,
+  여섯: 6,
+  일곱: 7,
+};
+const KO_COUNT_RE = /(?<![가-힣])(다섯|여섯|일곱|한|두|세|네)\s*(번|회|차례)/g;
+const koreanCountsToDigits = (text: string): string =>
+  text.replace(KO_COUNT_RE, (whole, word: string, unit: string, offset: number) => {
+    if (word === '한') {
+      const clause = text.slice(0, offset).split(CLAUSE_SPLIT_RE).pop() ?? '';
+      if (!clause.includes('단식')) return whole;
+    }
+    return `${KO_NUMBERS[word]}${unit}`;
+  });
+
+// 검사용 문장: 할 일 이름을 가리고 한글 수를 숫자로 바꾼다
+const prepare = (text: string, rules: NumberRules) =>
+  koreanCountsToDigits(maskNames(text, rules.names));
+
+// 단식 횟수 바로 뒤(다음 숫자 전까지)나 앞(구절 안, 앞 숫자 뒤부터)에 성공·중단이 있으면 그 횟수와 맞춘다
+const FASTING_SUCCESS_RE = /성공/;
+const FASTING_BROKEN_RE = /중단|실패|깨|먹었/;
+const fastingKindOf = (segment: string): 'fastingSuccess' | 'fastingBroken' | null =>
+  FASTING_SUCCESS_RE.test(segment)
+    ? 'fastingSuccess'
+    : FASTING_BROKEN_RE.test(segment)
+      ? 'fastingBroken'
+      : null;
+const fastingSetFor = (clause: string, after: string, rules: NumberRules): Set<number> => {
+  const afterSeg = after.split(/[\d.,!?\n]/)[0] ?? '';
+  const beforeSeg = clause.split(/\d/).pop() ?? '';
+  const kind = fastingKindOf(afterSeg) ?? fastingKindOf(beforeSeg);
+  return kind ? rules[kind] : rules.fasting;
+};
+
+// 소수 둘째 자리 이하에 0이 아닌 숫자 (1.24, 82.40은 아님)
+const TOO_PRECISE_RE = /\.\d0*[1-9]/;
+
+// text는 prepare를 거친 문장
+const numbersOk = (text: string, rules: NumberRules): boolean => {
+  for (const m of text.matchAll(/\d+(?:\.\d+)?/g)) {
+    if (TOO_PRECISE_RE.test(m[0])) return false;
     const value = Number(m[0]);
     const key = numKey(value);
     if (rules.free.has(key)) continue;
-    const before = masked.slice(0, m.index);
-    const after = masked.slice((m.index ?? 0) + m[0].length);
+    const before = text.slice(0, m.index);
+    const after = text.slice((m.index ?? 0) + m[0].length);
 
     if (/^\s*(?:kg|킬로)/i.test(after)) {
       if (!rules.weight.has(key)) return false;
@@ -375,9 +433,9 @@ const numbersOk = (text: string, rules: NumberRules): boolean => {
       if (!rules.week.has(key)) return false;
     } else if (/^\s*회/.test(after) && /주\s*$/.test(before)) {
       // "주 N회": weeklyCountsIn 검사가 본다
-    } else if (/^\s*(?:번|회)/.test(after)) {
+    } else if (/^\s*(?:번|회|차례)/.test(after)) {
       const clause = before.split(CLAUSE_SPLIT_RE).pop() ?? '';
-      const allowed = clause.includes('단식') ? rules.fasting : rules.count;
+      const allowed = clause.includes('단식') ? fastingSetFor(clause, after, rules) : rules.count;
       if (!allowed.has(key)) return false;
     } else if (/^\s*일(?!요일)/.test(after)) {
       if (!Number.isInteger(value) || value < 1 || value > 7) return false;
@@ -392,6 +450,17 @@ const numbersOk = (text: string, rules: NumberRules): boolean => {
 export const MAX_FIELD_LENGTH = 200;
 
 const WEEKDAY_RE = /[월화수목금토일]요일/g;
+
+// 줄인 요일 목록 ("목·일", "월, 수", "화요일·목"): 요일 글자(+요일) 두 개 이상을 ·,/、로 이은 것.
+// 글자 앞뒤가 다른 한글이면(수분, 일반식) 요일이 아니다. 뒤에는 조사(에·은·도 등)만 붙을 수 있다
+const DAY_TOKEN = String.raw`(?<![가-힣\d])[월화수목금토일](?:요일)?(?=$|[^가-힣]|(?:에|엔|은|는|도|만|과|와|의|까지|부터|마다)(?![가-힣]))`;
+const WEEKDAY_LIST_RE = new RegExp(`${DAY_TOKEN}(?:\\s*[·,/、]\\s*${DAY_TOKEN})+`, 'g');
+const weekdaysIn = (text: string): string[] => [
+  ...(text.match(WEEKDAY_RE) ?? []),
+  ...[...text.matchAll(WEEKDAY_LIST_RE)].flatMap((m) =>
+    m[0].split(/[·,/、]/).map((d) => `${d.trim()[0]}요일`)
+  ),
+];
 
 // 통계에 나온 요일만 허용 (최고·최저 요일, 단식 성공 요일)
 const allowedWeekdays = (s: WeeklyStats): Set<string> =>
@@ -418,8 +487,13 @@ const allowedWeeklyCounts = (s: WeeklyStats, nextWeekChanges: string[]): Set<num
 
 const UP_RE = /증가|늘|올랐|올라|찌/;
 const DOWN_RE = /감량|감소|줄|빠|내려|떨어/;
+// 숫자 바로 앞에 붙은 증감 표현 ("늘어서 1.2kg", "줄어든 1.2kg")
+const BEFORE_UP_RE = /(?:늘어|늘어나|늘어난|올라|올라가|올라간|오른|쪄|찐|증가해|증가한)서?\s*$/;
+const BEFORE_DOWN_RE =
+  /(?:줄어|줄어들어|줄어든|빠져|빠진|내려가|내려간|떨어져|떨어진|감소해|감소한|감량해|감량한)서?\s*$/;
 
 // "1.2kg 증가"처럼 kg 값 뒤의 증감 표현이 diff·totalDiff 부호와 반대면 false.
+// 뒤에 증감 표현이 없으면 바로 앞에 붙은 표현("늘어서 1.2kg")을 본다.
 // 같은 크기가 diff와 totalDiff에 서로 다른 부호로 있으면 어느 쪽인지 알 수 없어 넘어간다.
 const directionOk = (text: string, w: WeeklyStats['weight']): boolean => {
   const signs = new Map<number, Set<number>>();
@@ -434,11 +508,30 @@ const directionOk = (text: string, w: WeeklyStats['weight']): boolean => {
     const after = m[2];
     const up = after.search(UP_RE);
     const down = after.search(DOWN_RE);
-    if (up === -1 && down === -1) continue;
-    const saysUp = up !== -1 && (down === -1 || up < down);
+    let saysUp: boolean;
+    if (up !== -1 || down !== -1) {
+      saysUp = up !== -1 && (down === -1 || up < down);
+    } else {
+      const before = text.slice(0, m.index);
+      if (BEFORE_UP_RE.test(before)) saysUp = true;
+      else if (BEFORE_DOWN_RE.test(before)) saysUp = false;
+      else continue;
+    }
     if (saysUp !== sign.has(1)) return false;
   }
   return true;
+};
+
+// 추천 링크는 행동이 끼니에 관한 것일 때만 둔다 (식사·메뉴·레시피, 또는 아침·점심·저녁을 말할 때).
+// 행동이 특정 끼니를 말하면 링크 끼니도 그중 하나여야 한다
+const MEAL_ACTION_RE = /식사|메뉴|레시피|아침|점심|저녁/;
+const linkForAction = (
+  action: string,
+  link: ReportContent['actionLink']
+): ReportContent['actionLink'] => {
+  if (!link || !MEAL_ACTION_RE.test(action)) return null;
+  const named = MEALS.filter((m) => action.includes(MEAL_KO[m]));
+  return named.length === 0 || named.includes(link.meal) ? link : null;
 };
 
 // 통계에 없는 숫자(단위별로 맞춰봄, numbersOk)가 든 칸 → fallbackContent의 같은 칸. 아쉬운 점·행동·링크는 한 묶음으로 바꾼다.
@@ -454,14 +547,19 @@ export function sanitizeContent(
 
   const weekdays = allowedWeekdays(stats);
   const weeklyCounts = allowedWeeklyCounts(stats, nextWeekChanges);
-  // 숫자 외 공통 검사: 길이, 예시 틀 그대로, 통계에 없는 요일, 틀린 "주 N회", 체중 증감 방향
-  const common = (text: string) =>
-    text.length <= MAX_FIELD_LENGTH &&
-    !/[{}]/.test(text) &&
-    (text.match(WEEKDAY_RE) ?? []).every((d) => weekdays.has(d)) &&
-    weeklyCountsIn(text).every((n) => weeklyCounts.has(n)) &&
-    directionOk(text, stats.weight);
-  const ok = (text: string) => common(text) && numbersOk(text, rules);
+  // 숫자 외 공통 검사: 길이, 예시 틀 그대로, 통계에 없는 요일, 틀린 "주 N회", 체중 증감 방향.
+  // 길이·틀은 원문으로, 나머지는 할 일 이름을 가리고 한글 수를 바꾼 문장(prepare)으로 본다
+  const common = (text: string) => {
+    const p = prepare(text, rules);
+    return (
+      text.length <= MAX_FIELD_LENGTH &&
+      !/[{}]/.test(text) &&
+      weekdaysIn(p).every((d) => weekdays.has(d)) &&
+      weeklyCountsIn(p).every((n) => weeklyCounts.has(n)) &&
+      directionOk(p, stats.weight)
+    );
+  };
+  const ok = (text: string) => common(text) && numbersOk(prepare(text, rules), rules);
   const improveOk = ok(content.improve) && ok(content.action);
 
   return {
@@ -469,7 +567,9 @@ export function sanitizeContent(
     good: ok(content.good) ? content.good : fb.good,
     improve: improveOk ? content.improve : fb.improve,
     action: improveOk ? content.action : fb.action,
-    actionLink: improveOk ? parseLink(content.actionLink) : fb.actionLink,
+    actionLink: improveOk
+      ? linkForAction(content.action, parseLink(content.actionLink))
+      : fb.actionLink,
     weightNote:
       stats.weight.daysLogged < 2
         ? WEIGHT_NOTE_TOO_FEW
@@ -477,7 +577,7 @@ export function sanitizeContent(
           ? content.weightNote
           : fb.weightNote,
     nextWeek:
-      common(content.nextWeek) && numbersOk(content.nextWeek, nextRules)
+      common(content.nextWeek) && numbersOk(prepare(content.nextWeek, nextRules), nextRules)
         ? content.nextWeek
         : fb.nextWeek,
   };

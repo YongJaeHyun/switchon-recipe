@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   generateWeeklyReports,
   handleGenerateWeeklyReports,
-  latestReportableStartDate,
   reportWeekOf,
   type GenerateReportsDeps,
   type NotificationRow,
@@ -113,13 +112,6 @@ describe('reportWeekOf', () => {
   });
 });
 
-describe('latestReportableStartDate', () => {
-  it('1주차가 끝났을 수 있는 가장 늦은 시작일 (오늘 - 7일)', () => {
-    expect(latestReportableStartDate('2026-10-15')).toBe('2026-10-08');
-    expect(latestReportableStartDate('2026-11-03')).toBe('2026-10-27');
-  });
-});
-
 describe('generateWeeklyReports: 놓친 리포트 보충', () => {
   // TODAY 10-15 기준
   const users = [
@@ -157,6 +149,21 @@ describe('generateWeeklyReports: 놓친 리포트 보충', () => {
     expect(deps.insertReport).not.toHaveBeenCalled();
     expect(db.notifications).toHaveLength(0);
     expect(result).toMatchObject({ candidates: 1, existing: 1, generated: 0 });
+  });
+
+  it('리포트가 이미 있으면 이용 권한 rpc를 부르지 않는다 (재시도 cron 호출 절약)', async () => {
+    const { deps, db } = makeDeps({ fetchUsers: vi.fn(async () => users.slice(0, 1)) });
+    db.reports.push({
+      uid: 'day2',
+      start_date: '2026-10-07',
+      week_index: 1,
+      stats: {} as WeeklyReportRow['stats'],
+      content: null,
+      status: 'ready',
+    });
+    await generateWeeklyReports(deps, TODAY);
+    expect(deps.reportExists).toHaveBeenCalledTimes(1);
+    expect(deps.hasPremiumAccess).not.toHaveBeenCalled();
   });
 
   it('1일차에 만든 리포트는 2·3일차 실행에서 다시 만들지 않는다', async () => {

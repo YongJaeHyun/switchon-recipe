@@ -375,3 +375,29 @@ describe('plannedFastingDays', () => {
     expect(plannedFastingDays(range, [5, 5, 7, -1], 2)).toEqual(['2026-10-09']);
   });
 });
+
+describe('computeWeeklyStats: 반올림 (리뷰 M-6)', () => {
+  it('지수 표기로 찍히는 아주 작은 차이도 NaN이 아니라 0으로 반올림한다', () => {
+    const stats = computeWeeklyStats(
+      base({
+        weights: [
+          { day: '2026-10-08', weight_kg: 70 },
+          { day: '2026-10-14', weight_kg: 70.0000001 },
+        ],
+      })
+    );
+    expect(stats.weight.diff).toBe(0);
+  });
+
+  it('부동소수 오차가 있는 차이도 소수 한 자리로 맞춘다', () => {
+    const stats = computeWeeklyStats(
+      base({
+        weights: [
+          { day: '2026-10-08', weight_kg: 69.4 },
+          { day: '2026-10-14', weight_kg: 68.2 },
+        ],
+      })
+    );
+    expect(stats.weight.diff).toBe(-1.2);
+  });
+});

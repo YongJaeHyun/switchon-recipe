@@ -13,7 +13,6 @@ import { fetchAllPages } from '../_shared/pagination.ts';
 import { REPORT_RESPONSE_SCHEMA } from '../_shared/weeklyReport.ts';
 import {
   handleGenerateWeeklyReports,
-  latestReportableStartDate,
   type GenerateReportsDeps,
   type ReportUserRow,
 } from './handler.ts';
@@ -28,18 +27,19 @@ const deps: GenerateReportsDeps = {
   now: () => new Date(),
 
   fetchUsers(today) {
-    // 1주차가 끝난 유저만. 주차 일차(1~3일차) 필터는 handler가 한다
-    const latest = latestReportableStartDate(today);
+    // 오늘이 새 주차 1~3일차인 유저만 SQL에서 거른다 (service role 전용 함수)
     return fetchAllPages(async (from, to) => {
       const { data, error } = await supabase
-        .from('user')
-        .select('id, start_date')
-        .not('start_date', 'is', null)
-        .lte('start_date', latest)
-        .order('id')
+        .rpc('weekly_report_candidates', { p_today: today })
+        .order('uid')
         .range(from, to);
       if (error) throw error;
-      return (data ?? []) as ReportUserRow[];
+      return (data ?? []).map(
+        (r: { uid: string; start_date: string }): ReportUserRow => ({
+          id: r.uid,
+          start_date: r.start_date,
+        })
+      );
     });
   },
 

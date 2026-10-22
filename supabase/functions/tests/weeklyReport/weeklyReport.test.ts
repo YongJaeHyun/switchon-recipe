@@ -581,3 +581,159 @@ describe('REPORT_RESPONSE_SCHEMA', () => {
     ]);
   });
 });
+
+describe('sanitizeContent: 남은 리뷰 지적 (숫자 정밀도·한글 수·요일 줄임·증감 앞말·링크)', () => {
+  it('M-6: 지수 표기로 찍히는 체중 변화도 기본 문장에 NaN을 쓰지 않는다', () => {
+    const s = stats({
+      weight: { start: 70, end: 70.0000001, diff: 1e-7, daysLogged: 2, totalDiff: null },
+    });
+    const fb = fallbackContent(s);
+    for (const f of FIELDS) expect(fb[f]).not.toContain('NaN');
+  });
+
+  it('M5: 소수 둘째 자리가 있는 숫자(1.24kg)는 통계(1.2)와 다르므로 바꾼다', () => {
+    const s = stats(); // diff -1.2
+    const fb = fallbackContent(s);
+    expect(sanitizeContent(content({ summary: '1.24kg 감량했어요.' }), s).summary).toBe(fb.summary);
+    expect(sanitizeContent(content({ good: '평균 82.4%였어요.' }), s).good).toBe(fb.good);
+    // 뒤가 0이면 같은 값
+    expect(sanitizeContent(content({ summary: '1.20kg 감량했어요.' }), s).summary).toBe(
+      '1.20kg 감량했어요.'
+    );
+  });
+
+  // 단식 3번 계획: 2번 성공, 1번 중단
+  const fs = () =>
+    stats({
+      fasting: fasting({
+        planned: 3,
+        success: 2,
+        broken: 1,
+        successWeekdays: ['목요일', '일요일'],
+      }),
+    });
+
+  it('M6: 단식 "성공"·"중단" 횟수는 그 값과 맞춰본다 (계획 횟수 3을 성공으로 쓰면 바꾼다)', () => {
+    const s = fs();
+    const fb = fallbackContent(s);
+    expect(sanitizeContent(content({ good: '단식을 3번 성공했어요.' }), s).good).toBe(fb.good);
+    expect(sanitizeContent(content({ summary: '단식 성공 3회.' }), s).summary).toBe(fb.summary);
+    expect(sanitizeContent(content({ good: '단식 2번 중단했어요.' }), s).good).toBe(fb.good);
+    for (const ok of [
+      '단식 3번 중 2번 성공했어요.',
+      '단식은 2번 성공하고 1번 중단했어요.',
+      '단식 성공 2번, 중단 1번이에요.',
+    ]) {
+      expect(sanitizeContent(content({ good: ok }), s).good).toBe(ok);
+    }
+    expect(sanitizeContent(fallbackContent(s), s)).toEqual(fallbackContent(s));
+  });
+
+  it('M6: 한글 수("두 번", "세 번")도 숫자처럼 검증한다', () => {
+    const s = stats({
+      fasting: fasting({ planned: 1, success: 1, successWeekdays: ['목요일'] }),
+    });
+    const fb = fallbackContent(s);
+    expect(sanitizeContent(content({ good: '단식을 두 번 성공했어요.' }), s).good).toBe(fb.good);
+    expect(sanitizeContent(content({ summary: '단식 세 번 모두 성공.' }), s).summary).toBe(
+      fb.summary
+    );
+    expect(sanitizeContent(content({ good: '단식을 다섯번 했어요.' }), s).good).toBe(fb.good);
+    expect(sanitizeContent(content({ good: '단식을 한 번 성공했어요.' }), s).good).toBe(
+      '단식을 한 번 성공했어요.'
+    );
+    // 단식 밖의 "N번"은 통계 횟수와 맞춰본다 (통계 횟수가 0·1·4·7뿐인 주)
+    const few = stats({
+      ...s,
+      todo: {
+        avgRate: 100,
+        best: null,
+        worst: null,
+        items: [{ name: '아침 쉐이크', done: 7, appeared: 7 }],
+      },
+      recipes: { total: 1, low: 1, zero: 0 },
+      foodChecks: { total: 0, avoid: 0 },
+    });
+    expect(sanitizeContent(content({ good: '편의점 판정을 네 번 했어요.' }), few).good).toBe(
+      '편의점 판정을 네 번 했어요.'
+    );
+    expect(sanitizeContent(content({ good: '레시피를 여섯 번 만들었어요.' }), few).good).toBe(
+      fallbackContent(few).good
+    );
+    // "한 번 더", "하루 한 번" 같은 말투는 단식 횟수가 아니면 막지 않는다
+    expect(
+      sanitizeContent(content({ action: '하루 한 번 저녁 메뉴를 확인해보세요.' }), s).action
+    ).toBe('하루 한 번 저녁 메뉴를 확인해보세요.');
+    // "세요"·"네요"의 세·네는 수가 아니다
+    expect(sanitizeContent(content({ good: '잘 지켰네요. 계속 해보세요.' }), s).good).toBe(
+      '잘 지켰네요. 계속 해보세요.'
+    );
+  });
+
+  it('숫자 앞의 증감 표현("늘어서 1.2kg", "줄어 0.4kg")도 방향을 확인한다', () => {
+    const down = stats(); // diff -1.2
+    const fbDown = fallbackContent(down);
+    expect(
+      sanitizeContent(content({ summary: '체중이 늘어서 1.2kg 차이가 났어요.' }), down).summary
+    ).toBe(fbDown.summary);
+    expect(
+      sanitizeContent(content({ summary: '체중이 늘어난 1.2kg은 수분 때문이에요.' }), down).summary
+    ).toBe(fbDown.summary);
+    const okDown = '체중이 줄어 1.2kg 차이가 났어요.';
+    expect(sanitizeContent(content({ summary: okDown }), down).summary).toBe(okDown);
+
+    const up = stats({
+      weight: { start: 70, end: 70.4, diff: 0.4, daysLogged: 3, totalDiff: 0.9 },
+    });
+    expect(sanitizeContent(content({ summary: '줄어서 0.4kg 차이예요.' }), up).summary).toBe(
+      fallbackContent(up).summary
+    );
+    // 앞 구절의 다른 값에 붙은 증감은 보지 않는다
+    const mixed = stats({
+      weight: { start: 70, end: 70.4, diff: 0.4, daysLogged: 3, totalDiff: -2.3 },
+    });
+    const both = '이번 주는 0.4kg 늘었지만 누적 2.3kg 감량이에요.';
+    expect(sanitizeContent(content({ summary: both }), mixed).summary).toBe(both);
+  });
+
+  it('줄인 요일("목·일", "월, 수", "화요일·목")도 통계 요일과 맞춰본다', () => {
+    const s = stats(); // 허용: 목·일(단식 성공), 금(최고), 화(최저)
+    const fb = fallbackContent(s);
+    for (const bad of [
+      '월, 수 단식을 성공했어요.',
+      '월·수에 단식했어요.',
+      '화요일·수 할 일이 적었어요.',
+    ]) {
+      expect(sanitizeContent(content({ good: bad }), s).good).toBe(fb.good);
+    }
+    for (const ok of [
+      '목·일 단식을 성공했어요.',
+      '목, 일 단식을 지켰어요.',
+      '화요일·목 할 일이 적었어요.',
+      '물, 수분을 챙기고 7일 중 6일 지켰어요.',
+    ]) {
+      expect(sanitizeContent(content({ good: ok }), s).good).toBe(ok);
+    }
+  });
+
+  it('M8: 행동이 끼니·메뉴·레시피에 관한 것이 아니면 링크를 없앤다', () => {
+    const s = stats();
+    const keep = (action: string, meal: 'breakfast' | 'lunch' | 'dinner') =>
+      sanitizeContent(content({ action, actionLink: { meal } }), s);
+
+    const water = keep('물을 더 자주 챙겨 마셔보세요.', 'dinner');
+    expect(water.action).toBe('물을 더 자주 챙겨 마셔보세요.');
+    expect(water.actionLink).toBeNull();
+    // 다른 끼니를 말하면 링크 끼니와 맞지 않으니 없앤다
+    expect(keep('점심 메뉴를 전날 미리 정해두세요.', 'dinner').actionLink).toBeNull();
+    expect(keep('점심 메뉴를 전날 미리 정해두세요.', 'lunch').actionLink).toEqual({
+      meal: 'lunch',
+    });
+    expect(keep('추천 레시피에서 메뉴를 골라보세요.', 'lunch').actionLink).toEqual({
+      meal: 'lunch',
+    });
+    expect(keep('식사 메뉴를 미리 정해두세요.', 'breakfast').actionLink).toEqual({
+      meal: 'breakfast',
+    });
+  });
+});

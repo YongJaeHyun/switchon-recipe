@@ -951,6 +951,32 @@ export type Database = {
           },
         ];
       };
+      weight_reminder_sent: {
+        Row: {
+          created_at: string;
+          day: string;
+          uid: string;
+        };
+        Insert: {
+          created_at?: string;
+          day: string;
+          uid: string;
+        };
+        Update: {
+          created_at?: string;
+          day?: string;
+          uid?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'weight_reminder_sent_uid_fkey';
+            columns: ['uid'];
+            isOneToOne: false;
+            referencedRelation: 'user';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
     };
     Views: {
       popular_categories: {
@@ -1057,6 +1083,13 @@ export type Database = {
           saved_count: number;
           uid: string;
           week: number;
+        }[];
+      };
+      weekly_report_candidates: {
+        Args: { p_today: string };
+        Returns: {
+          start_date: string;
+          uid: string;
         }[];
       };
     };

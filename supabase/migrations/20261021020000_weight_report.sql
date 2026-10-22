@@ -57,12 +57,22 @@ create table public.weekly_report (
   primary key (uid, start_date, week_index)
 );
 
+-- 체중 기록 알림을 보낸 날 (edge function이 service role로 기록). (uid, day) 기본키로
+-- 같은 날 실행이 겹쳐도 한 번만 보낸다: insert ... on conflict do nothing 후 새로 들어간 유저에게만 알림
+create table public.weight_reminder_sent (
+  uid uuid not null references public.user (id) on delete cascade,
+  day date not null,
+  created_at timestamptz not null default now(),
+  primary key (uid, day)
+);
+
 alter table public.weight_log enable row level security;
 alter table public.todo_daily enable row level security;
 alter table public.fasting_result enable row level security;
 alter table public.fasting_plan enable row level security;
 alter table public.user_setting enable row level security;
 alter table public.weekly_report enable row level security;
+alter table public.weight_reminder_sent enable row level security;
 
 create policy "체중 기록은 본인만 조회"
   on public.weight_log for select
@@ -142,3 +152,33 @@ create policy "주간 리포트는 본인만 조회"
   using (uid = auth.uid());
 
 -- weekly_report insert/update/delete 정책 없음 (edge function이 service role로 기록)
+
+-- weight_reminder_sent 정책 없음 (service role 전용)
+revoke all on table public.weight_reminder_sent from anon, authenticated;
+
+-- 주간 리포트 생성 대상: 오늘(KST, p_today)이 start_date 기준 새 주차 1~3일차인 유저
+-- (1주차가 끝난 유저만. 3 = generate-weekly-reports/handler.ts CATCH_UP_DAYS). service role 전용
+-- start_date는 앞 10자(yyyy-MM-dd)만 날짜로 읽고, 날짜 꼴이 아니면 건너뛴다
+create or replace function public.weekly_report_candidates(p_today date)
+returns table (uid uuid, start_date date)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select c.uid, c.start_date
+  from (
+    select
+      u.id as uid,
+      case
+        when u.start_date::text ~ '^\d{4}-\d{2}-\d{2}' then left(u.start_date::text, 10)::date
+      end as start_date
+    from public.user u
+    where u.start_date is not null
+  ) c
+  where c.start_date <= p_today - 7
+    and (p_today - c.start_date) % 7 < 3;
+$$;
+
+revoke all on function public.weekly_report_candidates(date) from public, anon, authenticated;
+grant execute on function public.weekly_report_candidates(date) to service_role;

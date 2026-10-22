@@ -53,13 +53,15 @@ const deps: WeightReminderDeps = {
     return uidSet(data);
   },
 
-  async fetchRemindedUids(uids, sinceIso) {
+  async claimReminders(uids, day) {
+    // on conflict (uid, day) do nothing. 새로 들어간 행만 돌려받는다
     const { data, error } = await supabase
-      .from('notifications')
-      .select('uid')
-      .in('uid', uids)
-      .eq('type', 'WEIGHT_REMINDER')
-      .gte('created_at', sinceIso);
+      .from('weight_reminder_sent')
+      .upsert(
+        uids.map((uid) => ({ uid, day })),
+        { onConflict: 'uid,day', ignoreDuplicates: true }
+      )
+      .select('uid');
     if (error) throw error;
     return uidSet(data);
   },

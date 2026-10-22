@@ -57,8 +57,9 @@ export interface WeeklyStats {
   isEmpty: boolean; // 체중 0일 && 할 일 체크 0일
 }
 
-// 소수 한 자리 반올림. 'e' 표기로 올려 부동소수 오차를 피한다
-const round1 = (n: number) => Math.round(Number(`${n}e1`)) / 10;
+// 소수 한 자리 반올림. 10배 값을 소수 6자리로 먼저 잘라 부동소수 오차(1.15 → 11.4999…)를 없앤다
+// (문자열 'e' 표기는 1e-7 같은 값에서 NaN이 된다)
+const round1 = (n: number) => Math.round(Number((n * 10).toFixed(6))) / 10;
 
 // yyyy-MM-dd(또는 시각이 붙은 값) → 그 KST 날짜의 UTC 자정(ms)
 const dayToUtc = (day: string): number => {

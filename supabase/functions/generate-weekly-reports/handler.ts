@@ -72,8 +72,8 @@ export interface NotificationRow {
 
 export interface GenerateReportsDeps {
   now(): Date;
-  // start_date가 latestReportableStartDate(today) 이하인 유저 (전부, 페이지 처리는 구현이).
-  // 주차 일차 필터(reportWeekOf)는 handler가 한다
+  // 오늘이 새 주차 1~3일차인 유저 (전부, 페이지 처리는 구현이). 구현은 SQL 함수
+  // weekly_report_candidates(p_today)로 걸러 읽는다. handler도 reportWeekOf로 한 번 더 거른다
   fetchUsers(today: string): Promise<ReportUserRow[]>;
   hasPremiumAccess(uid: string): Promise<boolean>;
   reportExists(uid: string, startDate: string, weekIndex: number): Promise<boolean>;
@@ -98,7 +98,8 @@ export interface GenerateResult {
 
 const dayMs = (day: string) => Date.parse(`${day.slice(0, 10)}T00:00:00Z`);
 
-// 새 주차 몇 일차까지 지난 주차 리포트를 만들지 (1일차 + 보충 2일)
+// 새 주차 몇 일차까지 지난 주차 리포트를 만들지 (1일차 + 보충 2일).
+// SQL 함수 weekly_report_candidates도 같은 값(% 7 < 3)을 쓴다. 바꾸면 함께 바꾼다
 export const CATCH_UP_DAYS = 3;
 
 // 오늘이 새 주차 1~3일차면 끝난 주차 번호, 아니면 null (1주차 중·시작 전 제외)
@@ -109,11 +110,6 @@ export function reportWeekOf(startDate: string | null, today: string): number | 
   const diff = Math.round((dayMs(today) - start) / DAY_MS);
   if (diff < 7 || diff % 7 >= CATCH_UP_DAYS) return null;
   return Math.floor(diff / 7);
-}
-
-// 리포트 대상이 될 수 있는 가장 늦은 시작일 (1주차가 끝난 유저만, DB 조회 필터용)
-export function latestReportableStartDate(today: string): string {
-  return new Date(dayMs(today) - 7 * DAY_MS).toISOString().slice(0, 10);
 }
 
 const normalizeWeekData = (data: WeekData) => ({
@@ -162,11 +158,13 @@ const processUser = async (
   startDate: string,
   weekIndex: number
 ): Promise<{ outcome: Outcome; notified: boolean; failed: boolean }> => {
-  if (!(await deps.hasPremiumAccess(uid)))
-    return { outcome: 'noAccess', notified: false, failed: false };
+  // 리포트가 있는지 먼저 본다 (리포트는 권한이 있던 유저에게만 만들어지므로 결과는 같고,
+  // 재시도 실행에서 이미 만든 유저의 권한 rpc를 아낀다)
   if (await deps.reportExists(uid, startDate, weekIndex)) {
     return { outcome: 'existing', notified: false, failed: false };
   }
+  if (!(await deps.hasPremiumAccess(uid)))
+    return { outcome: 'noAccess', notified: false, failed: false };
 
   const range = weekRange(startDate, weekIndex);
   const data = await deps.fetchWeekData({
