@@ -43,6 +43,35 @@ export type Database = {
           },
         ];
       };
+      fasting_result: {
+        Row: {
+          day: string;
+          result: string;
+          uid: string;
+          updated_at: string;
+        };
+        Insert: {
+          day: string;
+          result: string;
+          uid: string;
+          updated_at?: string;
+        };
+        Update: {
+          day?: string;
+          result?: string;
+          uid?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'fasting_result_uid_fkey';
+            columns: ['uid'];
+            isOneToOne: false;
+            referencedRelation: 'user';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       food_check: {
         Row: {
           alternatives: string[] | null;
@@ -598,6 +627,38 @@ export type Database = {
           },
         ];
       };
+      todo_daily: {
+        Row: {
+          checked: number[];
+          day: string;
+          items: string[];
+          uid: string;
+          updated_at: string;
+        };
+        Insert: {
+          checked: number[];
+          day: string;
+          items: string[];
+          uid: string;
+          updated_at?: string;
+        };
+        Update: {
+          checked?: number[];
+          day?: string;
+          items?: string[];
+          uid?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'todo_daily_uid_fkey';
+            columns: ['uid'];
+            isOneToOne: false;
+            referencedRelation: 'user';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       user: {
         Row: {
           avatar_url: string | null;
@@ -741,6 +802,35 @@ export type Database = {
           },
         ];
       };
+      user_setting: {
+        Row: {
+          uid: string;
+          updated_at: string;
+          weight_reminder: boolean;
+          weight_reminder_asked: boolean;
+        };
+        Insert: {
+          uid: string;
+          updated_at?: string;
+          weight_reminder?: boolean;
+          weight_reminder_asked?: boolean;
+        };
+        Update: {
+          uid?: string;
+          updated_at?: string;
+          weight_reminder?: boolean;
+          weight_reminder_asked?: boolean;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'user_setting_uid_fkey';
+            columns: ['uid'];
+            isOneToOne: true;
+            referencedRelation: 'user';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       version: {
         Row: {
           created_at: string;
@@ -758,6 +848,73 @@ export type Database = {
           latest_version?: string | null;
         };
         Relationships: [];
+      };
+      weekly_report: {
+        Row: {
+          content: Json | null;
+          created_at: string;
+          start_date: string;
+          stats: Json;
+          status: string | null;
+          uid: string;
+          week_index: number;
+        };
+        Insert: {
+          content?: Json | null;
+          created_at?: string;
+          start_date: string;
+          stats: Json;
+          status?: string | null;
+          uid: string;
+          week_index: number;
+        };
+        Update: {
+          content?: Json | null;
+          created_at?: string;
+          start_date?: string;
+          stats?: Json;
+          status?: string | null;
+          uid?: string;
+          week_index?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'weekly_report_uid_fkey';
+            columns: ['uid'];
+            isOneToOne: false;
+            referencedRelation: 'user';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      weight_log: {
+        Row: {
+          day: string;
+          uid: string;
+          updated_at: string;
+          weight_kg: number;
+        };
+        Insert: {
+          day: string;
+          uid: string;
+          updated_at?: string;
+          weight_kg: number;
+        };
+        Update: {
+          day?: string;
+          uid?: string;
+          updated_at?: string;
+          weight_kg?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'weight_log_uid_fkey';
+            columns: ['uid'];
+            isOneToOne: false;
+            referencedRelation: 'user';
+            referencedColumns: ['id'];
+          },
+        ];
       };
     };
     Views: {
