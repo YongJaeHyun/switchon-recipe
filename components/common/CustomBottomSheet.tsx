@@ -16,7 +16,20 @@ export const CustomBottomSheet = forwardRef<BottomSheetMethods, CustomBottomShee
     const sheetRef = useRef<BottomSheet>(null);
     const [isOpen, setIsOpen] = useState(false);
 
-    useImperativeHandle(ref, () => sheetRef.current as BottomSheetMethods);
+    // Portal 안의 시트는 이 컴포넌트보다 늦게 붙으므로, 호출 시점에 실제 시트로 넘겨준다
+    useImperativeHandle(
+      ref,
+      () =>
+        new Proxy({} as BottomSheetMethods, {
+          get:
+            (_, method) =>
+            (...args: unknown[]) =>
+              (sheetRef.current as unknown as Record<PropertyKey, (...a: unknown[]) => void>)?.[
+                method
+              ]?.(...args),
+        }),
+      []
+    );
 
     // 시트가 열려 있으면 뒤로 가기로 화면 대신 시트만 닫음
     useEffect(() => {
