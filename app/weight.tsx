@@ -110,8 +110,9 @@ export default function WeightScreen() {
 
   const confirmDelete = requireOnline(async () => {
     if (!deleting) return;
-    await deleteWeight(deleting.day);
-    setDeleting(null);
+    // 실패하면 API가 오류 토스트를 띄우고, 다시 시도할 수 있게 모달을 열어 둔다
+    const deleted = await deleteWeight(deleting.day);
+    if (deleted) setDeleting(null);
   });
 
   return (

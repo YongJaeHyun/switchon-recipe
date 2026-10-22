@@ -11,7 +11,7 @@ import { Keyboard, View } from 'react-native';
 import colors from 'tailwindcss/colors';
 import { Nullable } from 'types/common';
 import { requireOnline } from 'utils/network';
-import { showInfoToast, showSuccessToast } from 'utils/showToast';
+import { showSuccessToast } from 'utils/showToast';
 import { MAX_WEIGHT_KG, MIN_WEIGHT_KG, parseWeightInput } from 'utils/weight';
 
 export interface WeightInputTarget {
@@ -38,21 +38,30 @@ export function WeightInputSheet({ bottomSheetRef, target }: WeightInputSheetPro
 
   const [text, setText] = useState('');
   const [askReminder, setAskReminder] = useState(false);
+  // 범위 안내는 저장을 눌렀거나 입력칸을 벗어났을 때만 보여준다 (입력 중 "6", "65."에는 띄우지 않는다)
+  const [showError, setShowError] = useState(false);
 
   useEffect(() => {
     setText(target?.initial != null ? target.initial.toFixed(1) : '');
+    setShowError(false);
   }, [target]);
 
-  const invalid = text.trim() !== '' && parseWeightInput(text) === null;
+  const invalid = showError && parseWeightInput(text) === null;
+
+  const handleChangeText = (value: string) => {
+    setText(value);
+    setShowError(false);
+  };
+
+  const handleBlur = () => {
+    if (text.trim() !== '' && parseWeightInput(text) === null) setShowError(true);
+  };
 
   const handleSave = requireOnline(async () => {
     if (!target || isSaving) return;
     const weight = parseWeightInput(text);
     if (weight === null) {
-      showInfoToast({
-        textType: 'CUSTOM',
-        title: `${MIN_WEIGHT_KG}~${MAX_WEIGHT_KG}kg 사이로 입력해 주세요`,
-      });
+      setShowError(true);
       return;
     }
 
@@ -92,7 +101,8 @@ export function WeightInputSheet({ bottomSheetRef, target }: WeightInputSheetPro
             <BottomSheetTextInput
               style={{ flex: 1, fontSize: 28, fontWeight: '700', paddingVertical: 12 }}
               value={text}
-              onChangeText={setText}
+              onChangeText={handleChangeText}
+              onBlur={handleBlur}
               keyboardType="decimal-pad"
               placeholder="예: 65.5"
               placeholderTextColor={colors.neutral[300]}
