@@ -1,16 +1,13 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { BottomSheetView } from '@gorhom/bottom-sheet';
 import { BottomSheetMethods } from '@gorhom/bottom-sheet/lib/typescript/types';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import { FASTING_DAYS, FASTING_START_TIMES, FastingDay, FastingTime } from 'const/fastingDays';
 import { useFasting } from 'hooks/useFasting';
-import { useEffect, useRef, useState } from 'react';
+import { RefObject, useEffect, useState } from 'react';
 import { FlatList, View } from 'react-native';
-import colors from 'tailwindcss/colors';
 import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
-import { getWeekColor } from 'utils/getWeekColor';
-import { Maybe } from '../../types/common';
+import { Maybe, Nullable } from '../../types/common';
 import { CustomBottomSheet } from '../common/CustomBottomSheet';
 
 interface DayButtonProps {
@@ -18,6 +15,9 @@ interface DayButtonProps {
   isSelected: boolean;
   disabled: boolean;
   onPress: (day: number) => void;
+}
+interface FastingDayBottomSheetProps {
+  bottomSheetRef: RefObject<Nullable<BottomSheetMethods>>;
 }
 interface StartTimeButtonProps {
   time: FastingTime;
@@ -54,11 +54,10 @@ const StartTimeButton = ({ time, isSelected, onPress }: StartTimeButtonProps) =>
   );
 };
 
-export const FastingDayBottomSheet = () => {
+// 단식 요일 설정 시트. 여는 줄은 FastingDayLine (오늘 탭 목록 아래)
+export const FastingDayBottomSheet = ({ bottomSheetRef }: FastingDayBottomSheetProps) => {
   const { days, startTime, upsertFasting } = useFasting();
   const week = useWeekCompletePopupStore((state) => state.week);
-
-  const bottomSheetRef = useRef<BottomSheetMethods>(null);
 
   const selectableDayNum = week - 1; // ex. 2주차 -> 1개 선택 가능
   const [selectedDays, setSelectedDays] = useState<number[]>(days);
@@ -77,11 +76,6 @@ export const FastingDayBottomSheet = () => {
     }
   };
 
-  const convertFastingDayToText = (dayNums: number[]) => {
-    const fastingDays = dayNums?.map((dayNum) => FASTING_DAYS[dayNum]);
-    return [...fastingDays].join(' & ') + ' ' + startTime;
-  };
-
   const saveFastingDays = () => {
     upsertFasting({
       days: selectedDays,
@@ -94,10 +88,6 @@ export const FastingDayBottomSheet = () => {
     setSelectedTime(null);
   };
 
-  const openSheet = () => {
-    bottomSheetRef.current?.expand();
-  };
-
   useEffect(() => {
     setSelectedDays(days);
     setSelectedTime(startTime);
@@ -105,98 +95,76 @@ export const FastingDayBottomSheet = () => {
 
   if (week < 2) return null;
   return (
-    <>
-      <View className="mt-4 gap-4">
-        <View className="flex-row items-center justify-between rounded-xl border border-neutral-300 px-4 py-3">
-          <Text className="font-bold">
-            <Text className={getWeekColor(week)}>{week}주차 </Text>
-            <Text className="text-neutral-800">24시간 단식 요일</Text>
-          </Text>
-          {/* 설정값: 버튼 모양 대신 값 + 화살표로 보여줘서 할 일 버튼과 구분 */}
-          <RippleButton
-            onPress={openSheet}
-            rounded="lg"
-            rippleColor={colors.neutral[200]}
-            className="flex-row items-center gap-0.5 py-1 pl-2">
-            <Text className={`font-bold ${getWeekColor(week)}`}>
-              {days.length === 0 ? '설정하기' : convertFastingDayToText(days)}
+    <CustomBottomSheet ref={bottomSheetRef}>
+      <BottomSheetView className="px-5">
+        <View className="flex-row items-center justify-between">
+          <Text className="mb-2 text-2xl font-bold">단식 요일 설정</Text>
+        </View>
+        <Text className="mb-6 text-neutral-500">
+          이번 주에 24시간 단식을 할 요일을 선택해주세요.
+        </Text>
+
+        <View className="my-3 gap-3">
+          <Text className="font-bold text-green-600">단식 요일</Text>
+          <FlatList
+            data={displayDays}
+            keyExtractor={(item) => `fasting-day-button-${item}`}
+            contentContainerClassName="flex-row justify-between"
+            renderItem={({ item }) => {
+              const dayIndex = FASTING_DAYS.indexOf(item);
+              const disabledDays = selectedDays.map((dayIndex) => getNextDay(dayIndex));
+              const isDisabled = isDayAllSelected
+                ? !selectedDays.includes(dayIndex)
+                : disabledDays.includes(dayIndex) && !selectedDays.includes(dayIndex);
+
+              return (
+                <DayButton
+                  day={item}
+                  onPress={toggleSelectedDay}
+                  disabled={isDisabled}
+                  isSelected={selectedDays.includes(dayIndex)}
+                />
+              );
+            }}
+          />
+          {isDayAllSelected ? (
+            <Text className="my-4 text-center text-green-600">완벽해요!</Text>
+          ) : (
+            <Text className="my-4 text-center text-neutral-500">
+              {selectableDayNum - selectedDays.length}개를 더 선택해주세요
             </Text>
-            <Ionicons name="chevron-forward" size={18} color={colors.neutral[400]} />
+          )}
+        </View>
+
+        <View className="my-3 gap-3">
+          <Text className="font-bold text-green-600">단식 시작 시간</Text>
+          <View className="w-full flex-row gap-3">
+            {FASTING_START_TIMES.map((item) => (
+              <StartTimeButton
+                key={`fasting-start-time-button-${item}`}
+                time={item}
+                onPress={setSelectedTime}
+                isSelected={item === selectedTime}
+              />
+            ))}
+          </View>
+        </View>
+
+        <View className="flex-row gap-2">
+          <RippleButton
+            outerClassName="my-10 !flex-[3.5] border border-green-600"
+            onPress={handleReset}>
+            <Text className="text-lg font-semibold text-green-600">설정 초기화</Text>
+          </RippleButton>
+          <RippleButton
+            outerClassName="my-10 !flex-[6.5]"
+            className={`w-full py-4 ${isAllSelected ? 'bg-green-600' : 'bg-neutral-300'}`}
+            onPress={saveFastingDays}
+            disabled={!isAllSelected}>
+            <Text className="text-lg font-semibold text-white">저장하기</Text>
           </RippleButton>
         </View>
-      </View>
-
-      <CustomBottomSheet ref={bottomSheetRef}>
-        <BottomSheetView className="px-5">
-          <View className="flex-row items-center justify-between">
-            <Text className="mb-2 text-2xl font-bold">단식 요일 설정</Text>
-          </View>
-          <Text className="mb-6 text-neutral-500">
-            이번 주에 24시간 단식을 할 요일을 선택해주세요.
-          </Text>
-
-          <View className="my-3 gap-3">
-            <Text className="font-bold text-green-600">단식 요일</Text>
-            <FlatList
-              data={displayDays}
-              keyExtractor={(item) => `fasting-day-button-${item}`}
-              contentContainerClassName="flex-row justify-between"
-              renderItem={({ item }) => {
-                const dayIndex = FASTING_DAYS.indexOf(item);
-                const disabledDays = selectedDays.map((dayIndex) => getNextDay(dayIndex));
-                const isDisabled = isDayAllSelected
-                  ? !selectedDays.includes(dayIndex)
-                  : disabledDays.includes(dayIndex) && !selectedDays.includes(dayIndex);
-
-                return (
-                  <DayButton
-                    day={item}
-                    onPress={toggleSelectedDay}
-                    disabled={isDisabled}
-                    isSelected={selectedDays.includes(dayIndex)}
-                  />
-                );
-              }}
-            />
-            {isDayAllSelected ? (
-              <Text className="my-4 text-center text-green-600">완벽해요!</Text>
-            ) : (
-              <Text className="my-4 text-center text-neutral-500">
-                {selectableDayNum - selectedDays.length}개를 더 선택해주세요
-              </Text>
-            )}
-          </View>
-
-          <View className="my-3 gap-3">
-            <Text className="font-bold text-green-600">단식 시작 시간</Text>
-            <View className="w-full flex-row gap-3">
-              {FASTING_START_TIMES.map((item) => (
-                <StartTimeButton
-                  key={`fasting-start-time-button-${item}`}
-                  time={item}
-                  onPress={setSelectedTime}
-                  isSelected={item === selectedTime}
-                />
-              ))}
-            </View>
-          </View>
-
-          <View className="flex-row gap-2">
-            <RippleButton
-              outerClassName="my-10 !flex-[3.5] border border-green-600"
-              onPress={handleReset}>
-              <Text className="text-lg font-semibold text-green-600">설정 초기화</Text>
-            </RippleButton>
-            <RippleButton
-              outerClassName="my-10 !flex-[6.5]"
-              className={`w-full py-4 ${isAllSelected ? 'bg-green-600' : 'bg-neutral-300'}`}
-              onPress={saveFastingDays}
-              disabled={!isAllSelected}>
-              <Text className="text-lg font-semibold text-white">저장하기</Text>
-            </RippleButton>
-          </View>
-        </BottomSheetView>
-      </CustomBottomSheet>
-    </>
+      </BottomSheetView>
+    </CustomBottomSheet>
   );
 };

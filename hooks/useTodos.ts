@@ -35,7 +35,7 @@ const todoDaily = createTodoDailySync({
 });
 
 // syncTodoDaily: 앱이 다시 열리거나 네트워크가 돌아오면 못 보낸 todo_daily를 다시 보낸다.
-// 리스너가 하나면 되므로 화면에 하나만 있는 곳(WeekGuide)에서만 켠다
+// 리스너가 하나면 되므로 화면에 하나만 있는 곳(TodayChecklist)에서만 켠다
 export const useTodos = (options?: { syncTodoDaily?: boolean }) => {
   const syncTodoDaily = options?.syncTodoDaily ?? false;
   const userId = useUserStore((state) => state.id);

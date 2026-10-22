@@ -1,0 +1,113 @@
+import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import { Text } from 'components/common/Text';
+import { useFasting } from 'hooks/useFasting';
+import { useFastingPlanBackfill, useFastingWeekContext } from 'hooks/useFastingPlan';
+import { useTodos } from 'hooks/useTodos';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, View } from 'react-native';
+import AnimatedNumbers from 'react-native-animated-numbers';
+import { Easing } from 'react-native-reanimated';
+import { useUserStore } from 'stores/userStore';
+import colors from 'tailwindcss/colors';
+import { getWeekAndDay } from 'utils/date';
+import { getFastingStatus, WEEK_CHANGES } from 'utils/dietGuide';
+import { getWeekColor, getWeekColorHex } from 'utils/getWeekColor';
+import { todayExtraRows } from 'utils/todayRows';
+import { FastingDayLine } from './FastingDayLine';
+import { FastingProgressLine } from './FastingProgressLine';
+import { FastingResultRow } from './FastingResultRow';
+import { TipBottomSheet } from './TipBottomSheet';
+import { Todo } from './Todo';
+import { WeightRow } from './WeightRow';
+
+const MINUTE_MS = 60 * 1000;
+
+// 오늘 탭의 할 일 목록 하나: (단식 중이면 남은 시간 줄) → 식단 할 일 → 단식 결과 → 체중 → (아래) 단식 요일.
+// 완료율(%)은 식단 할 일만 센다
+export function TodayChecklist() {
+  const startDate = useUserStore((state) => state.start_date);
+
+  // 화면에 하나뿐이라 여기서 못 보낸 todo_daily 다시 보내기를 켠다
+  const { todos, completedRate, isLoading: isTodosLoading } = useTodos({ syncTodoDaily: true });
+  const { days, startTime, isLoading: isFastingLoading } = useFasting();
+  const weekContext = useFastingWeekContext();
+  useFastingPlanBackfill();
+  const isLoading = isTodosLoading || isFastingLoading;
+
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), MINUTE_MS);
+    return () => clearInterval(id);
+  }, []);
+
+  const { week } = getWeekAndDay(startDate);
+  const isMaintenance = week >= 5;
+  const rows = todayExtraRows({ week, now, fastingDays: days, startTime, weekContext });
+  const status = getFastingStatus(now, days, startTime);
+
+  return (
+    <View className="gap-3">
+      {rows.fastingProgress && status.phase === 'fasting' && (
+        <FastingProgressLine status={status} />
+      )}
+
+      <View className="rounded-xl border border-neutral-200 bg-white px-4 pb-2 pt-4">
+        <View className="mb-1 flex-row items-center justify-between">
+          <Text className="text-lg font-bold text-neutral-800">오늘 할 일</Text>
+          {todos.length > 0 && (
+            <View className="flex-row items-center gap-1">
+              {completedRate === 100 && (
+                <FontAwesome5 name="trophy" size={14} color={colors.yellow[500]} />
+              )}
+              <AnimatedNumbers
+                animateToNumber={completedRate}
+                easing={Easing.elastic(1)}
+                animationDuration={1250}
+                fontStyle={{
+                  fontSize: 18,
+                  lineHeight: 24,
+                  fontWeight: 'bold',
+                  color: getWeekColorHex(week),
+                }}
+              />
+              <Text className={`text-lg font-bold ${getWeekColor(week)}`}>%</Text>
+            </View>
+          )}
+        </View>
+
+        {isMaintenance && (
+          <View className="my-2 gap-1 rounded-xl bg-neutral-100 p-4">
+            <Text className="font-bold text-neutral-700">유지기 가이드</Text>
+            {WEEK_CHANGES[5].map((line) => (
+              <Text key={line} className="text-sm text-neutral-600">
+                • {line}
+              </Text>
+            ))}
+          </View>
+        )}
+
+        {isLoading && !isMaintenance ? (
+          <ActivityIndicator className="h-24" size="large" color={colors.green[500]} />
+        ) : (
+          <FlatList
+            data={todos}
+            renderItem={({ item }) => <Todo {...item} />}
+            keyExtractor={(item) => `todo-${item.id}`}
+            scrollEnabled={false}
+          />
+        )}
+
+        {rows.fastingResultDay && (
+          <FastingResultRow key={rows.fastingResultDay} day={rows.fastingResultDay} now={now} />
+        )}
+        {rows.weight && <WeightRow />}
+      </View>
+
+      {rows.fastingDayLine && (
+        <FastingDayLine state={rows.fastingDayLine} days={days} startTime={startTime} />
+      )}
+
+      <TipBottomSheet />
+    </View>
+  );
+}
