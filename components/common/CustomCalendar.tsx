@@ -25,6 +25,7 @@ export default function CustomCalendar({
       <Calendar
         key={calendarKey}
         current={selectedDate}
+        monthFormat="yyyy년 M월"
         maxDate={today}
         onDayPress={(day) => {
           setSelectedDate(day.dateString);

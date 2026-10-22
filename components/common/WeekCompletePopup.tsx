@@ -3,7 +3,7 @@ import { useIngredients } from 'hooks/useIngredients';
 import useSteps from 'hooks/useSteps';
 import LottieView from 'lottie-react-native';
 import { useEffect } from 'react';
-import { Modal, View } from 'react-native';
+import { Modal, ScrollView, useWindowDimensions, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -22,6 +22,7 @@ export function WeekCompletePopup() {
   const { close, week, visible } = useWeekCompletePopupStore();
   const { step, goNextStep, resetStep } = useSteps(2);
   const { ingredients } = useIngredients();
+  const { height: windowHeight } = useWindowDimensions();
 
   const scale = useSharedValue(0);
 
@@ -44,7 +45,7 @@ export function WeekCompletePopup() {
   }));
 
   return (
-    <Modal transparent visible={visible} animationType="fade">
+    <Modal transparent visible={visible} animationType="fade" onRequestClose={handleClose}>
       <View className="flex-1 items-center justify-center bg-black/50">
         <Animated.View
           style={[
@@ -83,66 +84,72 @@ export function WeekCompletePopup() {
 
           {step === 2 && (
             <>
-              <AnimatedTextView className="w-full" delay={500}>
-                <Text className="mb-2 text-2xl font-bold">
-                  <Text className={getWeekColor(week)}>{week}주차</Text>에는...
-                </Text>
-                {WEEK_CHANGES[week] && (
-                  <View className="mb-6 gap-1.5 rounded-xl bg-neutral-100 p-4">
-                    <Text className="mb-1 font-bold">이번 주 달라지는 점</Text>
-                    {WEEK_CHANGES[week].map((line) => (
-                      <Text key={line} className="text-sm text-neutral-700">
-                        • {line}
-                      </Text>
-                    ))}
-                  </View>
-                )}
-                {week < 4 ? (
-                  <Text className="mb-10 text-neutral-600">
-                    아래 재료들을 추가로 선택할 수 있어요.
+              {/* 재료가 많으면 팝업이 화면을 넘치므로 내용만 스크롤하고 확인 버튼은 항상 보이게 함 */}
+              <ScrollView
+                className="w-full"
+                style={{ maxHeight: windowHeight * 0.6 }}
+                showsVerticalScrollIndicator={false}>
+                <AnimatedTextView className="w-full" delay={500}>
+                  <Text className="mb-2 text-2xl font-bold">
+                    <Text className={getWeekColor(week)}>{week}주차</Text>에는...
                   </Text>
-                ) : (
-                  <Text className="mb-10 text-neutral-600">새로운 재료가 추가되지는 않아요.</Text>
-                )}
-              </AnimatedTextView>
-
-              <AnimatedTextView className="w-full" delay={1250}>
-                <View className="mb-10 flex-row flex-wrap gap-3">
-                  {week === 2 &&
-                    ingredients
-                      .filter((ingredient) => ingredient.week === 2)
-                      .map((ingredient) => (
-                        <Text
-                          key={ingredient.name}
-                          className="rounded bg-gray-200 px-3 py-1 text-center font-bold">
-                          {ingredient.name}
+                  {WEEK_CHANGES[week] && (
+                    <View className="mb-6 gap-1.5 rounded-xl bg-neutral-100 p-4">
+                      <Text className="mb-1 font-bold">이번 주 달라지는 점</Text>
+                      {WEEK_CHANGES[week].map((line) => (
+                        <Text key={line} className="text-sm text-neutral-700">
+                          • {line}
                         </Text>
                       ))}
-                  {week === 3 &&
-                    ingredients
-                      .filter((ingredient) => ingredient.week === 3)
-                      .map((ingredient) => (
-                        <Text
-                          key={ingredient.name}
-                          className="rounded bg-gray-200 px-3 py-1 text-center font-bold">
-                          {ingredient.name}
-                        </Text>
-                      ))}
-                  {week === 4 && (
-                    <View className="gap-4">
-                      <Text>
-                        드디어 <Text className="font-bold">마지막 주차</Text>예요!
-                      </Text>
-                      <Text className="text-base">
-                        5주차부터는 <Text className="font-bold">유지기</Text>로 접어들어요.
-                      </Text>
-                      <Text className="text-base">
-                        지금까지 다져온 습관을 믿고 끝까지 달려가 보세요 💪
-                      </Text>
                     </View>
                   )}
-                </View>
-              </AnimatedTextView>
+                  {week < 4 ? (
+                    <Text className="mb-10 text-neutral-600">
+                      아래 재료들을 추가로 선택할 수 있어요.
+                    </Text>
+                  ) : (
+                    <Text className="mb-10 text-neutral-600">새로운 재료가 추가되지는 않아요.</Text>
+                  )}
+                </AnimatedTextView>
+
+                <AnimatedTextView className="w-full" delay={1250}>
+                  <View className="mb-10 flex-row flex-wrap gap-3">
+                    {week === 2 &&
+                      ingredients
+                        .filter((ingredient) => ingredient.week === 2)
+                        .map((ingredient) => (
+                          <Text
+                            key={ingredient.name}
+                            className="rounded bg-gray-200 px-3 py-1 text-center font-bold">
+                            {ingredient.name}
+                          </Text>
+                        ))}
+                    {week === 3 &&
+                      ingredients
+                        .filter((ingredient) => ingredient.week === 3)
+                        .map((ingredient) => (
+                          <Text
+                            key={ingredient.name}
+                            className="rounded bg-gray-200 px-3 py-1 text-center font-bold">
+                            {ingredient.name}
+                          </Text>
+                        ))}
+                    {week === 4 && (
+                      <View className="gap-4">
+                        <Text>
+                          드디어 <Text className="font-bold">마지막 주차</Text>예요!
+                        </Text>
+                        <Text className="text-base">
+                          5주차부터는 <Text className="font-bold">유지기</Text>로 접어들어요.
+                        </Text>
+                        <Text className="text-base">
+                          지금까지 다져온 습관을 믿고 끝까지 달려가 보세요 💪
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </AnimatedTextView>
+              </ScrollView>
 
               <AnimatedTextView className="w-full" delay={2000}>
                 <RippleButton
