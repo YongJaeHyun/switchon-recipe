@@ -28,14 +28,13 @@ const supabase = createClient(
 Deno.serve(async (req) => {
   const payload: WebhookPayload = await req.json();
   const { uid } = payload.record;
-  console.log('Notification Payload:', payload);
+  console.log('Notification:', payload.record.type, payload.record.id);
 
   const { data: profiles } = await supabase
     .from('user')
     .select('push_token')
     .eq('id', uid)
     .single();
-  console.log('User Profile:', profiles);
 
   const message = buildPushMessage(payload.record, profiles?.push_token);
   if (!message) {

@@ -370,6 +370,13 @@ verify_jwt = true
 import_map = "./functions/get-pass-status/deno.json"
 entrypoint = "./functions/get-pass-status/index.ts"
 
+# notifications insert 웹훅이 호출 (운영 설정과 동일하게 JWT 검증 유지)
+[functions.push]
+enabled = true
+verify_jwt = true
+import_map = "./functions/push/deno.json"
+entrypoint = "./functions/push/index.ts"
+
 [functions.food-check]
 enabled = true
 verify_jwt = true
