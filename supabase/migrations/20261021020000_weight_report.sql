@@ -40,7 +40,7 @@ create table public.weekly_report (
   week_index integer not null,
   stats jsonb not null,
   content jsonb,
-  status text check (status in ('ready', 'empty')),
+  status text not null default 'ready' check (status in ('ready', 'empty')),
   created_at timestamptz not null default now(),
   primary key (uid, start_date, week_index)
 );

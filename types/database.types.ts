@@ -855,7 +855,7 @@ export type Database = {
           created_at: string;
           start_date: string;
           stats: Json;
-          status: string | null;
+          status: string;
           uid: string;
           week_index: number;
         };
@@ -864,7 +864,7 @@ export type Database = {
           created_at?: string;
           start_date: string;
           stats: Json;
-          status?: string | null;
+          status?: string;
           uid: string;
           week_index: number;
         };
@@ -873,7 +873,7 @@ export type Database = {
           created_at?: string;
           start_date?: string;
           stats?: Json;
-          status?: string | null;
+          status?: string;
           uid?: string;
           week_index?: number;
         };
