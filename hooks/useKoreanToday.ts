@@ -44,20 +44,23 @@ export default function useKoreanToday() {
     }
   }, [start_date, resetFasting, resetTodos]);
 
+  // 매일 자정에 다시 검증. 정리 함수를 돌려줘 언마운트·의존성 변경 시 타이머가 남지 않게 함
   const revalidateTodayInterval = useCallback(() => {
-    const now = getKoreanDate();
-    const nextMidnight = startOfDay(addDays(now, 1));
+    let timeoutId: ReturnType<typeof setTimeout>;
 
-    const timeoutMs = nextMidnight.getTime() - now.getTime();
+    const scheduleNextMidnight = () => {
+      const now = getKoreanDate();
+      const nextMidnight = startOfDay(addDays(now, 1));
 
-    const timeoutId = setTimeout(() => {
-      revalidateToday();
-      const intervalId = setInterval(revalidateToday, 24 * 60 * 60 * 1000);
+      timeoutId = setTimeout(() => {
+        revalidateToday();
+        scheduleNextMidnight();
+      }, nextMidnight.getTime() - now.getTime());
+    };
 
-      return () => clearInterval(intervalId);
-    }, timeoutMs);
+    scheduleNextMidnight();
 
-    return timeoutId;
+    return () => clearTimeout(timeoutId);
   }, [revalidateToday]);
 
   useEffect(() => {
@@ -70,11 +73,11 @@ export default function useKoreanToday() {
       }
     });
 
-    const timeoutId = revalidateTodayInterval();
+    const clearMidnightTimer = revalidateTodayInterval();
 
     return () => {
       subscription.remove();
-      clearTimeout(timeoutId);
+      clearMidnightTimer();
     };
   }, [isHydrated, revalidateToday, revalidateTodayInterval]);
 
