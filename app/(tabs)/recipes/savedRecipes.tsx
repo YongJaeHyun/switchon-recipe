@@ -2,7 +2,7 @@ import { RecipeAPI } from 'api/RecipeAPI';
 import { Filter } from 'components/common/Filter';
 import ListEmptyText from 'components/common/ListEmptyText';
 import { Text } from 'components/common/Text';
-import { RecipeCard } from 'components/home/RecipeCard';
+import { RecipeCard } from 'components/recipes/RecipeCard';
 import { RECIPE_FILTERS, RecipeFilterType } from 'const/filter';
 import { QueryKey } from 'const/queryKey';
 import { RECIPE_SORTS, RecipeSortType } from 'const/sort';
