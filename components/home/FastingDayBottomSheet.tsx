@@ -5,7 +5,7 @@ import { StepSlider } from 'components/common/StepSlider';
 import { Text } from 'components/common/Text';
 import { FASTING_DAYS, FastingDay } from 'const/fastingDays';
 import { useFasting } from 'hooks/useFasting';
-import { RefObject, useEffect, useState } from 'react';
+import { RefObject, useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
 import {
   DEFAULT_START_MINUTES,
@@ -129,16 +129,17 @@ export const FastingDayBottomSheet = ({ bottomSheetRef, week }: FastingDayBottom
     setLastSetMinutes(undefined);
   };
 
-  // 저장된 값으로 되돌린다. 열 때마다 (저장하지 않고 닫은 편집은 버린다) + 저장된 값이 바뀌면
-  const resetToSaved = () => {
+  // 저장된 값으로 되돌린다. 닫을 때마다 (저장하지 않고 닫은 편집은 버린다, 다음에 열면 바로 저장된 값) +
+  // 저장된 값이 바뀌면
+  const resetToSaved = useCallback(() => {
     setSelectedDays(days);
     setSelectedSchedule(withNewDays(schedule, days, undefined));
     setLastSetMinutes(undefined);
-  };
-  useEffect(resetToSaved, [days, schedule]);
+  }, [days, schedule]);
+  useEffect(() => resetToSaved(), [resetToSaved]);
 
   return (
-    <CustomBottomSheet ref={bottomSheetRef} onOpen={resetToSaved}>
+    <CustomBottomSheet ref={bottomSheetRef} onClose={resetToSaved}>
       <BottomSheetScrollView className="px-5">
         <View className="flex-row items-center justify-between">
           <Text className="mb-2 text-2xl font-bold">단식 요일 설정</Text>

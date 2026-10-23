@@ -2,6 +2,7 @@ import { supabase } from 'lib/supabase';
 import { useUserStore } from 'stores/userStore';
 import { Maybe } from 'types/common';
 import { FastingResultDB } from 'types/database';
+import { fastingResultRecord as recordOf, fastingResultUpsertRow } from 'utils/fastingResultRecord';
 import { captureError, sendError } from 'utils/sendError';
 
 export type FastingResult = 'success' | 'broken';
@@ -11,14 +12,6 @@ export interface FastingResultRecord {
   result: FastingResult;
   fastedMinutes: number | null;
 }
-
-const minutesOf = (value: unknown): number | null =>
-  typeof value === 'number' && Number.isFinite(value) ? value : null;
-
-const recordOf = (row: { result: string; fasted_minutes?: number | null }): FastingResultRecord => {
-  const result = row.result as FastingResult;
-  return { result, fastedMinutes: result === 'broken' ? minutesOf(row.fasted_minutes) : null };
-};
 
 // 그 단식(시작일 KST 날짜)의 결과. 응답 전이면 null. 실패 시 throw (React Query가 재시도)
 const selectOne = async (day: string): Promise<FastingResultRecord | null> => {
@@ -55,16 +48,9 @@ const upsert = async ({
 
     const { data, error } = await supabase
       .from('fasting_result')
-      .upsert(
-        {
-          uid,
-          day,
-          result,
-          fasted_minutes: result === 'broken' ? (fastedMinutes ?? null) : null,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'uid,day' }
-      )
+      .upsert(fastingResultUpsertRow({ uid, day, result, fastedMinutes, now: new Date() }), {
+        onConflict: 'uid,day',
+      })
       .select()
       .single();
 
@@ -87,4 +73,15 @@ const selectSince = async (fromDay: string): Promise<({ day: string } & FastingR
   return (data ?? []).map((row) => ({ day: row.day, ...recordOf(row) }));
 };
 
-export const FastingResultAPI = { selectOne, upsert, selectSince, recordOf };
+// 그날 결과를 지운다 (진행 중에 일찍 끝냈다가 취소). 실패하면 토스트 후 undefined, 성공하면 true
+const remove = async (day: string) =>
+  sendError<Maybe<true>>(async () => {
+    const uid = useUserStore.getState().id;
+    if (!uid) return;
+
+    const { error } = await supabase.from('fasting_result').delete().eq('uid', uid).eq('day', day);
+    if (error) throw error;
+    return true;
+  });
+
+export const FastingResultAPI = { selectOne, upsert, selectSince, remove, recordOf };

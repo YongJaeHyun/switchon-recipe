@@ -7,6 +7,7 @@ import type {
   WeeklyReport,
   WeeklyStats,
 } from 'types/report';
+import { formatFastedHours } from './fastingEarlyEnd';
 import { isPassOnSale } from './passScreen';
 
 // 소수 한 자리 반올림. 'e' 표기로 올려 부동소수 오차를 피한다
@@ -25,9 +26,14 @@ export function formatItemRate(i: { name: string; done: number; appeared: number
   return `${i.name} ${i.done}/${i.appeared}`;
 }
 
-// 단식 칸: "3번 중 1번 성공" + "중단 N번", "응답 대기 N번"(있을 때만), "성공한 날 …"
+// 단식 칸: "3번 중 1번 성공" + "일찍 끝냄 N번", "일찍 끝낸 날 목 18시간, …"(시간이 있을 때만),
+// "응답 대기 N번"(있을 때만), "성공한 날 …"
 export function formatFastingStat(f: WeeklyStats['fasting']): { value: string; details: string[] } {
-  const details = [`중단 ${f.broken}번`];
+  const details = [`일찍 끝냄 ${f.broken}번`];
+  const hours = (f.earlyEnded ?? [])
+    .filter((e) => e.fastedMinutes !== null)
+    .map((e) => `${e.weekday.slice(0, 1)} ${formatFastedHours(e.fastedMinutes)}`);
+  if (hours.length > 0) details.push(`일찍 끝낸 날 ${hours.join(', ')}`);
   if (f.pending > 0) details.push(`응답 대기 ${f.pending}번`);
   if (f.successWeekdays.length > 0) details.push(`성공한 날 ${f.successWeekdays.join(', ')}`);
   return { value: `${f.planned}번 중 ${f.success}번 성공`, details };
@@ -153,6 +159,15 @@ export function parseReportStats(value: unknown): WeeklyStats | null {
       broken: num(fasting.broken),
       pending: num(fasting.pending),
       successWeekdays: weekdays.filter((d): d is string => typeof d === 'string'),
+      // 이 필드 전에 만든 리포트에는 없다 (없으면 키도 두지 않는다)
+      ...(Array.isArray(fasting.earlyEnded)
+        ? {
+            earlyEnded: fasting.earlyEnded
+              .filter(isObject)
+              .filter((e) => typeof e.weekday === 'string')
+              .map((e) => ({ weekday: str(e.weekday), fastedMinutes: numOrNull(e.fastedMinutes) })),
+          }
+        : {}),
     },
     recipes: { total: num(recipes.total), low: num(recipes.low), zero: num(recipes.zero) },
     foodChecks: { total: num(foodChecks.total), avoid: num(foodChecks.avoid) },

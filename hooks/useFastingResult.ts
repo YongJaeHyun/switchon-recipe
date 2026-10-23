@@ -31,11 +31,21 @@ export const useFastingResult = (day: string | null) => {
     },
   });
 
+  // 진행 중에 일찍 끝낸 것을 취소: 결과를 지우면 오늘 탭은 다시 진행 줄을 보여준다
+  const { mutate: cancelResult, isPending: isCancelling } = useMutation({
+    mutationFn: () => FastingResultAPI.remove(day as string),
+    onSuccess: (removed) => {
+      if (removed) queryClient.setQueryData(queryKey, null);
+      void queryClient.invalidateQueries({ queryKey: [QueryKey.fastingHistory] });
+    },
+  });
+
   return {
     result: query.data?.result ?? null,
     fastedMinutes: query.data?.fastedMinutes ?? null,
     isLoading: query.isLoading,
     saveResult,
-    isSaving,
+    cancelResult,
+    isSaving: isSaving || isCancelling,
   };
 };

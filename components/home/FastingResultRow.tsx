@@ -23,26 +23,34 @@ const FirstMealButton = () => (
 );
 
 // 오늘 할 일 목록의 단식 결과 줄 (단식이 끝난 뒤 응답 창 안, 또는 진행 중에 일찍 끝냈을 때).
-// 답하면 완료 표시 + 결과 + 바꾸기로 바뀐다. "일찍 끝냈어요"는 아래에 시간 슬라이더를 열고 저장한다.
-// 식단 완료율에는 넣지 않는다
-export function FastingResultRow({ day, now }: { day: string; now: Date }) {
-  const { result, fastedMinutes, isLoading, saveResult, isSaving } = useFastingResult(day);
+// 답하면 완료 표시 + 결과 + 바꾸기로 바뀐다. 바꾸기는 답(성공 / 일찍 끝냈어요)을 다시 고르게 한다.
+// 단식이 아직 24시간 안(cancelable)이면 바꾸기 대신 취소: 결과를 지우고 진행 줄로 돌아간다.
+// "일찍 끝냈어요"는 아래에 시간 슬라이더(저장된 시간, 없으면 16시간)를 열고 저장한다. 식단 완료율에는 넣지 않는다
+export function FastingResultRow({
+  day,
+  now,
+  cancelable = false,
+}: {
+  day: string;
+  now: Date;
+  cancelable?: boolean;
+}) {
+  const { result, fastedMinutes, isLoading, saveResult, cancelResult, isSaving } =
+    useFastingResult(day);
+  const [isEditing, setEditing] = useState(false);
   const [isPickingHours, setPickingHours] = useState(false);
   if (isLoading) return null;
 
+  const done = (row: unknown) => {
+    if (!row) return; // 실패 안내는 API가 했다
+    setEditing(false);
+    setPickingHours(false);
+  };
+  const saveSuccess = () => saveResult({ result: 'success' }, { onSuccess: done });
   const saveEarlyEnd = (minutes: number) =>
-    saveResult(
-      { result: 'broken', fastedMinutes: minutes },
-      { onSuccess: (row) => row && setPickingHours(false) }
-    );
+    saveResult({ result: 'broken', fastedMinutes: minutes }, { onSuccess: done });
 
-  const hoursPicker = isPickingHours && (
-    <View className="mb-2 ml-9">
-      <FastedHoursPicker disabled={isSaving} onSave={saveEarlyEnd} />
-    </View>
-  );
-
-  if (result) {
+  if (result && !isEditing) {
     return (
       <View className="pb-2">
         <View className="flex-row items-center gap-4 py-2">
@@ -53,15 +61,10 @@ export function FastingResultRow({ day, now }: { day: string; now: Date }) {
           <Pressable
             hitSlop={8}
             disabled={isSaving}
-            onPress={() =>
-              result === 'success'
-                ? setPickingHours((open) => !open)
-                : saveResult({ result: 'success' })
-            }>
-            <Text className="text-sm text-neutral-400">바꾸기</Text>
+            onPress={() => (cancelable ? cancelResult() : setEditing(true))}>
+            <Text className="text-sm text-neutral-400">{cancelable ? '취소' : '바꾸기'}</Text>
           </Pressable>
         </View>
-        {hoursPicker}
         <FirstMealButton />
       </View>
     );
@@ -78,7 +81,7 @@ export function FastingResultRow({ day, now }: { day: string; now: Date }) {
             rounded="full"
             outerClassName="bg-green-600"
             className="px-3 py-1.5"
-            onPress={() => saveResult({ result: 'success' })}>
+            onPress={saveSuccess}>
             <Text className="text-sm font-bold text-white">성공</Text>
           </RippleButton>
           <RippleButton
@@ -92,7 +95,15 @@ export function FastingResultRow({ day, now }: { day: string; now: Date }) {
           </RippleButton>
         </View>
       </View>
-      {hoursPicker}
+      {isPickingHours && (
+        <View className="mb-2 ml-9">
+          <FastedHoursPicker
+            initialMinutes={fastedMinutes}
+            disabled={isSaving}
+            onSave={saveEarlyEnd}
+          />
+        </View>
+      )}
       <FirstMealButton />
     </View>
   );

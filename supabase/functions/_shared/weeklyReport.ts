@@ -347,6 +347,7 @@ const numbersIn = (text: string): number[] =>
 //            "중단·실패"가 있으면 중단 횟수), 아니면 통계의 횟수(할 일·단식·레시피·판정)
 //            한글 수("두 번", "세 번", 한~일곱)도 숫자로 바꿔 같은 규칙으로 본다
 //   N일     → 일 수(1~7, 7일 중 N일)
+//   N시간·N분 → 일찍 끝낸 단식의 시간·분이면 허용, 아니면 단위 없는 숫자처럼
 //   주 N회  → 아래 "주 N회" 검사가 따로 본다
 // 통계는 소수 한 자리이므로 소수 둘째 자리 이하에 0이 아닌 숫자가 있으면(1.24) 어디서든 틀린 값이다
 interface NumberRules {
@@ -358,6 +359,8 @@ interface NumberRules {
   fastingSuccess: Set<number>;
   fastingBroken: Set<number>;
   count: Set<number>;
+  fastedHours: Set<number>; // 일찍 끝낸 단식의 시간 수 ("N시간" 앞에서만)
+  fastedMinutes: Set<number>; // 그 나머지 분 ("N분" 앞에서만)
   free: Set<number>; // 단위와 상관없이 허용 (다음 주 규칙 문구의 숫자)
   names: string[]; // 할 일 이름 (이름 속 숫자는 검사하지 않는다)
 }
@@ -406,18 +409,16 @@ function numberRules(stats: WeeklyStats, free: string[] = []): NumberRules {
     c.total - c.avoid,
     w.daysLogged,
   ];
-  // 일찍 끝낸 단식의 단식 시간: "18시간", "16시간 30분", "16.5시간"
-  const fastedHours = (stats.fasting.earlyEnded ?? []).flatMap((e) =>
-    e.fastedMinutes === null
-      ? []
-      : [
-          Math.floor(e.fastedMinutes / 60),
-          ...(e.fastedMinutes % 60 > 0 ? [e.fastedMinutes % 60] : []),
-          Math.round((e.fastedMinutes / 60) * 10) / 10,
-        ]
+  // 일찍 끝낸 단식의 단식 시간: 시간 수(18, 16.5)는 "시간" 앞, 나머지 분(30)은 "분" 앞에서만 허용
+  const early = (stats.fasting.earlyEnded ?? []).flatMap((e) =>
+    e.fastedMinutes === null ? [] : [e.fastedMinutes]
   );
+  const fastedHours = early.flatMap((m) => [Math.floor(m / 60), Math.round((m / 60) * 10) / 10]);
+  const fastedMinutes = early.map((m) => m % 60).filter((m) => m > 0);
   return {
-    any: setOf([...weight, ...rate, ...week, ...count, ...nameNumbers, ...fastedHours]),
+    any: setOf([...weight, ...rate, ...week, ...count, ...nameNumbers]),
+    fastedHours: setOf(fastedHours),
+    fastedMinutes: setOf(fastedMinutes),
     weight: setOf(weight),
     rate: setOf(rate),
     week: setOf(week),
@@ -508,6 +509,10 @@ const numbersOk = (text: string, rules: NumberRules): boolean => {
       const clause = before.split(CLAUSE_SPLIT_RE).pop() ?? '';
       const allowed = clause.includes('단식') ? fastingSetFor(clause, after, rules) : rules.count;
       if (!allowed.has(key)) return false;
+    } else if (/^\s*시간/.test(after) && rules.fastedHours.has(key)) {
+      // 일찍 끝낸 단식 시간 "18시간". 그 밖의 "N시간"은 아래 단위 없는 숫자처럼 본다
+    } else if (/^\s*분/.test(after) && rules.fastedMinutes.has(key)) {
+      // "16시간 30분"의 30
     } else if (/^\s*일(?!요일)/.test(after)) {
       if (!Number.isInteger(value) || value < 1 || value > 7) return false;
     } else if (!rules.any.has(key)) {

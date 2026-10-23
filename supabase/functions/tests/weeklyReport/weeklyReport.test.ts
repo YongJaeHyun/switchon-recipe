@@ -921,6 +921,30 @@ describe('일찍 끝낸 단식 시간', () => {
     expect(sanitizeContent(content({ good: '수요일에 18시간 유지했어요.' }), s).good).toBe(fb.good);
   });
 
+  it('단식 시간 숫자는 "시간", 분 숫자는 "분" 앞에서만 허용한다 (30시간·단위 없는 30은 바꾼다)', () => {
+    const s = early(); // 목 18시간(1080), 토 16시간 30분(990)
+    const fb = fallbackContent(s);
+    for (const bad of [
+      '토요일에 30시간 단식했어요.',
+      '토요일에 16분 단식했어요.',
+      '단식 30 정도 유지했어요.',
+      '목요일 단식은 18 정도였어요.',
+    ]) {
+      expect(sanitizeContent(content({ good: bad }), s).good).toBe(fb.good);
+    }
+    expect(sanitizeContent(content({ good: '토요일에 16시간 30분 버텼어요.' }), s).good).toBe(
+      '토요일에 16시간 30분 버텼어요.'
+    );
+  });
+
+  it('일찍 끝낸 시간이 없으면 "N시간"은 지금처럼 통계 숫자와 맞춘다', () => {
+    const s = stats(); // 통계 숫자에 7(할 일 7일)이 있다
+    expect(sanitizeContent(content({ good: '7시간 잤어요.' }), s).good).toBe('7시간 잤어요.');
+    expect(sanitizeContent(content({ good: '18시간 단식했어요.' }), s).good).toBe(
+      fallbackContent(s).good
+    );
+  });
+
   it('"일찍 끝낸" 횟수는 중단 횟수와 맞춘다', () => {
     const s = early();
     const fb = fallbackContent(s);

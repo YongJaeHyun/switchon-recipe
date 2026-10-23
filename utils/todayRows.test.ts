@@ -12,6 +12,7 @@ describe('todayExtraRows', () => {
       fastingUpcoming: false,
       fastingProgress: false,
       fastingResultDay: null,
+      fastingResultCancelable: false,
       weight: true,
       fastingDayLine: null,
     });
@@ -83,6 +84,7 @@ describe('todayExtraRows', () => {
       fastingUpcoming: false,
       fastingProgress: false,
       fastingResultDay: null,
+      fastingResultCancelable: false,
       weight: true,
       fastingDayLine: null,
     });
@@ -137,6 +139,19 @@ describe('todayExtraRows: 진행 중에 일찍 끝낸 단식', () => {
     });
     expect(rows.fastingProgress).toBe(false);
     expect(rows.fastingResultDay).toBe('2026-10-22');
+    // 아직 단식 시간 안이라 결과 줄은 바꾸기 대신 취소
+    expect(rows.fastingResultCancelable).toBe(true);
+  });
+
+  it('단식이 끝난 뒤 결과 줄은 취소가 아니라 바꾸기', () => {
+    const rows = todayExtraRows({
+      week: 2,
+      now: new Date('2026-10-23T19:30:00+09:00'),
+      ...thuEvening,
+      currentFastAnswered: false,
+    });
+    expect(rows.fastingResultDay).toBe('2026-10-22');
+    expect(rows.fastingResultCancelable).toBe(false);
   });
 
   it('결과가 없으면 지금처럼 진행 줄', () => {

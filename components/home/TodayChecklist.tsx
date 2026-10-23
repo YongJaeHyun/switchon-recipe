@@ -121,7 +121,12 @@ export function TodayChecklist() {
         )}
 
         {rows.fastingResultDay && (
-          <FastingResultRow key={rows.fastingResultDay} day={rows.fastingResultDay} now={now} />
+          <FastingResultRow
+            key={rows.fastingResultDay}
+            day={rows.fastingResultDay}
+            now={now}
+            cancelable={rows.fastingResultCancelable}
+          />
         )}
         {rows.weight && <WeightRow />}
       </View>

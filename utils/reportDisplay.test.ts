@@ -125,6 +125,26 @@ describe('parseReportStats', () => {
       successWeekdays: ['월요일'],
     });
   });
+
+  it('일찍 끝낸 단식(earlyEnded)이 있으면 읽고, 잘못된 항목은 뺀다', () => {
+    const stats = parseReportStats({
+      range: { from: '2026-10-01', to: '2026-10-07' },
+      fasting: {
+        planned: 2,
+        broken: 2,
+        earlyEnded: [
+          { weekday: '목요일', fastedMinutes: 1080 },
+          { weekday: '토요일', fastedMinutes: 'x' },
+          { fastedMinutes: 600 },
+          null,
+        ],
+      },
+    });
+    expect(stats?.fasting.earlyEnded).toEqual([
+      { weekday: '목요일', fastedMinutes: 1080 },
+      { weekday: '토요일', fastedMinutes: null },
+    ]);
+  });
 });
 
 describe('formatFastingStat', () => {
@@ -137,28 +157,48 @@ describe('formatFastingStat', () => {
     ...over,
   });
 
-  it('계획 중 성공, 중단 횟수, 성공한 요일', () => {
+  it('계획 중 성공, 일찍 끝냄 횟수, 성공한 요일', () => {
     expect(formatFastingStat(f())).toEqual({
       value: '3번 중 1번 성공',
-      details: ['중단 1번', '성공한 날 월요일'],
+      details: ['일찍 끝냄 1번', '성공한 날 월요일'],
     });
   });
 
-  it('중단이 0번이어도 보여준다', () => {
-    expect(formatFastingStat(f({ broken: 0 })).details).toContain('중단 0번');
+  it('일찍 끝냄이 0번이어도 보여준다', () => {
+    expect(formatFastingStat(f({ broken: 0 })).details).toContain('일찍 끝냄 0번');
   });
 
   it('응답 대기가 있으면 보여주고, 없으면 숨긴다', () => {
     expect(formatFastingStat(f({ pending: 1 })).details).toEqual([
-      '중단 1번',
+      '일찍 끝냄 1번',
       '응답 대기 1번',
       '성공한 날 월요일',
     ]);
     expect(formatFastingStat(f()).details.some((d) => d.includes('응답 대기'))).toBe(false);
   });
 
+  it('일찍 끝낸 시간이 있으면 요일·시간을 보여준다 (시간 없는 기록은 뺀다)', () => {
+    expect(
+      formatFastingStat(
+        f({
+          broken: 3,
+          earlyEnded: [
+            { weekday: '목요일', fastedMinutes: 1080 },
+            { weekday: '금요일', fastedMinutes: null },
+            { weekday: '토요일', fastedMinutes: 990 },
+          ],
+        })
+      ).details
+    ).toEqual(['일찍 끝냄 3번', '일찍 끝낸 날 목 18시간, 토 16시간 30분', '성공한 날 월요일']);
+    expect(
+      formatFastingStat(f({ earlyEnded: [{ weekday: '목요일', fastedMinutes: null }] })).details
+    ).toEqual(['일찍 끝냄 1번', '성공한 날 월요일']);
+  });
+
   it('성공한 요일이 없으면 요일 줄은 없다', () => {
-    expect(formatFastingStat(f({ success: 0, successWeekdays: [] })).details).toEqual(['중단 1번']);
+    expect(formatFastingStat(f({ success: 0, successWeekdays: [] })).details).toEqual([
+      '일찍 끝냄 1번',
+    ]);
   });
 });
 
