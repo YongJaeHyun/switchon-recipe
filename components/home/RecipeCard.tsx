@@ -1,5 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { ImageSkeleton } from 'components/common/ImageSkeleton';
 import { Text } from 'components/common/Text';
 import { Image } from 'expo-image';
 import { Link } from 'expo-router';
@@ -44,11 +45,13 @@ export function RecipeCard(recipe: RecipeWithIsSavedDB) {
             </View>
           </View>
 
+          <ImageSkeleton />
           {recipe.image_uri && (
             // 목록이 카드를 재사용할 때 이전 레시피 사진이 잠깐 보이지 않도록 레시피마다 이미지를 새로 그린다
             <Image
               source={{ uri: recipe.image_uri }}
               recyclingKey={String(recipe.id)}
+              transition={200}
               style={{ width: '100%', height: '100%' }}
             />
           )}
