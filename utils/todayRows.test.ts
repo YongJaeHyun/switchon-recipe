@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fastingDayText, fastingResultQuestion, todayExtraRows, weekStepLabel } from './todayRows';
+import { fastingResultQuestion, todayExtraRows, weekStepLabel } from './todayRows';
 
 // 2026-10-22 = 목(4), 2026-10-23 = 금(5)
 const thuEvening = { fastingDays: [4], startTime: '저녁 식후' as const };
@@ -126,10 +126,4 @@ describe('fastingResultQuestion', () => {
       '어제 단식 어땠나요?'
     );
   });
-});
-
-describe('fastingDayText', () => {
-  it('요일 + 시작 시간', () => expect(fastingDayText([4], '저녁 식후')).toBe('목 저녁 식후'));
-  it('여러 요일은 & 로', () =>
-    expect(fastingDayText([2, 5], '점심 식후')).toBe('화 & 금 점심 식후'));
 });

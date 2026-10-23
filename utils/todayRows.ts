@@ -1,4 +1,4 @@
-import { FASTING_DAYS, type FastingTime } from 'const/fastingDays';
+import type { FastingTime } from 'const/fastingDays';
 import { fastingResultWindow, getFastingStatus, type FastingWeekContext } from 'utils/dietGuide';
 
 // 오늘 탭 목록에서 식단 할 일 말고 더 보여줄 줄들
@@ -58,12 +58,6 @@ export function fastingResultQuestion(day: string, now: Date): string {
   if (day === yesterday) return '어제 단식 어땠나요?';
   const [, month, date] = day.split('-').map(Number);
   return `${month}월 ${date}일 단식 어땠나요?`;
-}
-
-// "목 저녁 식후", "화 & 금 점심 식후"
-export function fastingDayText(days: number[], startTime: FastingTime | null | undefined): string {
-  const dayText = days.map((d) => FASTING_DAYS[d]).join(' & ');
-  return startTime ? `${dayText} ${startTime}` : dayText;
 }
 
 // 1주차는 1~3일·4~7일 할 일이 달라서 제목 옆에 단계 표시
