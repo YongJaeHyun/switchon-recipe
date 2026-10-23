@@ -1,14 +1,26 @@
-import { BottomSheetView } from '@gorhom/bottom-sheet';
+import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { BottomSheetMethods } from '@gorhom/bottom-sheet/lib/typescript/types';
 import RippleButton from 'components/common/RippleButton';
+import { StepSlider } from 'components/common/StepSlider';
 import { Text } from 'components/common/Text';
-import { FASTING_DAYS, FASTING_START_TIMES, FastingDay, FastingTime } from 'const/fastingDays';
+import { FASTING_DAYS, FastingDay } from 'const/fastingDays';
 import { useFasting } from 'hooks/useFasting';
 import { RefObject, useEffect, useState } from 'react';
-import { FlatList, View } from 'react-native';
+import { View } from 'react-native';
+import {
+  DEFAULT_START_MINUTES,
+  fastingDayRowLabel,
+  sheetDaysOrdered,
+  withNewDays,
+} from 'utils/fastingDaySheet';
 import { nextFastingDays } from 'utils/fastingDaySelect';
-import { legacyLabel, QUICK_TIMES } from 'utils/fastingSchedule';
-import { Maybe, Nullable } from '../../types/common';
+import {
+  FASTING_SLIDER,
+  formatMinutes,
+  QUICK_TIMES,
+  type FastingSchedule,
+} from 'utils/fastingSchedule';
+import { Nullable } from '../../types/common';
 import { CustomBottomSheet } from '../common/CustomBottomSheet';
 
 interface DayButtonProps {
@@ -22,10 +34,10 @@ interface FastingDayBottomSheetProps {
   // 줄(FastingDayLine)과 같은 주차 (시작일로 계산). 팝업 store 주차는 자정·앱 복귀 검증 전까지 늦을 수 있다
   week: number;
 }
-interface StartTimeButtonProps {
-  time: FastingTime;
-  isSelected: boolean;
-  onPress: (time: FastingTime) => void;
+interface DayStartTimeRowProps {
+  day: number;
+  minutes: number;
+  onChange: (day: number, minutes: number) => void;
 }
 
 const displayDays = [...FASTING_DAYS.slice(1), FASTING_DAYS[0]];
@@ -43,134 +55,158 @@ const DayButton = ({ day, isSelected, disabled, onPress }: DayButtonProps) => {
   );
 };
 
-const StartTimeButton = ({ time, isSelected, onPress }: StartTimeButtonProps) => {
+// 요일 하나의 시작 시각: "목요일 · 19:00 시작 → 금 19:00 끝", 슬라이더, 빠른 선택
+const DayStartTimeRow = ({ day, minutes, onChange }: DayStartTimeRowProps) => {
   return (
-    <RippleButton
-      rippleColor="transparent"
-      onPress={() => onPress(time)}
-      outerClassName="flex-1"
-      className={`w-full rounded-xl py-3 ${isSelected ? 'bg-green-600' : 'bg-neutral-100'}`}>
-      <Text className={`text-center ${isSelected ? 'text-white' : 'text-neutral-800'}`}>
-        {time}
-      </Text>
-    </RippleButton>
+    <View className="gap-1 rounded-xl border border-neutral-100 bg-white px-3 py-3">
+      <Text className="text-sm font-bold text-neutral-800">{fastingDayRowLabel(day, minutes)}</Text>
+      <StepSlider
+        value={minutes}
+        min={FASTING_SLIDER.min}
+        max={FASTING_SLIDER.max}
+        step={FASTING_SLIDER.step}
+        onChange={(next) => onChange(day, next)}
+        accessibilityLabel={`${FASTING_DAYS[day]}요일 단식 시작 시각`}
+        formatValue={formatMinutes}
+      />
+      <View className="w-full flex-row gap-2">
+        {QUICK_TIMES.map((quick) => {
+          const isSelected = quick.minutes === minutes;
+          return (
+            <RippleButton
+              key={`fasting-quick-time-${day}-${quick.label}`}
+              rippleColor="transparent"
+              onPress={() => onChange(day, quick.minutes)}
+              outerClassName="flex-1"
+              className={`w-full rounded-xl py-2 ${isSelected ? 'bg-green-600' : 'bg-neutral-100'}`}>
+              <Text
+                className={`text-center text-sm ${isSelected ? 'text-white' : 'text-neutral-800'}`}>
+                {quick.label}
+              </Text>
+            </RippleButton>
+          );
+        })}
+      </View>
+    </View>
   );
 };
 
 // 단식 요일 설정 시트. 여는 줄은 FastingDayLine (오늘 탭 목록 아래)
 export const FastingDayBottomSheet = ({ bottomSheetRef, week }: FastingDayBottomSheetProps) => {
   const { days, schedule, upsertFasting } = useFasting();
-  // 옛 라벨 선택 UI (요일별 슬라이더는 Task 4): 첫 요일 시각과 가장 가까운 라벨
-  const firstTimedDay = days.find((day) => schedule[day] !== undefined);
-  const startTime = firstTimedDay === undefined ? null : legacyLabel(schedule[firstTimedDay]);
 
   const selectableDayNum = week - 1; // ex. 2주차 -> 1개 선택 가능
   const [selectedDays, setSelectedDays] = useState<number[]>(days);
-  const isDayAllSelected = selectedDays.length >= selectableDayNum;
-
-  const [selectedTime, setSelectedTime] = useState<Maybe<FastingTime>>(startTime);
-
-  const isAllSelected = isDayAllSelected && !!selectedTime;
+  const [selectedSchedule, setSelectedSchedule] = useState<FastingSchedule>(() =>
+    withNewDays(schedule, days, undefined)
+  );
+  // 이 시트에서 직전에 정한 시각. 새 요일의 기본값 (없으면 19:00)
+  const [lastSetMinutes, setLastSetMinutes] = useState<number | undefined>(undefined);
+  const isAllSelected = selectedDays.length >= selectableDayNum;
 
   // 다 고른 상태에서 다른 요일을 누르면 가장 먼저 고른 요일과 바뀐다 (이틀 연속은 안 됨)
   const toggleSelectedDay = (day: number) => {
     const next = nextFastingDays(selectedDays, day, selectableDayNum);
-    if (next) setSelectedDays(next);
+    if (!next) return;
+    setSelectedDays(next);
+    setSelectedSchedule((prev) => withNewDays(prev, next, lastSetMinutes));
+  };
+  const changeStartTime = (day: number, minutes: number) => {
+    setSelectedSchedule((prev) => ({ ...prev, [day]: minutes }));
+    setLastSetMinutes(minutes);
   };
 
   const saveFastingDays = () => {
-    // 라벨 시각을 고른 모든 요일에 (요일별 슬라이더는 Task 4)
-    const minutes = QUICK_TIMES.find((quick) => quick.label === selectedTime)?.minutes;
     upsertFasting({
       days: selectedDays,
-      schedule:
-        minutes === undefined ? {} : Object.fromEntries(selectedDays.map((day) => [day, minutes])),
+      schedule: withNewDays(selectedSchedule, selectedDays, lastSetMinutes),
     });
     bottomSheetRef.current?.close();
   };
   const handleReset = () => {
     setSelectedDays([]);
-    setSelectedTime(null);
+    setSelectedSchedule({});
+    setLastSetMinutes(undefined);
   };
 
   useEffect(() => {
     setSelectedDays(days);
-    setSelectedTime(startTime);
-  }, [days, startTime]);
+    setSelectedSchedule(withNewDays(schedule, days, undefined));
+    setLastSetMinutes(undefined);
+  }, [days, schedule]);
 
   return (
     <CustomBottomSheet ref={bottomSheetRef}>
-      <BottomSheetView className="px-5">
+      <BottomSheetScrollView className="px-5">
         <View className="flex-row items-center justify-between">
           <Text className="mb-2 text-2xl font-bold">단식 요일 설정</Text>
         </View>
-        <Text className="mb-6 text-neutral-500">
-          이번 주에 24시간 단식을 할 요일을 선택해주세요.
+        <Text className="mb-4 text-neutral-500">
+          이번 주에 24시간 단식을 할 요일과 시작 시각을 정해주세요.
         </Text>
 
-        <View className="my-3 gap-3">
+        <View className="my-2 gap-3">
           <Text className="font-bold text-green-600">단식 요일</Text>
-          <FlatList
-            data={displayDays}
-            keyExtractor={(item) => `fasting-day-button-${item}`}
-            contentContainerClassName="flex-row justify-between"
-            renderItem={({ item }) => {
+          {/* FlatList 칸은 다시 그려지지 않을 때가 있어 옛 상태(직전 시각)로 눌렸다. 7개라 그냥 그린다 */}
+          <View className="flex-row justify-between">
+            {displayDays.map((item) => {
               const dayIndex = FASTING_DAYS.indexOf(item);
               const isDisabled = nextFastingDays(selectedDays, dayIndex, selectableDayNum) === null;
 
               return (
                 <DayButton
+                  key={`fasting-day-button-${item}`}
                   day={item}
                   onPress={toggleSelectedDay}
                   disabled={isDisabled}
                   isSelected={selectedDays.includes(dayIndex)}
                 />
               );
-            }}
-          />
-          {isDayAllSelected ? (
-            <View className="my-4 items-center gap-1">
+            })}
+          </View>
+          {isAllSelected ? (
+            <View className="my-2 items-center gap-1">
               <Text className="text-center text-green-600">완벽해요!</Text>
               <Text className="text-center text-sm text-neutral-400">
                 다른 요일을 누르면 바로 바뀌어요
               </Text>
             </View>
           ) : (
-            <Text className="my-4 text-center text-neutral-500">
+            <Text className="my-2 text-center text-neutral-500">
               {selectableDayNum - selectedDays.length}개를 더 선택해주세요
             </Text>
           )}
         </View>
 
-        <View className="my-3 gap-3">
-          <Text className="font-bold text-green-600">단식 시작 시간</Text>
-          <View className="w-full flex-row gap-3">
-            {FASTING_START_TIMES.map((item) => (
-              <StartTimeButton
-                key={`fasting-start-time-button-${item}`}
-                time={item}
-                onPress={setSelectedTime}
-                isSelected={item === selectedTime}
+        {selectedDays.length > 0 && (
+          <View className="my-2 gap-2">
+            <Text className="font-bold text-green-600">단식 시작 시각</Text>
+            {sheetDaysOrdered(selectedDays).map((day) => (
+              <DayStartTimeRow
+                key={`fasting-start-time-row-${day}`}
+                day={day}
+                minutes={selectedSchedule[day] ?? lastSetMinutes ?? DEFAULT_START_MINUTES}
+                onChange={changeStartTime}
               />
             ))}
           </View>
-        </View>
+        )}
 
         <View className="flex-row gap-2">
           <RippleButton
-            outerClassName="my-10 !flex-[3.5] border border-green-600"
+            outerClassName="my-6 !flex-[3.5] border border-green-600"
             onPress={handleReset}>
             <Text className="text-lg font-semibold text-green-600">설정 초기화</Text>
           </RippleButton>
           <RippleButton
-            outerClassName="my-10 !flex-[6.5]"
+            outerClassName="my-6 !flex-[6.5]"
             className={`w-full py-4 ${isAllSelected ? 'bg-green-600' : 'bg-neutral-300'}`}
             onPress={saveFastingDays}
             disabled={!isAllSelected}>
             <Text className="text-lg font-semibold text-white">저장하기</Text>
           </RippleButton>
         </View>
-      </BottomSheetView>
+      </BottomSheetScrollView>
     </CustomBottomSheet>
   );
 };
