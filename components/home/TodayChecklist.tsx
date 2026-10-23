@@ -53,6 +53,10 @@ export function TodayChecklist() {
         <FastingProgressLine status={status} startTime={startTime} />
       )}
 
+      {rows.fastingDayLine === 'unset' && (
+        <FastingDayLine state="unset" week={week} days={days} startTime={startTime} />
+      )}
+
       <View className="rounded-xl border border-neutral-200 bg-white px-4 pb-2 pt-4">
         <View className="mb-1 flex-row items-center justify-between">
           <Text className="text-lg font-bold text-neutral-800">
@@ -107,8 +111,8 @@ export function TodayChecklist() {
         {rows.weight && <WeightRow />}
       </View>
 
-      {rows.fastingDayLine && (
-        <FastingDayLine state={rows.fastingDayLine} week={week} days={days} startTime={startTime} />
+      {rows.fastingDayLine === 'set' && (
+        <FastingDayLine state="set" week={week} days={days} startTime={startTime} />
       )}
 
       <TipBottomSheet />
