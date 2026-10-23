@@ -13,11 +13,11 @@ import { useInfiniteRecipeCards } from 'hooks/useInfiniteRecipes';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import colors from 'tailwindcss/colors';
-import { RecipeDB } from 'types/database';
+import { RecipeCardData } from 'types/recipe';
 
 const TABS = ['1주차', '2주차', '3주차+'] as const;
 
-const renderRecipeItem = ({ item }: { item: RecipeDB }) => {
+const renderRecipeItem = ({ item }: { item: RecipeCardData }) => {
   return <RecipeCard {...item} />;
 };
 
