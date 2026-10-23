@@ -62,18 +62,20 @@ export function FastingDayLine({
       ) : (
         <Pressable
           onPress={open}
-          className="flex-row items-center gap-4 rounded-2xl bg-green-600 px-4 py-5">
-          <View className="h-12 w-12 items-center justify-center rounded-full bg-white/20">
-            <MaterialIcons name="event" size={28} color={colors.white} />
+          className="flex-row items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-4">
+          <View className="h-10 w-10 items-center justify-center rounded-full bg-green-600">
+            <MaterialIcons name="event" size={22} color={colors.white} />
           </View>
           <View className="flex-1 gap-1">
-            <Text className="text-lg font-bold text-white">이번 주 단식 요일을 정해주세요</Text>
-            <Text className="text-sm text-green-50">
+            <Text className="text-base font-bold text-neutral-900">
+              이번 주 단식 요일을 정해주세요
+            </Text>
+            <Text className="text-sm text-green-700">
               {week}주차는 주 {timesPerWeek}회 24시간 단식해요
             </Text>
           </View>
-          <View className="rounded-full bg-white px-4 py-2">
-            <Text className="text-sm font-bold text-green-700">정하기</Text>
+          <View className="rounded-full bg-green-600 px-4 py-2">
+            <Text className="text-sm font-bold text-white">정하기</Text>
           </View>
         </Pressable>
       )}
