@@ -19,9 +19,7 @@ export function ExploreEntry() {
         </View>
         <View className="flex-1 gap-0.5">
           <Text className="text-lg font-bold text-neutral-900">다른 사람들의 레시피</Text>
-          <Text className="text-sm text-neutral-600">
-            스위치온 중인 사람들이 만든 레시피를 둘러보세요
-          </Text>
+          <Text className="text-sm text-neutral-600">재료나 이름으로 검색하고 둘러보세요</Text>
         </View>
       </View>
       <MaterialIcons name="navigate-next" size={26} color={colors.green[700]} />
