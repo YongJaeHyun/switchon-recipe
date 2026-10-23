@@ -1,15 +1,42 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const state = { permission: 'granted' as string };
+const state = {
+  permission: 'granted' as string,
+  requestResult: 'granted' as string,
+  pushToken: 'saved-token' as string | null,
+};
 const getPermissionsAsync = vi.fn(async () => ({ status: state.permission }));
-const requestPermissionsAsync = vi.fn(async () => ({ status: 'granted' }));
+const requestPermissionsAsync = vi.fn(async () => ({ status: state.requestResult }));
 const setNotificationChannelAsync = vi.fn(async (..._args: unknown[]) => null);
+const getExpoPushTokenAsync = vi.fn(async (..._args: unknown[]) => ({ data: 'token' }));
+const scheduled: {
+  identifier: string;
+  content: { title: string; data: Record<string, unknown> };
+}[] = [];
+const getAllScheduledNotificationsAsync = vi.fn(async () => [...scheduled]);
+const cancelScheduledNotificationAsync = vi.fn(async (id: string) => {
+  const index = scheduled.findIndex((request) => request.identifier === id);
+  if (index >= 0) scheduled.splice(index, 1);
+});
+const scheduleNotificationAsync = vi.fn(
+  async (request: { content: { title: string; data: Record<string, unknown> } }) => {
+    const identifier = `id-${scheduled.length}-${Math.random()}`;
+    scheduled.push({ identifier, content: request.content });
+    return identifier;
+  }
+);
 
 vi.mock('expo-notifications', () => ({
   getPermissionsAsync: () => getPermissionsAsync(),
   requestPermissionsAsync: () => requestPermissionsAsync(),
   setNotificationChannelAsync: (...args: unknown[]) => setNotificationChannelAsync(...args),
-  getExpoPushTokenAsync: async () => ({ data: 'token' }),
+  getExpoPushTokenAsync: (...args: unknown[]) => getExpoPushTokenAsync(...args),
+  getAllScheduledNotificationsAsync: () => getAllScheduledNotificationsAsync(),
+  cancelScheduledNotificationAsync: (id: string) => cancelScheduledNotificationAsync(id),
+  scheduleNotificationAsync: (request: {
+    content: { title: string; data: Record<string, unknown> };
+  }) => scheduleNotificationAsync(request),
+  SchedulableTriggerInputTypes: { DATE: 'date' },
   AndroidImportance: { MAX: 5 },
 }));
 vi.mock('expo-device', () => ({ isDevice: true }));
@@ -19,12 +46,52 @@ vi.mock('expo-constants', () => ({
 vi.mock('react-native', () => ({ Platform: { OS: 'android' } }));
 vi.mock('api/UserAPI', () => ({ UserAPI: { updatePushToken: async () => {} } }));
 vi.mock('stores/userStore', () => ({
-  useUserStore: { getState: () => ({ push_token: 'saved-token' }) },
+  useUserStore: { getState: () => ({ push_token: state.pushToken }) },
 }));
 vi.mock('./sendError', () => ({ captureError: () => {} }));
 
-const { fastingAlarms, isFastingAlarm, registerChannelIfPermitted } =
+const { fastingAlarms, isFastingAlarm, registerChannelIfPermitted, registerWeeklyFastingAlarms } =
   await import('./notifications');
+
+describe('registerWeeklyFastingAlarms (최종 리뷰 M1: 다시 걸 수 없으면 지우지 않는다)', () => {
+  const old = {
+    identifier: 'old',
+    content: { title: '단식 시작 예정 알림', data: { kind: 'fasting' } },
+  };
+  // 먼 미래 주차라 알림이 지난 것으로 빠지지 않는다
+  const fasting = { days: [4], start_time: '저녁 식후', start_minutes: { '4': 1140 } } as never;
+  const weekFrom = '2099-01-01';
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    scheduled.splice(0, scheduled.length, { ...old });
+    state.permission = 'granted';
+    state.requestResult = 'granted';
+    state.pushToken = 'saved-token';
+  });
+
+  it('푸시 토큰을 못 받아도 로컬 알림은 다시 건다', async () => {
+    state.pushToken = null;
+    getExpoPushTokenAsync.mockRejectedValue(new Error('offline'));
+    const ids = await registerWeeklyFastingAlarms(fasting, weekFrom);
+    expect(ids).toHaveLength(1);
+    expect(scheduled.map((request) => request.identifier)).toEqual(ids);
+    getExpoPushTokenAsync.mockReset();
+  });
+
+  it('알림 권한이 없으면 있던 알림을 지우지 않는다', async () => {
+    state.permission = 'denied';
+    state.requestResult = 'denied';
+    expect(await registerWeeklyFastingAlarms(fasting, weekFrom)).toEqual([]);
+    expect(cancelScheduledNotificationAsync).not.toHaveBeenCalled();
+    expect(scheduled).toEqual([old]);
+  });
+
+  it('단식 요일이 없으면 지운다', async () => {
+    expect(await registerWeeklyFastingAlarms(null, weekFrom)).toEqual([]);
+    expect(scheduled).toEqual([]);
+  });
+});
 
 describe('registerChannelIfPermitted', () => {
   beforeEach(() => vi.clearAllMocks());

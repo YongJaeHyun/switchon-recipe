@@ -18,9 +18,13 @@ describe('fastedMinutesAt', () => {
     expect(fastedMinutesAt(start, new Date('2026-10-23T11:00:00+09:00'))).toBe(960);
   });
 
-  it('시작 전이면 0', () => {
-    expect(fastedMinutesAt(start, new Date('2026-10-22T18:00:00+09:00'))).toBe(0);
-    expect(fastedMinutesAt(start, start)).toBe(0);
+  it('1분이 안 됐어도(시작 전이어도) 1분으로 본다 ("0분"으로 기록하지 않게)', () => {
+    expect(fastedMinutesAt(start, new Date('2026-10-22T18:00:00+09:00'))).toBe(1);
+    expect(fastedMinutesAt(start, start)).toBe(1);
+    expect(fastedMinutesAt(start, new Date('2026-10-22T19:00:59+09:00'))).toBe(1);
+    expect(earlyEndConfirmMessage(fastedMinutesAt(start, start))).toBe(
+      '지금까지 1분 동안 단식했어요. 여기서 끝낼까요?'
+    );
   });
 
   it('24시간(1440분)을 넘기지 않는다', () => {

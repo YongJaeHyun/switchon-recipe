@@ -207,9 +207,9 @@ const pendingFasts = (
   }).length;
 };
 
-// 0~1440분 정수만 단식 시간으로 본다 (그 밖은 시간 없음)
+// 1~1440분 정수만 단식 시간으로 본다 (그 밖은 시간 없음. 0분은 "0분"으로 쓰지 않게)
 const validMinutes = (m: number | null | undefined): number | null =>
-  typeof m === 'number' && Number.isInteger(m) && m >= 0 && m <= 1440 ? m : null;
+  typeof m === 'number' && Number.isInteger(m) && m >= 1 && m <= 1440 ? m : null;
 
 const fastingStats = (input: WeeklyInputs, range: { from: string; to: string }) => {
   const results = input.fastingResults.filter((r) => inRange(r.day, range)).sort(byDay);

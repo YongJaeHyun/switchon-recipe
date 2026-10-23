@@ -1,7 +1,8 @@
 import type { FastingResult, FastingResultRecord } from 'api/FastingResultAPI';
 
+// 1분 이상만 단식한 분으로 본다 (0분은 "0분"으로 보이지 않게 시간 없음)
 const minutesOf = (value: unknown): number | null =>
-  typeof value === 'number' && Number.isFinite(value) ? value : null;
+  typeof value === 'number' && Number.isFinite(value) && value >= 1 ? value : null;
 
 // DB 행 → 결과 + 단식한 분. 성공이면 분은 없는 것으로 본다
 export function fastingResultRecord(row: {

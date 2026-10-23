@@ -66,7 +66,7 @@ export const useFasting = () => {
   // 요일별 시각(start_minutes)과 옛 앱·서버용 라벨(start_time)을 함께 저장한다
   const { mutate: upsertFasting } = useMutation({
     mutationFn: ({ days, schedule }: { days: number[]; schedule: FastingSchedule }) =>
-      FastingAPI.upsert({ days, ...scheduleColumns(days, schedule) }),
+      FastingAPI.upsert(scheduleColumns(days, schedule)),
     onMutate: async ({ days, schedule }) => {
       await queryClient.cancelQueries({ queryKey: [QueryKey.fasting, userId] });
 
@@ -74,7 +74,6 @@ export const useFasting = () => {
 
       queryClient.setQueryData<Partial<FastingDB>>([QueryKey.fasting, userId], (old) => ({
         ...old,
-        days,
         ...scheduleColumns(days, schedule),
       }));
 

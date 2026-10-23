@@ -68,18 +68,27 @@ export function formatMinutes(minutes: number): string {
 // 월→일 순서 (일요일이 마지막)
 const weekOrder = (day: number) => (day === 0 ? 7 : day);
 
-// 저장할 칸: start_minutes(고른 요일만)와 옛 앱·서버용 start_time(첫 요일 시각과 가장 가까운 라벨)
+// 저장할 칸: days(월→일 순), start_minutes(고른 요일만)와 옛 앱·서버용 start_time(첫 요일 시각과 가장 가까운 라벨).
+// 시각이 없는 요일은 읽을 때(scheduleFrom)와 같은 라벨 시각으로 채워, start_minutes의 요일이 항상 days와 같다.
+// 그래서 새 앱이 days/start_time을 바꾸면 start_minutes도 바뀐다 → DB 트리거
+// clear_stale_start_minutes(옛 앱 쓰기로 보고 start_minutes를 비움)에 걸리지 않는다
 export function scheduleColumns(
   days: number[],
   schedule: FastingSchedule
-): { start_minutes: Record<string, number> | null; start_time: FastingTime | null } {
-  const sorted = [...days].sort((a, b) => weekOrder(a) - weekOrder(b));
+): {
+  days: number[];
+  start_minutes: Record<string, number> | null;
+  start_time: FastingTime | null;
+} {
+  const sorted = [...new Set(days)].sort((a, b) => weekOrder(a) - weekOrder(b));
+  const first = sorted.find((day) => isMinutes(schedule[day]));
+  if (first === undefined) return { days: sorted, start_minutes: null, start_time: null };
+  const start_time = legacyLabel(schedule[first]);
+  const fallback = labelMinutes(start_time) as number;
   const start_minutes: Record<string, number> = {};
   for (const day of sorted) {
     const minutes = schedule[day];
-    if (isMinutes(minutes)) start_minutes[String(day)] = minutes;
+    start_minutes[String(day)] = isMinutes(minutes) ? minutes : fallback;
   }
-  const first = sorted.find((day) => String(day) in start_minutes);
-  if (first === undefined) return { start_minutes: null, start_time: null };
-  return { start_minutes, start_time: legacyLabel(start_minutes[String(first)]) };
+  return { days: sorted, start_minutes, start_time };
 }

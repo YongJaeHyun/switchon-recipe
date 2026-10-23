@@ -41,19 +41,37 @@ const requestNotificationPermission = async () => {
   }
 };
 
+const registerChannel = async (channelId: Channel) => {
+  if (Platform.OS !== 'android') return;
+  await Notifications.setNotificationChannelAsync(channelId, {
+    name: channelId,
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 250, 250, 250],
+    lightColor: '#FF231F7C',
+  });
+};
+
 export const registerForPushNotificationsAsync = async (channelId: Channel) => {
   const pushToken = await requestNotificationPermission();
   if (!pushToken) return false;
 
-  if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync(channelId, {
-      name: channelId,
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#FF231F7C',
-    });
-  }
+  await registerChannel(channelId);
   return true;
+};
+
+// 로컬 예약 알림용: 알림 권한(없으면 요청)과 채널만 준비한다. 푸시 토큰은 필요 없다
+// (토큰 받기·저장이 실패해도 예약 알림은 걸 수 있어야 한다). 실패하면 false
+const prepareLocalNotifications = async (channelId: Channel): Promise<boolean> => {
+  try {
+    let { status } = await Notifications.getPermissionsAsync();
+    if (status !== 'granted') status = (await Notifications.requestPermissionsAsync()).status;
+    if (status !== 'granted') return false;
+    await registerChannel(channelId);
+    return true;
+  } catch (error) {
+    captureError({ error, prefix: '[prepareLocalNotifications]: ' });
+    return false;
+  }
 };
 
 // 알림 권한이 이미 있을 때만 채널을 등록한다 (권한 요청 창을 띄우지 않는다).
@@ -138,11 +156,17 @@ const enqueue = <T>(task: () => Promise<T>): Promise<T> => {
 // 이번 주차 단식 알림을 다시 건다. 주차가 바뀌면 단식 설정이 초기화되므로 반복 없이 이번 주차 것만
 export function registerWeeklyFastingAlarms(fasting: Maybe<FastingDB>, weekFrom: string) {
   return enqueue(async () => {
-    await cancelFastingAlarmsNow();
-    if (!fasting?.days) return [];
+    if (!fasting?.days?.length) {
+      await cancelFastingAlarmsNow();
+      return [];
+    }
 
-    const isSuccess = await registerForPushNotificationsAsync(CHANNELS.FASTING);
-    if (!isSuccess) return [];
+    // 다시 걸 수 있을 때만 지운다 (권한·채널 준비가 실패하면 있던 알림을 그대로 둔다)
+    const isReady = await prepareLocalNotifications(CHANNELS.FASTING);
+    if (!isReady) return [];
+    // 푸시 토큰 등록은 예전처럼 덤으로 (실패해도 로컬 알림과 상관없다)
+    void requestNotificationPermission();
+    await cancelFastingAlarmsNow();
 
     const triggerIds: string[] = [];
     try {

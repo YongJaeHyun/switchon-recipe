@@ -25,6 +25,7 @@ const FirstMealButton = () => (
 // 오늘 할 일 목록의 단식 결과 줄 (단식이 끝난 뒤 응답 창 안, 또는 진행 중에 일찍 끝냈을 때).
 // 답하면 완료 표시 + 결과 + 바꾸기로 바뀐다. 바꾸기는 답(성공 / 일찍 끝냈어요)을 다시 고르게 한다.
 // 단식이 아직 24시간 안(cancelable)이면 바꾸기 대신 취소: 결과를 지우고 진행 줄로 돌아간다.
+// 바꾸는 중에는 취소로 저장하지 않고 저장된 표시로 돌아간다.
 // "일찍 끝냈어요"는 아래에 시간 슬라이더(저장된 시간, 없으면 16시간)를 열고 저장한다. 식단 완료율에는 넣지 않는다
 export function FastingResultRow({
   day,
@@ -41,10 +42,14 @@ export function FastingResultRow({
   const [isPickingHours, setPickingHours] = useState(false);
   if (isLoading) return null;
 
-  const done = (row: unknown) => {
-    if (!row) return; // 실패 안내는 API가 했다
+  // 바꾸기 취소: 저장하지 않고 저장된 결과 표시로 돌아간다 (저장이 끝났을 때도)
+  const stopEditing = () => {
     setEditing(false);
     setPickingHours(false);
+  };
+  const done = (row: unknown) => {
+    if (!row) return; // 실패 안내는 API가 했다
+    stopEditing();
   };
   const saveSuccess = () => saveResult({ result: 'success' }, { onSuccess: done });
   const saveEarlyEnd = (minutes: number) =>
@@ -103,6 +108,17 @@ export function FastingResultRow({
             onSave={saveEarlyEnd}
           />
         </View>
+      )}
+      {result && isEditing && (
+        <Pressable
+          hitSlop={8}
+          disabled={isSaving}
+          onPress={stopEditing}
+          className="mb-2 self-end"
+          accessibilityRole="button"
+          accessibilityLabel="바꾸기 취소">
+          <Text className="text-sm text-neutral-400">취소</Text>
+        </Pressable>
       )}
       <FirstMealButton />
     </View>

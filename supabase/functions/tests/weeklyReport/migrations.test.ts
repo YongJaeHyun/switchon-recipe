@@ -75,3 +75,38 @@ describe('fasting_result.fasted_minutes (일찍 끝낸 단식의 단식 시간)'
     expect(src).toContain(".select('day, result, fasted_minutes')");
   });
 });
+
+describe('fasting/fasting_plan.start_minutes (요일별 단식 시작 시각)', () => {
+  const sql = () => flat(read('../../../migrations/20261023000000_fasting_start_minutes.sql'));
+
+  it('두 테이블에 jsonb 열을 더한다', () => {
+    expect(sql()).toContain(
+      'alter table public.fasting add column if not exists start_minutes jsonb;'
+    );
+    expect(sql()).toContain(
+      'alter table public.fasting_plan add column if not exists start_minutes jsonb;'
+    );
+  });
+
+  it('채우기는 days의 null 요소를 건너뛴다 (최종 리뷰 M2)', () => {
+    const matches = sql().match(
+      /select distinct unnest\(\w\.days\) as d\) days where d is not null/g
+    );
+    expect(matches).toHaveLength(2);
+  });
+
+  it('옛 앱이 days/start_time만 바꾸면 남은 start_minutes를 비우는 트리거 (최종 리뷰 I1)', () => {
+    const s = sql();
+    expect(s).toMatch(
+      /create or replace function public\.clear_stale_fasting_start_minutes\(\) returns trigger language plpgsql security invoker set search_path = '' as \$\$/
+    );
+    expect(s).toContain(
+      'if new.start_minutes is not distinct from old.start_minutes and (new.days is distinct from old.days or new.start_time is distinct from old.start_time) then new.start_minutes := null; end if; return new;'
+    );
+    for (const table of ['fasting', 'fasting_plan']) {
+      expect(s).toContain(
+        `drop trigger if exists clear_stale_start_minutes on public.${table}; create trigger clear_stale_start_minutes before update on public.${table} for each row execute function public.clear_stale_fasting_start_minutes();`
+      );
+    }
+  });
+});

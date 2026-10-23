@@ -250,10 +250,11 @@ describe('computeWeeklyStats: 일찍 끝낸 단식', () => {
         fastingResults: [
           { day: '2026-10-08', result: 'broken', fastedMinutes: 5000 },
           { day: '2026-10-09', result: 'broken', fastedMinutes: -1 },
+          { day: '2026-10-10', result: 'broken', fastedMinutes: 0 }, // "0분"이 되지 않게
         ],
       })
     );
-    expect(stats.fasting.earlyEnded.map((e) => e.fastedMinutes)).toEqual([null, null]);
+    expect(stats.fasting.earlyEnded.map((e) => e.fastedMinutes)).toEqual([null, null, null]);
   });
 });
 

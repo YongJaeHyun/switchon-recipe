@@ -6,10 +6,12 @@ export interface FastingHistoryItem {
   weekIndex: number;
   result: FastingResult | null;
   fastedMinutes: number | null; // 일찍 끝낸 단식의 단식한 분 (없으면 null)
+  inProgress: boolean; // 시작부터 24시간이 안 지난 단식 (결과를 고를 수 없다. 오늘 탭과 같게)
 }
 
 const MINUTE_MS = 60 * 1000;
 const DAY_MS = 24 * 60 * MINUTE_MS;
+const FAST_MS = DAY_MS; // 24시간 단식
 const KST_OFFSET_MS = 9 * 60 * MINUTE_MS;
 
 // yyyy-MM-dd → 그 날짜의 UTC 자정 (날짜 계산용)
@@ -41,6 +43,7 @@ export function fastingHistory({
   const weekOf = (day: string) => Math.floor((dayToUtc(day) - start) / (7 * DAY_MS)) + 1;
 
   const days = new Set<string>();
+  const inProgress = new Set<string>();
   for (const plan of plans) {
     // 요일별 시각(start_minutes 우선, 없으면 라벨). 시각이 없는 요일은 그날 자정부터로 본다
     const schedule = scheduleFrom(plan);
@@ -50,8 +53,10 @@ export function fastingHistory({
       const weekday = new Date(midnight).getUTCDay();
       if (!plan.days.includes(weekday)) continue;
       // KST 자정 + 그 요일 시작 시각이 지났는지
-      if (midnight - KST_OFFSET_MS + (schedule[weekday] ?? 0) * MINUTE_MS > t) continue;
+      const startsAt = midnight - KST_OFFSET_MS + (schedule[weekday] ?? 0) * MINUTE_MS;
+      if (startsAt > t) continue;
       days.add(utcToDay(midnight));
+      if (t < startsAt + FAST_MS) inProgress.add(utcToDay(midnight));
     }
   }
 
@@ -73,5 +78,6 @@ export function fastingHistory({
       weekIndex: weekOf(day),
       result: resultByDay.get(day)?.result ?? null,
       fastedMinutes: resultByDay.get(day)?.fastedMinutes ?? null,
+      inProgress: inProgress.has(day),
     }));
 }

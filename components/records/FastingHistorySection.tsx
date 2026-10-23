@@ -23,9 +23,11 @@ const formatDay = (day: string) => {
   return `${m}월 ${d}일 (${weekday})`;
 };
 
+// 진행 중인 단식은 결과를 고를 수 없다 (오늘 탭과 같게: 끝난 뒤, 또는 오늘 탭에서 일찍 끝내기)
 const HistoryRow = ({ item, onPress }: { item: FastingHistoryItem; onPress(): void }) => (
   <TouchableOpacity
     className="flex-row items-center gap-3 rounded-xl border border-neutral-200 bg-white px-4 py-3"
+    disabled={item.inProgress}
     onPress={onPress}>
     <Text className="flex-1 text-neutral-800">
       <Text className="font-bold">{formatDay(item.day)}</Text>
@@ -42,12 +44,14 @@ const HistoryRow = ({ item, onPress }: { item: FastingHistoryItem; onPress(): vo
             ? 'text-neutral-700'
             : 'text-neutral-400'
       }`}>
-      {fastingHistoryLabel(item.result, item.fastedMinutes)}
+      {item.inProgress && item.result === null
+        ? '단식 중'
+        : fastingHistoryLabel(item.result, item.fastedMinutes)}
     </Text>
   </TouchableOpacity>
 );
 
-// 기록 탭 > 단식 칸: 지난 단식(현재 시작일 이후) 최근순 목록. 줄을 누르면 결과를 고친다 (기간 제한 없음)
+// 기록 탭 > 단식 칸: 지난 단식(현재 시작일 이후) 최근순 목록. 줄을 누르면 결과를 고친다 (기간 제한 없음, 진행 중인 단식은 빼고)
 export function FastingHistorySection() {
   const { items, isLoading, isError, saveResult, isSaving } = useFastingHistory();
   const sheetRef = useRef<BottomSheetMethods>(null);
@@ -55,6 +59,7 @@ export function FastingHistorySection() {
   const [isPickingHours, setPickingHours] = useState(false);
 
   const open = (item: FastingHistoryItem) => {
+    if (item.inProgress) return;
     setTarget(item);
     setPickingHours(false);
     sheetRef.current?.expand();

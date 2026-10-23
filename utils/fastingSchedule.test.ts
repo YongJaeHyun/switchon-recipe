@@ -6,6 +6,7 @@ import {
   legacyLabel,
   scheduleColumns,
   scheduleFrom,
+  type FastingSchedule,
 } from './fastingSchedule';
 
 describe('scheduleFrom', () => {
@@ -100,6 +101,7 @@ describe('상수', () => {
 describe('scheduleColumns', () => {
   it('start_minutes와 첫 요일(월→일 순) 시각의 라벨을 함께 만든다', () => {
     expect(scheduleColumns([0, 4], { 0: 1140, 4: 780 })).toEqual({
+      days: [4, 0],
       start_minutes: { '0': 1140, '4': 780 },
       start_time: '점심 식후',
     });
@@ -107,10 +109,59 @@ describe('scheduleColumns', () => {
 
   it('days에 없는 요일은 빼고, 비면 둘 다 null', () => {
     expect(scheduleColumns([2], { 2: 600, 5: 700 })).toEqual({
+      days: [2],
       start_minutes: { '2': 600 },
       start_time: '아침 식후',
     });
-    expect(scheduleColumns([], {})).toEqual({ start_minutes: null, start_time: null });
-    expect(scheduleColumns([1], {})).toEqual({ start_minutes: null, start_time: null });
+    expect(scheduleColumns([], {})).toEqual({ days: [], start_minutes: null, start_time: null });
+    expect(scheduleColumns([1], {})).toEqual({ days: [1], start_minutes: null, start_time: null });
+  });
+
+  // DB 트리거(clear_stale_start_minutes)는 days/start_time이 바뀌었는데 start_minutes가 같으면
+  // 옛 앱 쓰기로 보고 start_minutes를 비운다. 새 앱 쓰기는 이 조건에 걸리면 안 된다
+  describe('새 앱 쓰기는 트리거에 걸리지 않는다', () => {
+    const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+    const sameMinutes = (a: Record<string, number> | null, b: Record<string, number> | null) => {
+      if (a === null || b === null) return a === b;
+      const keys = Object.keys(a).sort();
+      return same(keys, Object.keys(b).sort()) && keys.every((key) => a[key] === b[key]);
+    };
+    const trips = (
+      before: ReturnType<typeof scheduleColumns>,
+      after: ReturnType<typeof scheduleColumns>
+    ) =>
+      after.start_minutes !== null &&
+      sameMinutes(before.start_minutes, after.start_minutes) &&
+      (!same(before.days, after.days) || before.start_time !== after.start_time);
+
+    it('요일 순서만 다르게 골라도 days는 월→일 순으로 같다', () => {
+      const before = scheduleColumns([1, 3], { 1: 600, 3: 1200 });
+      const after = scheduleColumns([3, 1], { 1: 600, 3: 1200 });
+      expect(after.days).toEqual([1, 3]);
+      expect(trips(before, after)).toBe(false);
+    });
+
+    it('시각이 없는 요일도 start_minutes에 읽을 때와 같은 라벨 시각으로 채운다', () => {
+      const before = scheduleColumns([1, 3], { 1: 600 });
+      expect(before.start_minutes).toEqual({ '1': 600, '3': 540 });
+      expect(scheduleFrom(before)).toEqual({ 1: 600, 3: 540 });
+      const after = scheduleColumns([1], { 1: 600 });
+      expect(trips(before, after)).toBe(false);
+    });
+
+    it('여러 경우를 다 돌려도 걸리지 않는다', () => {
+      const pool = [0, 1, 3, 5];
+      const subsets = Array.from({ length: 1 << pool.length }, (_, mask) =>
+        pool.filter((_, i) => mask & (1 << i))
+      );
+      const schedules: FastingSchedule[] = [{ 0: 600, 1: 600, 3: 1200, 5: 1200 }, { 1: 600 }, {}];
+      const all = subsets.flatMap((days) =>
+        schedules.flatMap((schedule) => [
+          scheduleColumns(days, schedule),
+          scheduleColumns([...days].reverse(), schedule),
+        ])
+      );
+      for (const before of all) for (const after of all) expect(trips(before, after)).toBe(false);
+    });
   });
 });

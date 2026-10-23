@@ -20,6 +20,10 @@ describe('fastingResultRecord', () => {
     ).toBeNull();
   });
 
+  it('0분은 시간 없음으로 본다 ("0분"으로 보이지 않게)', () => {
+    expect(fastingResultRecord({ result: 'broken', fasted_minutes: 0 }).fastedMinutes).toBeNull();
+  });
+
   it('성공이면 분이 남아 있어도 null', () => {
     expect(fastingResultRecord({ result: 'success', fasted_minutes: 990 })).toEqual({
       result: 'success',

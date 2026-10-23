@@ -33,7 +33,6 @@ const write = async (
         uid,
         start_date,
         week_index,
-        days,
         ...scheduleColumns(days, schedule),
         updated_at: new Date().toISOString(),
       },

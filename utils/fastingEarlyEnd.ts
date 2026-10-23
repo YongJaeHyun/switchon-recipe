@@ -7,10 +7,10 @@ const MAX_MINUTES = 24 * 60;
 // 끝난 뒤 "일찍 끝냈어요"를 고를 때 몇 시간 했는지 고르는 슬라이더 (시간 단위)
 export const EARLY_END_SLIDER = { min: 1, max: 23, step: 1, initial: 16 } as const;
 
-// 단식 시작부터 now까지 단식한 분 (분 내림, 0~1440)
+// 단식 시작부터 now까지 단식한 분 (분 내림, 1~1440). 1분이 안 돼도 "0분"이 아니라 1분
 export function fastedMinutesAt(startsAt: Date, now: Date): number {
   const minutes = Math.floor((now.getTime() - startsAt.getTime()) / MINUTE_MS);
-  return Math.min(MAX_MINUTES, Math.max(0, minutes));
+  return Math.min(MAX_MINUTES, Math.max(1, minutes));
 }
 
 // 990 → "16시간 30분", 960 → "16시간", 45 → "45분", null → ""
