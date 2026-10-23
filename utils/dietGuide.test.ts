@@ -4,6 +4,7 @@ import {
   getFastingStatus,
   getTodoAction,
   fastingWeekBoundary,
+  formatKstClock,
   WEEK_CHANGES,
 } from './dietGuide';
 import type { FastingSchedule } from './fastingSchedule';
@@ -380,5 +381,48 @@ describe('자정을 넘는 22:00 시작', () => {
     expect(fastingResultWindow(kst('2026-10-26T22:00:00'), {}, week)).toEqual({
       day: '2026-10-25',
     });
+  });
+});
+
+describe('getFastingStatus 겹침과 주차 경계', () => {
+  const kst = (iso: string) => new Date(`${iso}+09:00`);
+
+  it('오늘 시작한 단식이 어제 시작해 아직 진행 중인 단식보다 우선한다', () => {
+    // 월 22:00 단식(화 22:00까지) 중 화 06:00 단식이 시작됨
+    expect(getFastingStatus(kst('2026-10-20T07:00:00'), { 1: 1320, 2: 360 })).toMatchObject({
+      phase: 'fasting',
+      startsAt: kst('2026-10-20T06:00:00'),
+    });
+  });
+
+  it('새 주차 첫날에도 지난 주 일요일 단식이 진행 중이면 진행 줄', () => {
+    const week = { from: '2026-10-26', previous: { 0: 1320 } };
+    // 초기화된 이번 주 설정({})만 보면 none
+    expect(getFastingStatus(kst('2026-10-26T10:00:00'), {}).phase).toBe('none');
+    expect(getFastingStatus(kst('2026-10-26T10:00:00'), {}, week)).toEqual({
+      phase: 'fasting',
+      startsAt: kst('2026-10-25T22:00:00'),
+      endsAt: kst('2026-10-26T22:00:00'),
+      remainingMs: 12 * 60 * 60 * 1000,
+    });
+    expect(getFastingStatus(kst('2026-10-26T22:00:00'), {}, week).phase).toBe('finished');
+    // 지난 계획이 없으면(불러오는 중) 지난 주 날짜는 보지 않는다
+    expect(getFastingStatus(kst('2026-10-26T10:00:00'), {}, { from: '2026-10-26' }).phase).toBe(
+      'none'
+    );
+    // 지난 주 요일 목록을 이번 주 날짜에 쓰지 않는다
+    expect(getFastingStatus(kst('2026-10-26T10:00:00'), { 0: 1320 }, week).phase).toBe('fasting');
+    expect(
+      getFastingStatus(kst('2026-10-27T10:00:00'), {}, { from: '2026-10-26', previous: { 1: 600 } })
+        .phase
+    ).toBe('none');
+  });
+});
+
+describe('formatKstClock', () => {
+  it('기기 시간대와 상관없이 KST 시각 "HH:MM"', () => {
+    expect(formatKstClock(new Date('2026-10-19T13:00:00Z'))).toBe('22:00');
+    expect(formatKstClock(new Date('2026-10-19T15:30:00Z'))).toBe('00:30');
+    expect(formatKstClock(new Date('2026-10-19T10:30:00+09:00'))).toBe('10:30');
   });
 });

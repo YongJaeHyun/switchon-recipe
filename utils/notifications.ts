@@ -69,21 +69,43 @@ export const registerChannelIfPermitted = async (channelId: Channel): Promise<bo
   }
 };
 
-// 단식 요일마다 그날 아침 알림: 요일(1=일..7=토)과 그 요일 시작 시각 문구. 시각이 없는 요일은 뺀다
+const MINUTE_MS = 60 * 1000;
+const HOUR_MS = 60 * MINUTE_MS;
+const DAY_MS = 24 * HOUR_MS;
+const KST_OFFSET_MS = 9 * HOUR_MS;
+// 이 시각 전에 시작하는 단식은 아침 7시 알림이 늦으니 전날 저녁 21시에 알린다
+const EARLY_START_MINUTES = 480;
+
+// 이번 주차(weekFrom부터 7일) 단식마다 알림 한 번: 시작이 08:00 이후면 그날 07:00 "오늘 HH:MM부터",
+// 그 전이면 전날 21:00 "내일 HH:MM부터" (KST). 이미 지난 알림과 시각이 없는 요일은 뺀다
 export function fastingAlarms(
-  fasting: Maybe<Pick<FastingDB, 'days' | 'start_time' | 'start_minutes'>>
-): { weekday: number; body: string }[] {
+  fasting: Maybe<Pick<FastingDB, 'days' | 'start_time' | 'start_minutes'>>,
+  { now, weekFrom }: { now: Date; weekFrom: string }
+): { date: Date; body: string }[] {
   if (!fasting?.days) return [];
   const schedule = scheduleFrom(fasting);
-  return fasting.days
-    .filter((day) => schedule[day] !== undefined)
-    .map((day) => ({
-      weekday: day + 1,
-      body: `오늘 ${formatMinutes(schedule[day])}부터 24시간 단식이 시작돼요.\n단식 후, 첫 끼는 든든하게 챙겨드세요!`,
-    }));
+  const [y, m, d] = weekFrom.slice(0, 10).split('-').map(Number);
+  const from = Date.UTC(y, m - 1, d);
+
+  const alarms: { date: Date; body: string }[] = [];
+  for (let i = 0; i < 7; i++) {
+    const dayUtc = from + i * DAY_MS;
+    const minutes = schedule[new Date(dayUtc).getUTCDay()];
+    if (minutes === undefined) continue;
+    const midnight = dayUtc - KST_OFFSET_MS; // 그날 KST 자정
+    const early = minutes < EARLY_START_MINUTES;
+    const at = early ? midnight - 3 * HOUR_MS : midnight + 7 * HOUR_MS;
+    if (at <= now.getTime()) continue;
+    alarms.push({
+      date: new Date(at),
+      body: `${early ? '내일' : '오늘'} ${formatMinutes(minutes)}부터 24시간 단식이 시작돼요.\n단식 후, 첫 끼는 든든하게 챙겨드세요!`,
+    });
+  }
+  return alarms;
 }
 
-export async function registerWeeklyFastingAlarms(fasting: Maybe<FastingDB>) {
+// 이번 주차 단식 알림을 다시 건다. 주차가 바뀌면 단식 설정이 초기화되므로 반복 없이 이번 주차 것만
+export async function registerWeeklyFastingAlarms(fasting: Maybe<FastingDB>, weekFrom: string) {
   await Notifications.cancelAllScheduledNotificationsAsync();
   if (!fasting?.days) return [];
 
@@ -93,14 +115,12 @@ export async function registerWeeklyFastingAlarms(fasting: Maybe<FastingDB>) {
   const triggerIds: string[] = [];
 
   try {
-    for (const { weekday, body } of fastingAlarms(fasting)) {
+    for (const { date, body } of fastingAlarms(fasting, { now: new Date(), weekFrom })) {
       const triggerId = await Notifications.scheduleNotificationAsync({
         content: { title: '단식 시작 예정 알림', body },
         trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-          weekday, // 1=일, 2=월, ..., 7=토
-          hour: 7,
-          minute: 0,
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date,
           channelId: CHANNELS.FASTING,
         },
       });

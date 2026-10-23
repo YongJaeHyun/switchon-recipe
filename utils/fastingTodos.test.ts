@@ -27,4 +27,18 @@ describe('fastingDayTodos', () => {
     expect(fastingDayTodos(todos, 2, { 4: 780 })).toEqual(todos);
     expect(fastingDayTodos(todos, 4, {})).toEqual(todos);
   });
+
+  it('라벨이 아닌 시각은 끼니 시각과 비교한다 (끼니 시각 = 그 끼니를 마친 때)', () => {
+    // 06:00 시작: 그날은 끼니 없음, 다음 날(06:00 끝)은 다 먹는다
+    expect(fastingDayTodos(todos, 4, { 4: 360 })).toEqual([]);
+    expect(fastingDayTodos(todos, 5, { 4: 360 })).toEqual(todos);
+    // 16:00 시작: 오후간식까지, 다음 날은 오후간식부터
+    expect(fastingDayTodos(todos, 4, { 4: 960 })).toEqual(['아침', '점심', '오후간식']);
+    expect(fastingDayTodos(todos, 5, { 4: 960 })).toEqual(['오후간식', '저녁']);
+    // 22:00 시작: 그날은 다 먹고, 다음 날은 22:00에 끝나 끼니 없음
+    expect(fastingDayTodos(todos, 4, { 4: 1320 })).toEqual(todos);
+    expect(fastingDayTodos(todos, 5, { 4: 1320 })).toEqual([]);
+    // 18:30 시작: 저녁(19:00)은 단식 중이라 빠진다
+    expect(fastingDayTodos(todos, 4, { 4: 1110 })).toEqual(['아침', '점심', '오후간식']);
+  });
 });

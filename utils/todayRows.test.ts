@@ -102,6 +102,18 @@ describe('todayExtraRows', () => {
     expect(rows.fastingDayLine).toBeNull();
   });
 
+  it('새 주차 첫날: 지난 주 일요일 22:00 단식이 진행 중이면 진행 줄', () => {
+    const rows = todayExtraRows({
+      week: 3,
+      now: new Date('2026-10-19T10:00:00+09:00'),
+      fastingDays: [],
+      schedule: {},
+      weekContext: { from: '2026-10-19', previous: { 0: 1320 } },
+    });
+    expect(rows.fastingProgress).toBe(true);
+    expect(rows.fastingResultDay).toBeNull();
+  });
+
   it('요일마다 다른 시각: 토요일은 19시 전까지 안내 줄, 목요일(13시) 결과 질문은 열려 있다', () => {
     const rows = todayExtraRows({
       week: 3,

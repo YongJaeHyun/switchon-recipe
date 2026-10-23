@@ -1,4 +1,4 @@
-import type { FastingSchedule } from './fastingSchedule';
+import { formatMinutes, type FastingSchedule } from './fastingSchedule';
 
 // ── 할 일에서 바로 행동하기 ────────────────────────────────────
 export interface Tip {
@@ -97,11 +97,26 @@ const fastingStartOn = (
   return minutes === undefined ? null : midnightUtc + minutes * MINUTE_MS;
 };
 
-export const getFastingStatus = (now: Date, schedule: FastingSchedule): FastingStatus => {
+// 기기 시간대와 상관없이 KST 시각 "HH:MM"
+export const formatKstClock = (date: Date): string => {
+  const sinceMidnight = (((date.getTime() + KST_OFFSET_MS) % DAY_MS) + DAY_MS) % DAY_MS;
+  return formatMinutes(Math.floor(sinceMidnight / MINUTE_MS));
+};
+
+// week를 받으면 어제가 지난 주차 날짜일 때 지난 주차 계획(previous)으로 본다 (새 주차 첫날 초기화 뒤에도
+// 지난 주 마지막 날 시작한 단식의 진행 줄이 보이게)
+export const getFastingStatus = (
+  now: Date,
+  schedule: FastingSchedule,
+  week?: FastingWeekContext
+): FastingStatus => {
   const today = kstMidnight(now);
   const t = now.getTime();
 
-  const yesterdayStart = fastingStartOn(schedule, today.utc - DAY_MS, (today.weekday + 6) % 7);
+  const yesterdayMidnight = today.utc - DAY_MS;
+  const yesterdayPlan =
+    week && kstDayString(yesterdayMidnight) < week.from ? week.previous : schedule;
+  const yesterdayStart = fastingStartOn(yesterdayPlan, yesterdayMidnight, (today.weekday + 6) % 7);
   const todayStart = fastingStartOn(schedule, today.utc, today.weekday);
 
   const fasting = (start: number): FastingStatus => ({

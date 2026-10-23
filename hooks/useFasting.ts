@@ -7,6 +7,7 @@ import { useMemo } from 'react';
 import { useUserStore } from 'stores/userStore';
 import { FastingDB } from 'types/database';
 import { getWeekAndDay } from 'utils/date';
+import { fastingWeekBoundary } from 'utils/dietGuide';
 import { FastingSchedule, scheduleColumns, scheduleFrom } from 'utils/fastingSchedule';
 import { cancelAllScheduledNotifications, registerWeeklyFastingAlarms } from 'utils/notifications';
 import { useQueryWith402Retry } from './useCustomQuery';
@@ -74,15 +75,19 @@ export const useFasting = () => {
       // 주차가 바뀌면 fasting이 초기화되므로 이번 주차 계획을 따로 남긴다 (fire-and-forget).
       // 저장이 실패하면 sendError가 undefined를 돌려주므로 계획도 쓰지 않는다
       const startDate = useUserStore.getState().start_date;
+      const week = getWeekAndDay(startDate).week;
       if (data && startDate) {
         void FastingPlanAPI.upsert({
           start_date: startDate.slice(0, 10),
-          week_index: getWeekAndDay(startDate).week,
+          week_index: week,
           days: data.days ?? [],
           schedule: scheduleFrom(data),
         });
       }
-      await registerWeeklyFastingAlarms(data);
+      // 알림은 이번 주차 날짜에만 (주차가 바뀌면 설정이 초기화된다)
+      const boundary = fastingWeekBoundary(startDate, week);
+      if (boundary) await registerWeeklyFastingAlarms(data, boundary.from);
+      else await cancelAllScheduledNotifications();
     },
     onError: (err, newData, context) => {
       if (context?.previousData) {

@@ -31,7 +31,7 @@ export function todayExtraRows(input: {
     };
   }
 
-  const status = getFastingStatus(now, schedule);
+  const status = getFastingStatus(now, schedule, weekContext);
   const resultDay = fastingResultWindow(now, schedule, weekContext)?.day ?? null;
 
   // 단식 요일 설정은 할 일 목록이 있는 2~4주차에만 (유지기는 할 일이 없어 설정 줄도 없었다)

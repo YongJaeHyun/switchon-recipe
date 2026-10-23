@@ -44,7 +44,7 @@ export function TodayChecklist() {
   const stepLabel = weekStepLabel(week, day);
   const isMaintenance = week >= 5;
   const rows = todayExtraRows({ week, now, fastingDays: days, schedule, weekContext });
-  const status = getFastingStatus(now, schedule);
+  const status = getFastingStatus(now, schedule, weekContext);
 
   return (
     <View className="gap-3">
