@@ -9,6 +9,8 @@ type ConfirmModalProps = {
   title: string;
   message: string;
   disabled?: boolean;
+  confirmLabel?: string;
+  cancelLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
 };
@@ -22,6 +24,8 @@ export default function ConfirmModal({
   onConfirm,
   onCancel,
   disabled,
+  confirmLabel = '네',
+  cancelLabel = '아니오',
 }: ConfirmModalProps) {
   return (
     <Modal animationType="fade" transparent visible={visible} onRequestClose={onCancel}>
@@ -38,14 +42,14 @@ export default function ConfirmModal({
               className="flex-1 rounded-xl bg-gray-200 py-3"
               onPress={onCancel}
               disabled={disabled}>
-              <Text className="text-center font-medium text-gray-700">아니오</Text>
+              <Text className="text-center font-medium text-gray-700">{cancelLabel}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               className={`flex-1 rounded-xl py-3 ${type === 'create' ? 'bg-green-600' : 'bg-red-600'}`}
               onPress={onConfirm}
               disabled={disabled}>
-              <Text className="text-center font-medium text-white">네</Text>
+              <Text className="text-center font-medium text-white">{confirmLabel}</Text>
             </TouchableOpacity>
           </View>
         </View>

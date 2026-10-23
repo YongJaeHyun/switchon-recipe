@@ -90,7 +90,7 @@ const deps: GenerateReportsDeps = {
         .maybeSingle(),
       supabase
         .from('fasting_result')
-        .select('day, result')
+        .select('day, result, fasted_minutes')
         .eq('uid', uid)
         .gte('day', range.from)
         .lte('day', range.to),

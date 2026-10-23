@@ -182,6 +182,7 @@ describe('computeWeeklyStats: 단식', () => {
       broken: 0,
       pending: 0,
       successWeekdays: ['금요일'],
+      earlyEnded: [],
     });
   });
 
@@ -218,6 +219,41 @@ describe('computeWeeklyStats: 단식', () => {
     );
     expect(stats.fasting).toMatchObject({ planned: 2, success: 1, broken: 1 });
     expect(stats.fasting.successWeekdays).toEqual(['월요일']);
+  });
+});
+
+describe('computeWeeklyStats: 일찍 끝낸 단식', () => {
+  it('일찍 끝낸(broken) 단식의 요일과 단식한 시간(분)을 날짜순으로, 옛 기록은 시간 없이', () => {
+    const stats = computeWeeklyStats(
+      base({
+        fastingPlannedDays: ['2026-10-08', '2026-10-09', '2026-10-10', '2026-10-12'],
+        fastingResults: [
+          { day: '2026-10-12', result: 'broken', fastedMinutes: 990 },
+          { day: '2026-10-08', result: 'broken', fastedMinutes: 1080 },
+          { day: '2026-10-09', result: 'success', fastedMinutes: null },
+          { day: '2026-10-10', result: 'broken' }, // 옛 앱 기록 (시간 없음)
+          { day: '2026-10-05', result: 'broken', fastedMinutes: 600 }, // 지난 주
+        ],
+      })
+    );
+    expect(stats.fasting.broken).toBe(3);
+    expect(stats.fasting.earlyEnded).toEqual([
+      { weekday: '목요일', fastedMinutes: 1080 },
+      { weekday: '토요일', fastedMinutes: null },
+      { weekday: '월요일', fastedMinutes: 990 },
+    ]);
+  });
+
+  it('범위를 벗어난 시간 값은 시간 없음으로 본다', () => {
+    const stats = computeWeeklyStats(
+      base({
+        fastingResults: [
+          { day: '2026-10-08', result: 'broken', fastedMinutes: 5000 },
+          { day: '2026-10-09', result: 'broken', fastedMinutes: -1 },
+        ],
+      })
+    );
+    expect(stats.fasting.earlyEnded.map((e) => e.fastedMinutes)).toEqual([null, null]);
   });
 });
 

@@ -42,6 +42,8 @@ export interface WeeklyStats {
     broken: number;
     pending: number; // 리포트 생성 시점에 아직 결과를 답할 수 있던 단식 (실패가 아님)
     successWeekdays: string[];
+    // 일찍 끝낸 단식(날짜순), 시간 없으면 null. 이 필드 전에 만든 리포트에는 없다
+    earlyEnded?: { weekday: string; fastedMinutes: number | null }[];
   };
   recipes: { total: number; low: number; zero: number };
   foodChecks: { total: number; avoid: number };

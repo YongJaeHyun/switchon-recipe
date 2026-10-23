@@ -61,3 +61,17 @@ describe('체중 알림 정리 cron (리뷰 M-e)', () => {
     );
   });
 });
+
+describe('fasting_result.fasted_minutes (일찍 끝낸 단식의 단식 시간)', () => {
+  it('0~1440분 null 허용 열을 더한다 (result는 그대로)', () => {
+    const sql = flat(read('../../../migrations/20261023010000_fasting_result_fasted_minutes.sql'));
+    expect(sql).toMatch(
+      /alter table public\.fasting_result add column if not exists fasted_minutes integer null check \(fasted_minutes between 0 and 1440\);/
+    );
+  });
+
+  it('엣지 함수가 fasted_minutes를 읽는다', () => {
+    const src = read('../../generate-weekly-reports/index.ts');
+    expect(src).toContain(".select('day, result, fasted_minutes')");
+  });
+});

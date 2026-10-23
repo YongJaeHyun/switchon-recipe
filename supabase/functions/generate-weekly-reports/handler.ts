@@ -49,7 +49,7 @@ export interface WeekData {
   fastingPlanDays: number[] | null; // fasting_plan(uid, start_date, week_index).days
   fastingPlanStartTime: string | null; // 같은 행의 start_time ('아침 식후' 등, 옛 라벨)
   fastingPlanStartMinutes?: unknown; // 같은 행의 start_minutes jsonb ({"<요일>": 분}). 우선 사용
-  fastingResults: { day: string; result: string }[]; // range 안
+  fastingResults: { day: string; result: string; fasted_minutes?: number | null }[]; // range 안
   recipes: { created_at: string; is_zero_carb: boolean | null }[]; // [fromIso, toIso)
   foodChecks: { created_at: string; verdict: string | null }[]; // [fromIso, toIso)
 }
@@ -124,10 +124,16 @@ const normalizeWeekData = (data: WeekData) => ({
     items: d.items ?? [],
     checked: d.checked ?? [],
   })),
-  fastingResults: data.fastingResults.filter(
-    (r): r is { day: string; result: 'success' | 'broken' } =>
-      r.result === 'success' || r.result === 'broken'
-  ),
+  fastingResults: data.fastingResults
+    .filter(
+      (r): r is { day: string; result: 'success' | 'broken'; fasted_minutes?: number | null } =>
+        r.result === 'success' || r.result === 'broken'
+    )
+    .map((r) => ({
+      day: r.day,
+      result: r.result,
+      fastedMinutes: typeof r.fasted_minutes === 'number' ? r.fasted_minutes : null,
+    })),
   recipes: data.recipes.map((r) => ({ created_at: r.created_at, is_zero_carb: !!r.is_zero_carb })),
   foodChecks: data.foodChecks.filter(
     (c): c is { created_at: string; verdict: 'ok' | 'avoid' } =>

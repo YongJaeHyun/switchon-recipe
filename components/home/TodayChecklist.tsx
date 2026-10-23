@@ -2,6 +2,7 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { Text } from 'components/common/Text';
 import { useFasting, useFastingAlarmSync } from 'hooks/useFasting';
 import { useFastingPlanBackfill, useFastingWeekContext } from 'hooks/useFastingPlan';
+import { useFastingResult } from 'hooks/useFastingResult';
 import { useTodos } from 'hooks/useTodos';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, View } from 'react-native';
@@ -11,6 +12,7 @@ import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { getWeekAndDay } from 'utils/date';
 import { getFastingStatus, WEEK_CHANGES } from 'utils/dietGuide';
+import { fastingDayOf } from 'utils/fastingEarlyEnd';
 import { getWeekColor, getWeekColorHex } from 'utils/getWeekColor';
 import { todayExtraRows, weekStepLabel } from 'utils/todayRows';
 import { FastingDayLine } from './FastingDayLine';
@@ -23,6 +25,7 @@ import { WeightRow } from './WeightRow';
 const MINUTE_MS = 60 * 1000;
 
 // 오늘 탭의 할 일 목록 하나: (단식 중이면 남은 시간 줄) → 식단 할 일 → 단식 결과 → 체중 → (아래) 단식 요일.
+// 진행 중에 일찍 끝냈으면 남은 시간 줄 대신 그 단식의 결과 줄.
 // 완료율(%)은 식단 할 일만 센다
 export function TodayChecklist() {
   const startDate = useUserStore((state) => state.start_date);
@@ -44,8 +47,19 @@ export function TodayChecklist() {
   const { week, day } = getWeekAndDay(startDate);
   const stepLabel = weekStepLabel(week, day);
   const isMaintenance = week >= 5;
-  const rows = todayExtraRows({ week, now, fastingDays: days, schedule, weekContext });
   const status = getFastingStatus(now, schedule, weekContext);
+  // 진행 중인 단식에 이미 결과가 있으면(일찍 끝냈어요) 진행 줄 대신 결과 줄
+  const currentFastDay =
+    week >= 2 && status.phase === 'fasting' ? fastingDayOf(status.startsAt) : null;
+  const { result: currentFastResult } = useFastingResult(currentFastDay);
+  const rows = todayExtraRows({
+    week,
+    now,
+    fastingDays: days,
+    schedule,
+    weekContext,
+    currentFastAnswered: currentFastResult !== null,
+  });
 
   return (
     <View className="gap-3">

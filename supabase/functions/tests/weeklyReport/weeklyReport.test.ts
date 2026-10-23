@@ -37,6 +37,7 @@ const stats = (over: Partial<WeeklyStats> = {}): WeeklyStats => ({
     broken: 0,
     pending: 0,
     successWeekdays: ['목요일', '일요일'],
+    earlyEnded: [],
   },
   recipes: { total: 3, low: 2, zero: 1 },
   foodChecks: { total: 4, avoid: 1 },
@@ -50,6 +51,7 @@ const fasting = (over: Partial<WeeklyStats['fasting']> = {}): WeeklyStats['fasti
   broken: 0,
   pending: 0,
   successWeekdays: [],
+  earlyEnded: [],
   ...over,
 });
 
@@ -868,5 +870,74 @@ describe('주차별 몸 변화 (WEEK_BODY_CONTEXT)', () => {
         expect(sanitizeContent(fb, s)).toEqual(fb);
       }
     }
+  });
+});
+
+describe('일찍 끝낸 단식 시간', () => {
+  // 단식 3번 계획: 1번 성공(일), 2번 일찍 끝냄(목 18시간, 토 16시간 30분)
+  const early = () =>
+    stats({
+      fasting: fasting({
+        planned: 3,
+        success: 1,
+        broken: 2,
+        successWeekdays: ['일요일'],
+        earlyEnded: [
+          { weekday: '목요일', fastedMinutes: 1080 },
+          { weekday: '토요일', fastedMinutes: 990 },
+        ],
+      }),
+    });
+
+  it('프롬프트에 일찍 끝낸 횟수와 요일별 단식 시간', () => {
+    const prompt = buildReportPrompt(early(), nextWeekChangesFor(3));
+    expect(prompt).toContain('일찍 끝냄 2회 (목요일 18시간, 토요일 16시간 30분)');
+  });
+
+  it('시간 없는 옛 기록만 있으면 횟수만', () => {
+    const s = stats({
+      fasting: fasting({
+        planned: 1,
+        broken: 1,
+        earlyEnded: [{ weekday: '목요일', fastedMinutes: null }],
+      }),
+    });
+    const prompt = buildReportPrompt(s, nextWeekChangesFor(3));
+    expect(prompt).toContain('일찍 끝냄 1회');
+    expect(prompt).not.toContain('일찍 끝냄 1회 (');
+  });
+
+  it('일찍 끝낸 시간·요일은 허용하고, 통계에 없는 시간은 바꾼다', () => {
+    const s = early();
+    const fb = fallbackContent(s);
+    for (const ok of [
+      '목요일에는 18시간 동안 단식을 유지했어요.',
+      '토요일에 16시간 30분 버텼어요.',
+      '토요일 단식은 16.5시간 이어졌어요.',
+    ]) {
+      expect(sanitizeContent(content({ good: ok }), s).good).toBe(ok);
+    }
+    expect(sanitizeContent(content({ good: '목요일에 20시간 유지했어요.' }), s).good).toBe(fb.good);
+    expect(sanitizeContent(content({ good: '수요일에 18시간 유지했어요.' }), s).good).toBe(fb.good);
+  });
+
+  it('"일찍 끝낸" 횟수는 중단 횟수와 맞춘다', () => {
+    const s = early();
+    const fb = fallbackContent(s);
+    expect(sanitizeContent(content({ good: '단식 2번은 일찍 끝냈어요.' }), s).good).toBe(
+      '단식 2번은 일찍 끝냈어요.'
+    );
+    expect(sanitizeContent(content({ good: '단식 3번 일찍 끝냈어요.' }), s).good).toBe(fb.good);
+  });
+
+  it('기본 문장은 "일찍 끝냈어요"로 쓰고 자기 검증을 통과한다', () => {
+    const s = stats({
+      todo: { avgRate: 100, best: null, worst: null, items: [] },
+      fasting: fasting({ planned: 2, success: 1, broken: 1, successWeekdays: ['목요일'] }),
+    });
+    const fb = fallbackContent(s);
+    expect(fb.improve).toBe('단식 2번 중 1번은 일찍 끝냈어요.');
+    expect(sanitizeContent(fb, s)).toEqual(fb);
+    expect(sanitizeContent(fallbackContent(early()), early())).toEqual(fallbackContent(early()));
   });
 });

@@ -2,12 +2,14 @@ import { BottomSheetView } from '@gorhom/bottom-sheet';
 import { BottomSheetMethods } from '@gorhom/bottom-sheet/lib/typescript/types';
 import type { FastingResult } from 'api/FastingResultAPI';
 import { CustomBottomSheet } from 'components/common/CustomBottomSheet';
+import { FastedHoursPicker } from 'components/home/FastedHoursPicker';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import { useFastingHistory } from 'hooks/useFastingHistory';
 import { useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, TouchableOpacity, View } from 'react-native';
 import colors from 'tailwindcss/colors';
+import { fastingHistoryLabel, fastingResultLabel } from 'utils/fastingEarlyEnd';
 import type { FastingHistoryItem } from 'utils/fastingHistory';
 import { getWeekColorHex } from 'utils/getWeekColor';
 import { requireOnline } from 'utils/network';
@@ -19,11 +21,6 @@ const formatDay = (day: string) => {
   const [y, m, d] = day.split('-').map(Number);
   const weekday = WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
   return `${m}월 ${d}일 (${weekday})`;
-};
-
-const RESULT_LABEL: Record<FastingResult, string> = {
-  success: '성공',
-  broken: '중간에 먹음',
 };
 
 const HistoryRow = ({ item, onPress }: { item: FastingHistoryItem; onPress(): void }) => (
@@ -45,7 +42,7 @@ const HistoryRow = ({ item, onPress }: { item: FastingHistoryItem; onPress(): vo
             ? 'text-neutral-700'
             : 'text-neutral-400'
       }`}>
-      {item.result ? RESULT_LABEL[item.result] : '기록 안 함'}
+      {fastingHistoryLabel(item.result, item.fastedMinutes)}
     </Text>
   </TouchableOpacity>
 );
@@ -55,20 +52,27 @@ export function FastingHistorySection() {
   const { items, isLoading, isError, saveResult, isSaving } = useFastingHistory();
   const sheetRef = useRef<BottomSheetMethods>(null);
   const [target, setTarget] = useState<FastingHistoryItem | null>(null);
+  const [isPickingHours, setPickingHours] = useState(false);
 
   const open = (item: FastingHistoryItem) => {
     setTarget(item);
+    setPickingHours(false);
     sheetRef.current?.expand();
   };
 
-  const save = requireOnline(async (result: FastingResult) => {
+  // 일찍 끝냈어요는 단식한 분(fastedMinutes)과 함께 저장한다
+  const save = requireOnline(async (result: FastingResult, fastedMinutes?: number) => {
     if (!target || isSaving) return;
-    const saved = await saveResult({ day: target.day, result });
+    const saved = await saveResult({ day: target.day, result, fastedMinutes });
     if (!saved) return; // 실패 안내는 API가 했다
     sheetRef.current?.close();
+    setPickingHours(false);
     showSuccessToast({
       textType: 'CUSTOM',
-      title: result === 'success' ? '단식 성공으로 기록했어요' : '중간에 먹었다고 기록했어요',
+      title:
+        result === 'success'
+          ? '단식 성공으로 기록했어요'
+          : fastingResultLabel(result, fastedMinutes ?? null),
     });
   });
 
@@ -116,11 +120,19 @@ export function FastingHistorySection() {
               <Text className="text-lg font-semibold text-white">성공했어요</Text>
             </RippleButton>
             <RippleButton
-              className="w-full border border-neutral-300 bg-white py-4"
+              className={`w-full border bg-white py-4 ${isPickingHours ? 'border-green-600' : 'border-neutral-300'}`}
               disabled={isSaving}
-              onPress={() => save('broken')}>
-              <Text className="text-lg font-semibold text-neutral-600">중간에 먹었어요</Text>
+              onPress={() => setPickingHours((v) => !v)}>
+              <Text className="text-lg font-semibold text-neutral-600">일찍 끝냈어요</Text>
             </RippleButton>
+            {isPickingHours && target && (
+              <FastedHoursPicker
+                key={target.day}
+                initialMinutes={target.fastedMinutes}
+                disabled={isSaving}
+                onSave={(minutes) => save('broken', minutes)}
+              />
+            )}
           </View>
         </BottomSheetView>
       </CustomBottomSheet>

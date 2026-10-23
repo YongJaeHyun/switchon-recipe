@@ -394,6 +394,23 @@ describe('generateWeeklyReports', () => {
     expect(db.reports[0].stats.recipes).toEqual({ total: 1, low: 1, zero: 0 });
   });
 
+  it('일찍 끝낸 단식의 fasted_minutes를 통계로 옮긴다 (없거나 숫자가 아니면 시간 없음)', async () => {
+    const { deps, db } = makeDeps({
+      fetchWeekData: vi.fn(async () => ({
+        ...filledWeek(),
+        fastingResults: [
+          { day: '2026-10-13', result: 'broken', fasted_minutes: 1080 },
+          { day: '2026-10-14', result: 'broken', fasted_minutes: null },
+        ],
+      })),
+    });
+    await generateWeeklyReports(deps, TODAY);
+    expect(db.reports[0].stats.fasting.earlyEnded).toEqual([
+      { weekday: '화요일', fastedMinutes: 1080 },
+      { weekday: '수요일', fastedMinutes: null },
+    ]);
+  });
+
   it('한 유저의 오류는 다른 유저 처리를 막지 않는다', async () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { deps, db } = makeDeps({

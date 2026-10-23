@@ -5,6 +5,7 @@ export interface FastingHistoryItem {
   day: string; // 단식 시작일 (KST yyyy-MM-dd)
   weekIndex: number;
   result: FastingResult | null;
+  fastedMinutes: number | null; // 일찍 끝낸 단식의 단식한 분 (없으면 null)
 }
 
 const MINUTE_MS = 60 * 1000;
@@ -32,7 +33,7 @@ export function fastingHistory({
     start_time: string | null;
     start_minutes?: unknown;
   }[];
-  results: { day: string; result: FastingResult }[];
+  results: { day: string; result: FastingResult; fastedMinutes?: number | null }[];
   now: Date;
 }): FastingHistoryItem[] {
   const start = dayToUtc(startDate);
@@ -54,12 +55,12 @@ export function fastingHistory({
     }
   }
 
-  const resultByDay = new Map<string, FastingResult>();
-  for (const { day, result } of results) {
+  const resultByDay = new Map<string, { result: FastingResult; fastedMinutes: number | null }>();
+  for (const { day, result, fastedMinutes } of results) {
     // fasting_result엔 시작일이 없다. 1주차(단식 없음)나 시작일 이전 날짜의 결과는
     // 시작일을 앞당기기 전 프로그램 것이라 뺀다
     if (weekOf(day) < 2) continue;
-    resultByDay.set(day, result);
+    resultByDay.set(day, { result, fastedMinutes: fastedMinutes ?? null });
     days.add(day);
   }
 
@@ -67,5 +68,10 @@ export function fastingHistory({
   return [...days]
     .filter((day) => day >= startDay)
     .sort((a, b) => (a < b ? 1 : -1))
-    .map((day) => ({ day, weekIndex: weekOf(day), result: resultByDay.get(day) ?? null }));
+    .map((day) => ({
+      day,
+      weekIndex: weekOf(day),
+      result: resultByDay.get(day)?.result ?? null,
+      fastedMinutes: resultByDay.get(day)?.fastedMinutes ?? null,
+    }));
 }

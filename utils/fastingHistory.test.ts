@@ -13,7 +13,7 @@ describe('fastingHistory', () => {
         results: [],
         now: new Date('2026-10-23T09:00+09:00'),
       })
-    ).toEqual([{ day: '2026-10-22', weekIndex: 2, result: null }]);
+    ).toEqual([{ day: '2026-10-22', weekIndex: 2, result: null, fastedMinutes: null }]);
   });
 
   it('결과가 있으면 함께 나온다', () => {
@@ -24,7 +24,7 @@ describe('fastingHistory', () => {
         results: [{ day: '2026-10-22', result: 'success' }],
         now: new Date('2026-10-23T09:00+09:00'),
       })
-    ).toEqual([{ day: '2026-10-22', weekIndex: 2, result: 'success' }]);
+    ).toEqual([{ day: '2026-10-22', weekIndex: 2, result: 'success', fastedMinutes: null }]);
   });
 
   it('아직 시작 전인 계획일은 빠진다', () => {
@@ -47,8 +47,8 @@ describe('fastingHistory', () => {
         now: new Date('2026-10-27T09:00+09:00'),
       })
     ).toEqual([
-      { day: '2026-10-26', weekIndex: 2, result: 'broken' },
-      { day: '2026-10-22', weekIndex: 2, result: null },
+      { day: '2026-10-26', weekIndex: 2, result: 'broken', fastedMinutes: null },
+      { day: '2026-10-22', weekIndex: 2, result: null, fastedMinutes: null },
     ]);
   });
 
@@ -74,7 +74,7 @@ describe('fastingHistory', () => {
         ],
         now: new Date('2026-10-23T09:00+09:00'),
       })
-    ).toEqual([{ day: '2026-10-22', weekIndex: 2, result: 'broken' }]);
+    ).toEqual([{ day: '2026-10-22', weekIndex: 2, result: 'broken', fastedMinutes: null }]);
   });
 
   it('계획·결과가 없으면 빈 목록', () => {
@@ -91,7 +91,7 @@ describe('fastingHistory', () => {
         results: [],
         now: new Date('2026-10-22T00:30+09:00'),
       })
-    ).toEqual([{ day: '2026-10-22', weekIndex: 2, result: null }]);
+    ).toEqual([{ day: '2026-10-22', weekIndex: 2, result: null, fastedMinutes: null }]);
   });
 
   it('요일별 시작 시각(start_minutes)이 라벨보다 우선한다', () => {
@@ -103,7 +103,7 @@ describe('fastingHistory', () => {
     ).toEqual([]);
     expect(
       fastingHistory({ startDate, plans, results: [], now: new Date('2026-10-22T13:00+09:00') })
-    ).toEqual([{ day: '2026-10-22', weekIndex: 2, result: null }]);
+    ).toEqual([{ day: '2026-10-22', weekIndex: 2, result: null, fastedMinutes: null }]);
   });
 
   it('22:00 시작은 KST 날짜로 그날에 들어간다', () => {
@@ -114,6 +114,17 @@ describe('fastingHistory', () => {
     // KST 목 22:00 = UTC 목 13:00
     expect(
       fastingHistory({ startDate, plans, results: [], now: new Date('2026-10-22T13:00:00Z') })
-    ).toEqual([{ day: '2026-10-22', weekIndex: 2, result: null }]);
+    ).toEqual([{ day: '2026-10-22', weekIndex: 2, result: null, fastedMinutes: null }]);
+  });
+
+  it('일찍 끝낸 단식은 단식한 시간(분)이 함께 나온다', () => {
+    expect(
+      fastingHistory({
+        startDate,
+        plans: [week2Thu],
+        results: [{ day: '2026-10-22', result: 'broken', fastedMinutes: 990 }],
+        now: new Date('2026-10-23T09:00+09:00'),
+      })
+    ).toEqual([{ day: '2026-10-22', weekIndex: 2, result: 'broken', fastedMinutes: 990 }]);
   });
 });

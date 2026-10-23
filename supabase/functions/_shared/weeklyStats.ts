@@ -17,7 +17,8 @@ export interface WeeklyInputs {
   weights: { day: string; weight_kg: number }[]; // 전체(누적 변화 계산용)
   todoDays: { day: string; items: string[]; checked: number[] }[];
   fastingPlannedDays: string[]; // 그 주에 계획된 단식 시작일들
-  fastingResults: { day: string; result: 'success' | 'broken' }[];
+  // fastedMinutes: 일찍 끝낸(broken) 단식의 단식한 분. 성공이거나 옛 앱 기록이면 null/없음
+  fastingResults: { day: string; result: 'success' | 'broken'; fastedMinutes?: number | null }[];
   // 그 주 요일별 단식 시작 시각(요일 0=일..6=토 → KST 자정부터 분, scheduleFrom 결과)과
   // 리포트 생성 시각. 지도가 비어 있거나 now가 없으면 응답 대기(pending)를 세지 않는다
   fastingSchedule?: FastingSchedule;
@@ -54,6 +55,8 @@ export interface WeeklyStats {
     broken: number;
     pending: number; // 결과가 없고 생성 시점에 아직 응답 기간(시작 후 72시간, 다음 단식 전)인 단식
     successWeekdays: string[];
+    // 일찍 끝낸 단식(날짜순), 시간 없으면 null. 이 필드 전에 만든 리포트(stats jsonb)에는 없다
+    earlyEnded?: { weekday: string; fastedMinutes: number | null }[];
   };
   recipes: { total: number; low: number; zero: number };
   foodChecks: { total: number; avoid: number };
@@ -204,6 +207,10 @@ const pendingFasts = (
   }).length;
 };
 
+// 0~1440분 정수만 단식 시간으로 본다 (그 밖은 시간 없음)
+const validMinutes = (m: number | null | undefined): number | null =>
+  typeof m === 'number' && Number.isInteger(m) && m >= 0 && m <= 1440 ? m : null;
+
 const fastingStats = (input: WeeklyInputs, range: { from: string; to: string }) => {
   const results = input.fastingResults.filter((r) => inRange(r.day, range)).sort(byDay);
   // 결과가 있는 날은 계획에 없었더라도(요일 변경, 계획 기록 없음) 계획한 단식으로 센다
@@ -223,6 +230,12 @@ const fastingStats = (input: WeeklyInputs, range: { from: string; to: string }) 
       input.now
     ),
     successWeekdays: success.map((r) => WEEKDAYS[weekdayOf(r.day)]),
+    earlyEnded: results
+      .filter((r) => r.result === 'broken')
+      .map((r) => ({
+        weekday: WEEKDAYS[weekdayOf(r.day)],
+        fastedMinutes: validMinutes(r.fastedMinutes),
+      })),
   };
 };
 

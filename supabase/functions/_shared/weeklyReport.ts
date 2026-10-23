@@ -196,15 +196,35 @@ const todoLines = (t: WeeklyStats['todo']): string[] => {
   return lines;
 };
 
+// 990 → "16시간 30분", 960 → "16시간" (앱 utils/fastingEarlyEnd.ts formatFastedHours와 같음)
+const formatFastedHours = (minutes: number): string => {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (hours === 0) return `${rest}분`;
+  return rest === 0 ? `${hours}시간` : `${hours}시간 ${rest}분`;
+};
+
 const fastingLines = (f: WeeklyStats['fasting']): string[] => {
   if (f.planned === 0) return ['- 단식: 이번 주 계획 없음'];
   const pending = f.pending;
   const noRecord = Math.max(f.planned - f.success - f.broken - pending, 0);
   const days =
     f.successWeekdays.length > 0 ? ` (성공한 요일: ${f.successWeekdays.join(', ')})` : '';
+  // 일찍 끝낸 단식 중 단식한 시간이 기록된 것만 요일·시간으로 (옛 기록은 횟수만)
+  const hours = (f.earlyEnded ?? [])
+    .filter((e) => e.fastedMinutes !== null)
+    .map((e) => `${e.weekday} ${formatFastedHours(e.fastedMinutes as number)}`);
+  const early = hours.length > 0 ? ` (${hours.join(', ')})` : '';
   const lines = [
-    `- 단식: 계획 ${f.planned}회 중 성공 ${f.success}회${days}, 중단 ${f.broken}회, 응답 대기 ${pending}회, 결과 기록 없음 ${noRecord}회`,
+    `- 단식: 계획 ${f.planned}회 중 성공 ${f.success}회${days}, 중단(일찍 끝냄) ${f.broken}회, 응답 대기 ${pending}회, 결과 기록 없음 ${noRecord}회`,
   ];
+  if (f.broken > 0)
+    lines.push(
+      `  - 일찍 끝냄 ${f.broken}회${early}` +
+        (early
+          ? ', 괄호 안은 끝내기 전까지 단식한 시간이에요. 끝까지 못 했어도 유지한 시간은 근거로 쓸 수 있어요.'
+          : '')
+    );
   if (pending > 0)
     lines.push(
       '  - 응답 대기는 아직 결과를 답할 수 있는 기간인 단식이에요. 실패나 놓친 것으로 보지 말고, 아쉬운 점의 근거로도 쓰지 마세요.'
@@ -386,8 +406,18 @@ function numberRules(stats: WeeklyStats, free: string[] = []): NumberRules {
     c.total - c.avoid,
     w.daysLogged,
   ];
+  // 일찍 끝낸 단식의 단식 시간: "18시간", "16시간 30분", "16.5시간"
+  const fastedHours = (stats.fasting.earlyEnded ?? []).flatMap((e) =>
+    e.fastedMinutes === null
+      ? []
+      : [
+          Math.floor(e.fastedMinutes / 60),
+          ...(e.fastedMinutes % 60 > 0 ? [e.fastedMinutes % 60] : []),
+          Math.round((e.fastedMinutes / 60) * 10) / 10,
+        ]
+  );
   return {
-    any: setOf([...weight, ...rate, ...week, ...count, ...nameNumbers]),
+    any: setOf([...weight, ...rate, ...week, ...count, ...nameNumbers, ...fastedHours]),
     weight: setOf(weight),
     rate: setOf(rate),
     week: setOf(week),
@@ -439,7 +469,7 @@ const prepare = (text: string, rules: NumberRules) =>
 
 // 단식 횟수 바로 뒤(다음 숫자 전까지)나 앞(구절 안, 앞 숫자 뒤부터)에 성공·중단이 있으면 그 횟수와 맞춘다
 const FASTING_SUCCESS_RE = /성공/;
-const FASTING_BROKEN_RE = /중단|실패|깨|먹었/;
+const FASTING_BROKEN_RE = /중단|실패|깨|먹었|일찍\s*끝/;
 const fastingKindOf = (segment: string): 'fastingSuccess' | 'fastingBroken' | null =>
   FASTING_SUCCESS_RE.test(segment)
     ? 'fastingSuccess'
@@ -503,12 +533,15 @@ const weekdaysIn = (text: string): string[] => [
   ),
 ];
 
-// 통계에 나온 요일만 허용 (최고·최저 요일, 단식 성공 요일)
+// 통계에 나온 요일만 허용 (최고·최저 요일, 단식 성공 요일, 일찍 끝낸 단식 요일)
 const allowedWeekdays = (s: WeeklyStats): Set<string> =>
   new Set(
-    [s.todo.best?.weekday, s.todo.worst?.weekday, ...s.fasting.successWeekdays].filter(
-      (d): d is string => typeof d === 'string'
-    )
+    [
+      s.todo.best?.weekday,
+      s.todo.worst?.weekday,
+      ...s.fasting.successWeekdays,
+      ...(s.fasting.earlyEnded ?? []).map((e) => e.weekday),
+    ].filter((d): d is string => typeof d === 'string')
   );
 
 // "주 N회"의 N: 이번 주 계획 횟수, 이번·다음 주 규칙 문구의 횟수만 허용
@@ -701,7 +734,7 @@ const fallbackImprove = (
   }
   if (s.fasting.broken > 0) {
     return {
-      improve: `단식 ${s.fasting.planned - s.fasting.pending}번 중 ${s.fasting.broken}번은 중간에 먹었어요.`,
+      improve: `단식 ${s.fasting.planned - s.fasting.pending}번 중 ${s.fasting.broken}번은 일찍 끝냈어요.`,
       action: '단식 전날 저녁은 단백질 위주로 든든하게 먹고, 단식 날 일정을 가볍게 잡아보세요.',
       actionLink: null,
     };

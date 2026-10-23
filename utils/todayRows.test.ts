@@ -127,6 +127,41 @@ describe('todayExtraRows', () => {
   });
 });
 
+describe('todayExtraRows: 진행 중에 일찍 끝낸 단식', () => {
+  it('지금 단식에 결과가 있으면 진행 줄 대신 그 단식의 결과 줄', () => {
+    const rows = todayExtraRows({
+      week: 2,
+      now: new Date('2026-10-23T09:00:00+09:00'),
+      ...thuEvening,
+      currentFastAnswered: true,
+    });
+    expect(rows.fastingProgress).toBe(false);
+    expect(rows.fastingResultDay).toBe('2026-10-22');
+  });
+
+  it('결과가 없으면 지금처럼 진행 줄', () => {
+    const rows = todayExtraRows({
+      week: 2,
+      now: new Date('2026-10-23T09:00:00+09:00'),
+      ...thuEvening,
+      currentFastAnswered: false,
+    });
+    expect(rows.fastingProgress).toBe(true);
+    expect(rows.fastingResultDay).toBeNull();
+  });
+
+  it('단식 중이 아니면 영향 없음 (시작 전 안내 줄)', () => {
+    const rows = todayExtraRows({
+      week: 2,
+      now: new Date('2026-10-22T09:00:00+09:00'),
+      ...thuEvening,
+      currentFastAnswered: true,
+    });
+    expect(rows.fastingUpcoming).toBe(true);
+    expect(rows.fastingResultDay).toBeNull();
+  });
+});
+
 describe('weekStepLabel', () => {
   it('1주차 1~3일', () => expect(weekStepLabel(1, 3)).toBe('(1 ~ 3일)'));
   it('1주차 4~7일', () => expect(weekStepLabel(1, 4)).toBe('(4 ~ 7일)'));

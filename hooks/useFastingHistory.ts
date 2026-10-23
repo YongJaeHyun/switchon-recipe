@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { FastingPlanAPI } from 'api/FastingPlanAPI';
-import { FastingResultAPI, type FastingResult } from 'api/FastingResultAPI';
+import { FastingResultAPI } from 'api/FastingResultAPI';
 import { QueryKey } from 'const/queryKey';
 import { queryClient } from 'lib/queryClient';
 import { useFocusEffect } from 'expo-router';
@@ -47,7 +47,7 @@ export const useFastingHistory = () => {
     onSuccess: (row, { day }) => {
       if (!row) return;
       // 오늘 탭의 단식 결과 줄(useFastingResult)도 같은 값으로 맞춘다
-      queryClient.setQueryData([QueryKey.fastingResult, uid, day], row.result as FastingResult);
+      queryClient.setQueryData([QueryKey.fastingResult, uid, day], FastingResultAPI.recordOf(row));
       void queryClient.invalidateQueries({ queryKey: [QueryKey.fastingResult, uid, day] });
       void queryClient.invalidateQueries({ queryKey: [QueryKey.fastingHistory] });
     },

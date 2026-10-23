@@ -87,18 +87,21 @@ export type Database = {
       fasting_result: {
         Row: {
           day: string;
+          fasted_minutes: number | null;
           result: string;
           uid: string;
           updated_at: string;
         };
         Insert: {
           day: string;
+          fasted_minutes?: number | null;
           result: string;
           uid: string;
           updated_at?: string;
         };
         Update: {
           day?: string;
+          fasted_minutes?: number | null;
           result?: string;
           uid?: string;
           updated_at?: string;

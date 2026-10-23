@@ -1,5 +1,9 @@
 import { useMutation } from '@tanstack/react-query';
-import { FastingResultAPI, type FastingResult } from 'api/FastingResultAPI';
+import {
+  FastingResultAPI,
+  type FastingResult,
+  type FastingResultRecord,
+} from 'api/FastingResultAPI';
 import { QueryKey } from 'const/queryKey';
 import { queryClient } from 'lib/queryClient';
 import { useUserStore } from 'stores/userStore';
@@ -11,19 +15,27 @@ export const useFastingResult = (day: string | null) => {
   const uid = useUserStore((state) => state.id);
   const queryKey = [QueryKey.fastingResult, uid, day];
 
-  const query = useQueryWith402Retry<FastingResult | null>({
+  const query = useQueryWith402Retry<FastingResultRecord | null>({
     queryKey,
     queryFn: failFastWhenOffline(() => FastingResultAPI.selectOne(day as string)),
     enabled: !!uid && !!day,
   });
 
+  // 일찍 끝냈으면 result 'broken' + 단식한 분(fastedMinutes). 성공이면 분은 저장하지 않는다
   const { mutate: saveResult, isPending: isSaving } = useMutation({
-    mutationFn: (result: FastingResult) => FastingResultAPI.upsert({ day: day as string, result }),
+    mutationFn: ({ result, fastedMinutes }: { result: FastingResult; fastedMinutes?: number }) =>
+      FastingResultAPI.upsert({ day: day as string, result, fastedMinutes }),
     onSuccess: (row) => {
-      if (row) queryClient.setQueryData(queryKey, row.result as FastingResult);
+      if (row) queryClient.setQueryData(queryKey, FastingResultAPI.recordOf(row));
       void queryClient.invalidateQueries({ queryKey: [QueryKey.fastingHistory] });
     },
   });
 
-  return { result: query.data ?? null, isLoading: query.isLoading, saveResult, isSaving };
+  return {
+    result: query.data?.result ?? null,
+    fastedMinutes: query.data?.fastedMinutes ?? null,
+    isLoading: query.isLoading,
+    saveResult,
+    isSaving,
+  };
 };
