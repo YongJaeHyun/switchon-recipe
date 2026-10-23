@@ -19,7 +19,7 @@ export function RecentKeywords() {
     insertKeyword(keyword);
 
     router.push({
-      pathname: '/(tabs)/recipes/searchResult',
+      pathname: '/(tabs)/explore/searchResult',
       params: { keyword },
     });
   });

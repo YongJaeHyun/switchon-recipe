@@ -1,7 +1,9 @@
 import { FlashList } from '@shopify/flash-list';
 import { Filter } from 'components/common/Filter';
+import { SafeAreaViewWithNav } from 'components/common/SafeAreaViewWithNav';
 import { SearchInput } from 'components/common/SearchInput';
 import { Sort } from 'components/common/Sort';
+import { Text } from 'components/common/Text';
 import { RecipeCard } from 'components/explore/RecipeCard';
 import { Tabs } from 'components/explore/Tabs';
 import { RECIPE_FILTERS, RecipeFilterType } from 'const/filter';
@@ -38,8 +40,9 @@ export default function ExploreScreen() {
   const flattenedRecipes = useMemo(() => recipes?.pages.flatMap((page) => page) ?? [], [recipes]);
 
   return (
-    <View className="flex-1 bg-neutral-50 ">
-      <Link href={'/(tabs)/recipes/search'} className="px-5">
+    <SafeAreaViewWithNav className="flex-1 bg-neutral-50">
+      <Text className="mt-4 px-5 text-2xl font-bold">탐색</Text>
+      <Link href={'/(tabs)/explore/search'} className="px-5">
         <View className="w-full">
           <SearchInput
             keyword={keyword}
@@ -82,6 +85,6 @@ export default function ExploreScreen() {
           renderItem={renderRecipeItem}
         />
       )}
-    </View>
+    </SafeAreaViewWithNav>
   );
 }

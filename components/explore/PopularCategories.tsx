@@ -19,7 +19,7 @@ export function PopularCategories() {
     if (!keyword) return;
 
     router.push({
-      pathname: '/(tabs)/recipes/searchResult',
+      pathname: '/(tabs)/explore/searchResult',
       params: { keyword },
     });
   });

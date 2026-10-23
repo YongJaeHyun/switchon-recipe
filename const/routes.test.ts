@@ -9,7 +9,9 @@ const OLD_ROUTES = [
   '/(tabs)/home/recipeCreation',
   '/(tabs)/recipes/recipeCreation',
   '/(tabs)/home/savedRecipes',
-  '/(tabs)/explore',
+  // 탐색은 레시피 탭 안에 있다가 다시 따로 탭이 됐다
+  '/(tabs)/recipes/explore',
+  '/(tabs)/recipes/search',
 ];
 
 function collectSourceFiles(dir: string): string[] {

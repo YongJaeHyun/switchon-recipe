@@ -43,6 +43,13 @@ function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="explore"
+        options={{
+          title: '탐색',
+          tabBarIcon: ({ color }) => <MaterialIcons name="explore" size={28} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="records/index"
         options={{
           title: '기록',
