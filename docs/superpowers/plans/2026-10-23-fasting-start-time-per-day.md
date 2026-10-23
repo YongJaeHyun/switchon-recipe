@@ -53,3 +53,13 @@ export function formatMinutes(minutes: number): string; // 1140 → "19:00"
 ### Task 4: 시트 UI·슬라이더·요일 카드
 **Files:** Create `components/common/StepSlider.tsx`(gesture-handler Pan + reanimated, 값 스냅, accessibilityActions), `utils/stepSlider.ts`(`snapMinutes(raw, {min,max,step})`) + test; Modify `components/home/FastingDayBottomSheet.tsx`(고른 요일마다 줄: "목요일 · 19:00 시작 → 금 19:00 끝", 슬라이더, 빠른 선택 3개; 새 요일 기본값 규칙; 저장 시 schedule), `components/home/FastingDayLine.tsx`(요일 카드 아래 문구를 요일별 "목 13:00 · 토 19:00").
 - [ ] snapMinutes 테스트 먼저, 구현, tsc·eslint·vitest, 에뮬레이터 확인. Commit `✨ 단식 시작 시각을 요일마다 슬라이더로`
+
+### Task 5: 일찍 끝낸 단식 기록
+**Files:** Create migration `supabase/migrations/20261023010000_fasting_result_fasted_minutes.sql`(`fasting_result.fasted_minutes integer null check (fasted_minutes between 0 and 1440)`); Modify `types/database.types.ts`, `api/FastingResultAPI.ts`, `hooks/useFastingResult.ts`(`saveResult({ result, fastedMinutes? })`, 반환 `fastedMinutes`), `components/home/FastingProgressLine.tsx`(진행 중 "일찍 끝냈어요" 버튼 + 확인), `components/home/FastingResultRow.tsx`("일찍 끝냈어요" + 시간 슬라이더), `components/home/TodayChecklist.tsx`(이미 결과가 있으면 진행 줄 대신 결과 줄), `utils/fastingHistory.ts`·`components/records/FastingHistorySection.tsx`(시간 표시·수정), `supabase/functions/_shared/weeklyStats.ts`·`weeklyReport.ts`(fastingResults에 fastedMinutes, 일찍 끝낸 요일·시간을 통계와 허용 숫자 집합에), `generate-weekly-reports/index.ts`(fasted_minutes 읽기), 테스트.
+**Consumes:** Task 2 `getFastingStatus(schedule)`의 startsAt, Task 4 `StepSlider`.
+**Produces:** `utils/fastingEarlyEnd.ts` — `fastedMinutesAt(startsAt: Date, now: Date): number`(0~1440, 분 내림), `formatFastedHours(minutes: number | null): string`(990 → "16시간 30분", 960 → "16시간", null → "").
+- 진행 중 버튼 → 확인 문구 "지금까지 {formatFastedHours}동안 단식했어요. 여기서 끝낼까요?" → `saveResult({ result: 'broken', fastedMinutes: fastedMinutesAt(startsAt, now) })`, day = 단식 시작일 KST.
+- 끝난 뒤 "일찍 끝냈어요" → 시간 슬라이더 {min 1, max 23, step 1, 기본 16} → 저장 fastedMinutes = 시간×60.
+- 결과 문구: success "성공으로 기록했어요", broken+분 "{formatFastedHours}하고 끝냈다고 기록했어요", broken+null "일찍 끝냈다고 기록했어요".
+- 마이그레이션은 만들기만 하고 적용하지 않는다(운영자 승인 후 적용).
+- [ ] 테스트 먼저(fastedMinutesAt 경계 0·1440 넘김·분 내림, formatFastedHours, 결과 있으면 오늘 줄이 진행 줄 대신 결과 줄, weeklyStats 일찍 끝낸 시간 집계, 리포트 허용 숫자에 시간 포함), 구현, tsc·vitest·deno check, Commit `✨ 일찍 끝낸 단식과 단식한 시간을 기록`
