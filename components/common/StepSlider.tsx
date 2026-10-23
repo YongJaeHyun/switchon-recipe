@@ -1,9 +1,9 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { AccessibilityActionEvent, LayoutChangeEvent, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import colors from 'tailwindcss/colors';
-import { snapMinutes, stepBy } from 'utils/stepSlider';
+import { grabOffset, isOnThumb, stepBy, thumbOffset, valueAtX } from 'utils/stepSlider';
 
 interface StepSliderProps {
   value: number;
@@ -31,41 +31,75 @@ export function StepSlider({
 }: StepSliderProps) {
   const width = useSharedValue(0);
   const current = useSharedValue(value);
+  const isDragging = useSharedValue(false);
+  const grab = useSharedValue(0);
+  const range = useMemo(() => ({ min, max, step }), [min, max, step]);
 
+  // 끄는 동안에는 늦게 온 옛 value가 손가락 위치를 덮어쓰지 않게 한다
   useEffect(() => {
-    current.value = value;
-  }, [current, value]);
+    if (!isDragging.value) current.value = value;
+  }, [current, isDragging, value]);
 
-  // 손가락 x → 칸에 맞춘 값. 값이 바뀔 때만 JS로 알린다
-  const moveTo = (x: number) => {
-    'worklet';
-    const usable = width.value - THUMB_SIZE;
-    if (usable <= 0) return;
-    const ratio = Math.min(Math.max((x - THUMB_SIZE / 2) / usable, 0), 1);
-    const snapped = snapMinutes(min + ratio * (max - min), { min, max, step });
-    if (snapped === current.value) return;
-    current.value = snapped;
-    runOnJS(onChange)(snapped);
-  };
+  // 제스처를 렌더마다 새로 만들면 끄는 도중에 끊기므로, 바뀌는 onChange는 ref로 부른다
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+  const emit = useCallback((next: number) => onChangeRef.current(next), []);
 
-  const pan = Gesture.Pan()
-    .activeOffsetX([-4, 4])
-    .failOffsetY([-12, 12])
-    .onStart((event) => moveTo(event.x))
-    .onUpdate((event) => moveTo(event.x));
-  const tap = Gesture.Tap().onEnd((event) => moveTo(event.x));
-  const gesture = Gesture.Race(pan, tap);
+  const gesture = useMemo(() => {
+    // 손잡이 가운데 x → 칸 값. 값이 바뀔 때만 JS로 알린다
+    const moveTo = (x: number) => {
+      'worklet';
+      const snapped = valueAtX(x, { width: width.value, thumbSize: THUMB_SIZE }, range);
+      if (snapped === null || snapped === current.value) return;
+      current.value = snapped;
+      runOnJS(emit)(snapped);
+    };
 
-  const thumbOffset = () => {
-    'worklet';
-    const ratio = max > min ? (current.value - min) / (max - min) : 0;
-    return ratio * Math.max(width.value - THUMB_SIZE, 0);
-  };
+    const pan = Gesture.Pan()
+      .activeOffsetX([-4, 4])
+      .failOffsetY([-12, 12])
+      .onBegin((event) => {
+        // 손잡이를 잡으면 잡은 점을 유지 (값이 튀지 않게), 트랙을 누르면 그 자리로
+        grab.value = grabOffset(
+          event.x,
+          current.value,
+          { width: width.value, thumbSize: THUMB_SIZE },
+          range
+        );
+      })
+      .onStart((event) => {
+        isDragging.value = true;
+        moveTo(event.x + grab.value);
+      })
+      .onUpdate((event) => moveTo(event.x + grab.value))
+      .onFinalize(() => {
+        isDragging.value = false;
+      });
+    const tap = Gesture.Tap().onEnd((event, success) => {
+      if (!success) return;
+      // 손잡이를 톡 누른 것은 그대로, 트랙을 누르면 그 자리로
+      const track = { width: width.value, thumbSize: THUMB_SIZE };
+      if (isOnThumb(event.x, current.value, track, range)) return;
+      moveTo(event.x);
+    });
+    return Gesture.Race(pan, tap);
+  }, [current, emit, grab, isDragging, range, width]);
+
   const thumbStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: thumbOffset() }],
+    transform: [
+      {
+        translateX: thumbOffset(
+          current.value,
+          { width: width.value, thumbSize: THUMB_SIZE },
+          range
+        ),
+      },
+    ],
   }));
   const fillStyle = useAnimatedStyle(() => ({
-    width: thumbOffset(),
+    width: thumbOffset(current.value, { width: width.value, thumbSize: THUMB_SIZE }, range),
   }));
 
   const handleLayout = (event: LayoutChangeEvent) => {

@@ -8,10 +8,12 @@ import colors from 'tailwindcss/colors';
 
 interface CustomBottomSheetProps {
   children: React.ReactNode;
+  // 닫혀 있다가 열릴 때마다 (작업 중 상태를 저장된 값으로 되돌리는 데 쓴다)
+  onOpen?: () => void;
 }
 
 export const CustomBottomSheet = forwardRef<BottomSheetMethods, CustomBottomSheetProps>(
-  ({ children }, ref) => {
+  ({ children, onOpen }, ref) => {
     const inset = useSafeAreaInsets();
     const sheetRef = useRef<BottomSheet>(null);
     const [isOpen, setIsOpen] = useState(false);
@@ -49,7 +51,10 @@ export const CustomBottomSheet = forwardRef<BottomSheetMethods, CustomBottomShee
           bottomInset={inset.bottom}
           ref={sheetRef}
           index={-1}
-          onChange={(index) => setIsOpen(index >= 0)}
+          onChange={(index) => {
+            if (index >= 0 && !isOpen) onOpen?.();
+            setIsOpen(index >= 0);
+          }}
           enablePanDownToClose>
           {children}
         </BottomSheet>

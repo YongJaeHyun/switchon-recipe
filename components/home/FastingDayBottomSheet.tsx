@@ -129,14 +129,16 @@ export const FastingDayBottomSheet = ({ bottomSheetRef, week }: FastingDayBottom
     setLastSetMinutes(undefined);
   };
 
-  useEffect(() => {
+  // 저장된 값으로 되돌린다. 열 때마다 (저장하지 않고 닫은 편집은 버린다) + 저장된 값이 바뀌면
+  const resetToSaved = () => {
     setSelectedDays(days);
     setSelectedSchedule(withNewDays(schedule, days, undefined));
     setLastSetMinutes(undefined);
-  }, [days, schedule]);
+  };
+  useEffect(resetToSaved, [days, schedule]);
 
   return (
-    <CustomBottomSheet ref={bottomSheetRef}>
+    <CustomBottomSheet ref={bottomSheetRef} onOpen={resetToSaved}>
       <BottomSheetScrollView className="px-5">
         <View className="flex-row items-center justify-between">
           <Text className="mb-2 text-2xl font-bold">단식 요일 설정</Text>
