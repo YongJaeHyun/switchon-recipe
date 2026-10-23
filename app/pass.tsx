@@ -21,9 +21,9 @@ import { showErrorToast, showSuccessToast } from 'utils/showToast';
 
 // 패스 전용 기능 (스펙 1절). 배포되기 전까지는 "곧 추가돼요"로 표시한다
 const PREMIUM_FEATURES = [
-  '편의점 판정: 먹어도 되는지 바로 확인',
-  '맞춤 레시피 추천: 먹고 싶은 걸 고르면 레시피를 골라 드려요',
-  'AI 주간 리포트: 체중·식단·단식을 한 주씩 정리',
+  { title: '편의점 판정', description: '먹어도 되는지 바로 확인' },
+  { title: '맞춤 레시피 추천', description: '먹고 싶은 걸 고르면 레시피를 골라 드려요' },
+  { title: 'AI 주간 리포트', description: '체중·식단·단식을 한 주씩 정리' },
 ];
 
 const Header = () => (
@@ -53,13 +53,13 @@ const PassIntro = () => (
 
     <View className="gap-3 rounded-xl border border-neutral-200 bg-white p-4">
       <Text className="font-bold text-neutral-700">패스 전용 기능</Text>
-      {PREMIUM_FEATURES.map((feature) => (
-        <View key={feature} className="flex-row items-center justify-between">
-          <View className="flex-row items-center gap-2">
-            <MaterialIcons name="lock-open" size={18} color={colors.green[600]} />
-            <Text className="text-neutral-700">{feature}</Text>
+      {PREMIUM_FEATURES.map(({ title, description }) => (
+        <View key={title} className="flex-row gap-2">
+          <MaterialIcons name="lock-open" size={18} color={colors.green[600]} />
+          <View className="flex-1">
+            <Text className="font-bold text-neutral-800">{title}</Text>
+            <Text className="text-sm text-neutral-500">{description}</Text>
           </View>
-          <Text className="text-sm text-neutral-400">곧 추가돼요</Text>
         </View>
       ))}
     </View>
