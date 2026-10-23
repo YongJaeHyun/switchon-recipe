@@ -25,7 +25,7 @@ import { WeightRow } from './WeightRow';
 const MINUTE_MS = 60 * 1000;
 
 // 오늘 탭의 할 일 목록 하나: (단식 중이면 남은 시간 줄) → 식단 할 일 → 단식 결과 → 체중 → (아래) 단식 요일.
-// 진행 중에 일찍 끝냈으면 남은 시간 줄 대신 그 단식의 결과 줄.
+// 진행 중에 일찍 끝냈으면 남은 시간 줄 자리에 그 단식의 결과 카드 (할 일 목록은 그대로).
 // 완료율(%)은 식단 할 일만 센다
 export function TodayChecklist() {
   const startDate = useUserStore((state) => state.start_date);
@@ -66,6 +66,17 @@ export function TodayChecklist() {
       {((rows.fastingProgress && status.phase === 'fasting') ||
         (rows.fastingUpcoming && status.phase === 'upcoming')) && (
         <FastingProgressLine status={status} />
+      )}
+
+      {rows.fastingEndedEarlyDay && (
+        <View className="rounded-xl bg-green-50 px-4 pt-1">
+          <FastingResultRow
+            key={rows.fastingEndedEarlyDay}
+            day={rows.fastingEndedEarlyDay}
+            now={now}
+            cancelable
+          />
+        </View>
       )}
 
       {rows.fastingDayLine === 'unset' && (
@@ -121,12 +132,7 @@ export function TodayChecklist() {
         )}
 
         {rows.fastingResultDay && (
-          <FastingResultRow
-            key={rows.fastingResultDay}
-            day={rows.fastingResultDay}
-            now={now}
-            cancelable={rows.fastingResultCancelable}
-          />
+          <FastingResultRow key={rows.fastingResultDay} day={rows.fastingResultDay} now={now} />
         )}
         {rows.weight && <WeightRow />}
       </View>

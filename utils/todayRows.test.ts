@@ -12,7 +12,7 @@ describe('todayExtraRows', () => {
       fastingUpcoming: false,
       fastingProgress: false,
       fastingResultDay: null,
-      fastingResultCancelable: false,
+      fastingEndedEarlyDay: null,
       weight: true,
       fastingDayLine: null,
     });
@@ -84,7 +84,7 @@ describe('todayExtraRows', () => {
       fastingUpcoming: false,
       fastingProgress: false,
       fastingResultDay: null,
-      fastingResultCancelable: false,
+      fastingEndedEarlyDay: null,
       weight: true,
       fastingDayLine: null,
     });
@@ -130,7 +130,7 @@ describe('todayExtraRows', () => {
 });
 
 describe('todayExtraRows: 진행 중에 일찍 끝낸 단식', () => {
-  it('지금 단식에 결과가 있으면 진행 줄 대신 그 단식의 결과 줄', () => {
+  it('지금 단식에 결과가 있으면 진행 카드 자리에 그 단식의 결과 카드 (할 일 목록에는 줄을 더하지 않음)', () => {
     const rows = todayExtraRows({
       week: 2,
       now: new Date('2026-10-23T09:00:00+09:00'),
@@ -138,12 +138,11 @@ describe('todayExtraRows: 진행 중에 일찍 끝낸 단식', () => {
       currentFastAnswered: true,
     });
     expect(rows.fastingProgress).toBe(false);
-    expect(rows.fastingResultDay).toBe('2026-10-22');
-    // 아직 단식 시간 안이라 결과 줄은 바꾸기 대신 취소
-    expect(rows.fastingResultCancelable).toBe(true);
+    expect(rows.fastingEndedEarlyDay).toBe('2026-10-22');
+    expect(rows.fastingResultDay).toBeNull();
   });
 
-  it('단식이 끝난 뒤 결과 줄은 취소가 아니라 바꾸기', () => {
+  it('단식이 끝난 뒤에는 목록 안 결과 줄', () => {
     const rows = todayExtraRows({
       week: 2,
       now: new Date('2026-10-23T19:30:00+09:00'),
@@ -151,7 +150,7 @@ describe('todayExtraRows: 진행 중에 일찍 끝낸 단식', () => {
       currentFastAnswered: false,
     });
     expect(rows.fastingResultDay).toBe('2026-10-22');
-    expect(rows.fastingResultCancelable).toBe(false);
+    expect(rows.fastingEndedEarlyDay).toBeNull();
   });
 
   it('결과가 없으면 지금처럼 진행 줄', () => {
@@ -163,6 +162,7 @@ describe('todayExtraRows: 진행 중에 일찍 끝낸 단식', () => {
     });
     expect(rows.fastingProgress).toBe(true);
     expect(rows.fastingResultDay).toBeNull();
+    expect(rows.fastingEndedEarlyDay).toBeNull();
   });
 
   it('단식 중이 아니면 영향 없음 (시작 전 안내 줄)', () => {

@@ -6,8 +6,8 @@ import type { FastingSchedule } from 'utils/fastingSchedule';
 export interface TodayExtraRows {
   fastingUpcoming: boolean; // 오늘이 단식일이고 아직 시작 전 → 목록 위 "오늘 …부터 24시간 단식이에요" 줄
   fastingProgress: boolean; // 단식 진행 중 → 목록 위 남은 시간 줄 (진행 중에 일찍 끝냈으면 없음)
-  fastingResultDay: string | null; // 결과 질문 줄 (답했어도 창 안이면, 진행 중에 일찍 끝냈으면 결과+바꾸기로 표시)
-  fastingResultCancelable: boolean; // 결과 줄의 단식이 아직 24시간 안 → 바꾸기 대신 취소(결과를 지우고 진행 줄로)
+  fastingResultDay: string | null; // 목록 안 결과 질문 줄 (단식이 끝난 뒤 응답 창 안, 답했으면 결과+바꾸기)
+  fastingEndedEarlyDay: string | null; // 진행 중에 일찍 끝냄 → 진행 줄 자리에 그 단식의 결과 카드(취소 가능). 목록에는 줄을 더하지 않는다
   weight: true; // 체중 줄은 항상
   fastingDayLine: 'set' | 'unset' | null; // 목록 아래 단식 요일 줄: 설정됨 / 미설정 안내 / 단식 없는 주차
 }
@@ -29,18 +29,15 @@ export function todayExtraRows(input: {
       fastingUpcoming: false,
       fastingProgress: false,
       fastingResultDay: null,
-      fastingResultCancelable: false,
+      fastingEndedEarlyDay: null,
       weight: true,
       fastingDayLine: null,
     };
   }
 
   const status = getFastingStatus(now, schedule, weekContext);
-  // 진행 중에 "일찍 끝냈어요"로 답했으면 진행 줄 대신 그 단식의 결과 줄 (응답 창이 열리기 전이어도)
+  // 진행 중에 "일찍 끝냈어요"로 답했으면 진행 줄 자리에 그 단식의 결과 카드 (응답 창이 열리기 전이어도)
   const endedEarly = status.phase === 'fasting' && !!currentFastAnswered;
-  const resultDay = endedEarly
-    ? fastingDayOf(status.startsAt)
-    : (fastingResultWindow(now, schedule, weekContext)?.day ?? null);
 
   // 단식 요일 설정은 할 일 목록이 있는 2~4주차에만 (유지기는 할 일이 없어 설정 줄도 없었다)
   const fastingDayLine =
@@ -49,8 +46,10 @@ export function todayExtraRows(input: {
   return {
     fastingUpcoming: status.phase === 'upcoming',
     fastingProgress: status.phase === 'fasting' && !endedEarly,
-    fastingResultDay: resultDay,
-    fastingResultCancelable: endedEarly,
+    fastingResultDay: endedEarly
+      ? null
+      : (fastingResultWindow(now, schedule, weekContext)?.day ?? null),
+    fastingEndedEarlyDay: endedEarly ? fastingDayOf(status.startsAt) : null,
     weight: true,
     fastingDayLine,
   };
