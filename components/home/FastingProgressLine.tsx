@@ -26,8 +26,8 @@ export function FastingProgressLine({
 }) {
   if (status.phase === 'upcoming') {
     return (
-      <View className="rounded-xl bg-indigo-50 px-4 py-3">
-        <Text className="font-bold text-indigo-700">🕒 오늘 {startTime}부터 24시간 단식이에요</Text>
+      <View className="rounded-xl bg-green-50 px-4 py-3">
+        <Text className="font-bold text-green-700">🕒 오늘 {startTime}부터 24시간 단식이에요</Text>
       </View>
     );
   }
@@ -35,16 +35,16 @@ export function FastingProgressLine({
   const total = status.endsAt.getTime() - status.startsAt.getTime();
   const elapsed = Math.min(1, Math.max(0, 1 - status.remainingMs / total));
   return (
-    <View className="rounded-xl bg-indigo-50 px-4 py-3">
+    <View className="rounded-xl bg-green-50 px-4 py-3">
       <View className="flex-row items-center justify-between">
-        <Text className="font-bold text-indigo-700">
+        <Text className="font-bold text-green-700">
           🕒 단식 중 · {formatRemaining(status.remainingMs)} 남았어요
         </Text>
         <Text className="text-xs text-neutral-500">{formatClock(status.endsAt)}에 끝나요</Text>
       </View>
-      <View className="mt-2 h-2 overflow-hidden rounded-full bg-indigo-100">
+      <View className="mt-2 h-2 overflow-hidden rounded-full bg-green-100">
         <View
-          className="h-2 rounded-full bg-indigo-500"
+          className="h-2 rounded-full bg-green-600"
           style={{ width: `${Math.round(elapsed * 100)}%` }}
         />
       </View>

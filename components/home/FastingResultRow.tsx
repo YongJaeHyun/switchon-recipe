@@ -54,7 +54,7 @@ export function FastingResultRow({ day, now }: { day: string; now: Date }) {
           <RippleButton
             disabled={isSaving}
             rounded="full"
-            outerClassName="bg-indigo-500"
+            outerClassName="bg-green-600"
             className="px-3 py-1.5"
             onPress={() => saveResult('success')}>
             <Text className="text-sm font-bold text-white">성공</Text>
