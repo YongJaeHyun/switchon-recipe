@@ -19,7 +19,7 @@ export default function RecordsScreen() {
   return (
     <SafeAreaViewWithNav className="flex-1 bg-neutral-50">
       <View className="gap-4 px-5 pb-4 pt-4">
-        <Text className="text-xl font-bold">기록</Text>
+        <Text className="text-2xl font-bold">기록</Text>
         <RecordsSegment value={view} onChange={changeView} />
       </View>
       {view === 'weight' && <WeightSection />}

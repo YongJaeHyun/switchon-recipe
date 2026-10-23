@@ -104,7 +104,7 @@ export function FastingHistorySection() {
 
       <CustomBottomSheet ref={sheetRef}>
         <BottomSheetView className="px-5">
-          <Text className="mb-1 text-2xl font-bold">단식 결과</Text>
+          <Text className="mb-1 text-lg font-bold">단식 결과</Text>
           <Text className="mb-6 text-neutral-500">
             {target ? `${formatDay(target.day)} 단식은 어땠나요?` : ''}
           </Text>

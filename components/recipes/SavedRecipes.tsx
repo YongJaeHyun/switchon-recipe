@@ -17,7 +17,7 @@ export default function SavedRecipes({ recipes, refreshing }: SavedRecipesProps)
   return (
     <View className="">
       <View className="mb-6 flex-row items-center justify-between">
-        <Text className="text-2xl font-bold">저장한 레시피</Text>
+        <Text className="text-lg font-bold">저장한 레시피</Text>
         <Link href={'/(tabs)/recipes/savedRecipes'}>
           <View className="flex-row items-center">
             <Text className="text-neutral-500">모두보기</Text>
