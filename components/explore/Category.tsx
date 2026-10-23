@@ -3,12 +3,11 @@ import RippleButton from 'components/common/RippleButton';
 import { Link } from 'expo-router';
 import { View } from 'react-native';
 import colors from 'tailwindcss/colors';
-import { RecipeDB } from 'types/database';
-import { RecipeIngredient } from 'types/recipe';
+import { RecipeIngredient, RecipeCardData } from 'types/recipe';
 import { HighlightText } from './HighlightText';
 
 interface CategoryProps {
-  recipe: RecipeDB;
+  recipe: RecipeCardData;
   ingredient: RecipeIngredient;
   keyword?: string;
 }
