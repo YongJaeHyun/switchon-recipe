@@ -6,6 +6,7 @@ import { FASTING_DAYS, FASTING_START_TIMES, FastingDay, FastingTime } from 'cons
 import { useFasting } from 'hooks/useFasting';
 import { RefObject, useEffect, useState } from 'react';
 import { FlatList, View } from 'react-native';
+import { nextFastingDays } from 'utils/fastingDaySelect';
 import { Maybe, Nullable } from '../../types/common';
 import { CustomBottomSheet } from '../common/CustomBottomSheet';
 
@@ -67,13 +68,10 @@ export const FastingDayBottomSheet = ({ bottomSheetRef, week }: FastingDayBottom
 
   const isAllSelected = isDayAllSelected && !!selectedTime;
 
-  const getNextDay = (day: number) => day > 0 && (day + 1) % FASTING_DAYS.length;
+  // 다 고른 상태에서 다른 요일을 누르면 가장 먼저 고른 요일과 바뀐다 (이틀 연속은 안 됨)
   const toggleSelectedDay = (day: number) => {
-    if (selectedDays.includes(day)) {
-      setSelectedDays(selectedDays.filter((d) => d !== day));
-    } else {
-      setSelectedDays([...selectedDays, day]);
-    }
+    const next = nextFastingDays(selectedDays, day, selectableDayNum);
+    if (next) setSelectedDays(next);
   };
 
   const saveFastingDays = () => {
@@ -111,10 +109,7 @@ export const FastingDayBottomSheet = ({ bottomSheetRef, week }: FastingDayBottom
             contentContainerClassName="flex-row justify-between"
             renderItem={({ item }) => {
               const dayIndex = FASTING_DAYS.indexOf(item);
-              const disabledDays = selectedDays.map((dayIndex) => getNextDay(dayIndex));
-              const isDisabled = isDayAllSelected
-                ? !selectedDays.includes(dayIndex)
-                : disabledDays.includes(dayIndex) && !selectedDays.includes(dayIndex);
+              const isDisabled = nextFastingDays(selectedDays, dayIndex, selectableDayNum) === null;
 
               return (
                 <DayButton
@@ -127,7 +122,12 @@ export const FastingDayBottomSheet = ({ bottomSheetRef, week }: FastingDayBottom
             }}
           />
           {isDayAllSelected ? (
-            <Text className="my-4 text-center text-green-600">완벽해요!</Text>
+            <View className="my-4 items-center gap-1">
+              <Text className="text-center text-green-600">완벽해요!</Text>
+              <Text className="text-center text-sm text-neutral-400">
+                다른 요일을 누르면 바로 바뀌어요
+              </Text>
+            </View>
           ) : (
             <Text className="my-4 text-center text-neutral-500">
               {selectableDayNum - selectedDays.length}개를 더 선택해주세요
