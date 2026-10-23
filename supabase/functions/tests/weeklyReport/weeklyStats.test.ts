@@ -5,6 +5,10 @@ import {
   weekRange,
   type WeeklyInputs,
 } from '../../_shared/weeklyStats.ts';
+import { scheduleFrom } from '../../_shared/fastingSchedule.ts';
+
+const everyDay = (minutes: number) =>
+  Object.fromEntries([0, 1, 2, 3, 4, 5, 6].map((d) => [d, minutes]));
 
 // 2026-10-01은 목요일. 2주차 = 10-08(목) ~ 10-14(수)
 const base = (over: Partial<WeeklyInputs> = {}): WeeklyInputs => ({
@@ -226,7 +230,7 @@ describe('computeWeeklyStats: 단식 응답 대기 (pending)', () => {
     const stats = computeWeeklyStats(
       base({
         fastingPlannedDays: ['2026-10-14'],
-        fastingStartTime: '저녁 식후',
+        fastingSchedule: everyDay(1140),
         now: REPORT_TIME,
       })
     );
@@ -235,7 +239,7 @@ describe('computeWeeklyStats: 단식 응답 대기 (pending)', () => {
 
   it('응답 창(시작 후 72시간)이 닫혔으면 대기가 아니다', () => {
     // 10-14 09:00 시작 → 10-17 09:00까지
-    const input = base({ fastingPlannedDays: ['2026-10-14'], fastingStartTime: '아침 식후' });
+    const input = base({ fastingPlannedDays: ['2026-10-14'], fastingSchedule: everyDay(540) });
     expect(computeWeeklyStats({ ...input, now: at('2026-10-16T23:59:00Z') }).fasting.pending).toBe(
       1
     ); // 10-17 08:59 KST
@@ -249,7 +253,7 @@ describe('computeWeeklyStats: 단식 응답 대기 (pending)', () => {
     const stats = computeWeeklyStats(
       base({
         fastingPlannedDays: ['2026-10-12', '2026-10-14'],
-        fastingStartTime: '저녁 식후',
+        fastingSchedule: everyDay(1140),
         now: REPORT_TIME,
       })
     );
@@ -261,17 +265,75 @@ describe('computeWeeklyStats: 단식 응답 대기 (pending)', () => {
       base({
         fastingPlannedDays: ['2026-10-14'],
         fastingResults: [{ day: '2026-10-14', result: 'success' }],
-        fastingStartTime: '저녁 식후',
+        fastingSchedule: everyDay(1140),
         now: REPORT_TIME,
       })
     );
     expect(stats.fasting).toMatchObject({ planned: 1, success: 1, pending: 0 });
   });
 
+  it('라벨만 있는 계획은 scheduleFrom을 거쳐도 이전 결과와 같다', () => {
+    const days = [0, 1, 2, 3, 4, 5, 6];
+    const plan = (start_time: string, ...planned: string[]) =>
+      computeWeeklyStats(
+        base({
+          fastingPlannedDays: planned,
+          fastingSchedule: scheduleFrom({ days, start_time, start_minutes: null }),
+          now: REPORT_TIME,
+        })
+      ).fasting.pending;
+    expect(plan('저녁 식후', '2026-10-14')).toBe(1);
+    expect(plan('저녁 식후', '2026-10-12', '2026-10-14')).toBe(1);
+    expect(plan('아침 식후', '2026-10-14')).toBe(1); // 10-17 09:00까지
+    expect(plan('아침 식후', '2026-10-10')).toBe(0); // 10-13 09:00에 닫힘
+  });
+
+  it('요일마다 다른 시각이면 각 요일 시각으로 응답 창을 잰다', () => {
+    // 목(10-08) 13:00 시작 → 10-11 13:00까지, 토(10-10) 19:00 시작 → 10-13 19:00까지
+    const schedule = { 4: 780, 6: 1140 };
+    const pending = (planned: string[], now: string) =>
+      computeWeeklyStats(
+        base({ fastingPlannedDays: planned, fastingSchedule: schedule, now: at(now) })
+      ).fasting.pending;
+    // 목 단식만: 10-11 12:59 KST(03:59Z)까지 대기, 13:00부터 아님
+    expect(pending(['2026-10-08'], '2026-10-11T03:59:00Z')).toBe(1);
+    expect(pending(['2026-10-08'], '2026-10-11T04:00:00Z')).toBe(0);
+    // 토 단식만: 10-13 18:59 KST(09:59Z)까지 대기
+    expect(pending(['2026-10-10'], '2026-10-13T09:59:00Z')).toBe(1);
+    expect(pending(['2026-10-10'], '2026-10-13T10:00:00Z')).toBe(0);
+    // 둘 다 계획: 토 18:00 KST엔 목 창(토 19:00 시작으로 닫힘)과 토 창 모두 열림, 19:00부터 목은 닫힘
+    const both = ['2026-10-08', '2026-10-10'];
+    expect(pending(both, '2026-10-10T09:59:00Z')).toBe(2);
+    expect(pending(both, '2026-10-10T10:00:00Z')).toBe(1);
+  });
+
+  it('요일별 시각이 다음 단식 시작 판단에도 쓰인다', () => {
+    // 월(10-12) 22:00 시작, 수(10-14) 07:00 시작이면 월 단식 창은 수 07:00에 닫힌다
+    const schedule = { 1: 1320, 3: 420 };
+    const planned = ['2026-10-12', '2026-10-14'];
+    const run = (now: string) =>
+      computeWeeklyStats(
+        base({ fastingPlannedDays: planned, fastingSchedule: schedule, now: at(now) })
+      ).fasting.pending;
+    expect(run('2026-10-13T21:00:00Z')).toBe(2); // 수 06:00 KST: 월 창 열림 + 수 단식(시작 전)
+    expect(run('2026-10-13T22:30:00Z')).toBe(1); // 수 07:30 KST: 월 창은 수 07:00에 닫혀 수만 대기
+  });
+
+  it('계획 요일이 지도에 없으면 19:00(1140)으로 보고, 지도가 비면 세지 않는다', () => {
+    // 수(3)는 없고 목(4)만 있음 → 수 단식은 10-14 19:00 시작, 10-17 19:00에 닫힘
+    const schedule = { 4: 540 };
+    const run = (now: string) =>
+      computeWeeklyStats(
+        base({ fastingPlannedDays: ['2026-10-14'], fastingSchedule: schedule, now: at(now) })
+      ).fasting.pending;
+    expect(run('2026-10-17T09:59:00Z')).toBe(1);
+    expect(run('2026-10-17T10:00:00Z')).toBe(0);
+  });
+
   it('시작 시간을 모르면(앱도 응답을 묻지 않음) 대기로 세지 않는다', () => {
-    for (const fastingStartTime of [null, undefined, '이상한 값']) {
+    for (const fastingSchedule of [{}, undefined]) {
       const stats = computeWeeklyStats(
-        base({ fastingPlannedDays: ['2026-10-14'], fastingStartTime, now: REPORT_TIME })
+        base({ fastingPlannedDays: ['2026-10-14'], fastingSchedule, now: REPORT_TIME })
       );
       expect(stats.fasting.pending).toBe(0);
     }

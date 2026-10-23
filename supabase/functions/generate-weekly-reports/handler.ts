@@ -7,6 +7,7 @@
 // (uid, start_date, week_index) 충돌 시 무시하며, 실제로 새로 들어간 경우에만 푸시한다.
 
 import { isServiceRoleRequest } from '../_shared/serviceRole.ts';
+import { scheduleFrom } from '../_shared/fastingSchedule.ts';
 import { kstMidnightIso, resolveToday } from '../_shared/kstToday.ts';
 import {
   buildReportPrompt,
@@ -46,7 +47,8 @@ export interface WeekData {
   weights: { day: string; weight_kg: number | string }[]; // start_date ~ range.to
   todoDays: { day: string; items: string[]; checked: number[] }[]; // range 안
   fastingPlanDays: number[] | null; // fasting_plan(uid, start_date, week_index).days
-  fastingPlanStartTime: string | null; // 같은 행의 start_time ('아침 식후' 등)
+  fastingPlanStartTime: string | null; // 같은 행의 start_time ('아침 식후' 등, 옛 라벨)
+  fastingPlanStartMinutes?: unknown; // 같은 행의 start_minutes jsonb ({"<요일>": 분}). 우선 사용
   fastingResults: { day: string; result: string }[]; // range 안
   recipes: { created_at: string; is_zero_carb: boolean | null }[]; // [fromIso, toIso)
   foodChecks: { created_at: string; verdict: string | null }[]; // [fromIso, toIso)
@@ -191,7 +193,11 @@ const processUser = async (
     ...known,
     fastingPlannedDays: plannedFastingDays(range, data.fastingPlanDays, weekIndex),
     // 아직 결과를 답할 수 있는 단식은 실패가 아니라 응답 대기로 센다
-    fastingStartTime: data.fastingPlanStartTime,
+    fastingSchedule: scheduleFrom({
+      days: data.fastingPlanDays,
+      start_time: data.fastingPlanStartTime,
+      start_minutes: data.fastingPlanStartMinutes,
+    }),
     now: deps.now(),
   });
 

@@ -22,6 +22,7 @@ const filledWeek = (): WeekData => ({
   todoDays: [{ day: '2026-10-09', items: ['아침 쉐이크 마시기', '물 2L'], checked: [0] }],
   fastingPlanDays: [3],
   fastingPlanStartTime: null,
+  fastingPlanStartMinutes: null,
   fastingResults: [{ day: '2026-10-14', result: 'success' }],
   recipes: [{ created_at: '2026-10-09T03:00:00Z', is_zero_carb: true }],
   foodChecks: [{ created_at: '2026-10-10T03:00:00Z', verdict: 'avoid' }],
@@ -32,6 +33,7 @@ const emptyWeek = (): WeekData => ({
   todoDays: [],
   fastingPlanDays: null,
   fastingPlanStartTime: null,
+  fastingPlanStartMinutes: null,
   fastingResults: [],
   recipes: [],
   foodChecks: [],
@@ -205,6 +207,22 @@ describe('generateWeeklyReports', () => {
     });
     const prompt = vi.mocked(deps.askGemini).mock.calls[0][0];
     expect(prompt).toContain('응답 대기 1회');
+  });
+
+  it('요일별 start_minutes가 label보다 우선해 pending을 정한다', async () => {
+    // 월(10-12) 계획. label(저녁 식후 19:00)이면 10-15 19:00까지 대기지만
+    // start_minutes 06:00이면 10-15 06:00에 닫혀 08:00 KST엔 대기가 아니다
+    const { deps, db } = makeDeps({
+      fetchWeekData: vi.fn(async () => ({
+        ...filledWeek(),
+        fastingPlanStartTime: '저녁 식후',
+        fastingPlanDays: [1],
+        fastingPlanStartMinutes: { '1': 360 },
+        fastingResults: [],
+      })),
+    });
+    await generateWeeklyReports(deps, TODAY);
+    expect(db.reports[0].stats.fasting.pending).toBe(0);
   });
 
   it('주차 1일차·패스 유저만 지난 주차 리포트를 만들고 푸시한다', async () => {

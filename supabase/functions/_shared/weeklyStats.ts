@@ -1,9 +1,12 @@
 // 주간 리포트용 통계 계산 (순수 함수).
 // 모든 기록은 KST 날짜(yyyy-MM-dd)로 비교한다. created_at 같은 UTC 시각은 KST 날짜로 바꿔서 본다.
 // 주차는 조회 시점의 start_date로 계산한다 (week.ts와 같은 규칙: 시작일 = 1주차 1일째).
-// Deno 엣지 함수와 Vitest(node) 양쪽에서 로드되므로 외부 import를 두지 않는다.
+// Deno 엣지 함수와 Vitest(node) 양쪽에서 로드되므로 외부 URL import를 두지 않는다.
+
+import type { FastingSchedule } from './fastingSchedule.ts';
 
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+const MINUTE_MS = 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 const WEEKDAYS = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
@@ -15,9 +18,9 @@ export interface WeeklyInputs {
   todoDays: { day: string; items: string[]; checked: number[] }[];
   fastingPlannedDays: string[]; // 그 주에 계획된 단식 시작일들
   fastingResults: { day: string; result: 'success' | 'broken' }[];
-  // 그 주 단식 시작 시간(fasting_plan.start_time, '아침 식후' 등)과 리포트 생성 시각.
-  // 둘 다 있어야 응답 대기(pending)를 센다
-  fastingStartTime?: string | null;
+  // 그 주 요일별 단식 시작 시각(요일 0=일..6=토 → KST 자정부터 분, scheduleFrom 결과)과
+  // 리포트 생성 시각. 지도가 비어 있거나 now가 없으면 응답 대기(pending)를 세지 않는다
+  fastingSchedule?: FastingSchedule;
   now?: Date;
   recipes: { created_at: string; is_zero_carb: boolean }[];
   foodChecks: { created_at: string; verdict: 'ok' | 'avoid' }[];
@@ -166,13 +169,12 @@ const todoStats = (input: WeeklyInputs, range: { from: string; to: string }) => 
   };
 };
 
-// 앱 utils/dietGuide.ts FASTING_START_HOUR·RESULT_WINDOW_MS와 같은 값 (KST 시각).
-// 앱은 단식 시작부터 72시간(종료 후 48시간)까지, 다음 단식이 시작되기 전까지 결과를 묻는다
-const FASTING_START_HOUR: Record<string, number> = {
-  '아침 식후': 9,
-  '점심 식후': 13,
-  '저녁 식후': 19,
-};
+// 앱 utils/dietGuide.ts의 fastingResultWindow·RESULT_WINDOW_MS와 같은 규칙 (KST).
+// 단식 시작 = 그 날 KST 자정 + 그 요일 시각(분). 앱은 단식 시작부터 72시간(종료 후 48시간)까지,
+// 다음 단식이 시작되기 전까지 결과를 묻는다.
+// 계획한 요일이 지도에 없으면(지도는 있는데 그 요일만 빠진 비정상 데이터) 응답 창을 닫는 시점만
+// 그 날 KST 자정 + 1140(19:00, 새 요일 기본값)으로 본다
+const FALLBACK_START_MINUTES = 1140;
 const RESULT_WINDOW_MS = 72 * HOUR_MS;
 
 // 결과가 없는 계획 단식 중 now에 아직 응답 창이 열려 있는 것의 수.
@@ -180,13 +182,16 @@ const RESULT_WINDOW_MS = 72 * HOUR_MS;
 const pendingFasts = (
   plannedDays: string[],
   answered: Set<string>,
-  startTime: string | null | undefined,
+  schedule: FastingSchedule | undefined,
   now: Date | undefined
 ): number => {
-  const hour = startTime ? FASTING_START_HOUR[startTime] : undefined;
-  if (hour === undefined || !now) return 0;
+  // 지도가 비면 앱도 응답을 묻지 않는다
+  if (!schedule || Object.keys(schedule).length === 0 || !now) return 0;
   const t = now.getTime();
-  const startOf = (day: string) => dayToUtc(day) - KST_OFFSET_MS + hour * HOUR_MS;
+  const startOf = (day: string) =>
+    dayToUtc(day) -
+    KST_OFFSET_MS +
+    (schedule[weekdayOf(day)] ?? FALLBACK_START_MINUTES) * MINUTE_MS;
   const sorted = [...plannedDays].sort();
   return sorted.filter((day, i) => {
     if (answered.has(day)) return false;
@@ -212,7 +217,7 @@ const fastingStats = (input: WeeklyInputs, range: { from: string; to: string }) 
     pending: pendingFasts(
       [...new Set(input.fastingPlannedDays.filter((d) => inRange(d, range)))],
       new Set(results.map((r) => r.day)),
-      input.fastingStartTime,
+      input.fastingSchedule,
       input.now
     ),
     successWeekdays: success.map((r) => WEEKDAYS[weekdayOf(r.day)]),

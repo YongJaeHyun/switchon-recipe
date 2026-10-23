@@ -83,7 +83,7 @@ const deps: GenerateReportsDeps = {
         .lte('day', range.to),
       supabase
         .from('fasting_plan')
-        .select('days, start_time')
+        .select('days, start_time, start_minutes')
         .eq('uid', uid)
         .eq('start_date', startDate)
         .eq('week_index', weekIndex)
@@ -127,6 +127,7 @@ const deps: GenerateReportsDeps = {
       todoDays: todoDays.data ?? [],
       fastingPlanDays: plan.data?.days ?? null,
       fastingPlanStartTime: plan.data?.start_time ?? null,
+      fastingPlanStartMinutes: plan.data?.start_minutes ?? null,
       fastingResults: fastingResults.data ?? [],
       recipes,
       foodChecks,
