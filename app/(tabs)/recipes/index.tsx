@@ -69,11 +69,11 @@ export default function RecipesScreen() {
                 subtitle="탄수화물 추가로 포만감 있게!"
               />
             </View>
+            <ExploreEntry />
             <RecipeToolCards />
           </View>
           <SavedRecipes recipes={savedRecipes} refreshing={refreshing} />
           <RecentRecipes recipes={recentRecipes} refreshing={refreshing} />
-          <ExploreEntry />
         </View>
       </ScrollView>
     </SafeAreaViewWithNav>

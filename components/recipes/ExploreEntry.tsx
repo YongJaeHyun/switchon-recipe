@@ -9,15 +9,22 @@ import colors from 'tailwindcss/colors';
 export function ExploreEntry() {
   return (
     <RippleButton
-      outerClassName="border border-neutral-200 bg-white"
-      className="w-full flex-row !justify-between px-4 py-4"
-      rippleColor={colors.neutral[300]}
+      outerClassName="border border-green-200 bg-green-50"
+      className="w-full flex-row !justify-between px-4 py-5"
+      rippleColor={colors.green[100]}
       onPress={() => router.push('/(tabs)/recipes/explore')}>
-      <View className="flex-row items-center gap-3">
-        <MaterialIcons name="explore" size={24} color={colors.green[600]} />
-        <Text className="text-base font-bold text-neutral-800">다른 사람들의 레시피 둘러보기</Text>
+      <View className="flex-1 flex-row items-center gap-4">
+        <View className="h-12 w-12 items-center justify-center rounded-full bg-green-600">
+          <MaterialIcons name="explore" size={28} color={colors.white} />
+        </View>
+        <View className="flex-1 gap-0.5">
+          <Text className="text-lg font-bold text-neutral-900">다른 사람들의 레시피</Text>
+          <Text className="text-sm text-neutral-600">
+            스위치온 중인 사람들이 만든 레시피를 둘러보세요
+          </Text>
+        </View>
       </View>
-      <MaterialIcons name="navigate-next" size={24} color={colors.neutral[400]} />
+      <MaterialIcons name="navigate-next" size={26} color={colors.green[700]} />
     </RippleButton>
   );
 }
