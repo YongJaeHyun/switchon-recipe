@@ -13,7 +13,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useInfiniteRecipeCards } from 'hooks/useInfiniteRecipes';
 import { useRecentKeywords } from 'hooks/useRecentKeywords';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, TouchableOpacity, View } from 'react-native';
 import colors from 'tailwindcss/colors';
 
 type SearchParamsProps = {
@@ -59,7 +59,9 @@ export default function SearchScreen() {
   return (
     <SafeAreaViewWithNav className="flex-1 bg-neutral-50 ">
       <View className="w-full flex-row items-center gap-3 px-5">
-        <MaterialIcons name="arrow-back" size={24} />
+        <TouchableOpacity onPress={router.back} hitSlop={10}>
+          <MaterialIcons name="arrow-back" size={24} />
+        </TouchableOpacity>
         <SearchInputWithoutBorder
           keyword={keyword}
           onChangeText={setKeyword}
