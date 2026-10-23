@@ -47,9 +47,7 @@ export default function RecipesScreen() {
         contentContainerStyle={{ flexGrow: 1 }}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
-        <Text className="mb-4 mt-4 text-2xl font-bold">레시피</Text>
-
-        <View className="mb-10 gap-10">
+        <View className="mb-10 mt-4 gap-10">
           <View className="gap-5">
             <Pressable
               className="flex-row items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-3"
