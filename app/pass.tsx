@@ -21,9 +21,9 @@ import { showErrorToast, showSuccessToast } from 'utils/showToast';
 
 // 패스 전용 기능 (스펙 1절). 배포되기 전까지는 "곧 추가돼요"로 표시한다
 const PREMIUM_FEATURES = [
-  '외식·편의점 메뉴 판정',
-  '냉장고 사진으로 재료 선택',
-  '주간 식단표·장보기 목록',
+  '편의점 판정: 먹어도 되는지 바로 확인',
+  '맞춤 레시피 추천: 먹고 싶은 걸 고르면 레시피를 골라 드려요',
+  'AI 주간 리포트: 체중·식단·단식을 한 주씩 정리',
 ];
 
 const Header = () => (
