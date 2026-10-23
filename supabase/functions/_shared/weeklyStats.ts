@@ -172,9 +172,8 @@ const todoStats = (input: WeeklyInputs, range: { from: string; to: string }) => 
 // 앱 utils/dietGuide.ts의 fastingResultWindow·RESULT_WINDOW_MS와 같은 규칙 (KST).
 // 단식 시작 = 그 날 KST 자정 + 그 요일 시각(분). 앱은 단식 시작부터 72시간(종료 후 48시간)까지,
 // 다음 단식이 시작되기 전까지 결과를 묻는다.
-// 계획한 요일이 지도에 없으면(지도는 있는데 그 요일만 빠진 비정상 데이터) 응답 창을 닫는 시점만
-// 그 날 KST 자정 + 1140(19:00, 새 요일 기본값)으로 본다
-const FALLBACK_START_MINUTES = 1140;
+// 지도에 없는 요일은 시작 시각을 모르는 단식이라(앱 fastingStartOn이 null) 응답을 묻지 않는다:
+// 대기로 세지 않고, 앞 단식의 다음 시작 경계로도 쓰지 않는다
 const RESULT_WINDOW_MS = 72 * HOUR_MS;
 
 // 결과가 없는 계획 단식 중 now에 아직 응답 창이 열려 있는 것의 수.
@@ -188,16 +187,19 @@ const pendingFasts = (
   // 지도가 비면 앱도 응답을 묻지 않는다
   if (!schedule || Object.keys(schedule).length === 0 || !now) return 0;
   const t = now.getTime();
-  const startOf = (day: string) =>
-    dayToUtc(day) -
-    KST_OFFSET_MS +
-    (schedule[weekdayOf(day)] ?? FALLBACK_START_MINUTES) * MINUTE_MS;
+  const startOf = (day: string): number | undefined => {
+    const minutes = schedule[weekdayOf(day)];
+    return minutes === undefined ? undefined : dayToUtc(day) - KST_OFFSET_MS + minutes * MINUTE_MS;
+  };
   const sorted = [...plannedDays].sort();
   return sorted.filter((day, i) => {
-    if (answered.has(day)) return false;
     const start = startOf(day);
-    const next = sorted[i + 1];
-    const end = Math.min(start + RESULT_WINDOW_MS, next ? startOf(next) : Infinity);
+    if (answered.has(day) || start === undefined) return false;
+    const next = sorted
+      .slice(i + 1)
+      .map(startOf)
+      .find((v) => v !== undefined);
+    const end = Math.min(start + RESULT_WINDOW_MS, next ?? Infinity);
     return t < end;
   }).length;
 };

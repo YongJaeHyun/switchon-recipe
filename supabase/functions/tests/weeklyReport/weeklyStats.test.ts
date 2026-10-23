@@ -319,15 +319,15 @@ describe('computeWeeklyStats: 단식 응답 대기 (pending)', () => {
     expect(run('2026-10-13T22:30:00Z')).toBe(1); // 수 07:30 KST: 월 창은 수 07:00에 닫혀 수만 대기
   });
 
-  it('계획 요일이 지도에 없으면 19:00(1140)으로 보고, 지도가 비면 세지 않는다', () => {
-    // 수(3)는 없고 목(4)만 있음 → 수 단식은 10-14 19:00 시작, 10-17 19:00에 닫힘
-    const schedule = { 4: 540 };
-    const run = (now: string) =>
+  it('계획 요일이 지도에 없으면 대기로 세지 않고 앞 단식의 경계로도 쓰지 않는다', () => {
+    const run = (planned: string[], schedule: Record<number, number>, now: string) =>
       computeWeeklyStats(
-        base({ fastingPlannedDays: ['2026-10-14'], fastingSchedule: schedule, now: at(now) })
+        base({ fastingPlannedDays: planned, fastingSchedule: schedule, now: at(now) })
       ).fasting.pending;
-    expect(run('2026-10-17T09:59:00Z')).toBe(1);
-    expect(run('2026-10-17T10:00:00Z')).toBe(0);
+    // 수(3)는 지도에 없고 목(4)만 있음 → 수 단식은 시작 시각을 몰라 대기가 아니다
+    expect(run(['2026-10-14'], { 4: 540 }, '2026-10-14T23:00:00Z')).toBe(0);
+    // 월(10-12) 19:00 단식은 시각 없는 수(10-14)에 닫히지 않고 72시간(10-15 19:00)까지 대기
+    expect(run(['2026-10-12', '2026-10-14'], { 1: 1140 }, '2026-10-14T23:00:00Z')).toBe(1);
   });
 
   it('시작 시간을 모르면(앱도 응답을 묻지 않음) 대기로 세지 않는다', () => {
