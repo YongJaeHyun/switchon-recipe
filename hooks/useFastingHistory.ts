@@ -3,7 +3,8 @@ import { FastingPlanAPI } from 'api/FastingPlanAPI';
 import { FastingResultAPI, type FastingResult } from 'api/FastingResultAPI';
 import { QueryKey } from 'const/queryKey';
 import { queryClient } from 'lib/queryClient';
-import { useMemo } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
 import { useUserStore } from 'stores/userStore';
 import { failFastWhenOffline } from 'utils/failFastWhenOffline';
 import { fastingHistory, type FastingHistoryItem } from 'utils/fastingHistory';
@@ -32,12 +33,13 @@ export const useFastingHistory = () => {
     enabled: !!uid && !!start,
   });
 
+  // 기록 탭은 계속 떠 있어서, 탭에 돌아올 때마다 기준 시각을 새로 잡는다 (그새 시작된 단식도 보이게)
+  const [now, setNow] = useState(() => new Date());
+  useFocusEffect(useCallback(() => setNow(new Date()), []));
+
   const items = useMemo<FastingHistoryItem[]>(
-    () =>
-      query.data && start
-        ? fastingHistory({ startDate: start, ...query.data, now: new Date() })
-        : [],
-    [query.data, start]
+    () => (query.data && start ? fastingHistory({ startDate: start, ...query.data, now }) : []),
+    [query.data, start, now]
   );
 
   const { mutateAsync: saveResult, isPending: isSaving } = useMutation({

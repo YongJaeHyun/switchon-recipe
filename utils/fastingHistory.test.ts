@@ -43,12 +43,12 @@ describe('fastingHistory', () => {
       fastingHistory({
         startDate,
         plans: [week2Thu],
-        results: [{ day: '2026-10-19', result: 'broken' }],
-        now: new Date('2026-10-23T09:00+09:00'),
+        results: [{ day: '2026-10-26', result: 'broken' }],
+        now: new Date('2026-10-27T09:00+09:00'),
       })
     ).toEqual([
+      { day: '2026-10-26', weekIndex: 2, result: 'broken' },
       { day: '2026-10-22', weekIndex: 2, result: null },
-      { day: '2026-10-19', weekIndex: 1, result: 'broken' },
     ]);
   });
 
@@ -61,6 +61,20 @@ describe('fastingHistory', () => {
         now: new Date('2026-10-23T09:00+09:00'),
       })
     ).toEqual([]);
+  });
+
+  it('1주차(단식 없음) 날짜의 결과는 이전 프로그램 것이라 빠진다', () => {
+    expect(
+      fastingHistory({
+        startDate,
+        plans: [],
+        results: [
+          { day: '2026-10-21', result: 'success' },
+          { day: '2026-10-22', result: 'broken' },
+        ],
+        now: new Date('2026-10-23T09:00+09:00'),
+      })
+    ).toEqual([{ day: '2026-10-22', weekIndex: 2, result: 'broken' }]);
   });
 
   it('계획·결과가 없으면 빈 목록', () => {

@@ -22,7 +22,7 @@ const utcToDay = (utc: number) => new Date(utc).toISOString().slice(0, 10);
 const isFastingTime = (value: string | null): value is FastingTime =>
   value !== null && value in FASTING_START_HOUR;
 
-// 기록 탭 > 단식 칸 목록: 이미 시작된 계획일 ∪ 결과가 있는 날 (현재 시작일 이후만), 최근순
+// 기록 탭 > 단식 칸 목록: 이미 시작된 계획일 ∪ 결과가 있는 날 (현재 프로그램 2주차 이후만), 최근순
 export function fastingHistory({
   startDate,
   plans,
@@ -53,6 +53,9 @@ export function fastingHistory({
 
   const resultByDay = new Map<string, FastingResult>();
   for (const { day, result } of results) {
+    // fasting_result엔 시작일이 없다. 1주차(단식 없음)나 시작일 이전 날짜의 결과는
+    // 시작일을 앞당기기 전 프로그램 것이라 뺀다
+    if (weekOf(day) < 2) continue;
     resultByDay.set(day, result);
     days.add(day);
   }

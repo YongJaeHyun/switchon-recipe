@@ -1,9 +1,8 @@
-// 결제 화면/홈 배너/프로필에서 쓰는 순수 함수. 화면 컴포넌트는 이 결과를 보여주기만 한다
+// 결제 화면/내 정보에서 쓰는 순수 함수. 화면 컴포넌트는 이 결과를 보여주기만 한다
 import { TIME_ZONE } from 'const/const';
 import type { ErrorToastText, SuccessToastText } from 'const/toastText';
 import { formatInTimeZone } from 'date-fns-tz';
 import type { PassStatus, SalesState, VerifyResult } from 'types/pass';
-import { formatSalesHeadline } from './passDisplay';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -27,17 +26,6 @@ export function shouldShowPremiumEntry(
 ): boolean {
   if (!status) return false;
   return status.hasAccess || isPassOnSale(status.sales, billingAvailable);
-}
-
-// 홈 배너 문구. 판매 중(결제 가능)이고 무료 기간(사전 결제 할인)일 때만. 그 밖에는 null (배너 숨김)
-export function getPassBannerText(
-  sales: SalesState | undefined,
-  billingAvailable: boolean | undefined
-): string | null {
-  if (!sales || !isPassOnSale(sales, billingAvailable) || !sales.freeActive) return null;
-  const { badge } = formatSalesHeadline(sales);
-  if (!badge) return null;
-  return `지금 사면 ${badge} · D-${sales.freeDaysLeft}`;
 }
 
 export type VerifyResultToast =

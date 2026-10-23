@@ -79,44 +79,6 @@ export function groupReportsByProgram<T extends ReportKey>(
   return { current: currentReports.sort(byWeekDesc), previous };
 }
 
-// 이전 프로그램 리포트를 홈 카드에서 "도착했어요"로 알리는 기간
-const PREVIOUS_ARRIVAL_MS = 7 * 24 * 60 * 60 * 1000;
-const REPORT_INTRO = '한 주 기록을 정리해 드려요';
-
-// 홈 주간 리포트 카드의 설명과 누르면 갈 곳.
-// - 가장 최근에 받은 리포트가 이전 프로그램 것이고 7일 안에 왔으면(같은 날 아침 시작일 변경 등)
-//   "이전 프로그램 N주차 리포트가 도착했어요"로 알리고 그 리포트로 바로 보낸다 (알림 href와 같은 곳)
-// - 아니면 이번 프로그램 최신 주차, 그것도 없으면 기능 소개. 이 둘은 목록으로
-export function reportCardArrival<T extends ReportKey & { created_at: string }>(
-  reports: T[],
-  currentStartDate: string | null,
-  now: Date
-): { description: string; href: string } {
-  const { current } = groupReportsByProgram(reports, currentStartDate);
-  const currentStart = currentStartDate ? currentStartDate.slice(0, 10) : null;
-
-  const newest = reports.reduce<T | null>(
-    (best, r) => (!best || Date.parse(r.created_at) > Date.parse(best.created_at) ? r : best),
-    null
-  );
-  if (
-    newest &&
-    newest.start_date !== currentStart &&
-    now.getTime() - Date.parse(newest.created_at) <= PREVIOUS_ARRIVAL_MS
-  ) {
-    return {
-      description: `이전 프로그램 ${newest.week_index}주차 리포트가 도착했어요`,
-      href: `/report/${newest.start_date}/${newest.week_index}`,
-    };
-  }
-
-  const latestWeek = current[0]?.week_index;
-  return {
-    description: latestWeek ? `${latestWeek}주차 리포트가 도착했어요` : REPORT_INTRO,
-    href: '/report',
-  };
-}
-
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 

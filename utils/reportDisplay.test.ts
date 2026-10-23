@@ -8,7 +8,6 @@ import {
   isReportHref,
   parseReportContent,
   parseReportStats,
-  reportCardArrival,
   shouldShowReportPreview,
   toWeeklyReport,
 } from './reportDisplay';
@@ -221,62 +220,5 @@ describe('isReportHref', () => {
     expect(isReportHref('/report/2026-10-01/2')).toBe(true);
     expect(isReportHref('/(inquiry)')).toBe(false);
     expect(isReportHref(undefined)).toBe(false);
-  });
-});
-
-describe('reportCardArrival', () => {
-  const now = new Date('2026-10-20T09:00:00+09:00');
-  const r = (start_date: string, week_index: number, created_at: string) => ({
-    start_date,
-    week_index,
-    created_at,
-  });
-
-  it('이번 프로그램 리포트가 가장 최근이면 그 주차, 목록으로', () => {
-    const reports = [
-      r('2026-10-01', 2, '2026-10-15T08:00:00+09:00'),
-      r('2026-10-01', 1, '2026-10-08T08:00:00+09:00'),
-    ];
-    expect(reportCardArrival(reports, '2026-10-01', now)).toEqual({
-      description: '2주차 리포트가 도착했어요',
-      href: '/report',
-    });
-  });
-
-  it('같은 날 아침 시작일을 바꿔도 방금 온 이전 프로그램 리포트를 알리고, 그 리포트로 바로 보낸다', () => {
-    const reports = [
-      r('2026-10-06', 2, '2026-10-20T08:00:00+09:00'),
-      r('2026-10-06', 1, '2026-10-13T08:00:00+09:00'),
-    ];
-    expect(reportCardArrival(reports, '2026-10-20', now)).toEqual({
-      description: '이전 프로그램 2주차 리포트가 도착했어요',
-      href: '/report/2026-10-06/2',
-    });
-  });
-
-  it('이전 프로그램 리포트가 이번 프로그램 리포트보다 새로우면 그것을 알린다', () => {
-    const reports = [
-      r('2026-10-01', 1, '2026-10-08T08:00:00+09:00'),
-      r('2026-09-01', 4, '2026-10-19T08:00:00+09:00'),
-    ];
-    expect(reportCardArrival(reports, '2026-10-01', now).href).toBe('/report/2026-09-01/4');
-  });
-
-  it('이전 프로그램 리포트가 7일보다 오래됐으면 알리지 않는다 (이번 프로그램 최신 주차 또는 소개)', () => {
-    const old = r('2026-09-01', 4, '2026-10-12T08:00:00+09:00');
-    expect(reportCardArrival([old], '2026-10-20', now)).toEqual({
-      description: '한 주 기록을 정리해 드려요',
-      href: '/report',
-    });
-    expect(
-      reportCardArrival([old, r('2026-10-01', 1, '2026-10-08T08:00:00+09:00')], '2026-10-01', now)
-    ).toEqual({ description: '1주차 리포트가 도착했어요', href: '/report' });
-  });
-
-  it('리포트가 없으면 기능 소개', () => {
-    expect(reportCardArrival([], '2026-10-01', now)).toEqual({
-      description: '한 주 기록을 정리해 드려요',
-      href: '/report',
-    });
   });
 });

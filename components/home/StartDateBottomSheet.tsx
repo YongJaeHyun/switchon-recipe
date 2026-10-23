@@ -2,6 +2,8 @@ import { BottomSheetView } from '@gorhom/bottom-sheet';
 import { BottomSheetMethods } from '@gorhom/bottom-sheet/lib/typescript/types';
 import { StatisticsAPI } from 'api/StatisticsAPI';
 import { UserAPI } from 'api/UserAPI';
+import { QueryKey } from 'const/queryKey';
+import { queryClient } from 'lib/queryClient';
 import { CustomBottomSheet } from 'components/common/CustomBottomSheet';
 import CustomCalendar from 'components/common/CustomCalendar';
 import RippleButton from 'components/common/RippleButton';
@@ -57,6 +59,7 @@ export function StartDateBottomSheet({ bottomSheetRef }: StartDateBottomSheetPro
 
     await UserAPI.updateStartDate(selectedDate);
     await StatisticsAPI.deleteFrom(week, day);
+    void queryClient.invalidateQueries({ queryKey: [QueryKey.todoRateStatistics] });
 
     bottomSheetRef.current?.close();
   };

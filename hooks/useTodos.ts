@@ -111,8 +111,10 @@ export const useTodos = (options?: { syncTodoDaily?: boolean }) => {
       const checkedIds = data?.checked_ids ?? [];
       const completedRate = Math.round((checkedIds.length / baseTodos.length) * 100);
 
-      StatisticsAPI.upsert(completedRate);
-      queryClient.cancelQueries({ queryKey: [QueryKey.todoRateStatistics, userId] });
+      // 기록 탭 > 리포트(나의 4주 리포트)는 탭이 계속 떠 있어서, 저장 뒤에 다시 받게 한다
+      void StatisticsAPI.upsert(completedRate).then(() =>
+        queryClient.invalidateQueries({ queryKey: [QueryKey.todoRateStatistics, userId] })
+      );
     },
     onError: (err, newData, context) => {
       if (context?.previousData) {

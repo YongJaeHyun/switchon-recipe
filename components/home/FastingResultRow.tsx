@@ -31,7 +31,7 @@ export function FastingResultRow({ day, now }: { day: string; now: Date }) {
         <View className="flex-row items-center gap-4 py-2">
           <MaterialIcons name="check-circle" size={20} color={colors.green[600]} />
           <Text className="flex-1 text-neutral-800">
-            {result === 'success' ? '✅ 성공으로 기록했어요' : '🍽️ 중간에 먹었다고 기록했어요'}
+            {result === 'success' ? '성공으로 기록했어요' : '중간에 먹었다고 기록했어요'}
           </Text>
           <Pressable
             hitSlop={8}
