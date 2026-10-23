@@ -7,13 +7,12 @@ import React from 'react';
 import { Pressable, View } from 'react-native';
 import { useRecipeStore } from 'stores/recipeStore';
 import colors from 'tailwindcss/colors';
-import { RecipeDB } from 'types/database';
-import { RecipeIngredient } from 'types/recipe';
+import { RecipeCardData, RecipeIngredient } from 'types/recipe';
 import { getWeekColor } from 'utils/getWeekColor';
 import { Category } from './Category';
 import { HighlightText } from './HighlightText';
 
-interface RecipeCardProps extends RecipeDB {
+interface RecipeCardProps extends RecipeCardData {
   keyword?: string;
 }
 

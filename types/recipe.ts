@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Nullable } from './common';
+import { RecipeDB } from './database';
 
 interface Ingredient {
   name: string;
@@ -42,6 +43,9 @@ type RecipeCategory = '한식' | '중식' | '일식' | '양식';
 type RecipeMethod = '샐러드류' | '구이류' | '볶음류' | '덮밥류' | '탕/국류' | '찜류';
 type RecipeOption = RecipeCategory | RecipeMethod;
 
+// 탐색·검색 카드가 받는 레시피 (search_recipes RPC 결과엔 태그·작성자 칸이 없다)
+type RecipeCardData = Omit<RecipeDB, 'cuisine' | 'method' | 'spicy' | 'uid'>;
+
 interface RecipeOptions {
   category: Nullable<RecipeCategory>;
   method: Nullable<RecipeMethod>;
@@ -52,6 +56,7 @@ export {
   IngredientRecord,
   IngredientSchema,
   Recipe,
+  RecipeCardData,
   RecipeCategory,
   RecipeIngredient,
   RecipeMethod,
