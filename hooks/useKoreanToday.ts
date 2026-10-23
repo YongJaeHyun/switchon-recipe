@@ -4,6 +4,7 @@ import { AppState } from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
 import { getKoreanDate, getKoreanDateString, getWeekAndDay } from 'utils/date';
+import { shouldOpenWeekPopup } from 'utils/weekPopup';
 import { useFasting } from './useFasting';
 import { useTodos } from './useTodos';
 
@@ -18,6 +19,7 @@ export default function useKoreanToday() {
   const revalidateToday = useCallback(() => {
     const {
       open,
+      close,
       week: prevWeek,
       day: prevDay,
       setWeek,
@@ -27,21 +29,21 @@ export default function useKoreanToday() {
     const newDay = getKoreanDateString({ formatType: 'date' });
     const { week, day } = getWeekAndDay(start_date);
 
-    const isEnteringNewWeek = prevWeek < week && week < 5;
+    const shouldOpen = shouldOpenWeekPopup({ prevWeek, week, isChecked });
 
     setToday(newDay);
 
     if (week !== prevWeek) {
       setWeek(week);
       resetFasting();
+      // 시작일을 뒤로 미뤄 주차가 줄었으면 그 주차 팝업은 이미 본 것으로 둔다
+      if (week < prevWeek) close();
     }
     if (day !== prevDay) {
       setDay(day);
       resetTodos();
     }
-    if (isEnteringNewWeek && !isChecked) {
-      open();
-    }
+    if (shouldOpen) open();
   }, [start_date, resetFasting, resetTodos]);
 
   // 매일 자정에 다시 검증. 정리 함수를 돌려줘 언마운트·의존성 변경 시 타이머가 남지 않게 함
