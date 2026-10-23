@@ -45,7 +45,12 @@ export function RecipeCard(recipe: RecipeWithIsSavedDB) {
           </View>
 
           {recipe.image_uri && (
-            <Image source={{ uri: recipe.image_uri }} style={{ width: '100%', height: '100%' }} />
+            // 목록이 카드를 재사용할 때 이전 레시피 사진이 잠깐 보이지 않도록 레시피마다 이미지를 새로 그린다
+            <Image
+              source={{ uri: recipe.image_uri }}
+              recyclingKey={String(recipe.id)}
+              style={{ width: '100%', height: '100%' }}
+            />
           )}
 
           <Pressable

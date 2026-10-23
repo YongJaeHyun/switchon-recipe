@@ -34,7 +34,7 @@ export const RecipeCard = React.memo(({ keyword, ...recipe }: RecipeCardProps) =
           shadowRadius: 2,
           elevation: 2,
         }}>
-        <View className="relative h-48">
+        <View className="relative h-48 bg-neutral-200">
           <View className="absolute left-2 top-2 z-50 flex-row gap-1.5">
             {recipe.week && (
               <View className={`rounded-full bg-white px-2 py-1`}>
@@ -51,7 +51,12 @@ export const RecipeCard = React.memo(({ keyword, ...recipe }: RecipeCardProps) =
           </View>
 
           {recipe.image_uri && (
-            <Image source={{ uri: recipe.image_uri }} style={{ width: '100%', height: '100%' }} />
+            // 목록이 카드를 재사용할 때 이전 레시피 사진이 잠깐 보이지 않도록 레시피마다 이미지를 새로 그린다
+            <Image
+              source={{ uri: recipe.image_uri }}
+              recyclingKey={String(recipe.id)}
+              style={{ width: '100%', height: '100%' }}
+            />
           )}
 
           <Pressable
