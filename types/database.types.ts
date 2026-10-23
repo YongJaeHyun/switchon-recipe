@@ -13,6 +13,7 @@ export type Database = {
           created_at: string;
           days: number[] | null;
           id: number;
+          start_minutes: Json | null;
           start_time: string | null;
           uid: string | null;
           was_sunday: boolean | null;
@@ -21,6 +22,7 @@ export type Database = {
           created_at?: string;
           days?: number[] | null;
           id?: number;
+          start_minutes?: Json | null;
           start_time?: string | null;
           uid?: string | null;
           was_sunday?: boolean | null;
@@ -29,6 +31,7 @@ export type Database = {
           created_at?: string;
           days?: number[] | null;
           id?: number;
+          start_minutes?: Json | null;
           start_time?: string | null;
           uid?: string | null;
           was_sunday?: boolean | null;
@@ -47,6 +50,7 @@ export type Database = {
         Row: {
           days: number[];
           start_date: string;
+          start_minutes: Json | null;
           start_time: string | null;
           uid: string;
           updated_at: string;
@@ -55,6 +59,7 @@ export type Database = {
         Insert: {
           days: number[];
           start_date: string;
+          start_minutes?: Json | null;
           start_time?: string | null;
           uid: string;
           updated_at?: string;
@@ -63,6 +68,7 @@ export type Database = {
         Update: {
           days?: number[];
           start_date?: string;
+          start_minutes?: Json | null;
           start_time?: string | null;
           uid?: string;
           updated_at?: string;

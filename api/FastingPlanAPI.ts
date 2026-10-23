@@ -1,7 +1,8 @@
 import { supabase } from 'lib/supabase';
 import { useUserStore } from 'stores/userStore';
-import { Maybe } from 'types/common';
 import { FastingPlanDB } from 'types/database';
+import { Json } from 'types/database.types';
+import { FastingSchedule, scheduleColumns } from 'utils/fastingSchedule';
 import { captureError } from 'utils/sendError';
 
 // supabase는 fetch 실패를 Error가 아닌 { message } 객체로 돌려주기도 한다
@@ -14,12 +15,13 @@ interface PlanBody {
   start_date: string;
   week_index: number;
   days: number[];
-  start_time: Maybe<string>;
+  schedule: FastingSchedule;
 }
 
-// ignoreDuplicates = true면 이미 있는 계획은 그대로 둔다 (insert-if-absent)
+// ignoreDuplicates = true면 이미 있는 계획은 그대로 둔다 (insert-if-absent).
+// 요일별 시각(start_minutes)과 옛 라벨(start_time)을 함께 쓴다
 const write = async (
-  { start_date, week_index, days, start_time }: PlanBody,
+  { start_date, week_index, days, schedule }: PlanBody,
   ignoreDuplicates: boolean
 ): Promise<void> => {
   try {
@@ -32,7 +34,7 @@ const write = async (
         start_date,
         week_index,
         days,
-        start_time: start_time ?? null,
+        ...scheduleColumns(days, schedule),
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'uid,start_date,week_index', ignoreDuplicates }
@@ -73,13 +75,15 @@ const selectOne = async ({
 // 그 시작일의 모든 주차 계획. 실패 시 throw
 const selectAll = async (
   startDate: string
-): Promise<{ week_index: number; days: number[]; start_time: string | null }[]> => {
+): Promise<
+  { week_index: number; days: number[]; start_time: string | null; start_minutes: Json | null }[]
+> => {
   const uid = useUserStore.getState().id;
   if (!uid) return [];
 
   const { data, error } = await supabase
     .from('fasting_plan')
-    .select('week_index, days, start_time')
+    .select('week_index, days, start_time, start_minutes')
     .eq('uid', uid)
     .eq('start_date', startDate);
 

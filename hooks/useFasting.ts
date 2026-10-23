@@ -8,6 +8,7 @@ import { useMemo } from 'react';
 import { useUserStore } from 'stores/userStore';
 import { FastingDB } from 'types/database';
 import { getWeekAndDay } from 'utils/date';
+import { FastingSchedule, scheduleColumns, scheduleFrom } from 'utils/fastingSchedule';
 import { cancelAllScheduledNotifications, registerWeeklyFastingAlarms } from 'utils/notifications';
 import { Maybe } from '../types/common';
 import { useQueryWith402Retry } from './useCustomQuery';
@@ -27,7 +28,12 @@ export const useFasting = () => {
   const { mutate: resetFasting } = useMutation({
     mutationKey: RESET_FASTING_MUTATION_KEY,
     mutationFn: () =>
-      FastingAPI.upsert({ days: [], start_time: null, was_sunday: fasting?.days?.includes(0) }),
+      FastingAPI.upsert({
+        days: [],
+        start_time: null,
+        start_minutes: null,
+        was_sunday: fasting?.days?.includes(0),
+      }),
     onMutate: async () => {
       await queryClient.cancelQueries({
         queryKey: [QueryKey.fasting, userId],
@@ -49,14 +55,20 @@ export const useFasting = () => {
     },
   });
 
+  // 요일별 시각(start_minutes)과 옛 앱·서버용 라벨(start_time)을 함께 저장한다
   const { mutate: upsertFasting } = useMutation({
-    mutationFn: (body: Partial<FastingDB>) => FastingAPI.upsert(body),
-    onMutate: async (newData) => {
+    mutationFn: ({ days, schedule }: { days: number[]; schedule: FastingSchedule }) =>
+      FastingAPI.upsert({ days, ...scheduleColumns(days, schedule) }),
+    onMutate: async ({ days, schedule }) => {
       await queryClient.cancelQueries({ queryKey: [QueryKey.fasting, userId] });
 
       const previousData = queryClient.getQueryData<FastingDB>([QueryKey.fasting, userId]) || [];
 
-      queryClient.setQueryData([QueryKey.fasting, userId], newData);
+      queryClient.setQueryData<Partial<FastingDB>>([QueryKey.fasting, userId], (old) => ({
+        ...old,
+        days,
+        ...scheduleColumns(days, schedule),
+      }));
 
       return { previousData };
     },
@@ -69,7 +81,7 @@ export const useFasting = () => {
           start_date: startDate.slice(0, 10),
           week_index: getWeekAndDay(startDate).week,
           days: data.days ?? [],
-          start_time: data.start_time,
+          schedule: scheduleFrom(data),
         });
       }
       await registerWeeklyFastingAlarms(data);
@@ -90,8 +102,17 @@ export const useFasting = () => {
       return aVal - bVal;
     });
   }, [fasting?.days]);
+
+  // 요일 → 시작 시각(분). start_minutes 우선, 없으면 옛 라벨
+  const schedule = useMemo<FastingSchedule>(
+    () => (fasting ? scheduleFrom(fasting) : {}),
+    [fasting]
+  );
+
   return {
     days: sortedDays,
+    schedule,
+    // 옛 라벨 (Task 2에서 소비처를 schedule로 옮긴 뒤 제거)
     startTime: fasting?.start_time as Maybe<FastingTime>,
     isLoading,
     resetFasting,

@@ -7,6 +7,7 @@ import { useFasting } from 'hooks/useFasting';
 import { RefObject, useEffect, useState } from 'react';
 import { FlatList, View } from 'react-native';
 import { nextFastingDays } from 'utils/fastingDaySelect';
+import { QUICK_TIMES } from 'utils/fastingSchedule';
 import { Maybe, Nullable } from '../../types/common';
 import { CustomBottomSheet } from '../common/CustomBottomSheet';
 
@@ -75,9 +76,12 @@ export const FastingDayBottomSheet = ({ bottomSheetRef, week }: FastingDayBottom
   };
 
   const saveFastingDays = () => {
+    // 라벨 시각을 고른 모든 요일에 (요일별 슬라이더는 Task 4)
+    const minutes = QUICK_TIMES.find((quick) => quick.label === selectedTime)?.minutes;
     upsertFasting({
       days: selectedDays,
-      start_time: selectedTime,
+      schedule:
+        minutes === undefined ? {} : Object.fromEntries(selectedDays.map((day) => [day, minutes])),
     });
     bottomSheetRef.current?.close();
   };

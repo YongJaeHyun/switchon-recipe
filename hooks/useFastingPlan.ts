@@ -47,12 +47,12 @@ export const useFastingPlanBackfill = () => {
   const uid = useUserStore((state) => state.id);
   const startDate = useUserStore((state) => state.start_date);
   const storeWeek = useWeekCompletePopupStore((state) => state.week);
-  const { days, startTime, isLoading } = useFasting();
+  const { days, schedule, isLoading } = useFasting();
   const resetting = useIsMutating({ mutationKey: RESET_FASTING_MUTATION_KEY }) > 0;
 
   useEffect(() => {
     if (!uid || !startDate || isLoading || resetting) return;
-    if (days.length === 0 || !startTime) return;
+    if (days.length === 0 || Object.keys(schedule).length === 0) return;
     const { week } = getWeekAndDay(startDate);
     if (week < 2 || storeWeek !== week) return;
 
@@ -64,7 +64,7 @@ export const useFastingPlanBackfill = () => {
       start_date: start,
       week_index: week,
       days,
-      start_time: startTime,
+      schedule,
     });
-  }, [uid, startDate, storeWeek, days, startTime, isLoading, resetting]);
+  }, [uid, startDate, storeWeek, days, schedule, isLoading, resetting]);
 };
