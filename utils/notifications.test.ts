@@ -23,7 +23,8 @@ vi.mock('stores/userStore', () => ({
 }));
 vi.mock('./sendError', () => ({ captureError: () => {} }));
 
-const { fastingAlarms, registerChannelIfPermitted } = await import('./notifications');
+const { fastingAlarms, isFastingAlarm, registerChannelIfPermitted } =
+  await import('./notifications');
 
 describe('registerChannelIfPermitted', () => {
   beforeEach(() => vi.clearAllMocks());
@@ -111,5 +112,24 @@ describe('fastingAlarms', () => {
   it('시각이 없는 요일은 알림이 없다', () => {
     expect(fastingAlarms({ days: [1], start_time: null, start_minutes: null }, week)).toEqual([]);
     expect(fastingAlarms(null, week)).toEqual([]);
+  });
+});
+
+describe('isFastingAlarm', () => {
+  const request = (content: { title?: string | null; data?: Record<string, unknown> | null }) => ({
+    identifier: 'x',
+    content,
+  });
+
+  it('이번 앱이 건 단식 알림(data.kind)과 옛 앱의 반복 단식 알림(제목)', () => {
+    expect(
+      isFastingAlarm(request({ title: '단식 시작 예정 알림', data: { kind: 'fasting' } }))
+    ).toBe(true);
+    expect(isFastingAlarm(request({ title: '단식 시작 예정 알림', data: {} }))).toBe(true);
+  });
+
+  it('다른 알림은 아니다', () => {
+    expect(isFastingAlarm(request({ title: '체중 기록', data: { href: '/weight' } }))).toBe(false);
+    expect(isFastingAlarm(request({ title: null, data: null }))).toBe(false);
   });
 });

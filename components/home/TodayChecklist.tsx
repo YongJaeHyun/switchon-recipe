@@ -1,6 +1,6 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { Text } from 'components/common/Text';
-import { useFasting } from 'hooks/useFasting';
+import { useFasting, useFastingAlarmSync } from 'hooks/useFasting';
 import { useFastingPlanBackfill, useFastingWeekContext } from 'hooks/useFastingPlan';
 import { useTodos } from 'hooks/useTodos';
 import { useEffect, useState } from 'react';
@@ -32,6 +32,7 @@ export function TodayChecklist() {
   const { days, schedule, isLoading: isFastingLoading } = useFasting();
   const weekContext = useFastingWeekContext();
   useFastingPlanBackfill();
+  useFastingAlarmSync();
   const isLoading = isTodosLoading || isFastingLoading;
 
   const [now, setNow] = useState(() => new Date());

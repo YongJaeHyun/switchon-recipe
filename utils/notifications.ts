@@ -104,39 +104,80 @@ export function fastingAlarms(
   return alarms;
 }
 
-// 이번 주차 단식 알림을 다시 건다. 주차가 바뀌면 단식 설정이 초기화되므로 반복 없이 이번 주차 것만
-export async function registerWeeklyFastingAlarms(fasting: Maybe<FastingDB>, weekFrom: string) {
-  await Notifications.cancelAllScheduledNotificationsAsync();
-  if (!fasting?.days) return [];
+const FASTING_ALARM_TITLE = '단식 시작 예정 알림';
+const FASTING_ALARM_KIND = 'fasting';
 
-  const isSuccess = await registerForPushNotificationsAsync(CHANNELS.FASTING);
-  if (!isSuccess) return [];
-
-  const triggerIds: string[] = [];
-
-  try {
-    for (const { date, body } of fastingAlarms(fasting, { now: new Date(), weekFrom })) {
-      const triggerId = await Notifications.scheduleNotificationAsync({
-        content: { title: '단식 시작 예정 알림', body },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DATE,
-          date,
-          channelId: CHANNELS.FASTING,
-        },
-      });
-
-      triggerIds.push(triggerId);
-    }
-  } catch (error) {
-    console.error(error);
-  }
-
-  // await getScheduledNotifications();
-  return triggerIds;
+// 앱이 건 단식 알림인지: 이번 앱은 data.kind, 옛 앱(반복 WEEKLY 알림)은 제목으로 알아본다
+export function isFastingAlarm(request: {
+  content: { title?: string | null; data?: Record<string, unknown> | null };
+}): boolean {
+  return (
+    request.content.data?.kind === FASTING_ALARM_KIND ||
+    request.content.title === FASTING_ALARM_TITLE
+  );
 }
 
-export async function cancelAllScheduledNotifications() {
-  await Notifications.cancelAllScheduledNotificationsAsync();
+// 단식 알림만 지운다 (다른 예약 알림은 그대로)
+async function cancelFastingAlarmsNow() {
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  await Promise.all(
+    scheduled
+      .filter(isFastingAlarm)
+      .map((request) => Notifications.cancelScheduledNotificationAsync(request.identifier))
+  );
+}
+
+// 지우고 다시 거는 작업이 겹치면 알림이 두 번 걸릴 수 있어 차례로 실행한다
+let fastingAlarmQueue: Promise<unknown> = Promise.resolve();
+const enqueue = <T>(task: () => Promise<T>): Promise<T> => {
+  const run = fastingAlarmQueue.then(task, task);
+  fastingAlarmQueue = run.catch(() => undefined);
+  return run;
+};
+
+// 이번 주차 단식 알림을 다시 건다. 주차가 바뀌면 단식 설정이 초기화되므로 반복 없이 이번 주차 것만
+export function registerWeeklyFastingAlarms(fasting: Maybe<FastingDB>, weekFrom: string) {
+  return enqueue(async () => {
+    await cancelFastingAlarmsNow();
+    if (!fasting?.days) return [];
+
+    const isSuccess = await registerForPushNotificationsAsync(CHANNELS.FASTING);
+    if (!isSuccess) return [];
+
+    const triggerIds: string[] = [];
+    try {
+      for (const { date, body } of fastingAlarms(fasting, { now: new Date(), weekFrom })) {
+        const triggerId = await Notifications.scheduleNotificationAsync({
+          content: { title: FASTING_ALARM_TITLE, body, data: { kind: FASTING_ALARM_KIND } },
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
+            date,
+            channelId: CHANNELS.FASTING,
+          },
+        });
+        triggerIds.push(triggerId);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+    return triggerIds;
+  });
+}
+
+// 앱을 열거나 돌아올 때: 알림 권한이 이미 있을 때만 이번 주차 단식 알림을 다시 건다 (권한 요청 창 없음).
+// 옛 앱이 건 반복 알림도 이때 지워진다. 실패해도 throw하지 않는다
+export async function syncFastingAlarms(fasting: Maybe<FastingDB>, weekFrom: string) {
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status !== 'granted') return;
+    await registerWeeklyFastingAlarms(fasting, weekFrom);
+  } catch (error) {
+    captureError({ error, prefix: '[syncFastingAlarms]: ' });
+  }
+}
+
+export function cancelFastingAlarms() {
+  return enqueue(cancelFastingAlarmsNow);
 }
 
 // 디버깅용
