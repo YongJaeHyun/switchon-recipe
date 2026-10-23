@@ -1,10 +1,11 @@
 import { BottomSheetMethods } from '@gorhom/bottom-sheet/lib/typescript/types';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Text } from 'components/common/Text';
-import { FASTING_DAYS, type FastingTime } from 'const/fastingDays';
+import { FASTING_DAYS } from 'const/fastingDays';
 import { useRef } from 'react';
 import { Pressable, View } from 'react-native';
 import colors from 'tailwindcss/colors';
+import { formatMinutes, type FastingSchedule } from 'utils/fastingSchedule';
 import { FastingDayBottomSheet } from './FastingDayBottomSheet';
 
 // 한국식 달력 순서 (월~일). FASTING_DAYS 인덱스는 0 = 일요일
@@ -15,14 +16,19 @@ export function FastingDayLine({
   state,
   week,
   days,
-  startTime,
+  schedule,
 }: {
   state: 'set' | 'unset';
   week: number;
-  days: number[];
-  startTime: FastingTime | null | undefined;
+  days: number[]; // 월 → 일 순서
+  schedule: FastingSchedule;
 }) {
   const sheetRef = useRef<BottomSheetMethods>(null);
+  // 요일마다 시각이 다를 수 있어 "목 13:00 · 토 19:00"
+  const times = days
+    .filter((day) => schedule[day] !== undefined)
+    .map((day) => `${FASTING_DAYS[day]} ${formatMinutes(schedule[day])}`)
+    .join(' · ');
   const open = () => sheetRef.current?.expand();
   const timesPerWeek = week - 1; // 2주차 1회, 3주차 2회, 4주차 3회
 
@@ -55,8 +61,8 @@ export function FastingDayLine({
               );
             })}
           </View>
-          {startTime && (
-            <Text className="text-sm text-neutral-600">{startTime}에 시작해서 24시간 단식해요</Text>
+          {times.length > 0 && (
+            <Text className="text-sm text-neutral-600">{times}에 시작해서 24시간 단식해요</Text>
           )}
         </Pressable>
       ) : (

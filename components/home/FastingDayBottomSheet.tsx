@@ -7,7 +7,7 @@ import { useFasting } from 'hooks/useFasting';
 import { RefObject, useEffect, useState } from 'react';
 import { FlatList, View } from 'react-native';
 import { nextFastingDays } from 'utils/fastingDaySelect';
-import { QUICK_TIMES } from 'utils/fastingSchedule';
+import { legacyLabel, QUICK_TIMES } from 'utils/fastingSchedule';
 import { Maybe, Nullable } from '../../types/common';
 import { CustomBottomSheet } from '../common/CustomBottomSheet';
 
@@ -59,7 +59,10 @@ const StartTimeButton = ({ time, isSelected, onPress }: StartTimeButtonProps) =>
 
 // 단식 요일 설정 시트. 여는 줄은 FastingDayLine (오늘 탭 목록 아래)
 export const FastingDayBottomSheet = ({ bottomSheetRef, week }: FastingDayBottomSheetProps) => {
-  const { days, startTime, upsertFasting } = useFasting();
+  const { days, schedule, upsertFasting } = useFasting();
+  // 옛 라벨 선택 UI (요일별 슬라이더는 Task 4): 첫 요일 시각과 가장 가까운 라벨
+  const firstTimedDay = days.find((day) => schedule[day] !== undefined);
+  const startTime = firstTimedDay === undefined ? null : legacyLabel(schedule[firstTimedDay]);
 
   const selectableDayNum = week - 1; // ex. 2주차 -> 1개 선택 가능
   const [selectedDays, setSelectedDays] = useState<number[]>(days);

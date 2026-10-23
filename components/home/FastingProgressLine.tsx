@@ -1,7 +1,7 @@
 import { Text } from 'components/common/Text';
-import type { FastingTime } from 'const/fastingDays';
 import { View } from 'react-native';
 import type { FastingStatus } from 'utils/dietGuide';
+import { formatMinutes } from 'utils/fastingSchedule';
 
 const MINUTE_MS = 60 * 1000;
 
@@ -12,6 +12,13 @@ const formatRemaining = (ms: number) => {
   return hours > 0 ? `${hours}시간 ${minutes}분` : `${minutes}분`;
 };
 
+const KST_OFFSET_MS = 9 * 60 * MINUTE_MS;
+const DAY_MS = 24 * 60 * MINUTE_MS;
+
+// 시작 시각 "19:30" (KST)
+const formatClock24 = (date: Date) =>
+  formatMinutes(Math.floor(((date.getTime() + KST_OFFSET_MS) % DAY_MS) / MINUTE_MS));
+
 const formatClock = (date: Date) =>
   date.toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Seoul' });
 
@@ -19,15 +26,15 @@ const formatClock = (date: Date) =>
 // 시작 전(오늘이 단식일): "오늘 …부터 24시간 단식이에요" / 진행 중: 남은 시간 + 막대 + 끝나는 시각 + 마셔도 되는 것
 export function FastingProgressLine({
   status,
-  startTime,
 }: {
   status: Extract<FastingStatus, { phase: 'upcoming' | 'fasting' }>;
-  startTime: FastingTime | null | undefined;
 }) {
   if (status.phase === 'upcoming') {
     return (
       <View className="rounded-xl bg-green-50 px-4 py-3">
-        <Text className="font-bold text-green-700">🕒 오늘 {startTime}부터 24시간 단식이에요</Text>
+        <Text className="font-bold text-green-700">
+          🕒 오늘 {formatClock24(status.startsAt)}부터 24시간 단식이에요
+        </Text>
       </View>
     );
   }

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { fastingResultQuestion, todayExtraRows, weekStepLabel } from './todayRows';
 
 // 2026-10-22 = 목(4), 2026-10-23 = 금(5)
-const thuEvening = { fastingDays: [4], startTime: '저녁 식후' as const };
+const thuEvening = { fastingDays: [4], schedule: { 4: 1140 } };
 
 describe('todayExtraRows', () => {
   it('1주차는 단식 줄이 하나도 없다 (설정이 남아 있어도)', () => {
@@ -57,7 +57,7 @@ describe('todayExtraRows', () => {
           week,
           now: new Date('2026-10-23T09:00:00+09:00'),
           fastingDays: [],
-          startTime: null,
+          schedule: {},
         }).fastingDayLine
       ).toBe('unset');
     }
@@ -76,7 +76,7 @@ describe('todayExtraRows', () => {
         week: 5,
         now: new Date('2026-10-23T09:00:00+09:00'),
         fastingDays: [],
-        startTime: null,
+        schedule: {},
         weekContext: { from: '2026-10-19', previous: null },
       })
     ).toEqual({
@@ -94,12 +94,24 @@ describe('todayExtraRows', () => {
       week: 5,
       now: new Date('2026-10-19T21:00:00+09:00'),
       fastingDays: [],
-      startTime: null,
-      weekContext: { from: '2026-10-19', previous: { days: [0], startTime: '저녁 식후' } },
+      schedule: {},
+      weekContext: { from: '2026-10-19', previous: { 0: 1140 } },
     });
     expect(rows.fastingResultDay).toBe('2026-10-18');
     expect(rows.fastingProgress).toBe(false);
     expect(rows.fastingDayLine).toBeNull();
+  });
+
+  it('요일마다 다른 시각: 토요일은 19시 전까지 안내 줄, 목요일(13시) 결과 질문은 열려 있다', () => {
+    const rows = todayExtraRows({
+      week: 3,
+      now: new Date('2026-10-24T13:30:00+09:00'),
+      fastingDays: [4, 6],
+      schedule: { 4: 780, 6: 1140 },
+    });
+    expect(rows.fastingUpcoming).toBe(true);
+    expect(rows.fastingProgress).toBe(false);
+    expect(rows.fastingResultDay).toBe('2026-10-22');
   });
 });
 

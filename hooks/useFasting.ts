@@ -1,7 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { FastingAPI } from 'api/FastingAPI';
 import { FastingPlanAPI } from 'api/FastingPlanAPI';
-import { FastingTime } from 'const/fastingDays';
 import { QueryKey } from 'const/queryKey';
 import { queryClient } from 'lib/queryClient';
 import { useMemo } from 'react';
@@ -10,7 +9,6 @@ import { FastingDB } from 'types/database';
 import { getWeekAndDay } from 'utils/date';
 import { FastingSchedule, scheduleColumns, scheduleFrom } from 'utils/fastingSchedule';
 import { cancelAllScheduledNotifications, registerWeeklyFastingAlarms } from 'utils/notifications';
-import { Maybe } from '../types/common';
 import { useQueryWith402Retry } from './useCustomQuery';
 
 // 주차 변경 시 단식 초기화 진행 중인지 확인용 (useFastingPlanBackfill)
@@ -112,8 +110,6 @@ export const useFasting = () => {
   return {
     days: sortedDays,
     schedule,
-    // 옛 라벨 (Task 2에서 소비처를 schedule로 옮긴 뒤 제거)
-    startTime: fasting?.start_time as Maybe<FastingTime>,
     isLoading,
     resetFasting,
     upsertFasting,

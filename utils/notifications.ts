@@ -7,6 +7,7 @@ import { Platform } from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import { FastingDB } from 'types/database';
 import { Maybe } from '../types/common';
+import { formatMinutes, scheduleFrom } from './fastingSchedule';
 import { captureError } from './sendError';
 
 const requestNotificationPermission = async () => {
@@ -68,6 +69,20 @@ export const registerChannelIfPermitted = async (channelId: Channel): Promise<bo
   }
 };
 
+// 단식 요일마다 그날 아침 알림: 요일(1=일..7=토)과 그 요일 시작 시각 문구. 시각이 없는 요일은 뺀다
+export function fastingAlarms(
+  fasting: Maybe<Pick<FastingDB, 'days' | 'start_time' | 'start_minutes'>>
+): { weekday: number; body: string }[] {
+  if (!fasting?.days) return [];
+  const schedule = scheduleFrom(fasting);
+  return fasting.days
+    .filter((day) => schedule[day] !== undefined)
+    .map((day) => ({
+      weekday: day + 1,
+      body: `오늘 ${formatMinutes(schedule[day])}부터 24시간 단식이 시작돼요.\n단식 후, 첫 끼는 든든하게 챙겨드세요!`,
+    }));
+}
+
 export async function registerWeeklyFastingAlarms(fasting: Maybe<FastingDB>) {
   await Notifications.cancelAllScheduledNotificationsAsync();
   if (!fasting?.days) return [];
@@ -75,19 +90,15 @@ export async function registerWeeklyFastingAlarms(fasting: Maybe<FastingDB>) {
   const isSuccess = await registerForPushNotificationsAsync(CHANNELS.FASTING);
   if (!isSuccess) return [];
 
-  const { days: fastingDays, start_time: fastingStartTime } = fasting;
   const triggerIds: string[] = [];
 
   try {
-    for (const day of fastingDays) {
+    for (const { weekday, body } of fastingAlarms(fasting)) {
       const triggerId = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: '단식 시작 예정 알림',
-          body: `오늘 ${fastingStartTime}부터 24시간 단식이 시작돼요.\n단식 후, 첫 끼는 든든하게 챙겨드세요!`,
-        },
+        content: { title: '단식 시작 예정 알림', body },
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-          weekday: day + 1, // 1=일, 2=월, ..., 7=토
+          weekday, // 1=일, 2=월, ..., 7=토
           hour: 7,
           minute: 0,
           channelId: CHANNELS.FASTING,

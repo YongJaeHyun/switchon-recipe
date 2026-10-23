@@ -93,4 +93,27 @@ describe('fastingHistory', () => {
       })
     ).toEqual([{ day: '2026-10-22', weekIndex: 2, result: null }]);
   });
+
+  it('요일별 시작 시각(start_minutes)이 라벨보다 우선한다', () => {
+    const plans = [
+      { week_index: 2, days: [4], start_time: '저녁 식후', start_minutes: { '4': 780 } },
+    ];
+    expect(
+      fastingHistory({ startDate, plans, results: [], now: new Date('2026-10-22T12:59+09:00') })
+    ).toEqual([]);
+    expect(
+      fastingHistory({ startDate, plans, results: [], now: new Date('2026-10-22T13:00+09:00') })
+    ).toEqual([{ day: '2026-10-22', weekIndex: 2, result: null }]);
+  });
+
+  it('22:00 시작은 KST 날짜로 그날에 들어간다', () => {
+    const plans = [{ week_index: 2, days: [4], start_time: null, start_minutes: { '4': 1320 } }];
+    expect(
+      fastingHistory({ startDate, plans, results: [], now: new Date('2026-10-22T21:59+09:00') })
+    ).toEqual([]);
+    // KST 목 22:00 = UTC 목 13:00
+    expect(
+      fastingHistory({ startDate, plans, results: [], now: new Date('2026-10-22T13:00:00Z') })
+    ).toEqual([{ day: '2026-10-22', weekIndex: 2, result: null }]);
+  });
 });

@@ -4,7 +4,6 @@ import { StatisticsAPI } from 'api/StatisticsAPI';
 import { TodoAPI } from 'api/TodoAPI';
 import { TodoDailyAPI } from 'api/TodoDailyAPI';
 import { BASE_TODOS } from 'const/baseTodos';
-import { FASTING_DAYS, FASTING_START_TIMES } from 'const/fastingDays';
 import { QueryKey } from 'const/queryKey';
 import { queryClient } from 'lib/queryClient';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -13,6 +12,7 @@ import { useUserStore } from 'stores/userStore';
 import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
 import { Todo } from 'types/todo';
 import { getKoreanDate, getKoreanDateString, getWeekAndDay } from 'utils/date';
+import { fastingDayTodos } from 'utils/fastingTodos';
 import { orEmptyArray } from 'utils/stableDefaults';
 import {
   areTodoChecksCurrent,
@@ -44,15 +44,7 @@ export const useTodos = (options?: { syncTodoDaily?: boolean }) => {
   const { week, day } = getWeekAndDay(startDate);
   const currentStep = week === 1 ? (day <= 3 ? 1 : 2) : week + 1;
 
-  const {
-    days: fastingDays,
-    startTime: fastingStartTime,
-    isLoading: isFastingLoading,
-  } = useFasting();
-  const fastingNextDays = useMemo(
-    () => fastingDays.map((day) => (day + 1) % FASTING_DAYS.length),
-    [fastingDays]
-  );
+  const { schedule: fastingSchedule, isLoading: isFastingLoading } = useFasting();
 
   const baseTodos = useMemo(
     () =>
@@ -143,22 +135,8 @@ export const useTodos = (options?: { syncTodoDaily?: boolean }) => {
 
   // 오늘 보이는 할 일 (단식일·단식 다음 날은 단식 시간에 걸린 끼니를 뺀다)
   const getTodayTodos = useCallback(() => {
-    let todos = [...baseTodos];
-    const currentDay = getKoreanDate().getDay();
-
-    if (fastingStartTime) {
-      const index = FASTING_START_TIMES.indexOf(fastingStartTime);
-      const startTimeIndex = fastingStartTime === '저녁 식후' ? index + 1 : index; // todo에는 점심과 저녁사이에 오후 간식이 있음
-
-      if (fastingDays.includes(currentDay)) {
-        todos = todos.slice(0, startTimeIndex + 1);
-      }
-      if (fastingNextDays.includes(currentDay)) {
-        todos = todos.slice(startTimeIndex);
-      }
-    }
-    return todos;
-  }, [baseTodos, fastingStartTime, fastingDays, fastingNextDays]);
+    return fastingDayTodos([...baseTodos], getKoreanDate().getDay(), fastingSchedule);
+  }, [baseTodos, fastingSchedule]);
 
   // 오늘 목록·체크가 오늘 것인지 (revalidateToday가 주차·일차를 반영하고 초기화가 끝났는지)
   const hydrated = useWeekCompletePopupStore((state) => state.isHydrated);

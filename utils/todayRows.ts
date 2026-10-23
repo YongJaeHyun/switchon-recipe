@@ -1,5 +1,5 @@
-import type { FastingTime } from 'const/fastingDays';
 import { fastingResultWindow, getFastingStatus, type FastingWeekContext } from 'utils/dietGuide';
+import type { FastingSchedule } from 'utils/fastingSchedule';
 
 // 오늘 탭 목록에서 식단 할 일 말고 더 보여줄 줄들
 export interface TodayExtraRows {
@@ -16,10 +16,10 @@ export function todayExtraRows(input: {
   week: number;
   now: Date;
   fastingDays: number[];
-  startTime: FastingTime | null | undefined;
+  schedule: FastingSchedule; // 요일별 시작 시각 (분)
   weekContext?: FastingWeekContext;
 }): TodayExtraRows {
-  const { week, now, fastingDays, startTime, weekContext } = input;
+  const { week, now, fastingDays, schedule, weekContext } = input;
   // 1주차는 단식이 없다
   if (week < 2) {
     return {
@@ -31,8 +31,8 @@ export function todayExtraRows(input: {
     };
   }
 
-  const status = getFastingStatus(now, fastingDays, startTime);
-  const resultDay = fastingResultWindow(now, fastingDays, startTime, weekContext)?.day ?? null;
+  const status = getFastingStatus(now, schedule);
+  const resultDay = fastingResultWindow(now, schedule, weekContext)?.day ?? null;
 
   // 단식 요일 설정은 할 일 목록이 있는 2~4주차에만 (유지기는 할 일이 없어 설정 줄도 없었다)
   const fastingDayLine =

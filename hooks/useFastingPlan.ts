@@ -1,6 +1,5 @@
 import { useIsMutating } from '@tanstack/react-query';
 import { FastingPlanAPI } from 'api/FastingPlanAPI';
-import type { FastingTime } from 'const/fastingDays';
 import { QueryKey } from 'const/queryKey';
 import { useEffect } from 'react';
 import { useUserStore } from 'stores/userStore';
@@ -9,6 +8,7 @@ import type { FastingPlanDB } from 'types/database';
 import { getWeekAndDay } from 'utils/date';
 import { fastingWeekBoundary, type FastingWeekContext } from 'utils/dietGuide';
 import { failFastWhenOffline } from 'utils/failFastWhenOffline';
+import { scheduleFrom } from 'utils/fastingSchedule';
 import { useQueryWith402Retry } from './useCustomQuery';
 import { RESET_FASTING_MUTATION_KEY, useFasting } from './useFasting';
 
@@ -34,7 +34,7 @@ export const useFastingWeekContext = (): FastingWeekContext | undefined => {
   if (!boundary) return undefined;
   return {
     from: boundary.from,
-    previous: data ? { days: data.days, startTime: data.start_time as FastingTime | null } : null,
+    previous: data ? scheduleFrom(data) : null,
   };
 };
 

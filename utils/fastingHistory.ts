@@ -1,6 +1,5 @@
-import type { FastingTime } from 'const/fastingDays';
 import type { FastingResult } from 'api/FastingResultAPI';
-import { FASTING_START_HOUR } from './dietGuide';
+import { scheduleFrom } from './fastingSchedule';
 
 export interface FastingHistoryItem {
   day: string; // 단식 시작일 (KST yyyy-MM-dd)
@@ -8,9 +7,9 @@ export interface FastingHistoryItem {
   result: FastingResult | null;
 }
 
-const HOUR_MS = 60 * 60 * 1000;
-const DAY_MS = 24 * HOUR_MS;
-const KST_OFFSET_MS = 9 * HOUR_MS;
+const MINUTE_MS = 60 * 1000;
+const DAY_MS = 24 * 60 * MINUTE_MS;
+const KST_OFFSET_MS = 9 * 60 * MINUTE_MS;
 
 // yyyy-MM-dd → 그 날짜의 UTC 자정 (날짜 계산용)
 const dayToUtc = (day: string) => {
@@ -18,9 +17,6 @@ const dayToUtc = (day: string) => {
   return Date.UTC(y, m - 1, d);
 };
 const utcToDay = (utc: number) => new Date(utc).toISOString().slice(0, 10);
-
-const isFastingTime = (value: string | null): value is FastingTime =>
-  value !== null && value in FASTING_START_HOUR;
 
 // 기록 탭 > 단식 칸 목록: 이미 시작된 계획일 ∪ 결과가 있는 날 (현재 프로그램 2주차 이후만), 최근순
 export function fastingHistory({
@@ -30,7 +26,12 @@ export function fastingHistory({
   now,
 }: {
   startDate: string;
-  plans: { week_index: number; days: number[]; start_time: string | null }[];
+  plans: {
+    week_index: number;
+    days: number[];
+    start_time: string | null;
+    start_minutes?: unknown;
+  }[];
   results: { day: string; result: FastingResult }[];
   now: Date;
 }): FastingHistoryItem[] {
@@ -40,13 +41,15 @@ export function fastingHistory({
 
   const days = new Set<string>();
   for (const plan of plans) {
-    const hour = isFastingTime(plan.start_time) ? FASTING_START_HOUR[plan.start_time] : 0;
+    // 요일별 시각(start_minutes 우선, 없으면 라벨). 시각이 없는 요일은 그날 자정부터로 본다
+    const schedule = scheduleFrom(plan);
     const weekStart = start + 7 * (plan.week_index - 1) * DAY_MS;
     for (let i = 0; i < 7; i++) {
       const midnight = weekStart + i * DAY_MS;
-      if (!plan.days.includes(new Date(midnight).getUTCDay())) continue;
-      // KST 자정 + 시작 시각이 지났는지
-      if (midnight - KST_OFFSET_MS + hour * HOUR_MS > t) continue;
+      const weekday = new Date(midnight).getUTCDay();
+      if (!plan.days.includes(weekday)) continue;
+      // KST 자정 + 그 요일 시작 시각이 지났는지
+      if (midnight - KST_OFFSET_MS + (schedule[weekday] ?? 0) * MINUTE_MS > t) continue;
       days.add(utcToDay(midnight));
     }
   }

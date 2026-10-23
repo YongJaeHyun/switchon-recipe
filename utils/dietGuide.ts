@@ -1,4 +1,4 @@
-import type { FastingTime } from 'const/fastingDays';
+import type { FastingSchedule } from './fastingSchedule';
 
 // ── 할 일에서 바로 행동하기 ────────────────────────────────────
 export interface Tip {
@@ -67,14 +67,10 @@ export const WEEK_CHANGES: Record<number, string[]> = {
 };
 
 // ── 단식일 카운트다운 ───────────────────────────────────────────
-// 앱에는 끼니 단위만 있어 시각을 기준값으로 정함 (KST)
-export const FASTING_START_HOUR: Record<FastingTime, number> = {
-  '아침 식후': 9,
-  '점심 식후': 13,
-  '저녁 식후': 19,
-};
-
-const HOUR_MS = 60 * 60 * 1000;
+// 요일별 시작 시각(schedule: 요일 → KST 자정부터 분). 그날 시작 = 그날 KST 자정 + 분, 끝 = 시작 + 24시간.
+// 지도에 없는 요일은 단식일이 아니다
+const MINUTE_MS = 60 * 1000;
+const HOUR_MS = 60 * MINUTE_MS;
 const DAY_MS = 24 * HOUR_MS;
 const KST_OFFSET_MS = 9 * HOUR_MS;
 
@@ -91,21 +87,22 @@ const kstMidnight = (date: Date) => {
   return { utc: midnightKst - KST_OFFSET_MS, weekday: kst.getUTCDay() };
 };
 
-export const getFastingStatus = (
-  now: Date,
-  fastingDays: number[],
-  startTime: FastingTime | null | undefined
-): FastingStatus => {
-  if (!startTime || fastingDays.length === 0) return { phase: 'none' };
+// 그날(KST 자정 midnightUtc, 요일 weekday)에 시작하는 단식의 시작 시각. 단식일이 아니면 null
+const fastingStartOn = (
+  schedule: FastingSchedule | null | undefined,
+  midnightUtc: number,
+  weekday: number
+): number | null => {
+  const minutes = schedule?.[weekday];
+  return minutes === undefined ? null : midnightUtc + minutes * MINUTE_MS;
+};
 
-  const startOffset = FASTING_START_HOUR[startTime] * HOUR_MS;
+export const getFastingStatus = (now: Date, schedule: FastingSchedule): FastingStatus => {
   const today = kstMidnight(now);
   const t = now.getTime();
 
-  // 어제 시작한 단식이 아직 진행 중이거나 오늘 끝났는지
-  const yesterdayWeekday = (today.weekday + 6) % 7;
-  const yesterdayStart = today.utc - DAY_MS + startOffset;
-  const todayStart = today.utc + startOffset;
+  const yesterdayStart = fastingStartOn(schedule, today.utc - DAY_MS, (today.weekday + 6) % 7);
+  const todayStart = fastingStartOn(schedule, today.utc, today.weekday);
 
   const fasting = (start: number): FastingStatus => ({
     phase: 'fasting',
@@ -114,17 +111,13 @@ export const getFastingStatus = (
     remainingMs: start + DAY_MS - t,
   });
 
-  if (fastingDays.includes(yesterdayWeekday) && t < yesterdayStart + DAY_MS) {
-    return fasting(yesterdayStart);
-  }
-  if (fastingDays.includes(today.weekday)) {
-    return t < todayStart
-      ? { phase: 'upcoming', startsAt: new Date(todayStart) }
-      : fasting(todayStart);
-  }
-  if (fastingDays.includes(yesterdayWeekday)) {
+  // 오늘 단식이 이미 시작했으면 그것 (어제 단식보다 나중에 시작)
+  if (todayStart !== null && t >= todayStart) return fasting(todayStart);
+  // 어제 시작한 단식이 아직 진행 중
+  if (yesterdayStart !== null && t < yesterdayStart + DAY_MS) return fasting(yesterdayStart);
+  if (todayStart !== null) return { phase: 'upcoming', startsAt: new Date(todayStart) };
+  if (yesterdayStart !== null)
     return { phase: 'finished', endsAt: new Date(yesterdayStart + DAY_MS) };
-  }
   return { phase: 'none' };
 };
 
@@ -135,14 +128,9 @@ export const getFastingStatus = (
 // from 이전 날짜에는 현재 설정을 쓰지 않고, 지난 주차 계획(previous, fasting_plan)이 있을 때만 그것으로 본다.
 const RESULT_WINDOW_MS = DAY_MS + 48 * HOUR_MS;
 
-export interface PreviousFastingPlan {
-  days: number[];
-  startTime: FastingTime | null | undefined;
-}
-
 export interface FastingWeekContext {
   from: string; // 이번 주차 첫날 (yyyy-MM-dd, KST)
-  previous?: PreviousFastingPlan | null; // 지난 주차 계획. 없거나 불러오는 중이면 null
+  previous?: FastingSchedule | null; // 지난 주차 계획의 요일별 시각. 없거나 불러오는 중이면 null
 }
 
 const kstDayString = (midnightUtc: number) =>
@@ -150,8 +138,7 @@ const kstDayString = (midnightUtc: number) =>
 
 export const fastingResultWindow = (
   now: Date,
-  fastingDays: number[],
-  startTime: FastingTime | null | undefined,
+  schedule: FastingSchedule,
   week?: FastingWeekContext
 ): { day: string } | null => {
   const today = kstMidnight(now);
@@ -162,11 +149,9 @@ export const fastingResultWindow = (
     const midnight = today.utc - back * DAY_MS;
     const day = kstDayString(midnight);
     const weekday = (today.weekday - back + 7) % 7;
-    const plan = week && day < week.from ? week.previous : { days: fastingDays, startTime };
-    if (!plan?.startTime || !plan.days.includes(weekday)) continue;
-
-    const start = midnight + FASTING_START_HOUR[plan.startTime] * HOUR_MS;
-    if (start > t) continue;
+    const plan = week && day < week.from ? week.previous : schedule;
+    const start = fastingStartOn(plan, midnight, weekday);
+    if (start === null || start > t) continue;
     // 단식 중에는 아직 묻지 않는다 (끝난 뒤부터 응답). 진행 중인 단식이 있으면 이전 단식도 닫힘
     if (t < start + DAY_MS) return null;
     if (t >= start + RESULT_WINDOW_MS) return null;

@@ -29,7 +29,7 @@ export function TodayChecklist() {
 
   // 화면에 하나뿐이라 여기서 못 보낸 todo_daily 다시 보내기를 켠다
   const { todos, completedRate, isLoading: isTodosLoading } = useTodos({ syncTodoDaily: true });
-  const { days, startTime, isLoading: isFastingLoading } = useFasting();
+  const { days, schedule, isLoading: isFastingLoading } = useFasting();
   const weekContext = useFastingWeekContext();
   useFastingPlanBackfill();
   const isLoading = isTodosLoading || isFastingLoading;
@@ -43,18 +43,18 @@ export function TodayChecklist() {
   const { week, day } = getWeekAndDay(startDate);
   const stepLabel = weekStepLabel(week, day);
   const isMaintenance = week >= 5;
-  const rows = todayExtraRows({ week, now, fastingDays: days, startTime, weekContext });
-  const status = getFastingStatus(now, days, startTime);
+  const rows = todayExtraRows({ week, now, fastingDays: days, schedule, weekContext });
+  const status = getFastingStatus(now, schedule);
 
   return (
     <View className="gap-3">
       {((rows.fastingProgress && status.phase === 'fasting') ||
         (rows.fastingUpcoming && status.phase === 'upcoming')) && (
-        <FastingProgressLine status={status} startTime={startTime} />
+        <FastingProgressLine status={status} />
       )}
 
       {rows.fastingDayLine === 'unset' && (
-        <FastingDayLine state="unset" week={week} days={days} startTime={startTime} />
+        <FastingDayLine state="unset" week={week} days={days} schedule={schedule} />
       )}
 
       <View className="rounded-xl border border-neutral-200 bg-white px-4 pb-2 pt-4">
@@ -112,7 +112,7 @@ export function TodayChecklist() {
       </View>
 
       {rows.fastingDayLine === 'set' && (
-        <FastingDayLine state="set" week={week} days={days} startTime={startTime} />
+        <FastingDayLine state="set" week={week} days={days} schedule={schedule} />
       )}
 
       <TipBottomSheet />
