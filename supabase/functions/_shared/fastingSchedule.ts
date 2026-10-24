@@ -5,7 +5,8 @@ type FastingTime = '아침 식후' | '점심 식후' | '저녁 식후';
 
 export type FastingSchedule = Record<number, number>;
 
-export const FASTING_SLIDER = { min: 360, max: 1320, step: 30 } as const;
+// 시작 시각 휠 범위: 06:00~22:50, 10분 단위 (시 6~22 × 분 00~50). 옛 30분 단위 값도 그대로 맞다
+export const FASTING_START_RANGE = { min: 360, max: 1370, step: 10 } as const;
 
 // 옛 라벨과 그 시각. 빠른 선택 버튼, 옛 start_time 읽기·쓰기에 쓴다
 export const QUICK_TIMES: { label: FastingTime; minutes: number }[] = [

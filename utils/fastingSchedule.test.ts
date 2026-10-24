@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  FASTING_SLIDER,
+  FASTING_START_RANGE,
   QUICK_TIMES,
   formatMinutes,
   legacyLabel,
@@ -88,8 +88,8 @@ describe('formatMinutes', () => {
 });
 
 describe('상수', () => {
-  it('슬라이더 범위와 빠른 선택', () => {
-    expect(FASTING_SLIDER).toEqual({ min: 360, max: 1320, step: 30 });
+  it('시작 시각 범위(06:00~22:50, 10분)와 빠른 선택', () => {
+    expect(FASTING_START_RANGE).toEqual({ min: 360, max: 1370, step: 10 });
     expect(QUICK_TIMES).toEqual([
       { label: '아침 식후', minutes: 540 },
       { label: '점심 식후', minutes: 780 },

@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
-  EARLY_END_SLIDER,
+  canSaveFastedMinutes,
+  EARLY_END_WHEEL,
   earlyEndConfirmMessage,
   fastedMinutesAt,
   fastingDayOf,
   fastingHistoryLabel,
   fastingResultLabel,
   formatFastedHours,
-  hoursForSlider,
+  minutesForWheel,
 } from './fastingEarlyEnd';
 
 const start = new Date('2026-10-22T19:00:00+09:00');
@@ -74,13 +75,23 @@ describe('fastingDayOf', () => {
   });
 });
 
-describe('hoursForSlider', () => {
-  it('기본 16시간, 저장된 분은 가까운 시간으로 1~23 안에', () => {
-    expect(EARLY_END_SLIDER).toEqual({ min: 1, max: 23, step: 1, initial: 16 });
-    expect(hoursForSlider(null)).toBe(16);
-    expect(hoursForSlider(990)).toBe(17);
-    expect(hoursForSlider(600)).toBe(10);
-    expect(hoursForSlider(10)).toBe(1);
-    expect(hoursForSlider(1440)).toBe(23);
+describe('minutesForWheel', () => {
+  it('기본 16시간, 저장된 분은 10분 단위로 내려 10분~23시간 50분 안에', () => {
+    expect(EARLY_END_WHEEL).toEqual({ maxHour: 23, minuteStep: 10, initial: 960, min: 10 });
+    expect(minutesForWheel(null)).toBe(960);
+    expect(minutesForWheel(990)).toBe(990);
+    expect(minutesForWheel(995)).toBe(990);
+    expect(minutesForWheel(1439)).toBe(1430);
+    expect(minutesForWheel(1440)).toBe(1430);
+    expect(minutesForWheel(5)).toBe(10);
+    expect(minutesForWheel(0)).toBe(10);
+  });
+});
+
+describe('canSaveFastedMinutes', () => {
+  it('10분 이상만 저장', () => {
+    expect(canSaveFastedMinutes(0)).toBe(false);
+    expect(canSaveFastedMinutes(10)).toBe(true);
+    expect(canSaveFastedMinutes(1430)).toBe(true);
   });
 });

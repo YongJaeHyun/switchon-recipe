@@ -4,8 +4,10 @@ const MINUTE_MS = 60 * 1000;
 const KST_OFFSET_MS = 9 * 60 * MINUTE_MS;
 const MAX_MINUTES = 24 * 60;
 
-// 끝난 뒤 "일찍 끝냈어요"를 고를 때 몇 시간 했는지 고르는 슬라이더 (시간 단위)
-export const EARLY_END_SLIDER = { min: 1, max: 23, step: 1, initial: 16 } as const;
+// 끝난 뒤 "일찍 끝냈어요"를 고를 때 몇 시간 몇 분 했는지 고르는 휠 (시 0~23 × 분 00~50, 10분 단위).
+// 0시간 0분은 저장할 수 없다 (min)
+export const EARLY_END_WHEEL = { maxHour: 23, minuteStep: 10, initial: 960, min: 10 } as const;
+const WHEEL_MAX = EARLY_END_WHEEL.maxHour * 60 + 60 - EARLY_END_WHEEL.minuteStep;
 
 // 단식 시작부터 now까지 단식한 분 (분 내림, 1~1440). 1분이 안 돼도 "0분"이 아니라 1분
 export function fastedMinutesAt(startsAt: Date, now: Date): number {
@@ -27,10 +29,15 @@ export function fastingDayOf(startsAt: Date): string {
   return new Date(startsAt.getTime() + KST_OFFSET_MS).toISOString().slice(0, 10);
 }
 
-// 슬라이더 시작 값: 저장된 분이 있으면 가까운 시간(1~23), 없으면 16시간
-export function hoursForSlider(minutes: number | null): number {
-  if (minutes === null) return EARLY_END_SLIDER.initial;
-  return Math.min(EARLY_END_SLIDER.max, Math.max(EARLY_END_SLIDER.min, Math.round(minutes / 60)));
+// 휠 시작 값(분): 저장된 분이 있으면 10분 단위로 내려 10분~23시간 50분 안에, 없으면 16시간
+export function minutesForWheel(minutes: number | null): number {
+  if (minutes === null) return EARLY_END_WHEEL.initial;
+  const step = EARLY_END_WHEEL.minuteStep;
+  return Math.min(WHEEL_MAX, Math.max(EARLY_END_WHEEL.min, Math.floor(minutes / step) * step));
+}
+
+export function canSaveFastedMinutes(minutes: number): boolean {
+  return minutes >= EARLY_END_WHEEL.min;
 }
 
 export function earlyEndConfirmMessage(minutes: number): string {

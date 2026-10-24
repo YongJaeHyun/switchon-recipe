@@ -1,8 +1,8 @@
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { BottomSheetMethods } from '@gorhom/bottom-sheet/lib/typescript/types';
 import RippleButton from 'components/common/RippleButton';
-import { StepSlider } from 'components/common/StepSlider';
 import { Text } from 'components/common/Text';
+import { TimeWheel } from 'components/common/TimeWheel';
 import { FASTING_DAYS, FastingDay } from 'const/fastingDays';
 import { useFasting } from 'hooks/useFasting';
 import { RefObject, useCallback, useEffect, useState } from 'react';
@@ -14,12 +14,7 @@ import {
   withNewDays,
 } from 'utils/fastingDaySheet';
 import { nextFastingDays } from 'utils/fastingDaySelect';
-import {
-  FASTING_SLIDER,
-  formatMinutes,
-  QUICK_TIMES,
-  type FastingSchedule,
-} from 'utils/fastingSchedule';
+import { FASTING_START_RANGE, QUICK_TIMES, type FastingSchedule } from 'utils/fastingSchedule';
 import { Nullable } from '../../types/common';
 import { CustomBottomSheet } from '../common/CustomBottomSheet';
 
@@ -55,19 +50,18 @@ const DayButton = ({ day, isSelected, disabled, onPress }: DayButtonProps) => {
   );
 };
 
-// 요일 하나의 시작 시각: "목요일 · 19:00 시작 → 금 19:00 끝", 슬라이더, 빠른 선택
+// 요일 하나의 시작 시각: "목요일 · 19:00 시작 → 금 19:00 끝", 시·분 휠, 빠른 선택
 const DayStartTimeRow = ({ day, minutes, onChange }: DayStartTimeRowProps) => {
   return (
     <View className="gap-1 rounded-xl border border-neutral-100 bg-white px-3 py-3">
       <Text className="text-sm font-bold text-neutral-800">{fastingDayRowLabel(day, minutes)}</Text>
-      <StepSlider
+      <TimeWheel
         value={minutes}
-        min={FASTING_SLIDER.min}
-        max={FASTING_SLIDER.max}
-        step={FASTING_SLIDER.step}
+        minHour={Math.floor(FASTING_START_RANGE.min / 60)}
+        maxHour={Math.floor(FASTING_START_RANGE.max / 60)}
+        minuteStep={FASTING_START_RANGE.step}
         onChange={(next) => onChange(day, next)}
-        accessibilityLabel={`${FASTING_DAYS[day]}요일 단식 시작 시각`}
-        formatValue={formatMinutes}
+        accessibilityLabel={`${FASTING_DAYS[day]}요일 단식 시작`}
       />
       <View className="w-full flex-row gap-2">
         {QUICK_TIMES.map((quick) => {

@@ -6,7 +6,7 @@ import * as app from './fastingSchedule';
 // 서버(Edge Function) 복사본이 앱 모듈과 같은 결과를 내는지 확인한다.
 describe('fastingSchedule 서버 복사본 일치', () => {
   it('상수가 같다', () => {
-    expect(server.FASTING_SLIDER).toEqual(app.FASTING_SLIDER);
+    expect(server.FASTING_START_RANGE).toEqual(app.FASTING_START_RANGE);
     expect(server.QUICK_TIMES).toEqual(app.QUICK_TIMES);
   });
 
