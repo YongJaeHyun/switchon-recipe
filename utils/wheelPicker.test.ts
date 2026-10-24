@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  dragTargetIndex,
   indexAtOffset,
   joinTime,
   nearestIndex,
@@ -79,5 +80,34 @@ describe('splitTime / joinTime', () => {
   it('시·분 → 분', () => {
     expect(joinTime(22, 50)).toBe(1370);
     expect(joinTime(0, 10)).toBe(10);
+  });
+});
+
+describe('dragTargetIndex', () => {
+  const ROW = 40;
+  it('0.3칸 이상 끌면 그 방향으로 적어도 한 칸', () => {
+    expect(dragTargetIndex(3, 3.35 * ROW, ROW, 10)).toBe(4);
+    expect(dragTargetIndex(3, 2.65 * ROW, ROW, 10)).toBe(2);
+    expect(dragTargetIndex(3, 3.3 * ROW, ROW, 10)).toBe(4);
+  });
+  it('0.3칸보다 덜 끌면 제자리', () => {
+    expect(dragTargetIndex(3, 3.2 * ROW, ROW, 10)).toBe(3);
+    expect(dragTargetIndex(3, 2.8 * ROW, ROW, 10)).toBe(3);
+    expect(dragTargetIndex(3, 3 * ROW, ROW, 10)).toBe(3);
+  });
+  it('많이 끌거나 튕긴 끝 위치는 가장 가까운 칸', () => {
+    expect(dragTargetIndex(3, 4.4 * ROW, ROW, 10)).toBe(4);
+    expect(dragTargetIndex(3, 4.6 * ROW, ROW, 10)).toBe(5);
+    expect(dragTargetIndex(3, 8.4 * ROW, ROW, 10)).toBe(8);
+    expect(dragTargetIndex(3, 0.6 * ROW, ROW, 10)).toBe(1);
+  });
+  it('범위 안으로', () => {
+    expect(dragTargetIndex(9, 9.5 * ROW, ROW, 10)).toBe(9);
+    expect(dragTargetIndex(0, -0.5 * ROW, ROW, 10)).toBe(0);
+    expect(dragTargetIndex(3, 30 * ROW, ROW, 10)).toBe(9);
+  });
+  it('칸이 없거나 높이가 0이면 0', () => {
+    expect(dragTargetIndex(3, 100, ROW, 0)).toBe(0);
+    expect(dragTargetIndex(3, 100, 0, 10)).toBe(0);
   });
 });

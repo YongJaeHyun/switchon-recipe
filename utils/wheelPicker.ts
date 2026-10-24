@@ -50,3 +50,22 @@ export function splitTime(total: number, minuteStep: number): { hour: number; mi
 export function joinTime(hour: number, minute: number): number {
   return hour * 60 + minute;
 }
+
+// 이만큼(칸) 넘게 끌면 한 칸 넘어간다. Android는 손가락이 처음 움직인 만큼(touch slop)을 스크롤로 치지 않아
+// 한 칸을 끌어도 0.5칸이 안 될 수 있다
+export const DRAG_STEP_THRESHOLD = 0.3;
+
+// 끌기·튕기기가 멈췄을 때 고를 칸. 끌기 시작 칸에서 THRESHOLD칸 이상 움직였으면 그 방향으로 적어도 한 칸,
+// 더 움직였으면 가장 가까운 칸. 범위 안으로
+export function dragTargetIndex(
+  startIndex: number,
+  offset: number,
+  rowHeight: number,
+  count: number
+): number {
+  if (count <= 0 || rowHeight <= 0) return 0;
+  const delta = offset / rowHeight - startIndex;
+  const moved = Math.abs(delta);
+  const steps = moved + 1e-9 < DRAG_STEP_THRESHOLD ? 0 : Math.max(1, Math.round(moved));
+  return Math.min(count - 1, Math.max(0, startIndex + Math.sign(delta) * steps));
+}
