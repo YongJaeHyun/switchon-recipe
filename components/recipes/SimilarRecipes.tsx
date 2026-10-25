@@ -16,7 +16,9 @@ export function SimilarRecipes({ recipeId }: { recipeId: number }) {
   if (!isLoading && !recipes?.length) return null;
 
   return (
-    <View className="mt-10">
+    <View className="mt-2">
+      {/* 레시피 본문과 나누는 선 (화면 끝까지) */}
+      <View className="mb-8 h-px bg-neutral-200" style={{ marginHorizontal: -PAGE_INSET }} />
       <Text className="mb-4 text-lg font-bold">비슷한 레시피</Text>
       {isLoading ? (
         <View
