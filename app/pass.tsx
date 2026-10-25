@@ -3,6 +3,8 @@ import { PassAPI } from 'api/PassAPI';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import { QueryKey } from 'const/queryKey';
+import { TIME_ZONE } from 'const/const';
+import { formatInTimeZone } from 'date-fns-tz';
 import { router } from 'expo-router';
 import { useBillingAvailable } from 'hooks/useBillingAvailable';
 import { usePass } from 'hooks/usePass';
@@ -15,16 +17,27 @@ import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import type { PassStatus } from 'types/pass';
 import { requireOnline } from 'utils/network';
+import { getKoreanDateString } from 'utils/date';
+import { getWeekColorHex } from 'utils/getWeekColor';
+import { passJourney } from 'utils/passJourney';
 import { formatPassRemaining, formatSalesHeadline } from 'utils/passDisplay';
 import { getVerifyResultToast, isPassOnSale } from 'utils/passScreen';
 import { showErrorToast, showSuccessToast } from 'utils/showToast';
 
-// 패스 전용 기능 (스펙 1절). 배포되기 전까지는 "곧 추가돼요"로 표시한다
+// 패스로 쓸 수 있는 기능 (스펙 1절)
 const PREMIUM_FEATURES = [
-  { title: '편의점 판정', description: '먹어도 되는지 바로 확인' },
-  { title: '맞춤 레시피 추천', description: '먹고 싶은 걸 고르면 레시피를 골라 드려요' },
-  { title: 'AI 주간 리포트', description: '체중·식단·단식을 한 주씩 정리' },
-];
+  { icon: 'storefront', title: '편의점 판정', description: '먹어도 되는지 바로 확인' },
+  {
+    icon: 'restaurant-menu',
+    title: '맞춤 레시피 추천',
+    description: '먹고 싶은 걸 고르면 레시피를 골라 드려요',
+  },
+  { icon: 'insights', title: 'AI 주간 리포트', description: '체중·식단·단식을 한 주씩 정리' },
+] as const;
+
+const weekLabel = (week: number) => (week >= 5 ? '유지기' : `${week}주차`);
+// 유지기는 앱의 5주차 색(검정) 대신 조금 부드러운 색
+const weekBarColor = (week: number) => (week >= 5 ? colors.neutral[700] : getWeekColorHex(week));
 
 const Header = () => (
   <View className="flex-row items-center gap-3 px-5 pb-2 pt-4">
@@ -39,60 +52,105 @@ const Centered = ({ children }: { children: React.ReactNode }) => (
   <View className="flex-1 items-center justify-center gap-3 px-5">{children}</View>
 );
 
-const PassIntro = () => (
-  <View className="gap-4">
-    <View className="gap-2">
-      <Text className="text-2xl font-bold text-neutral-800">5주 동안 모든 기능을 쓰세요</Text>
-      <Text className="text-base text-neutral-600">한 번 결제하면 35일 동안 이용할 수 있어요.</Text>
-      <View className="flex-row items-center gap-1">
-        <MaterialIcons name="check-circle" size={18} color={colors.green[600]} />
-        <Text className="font-bold text-green-600">자동 결제 없음</Text>
-        <Text className="text-neutral-500">· 기간이 끝나면 그대로 종료돼요</Text>
-      </View>
-    </View>
-
-    <View className="gap-3 rounded-xl border border-neutral-200 bg-white p-4">
-      <Text className="font-bold text-neutral-700">패스 전용 기능</Text>
-      {PREMIUM_FEATURES.map(({ title, description }) => (
-        <View key={title} className="flex-row gap-2">
-          <MaterialIcons name="lock-open" size={18} color={colors.green[600]} />
-          <View className="flex-1">
-            <Text className="font-bold text-neutral-800">{title}</Text>
-            <Text className="text-sm text-neutral-500">{description}</Text>
-          </View>
-        </View>
-      ))}
-    </View>
-  </View>
-);
-
-const PriceCard = ({ status }: { status: PassStatus }) => {
-  const { sales } = status;
-  const { price, original, badge, next } = formatSalesHeadline(sales);
+// 맨 위: 패스 35일이 내 다이어트 일정(주차)의 어디까지를 덮는지
+const JourneyHero = ({ status }: { status: PassStatus }) => {
+  const startDate = useUserStore((state) => state.start_date);
   const remaining = formatPassRemaining(status.passExpiresAt, new Date());
+  // 이미 패스가 있으면 연장분은 지금 패스가 끝나는 날부터
+  const from =
+    remaining && status.passExpiresAt
+      ? formatInTimeZone(new Date(status.passExpiresAt), TIME_ZONE, 'yyyy-MM-dd')
+      : getKoreanDateString({ formatType: 'date' });
+  const { endsOn, segments } = passJourney({ startDate: startDate ?? null, from });
 
   return (
-    <View className="gap-3 rounded-xl bg-green-50 p-5">
+    <View className="gap-4">
       {remaining && (
-        <View className="flex-row items-center gap-2 rounded-lg bg-white px-3 py-2">
-          <MaterialIcons name="verified" size={18} color={colors.green[600]} />
-          <Text className="text-neutral-700">
-            이용 중 · <Text className="font-bold">{remaining}</Text>
+        <View className="flex-row items-center gap-1.5 self-start rounded-full bg-green-50 px-3 py-1.5">
+          <MaterialIcons name="verified" size={16} color={colors.green[600]} />
+          <Text className="text-sm text-green-800">
+            이용 중 · <Text className="text-sm font-bold text-green-800">{remaining}</Text>
           </Text>
         </View>
       )}
-      {sales.freeActive && (
-        <Text className="font-bold text-green-700">무료 기간 {sales.freeDaysLeft}일 남음</Text>
-      )}
-      <View className="flex-row items-end gap-2">
-        {badge && <Text className="text-2xl font-bold text-red-500">{badge}</Text>}
-        <Text className="text-3xl font-bold text-neutral-900">{price}</Text>
-        {original && <Text className="pb-1 text-neutral-400 line-through">{original}</Text>}
+      <View>
+        <Text className="text-6xl font-bold text-neutral-900">35일</Text>
+        <Text className="mt-1 text-lg text-neutral-700">
+          {remaining ? '연장하면' : '오늘 결제하면'}{' '}
+          <Text className="text-lg font-bold text-neutral-900">{endsOn}까지</Text> 모든 기능을 써요
+        </Text>
       </View>
-      {next && <Text className="text-sm text-neutral-500">{next}</Text>}
-      {remaining && (
-        <Text className="text-sm text-neutral-500">연장하면 남은 기간 뒤에 35일이 더해져요.</Text>
+
+      <View className="gap-2">
+        <View className="h-3 flex-row gap-0.5 overflow-hidden rounded-full">
+          {segments.map(({ week, days }) => (
+            <View key={week} style={{ flex: days, backgroundColor: weekBarColor(week) }} />
+          ))}
+        </View>
+        <View className="flex-row gap-0.5">
+          {segments.map(({ week, days }) => (
+            <View key={week} style={{ flex: days }}>
+              {days >= 5 && (
+                <Text className="text-xs font-bold" style={{ color: weekBarColor(week) }}>
+                  {weekLabel(week)}
+                </Text>
+              )}
+            </View>
+          ))}
+        </View>
+        <View className="flex-row justify-between">
+          <Text className="text-xs text-neutral-500">{remaining ? '지금 패스 끝' : '오늘'}</Text>
+          <Text className="text-xs text-neutral-500">{endsOn}</Text>
+        </View>
+      </View>
+    </View>
+  );
+};
+
+const FeatureList = () => (
+  <View className="gap-4">
+    <Text className="text-base font-bold text-neutral-900">패스로 쓸 수 있는 것</Text>
+    {PREMIUM_FEATURES.map(({ icon, title, description }) => (
+      <View key={title} className="flex-row items-center gap-3">
+        <View className="h-11 w-11 items-center justify-center rounded-xl bg-green-50">
+          <MaterialIcons name={icon} size={22} color={colors.green[700]} />
+        </View>
+        <View className="flex-1">
+          <Text className="text-base font-bold text-neutral-900">{title}</Text>
+          <Text className="text-sm text-neutral-500">{description}</Text>
+        </View>
+      </View>
+    ))}
+  </View>
+);
+
+const PriceBlock = ({ status }: { status: PassStatus }) => {
+  const { sales } = status;
+  const { price, original, badge, next } = formatSalesHeadline(sales);
+
+  return (
+    <View className="gap-2 border-t border-neutral-100 pt-6">
+      {sales.freeActive && (
+        <Text className="text-sm font-bold text-green-700">
+          지금은 무료 기간이에요 ({sales.freeDaysLeft}일 남음). 끝난 뒤에도 쓰려면 패스가 필요해요.
+        </Text>
       )}
+      <View className="flex-row items-center gap-2">
+        <Text className="text-3xl font-bold text-neutral-900">{price}</Text>
+        {original && <Text className="text-base text-neutral-400 line-through">{original}</Text>}
+        {badge && (
+          <View className="rounded-full bg-green-600 px-2 py-0.5">
+            <Text className="text-xs font-bold text-white">{badge}</Text>
+          </View>
+        )}
+      </View>
+      {next && <Text className="text-sm text-neutral-500">{next}로 올라요</Text>}
+      <View className="mt-1 flex-row items-center gap-1">
+        <MaterialIcons name="check" size={16} color={colors.green[600]} />
+        <Text className="text-sm text-neutral-600">
+          한 번만 결제해요. 자동으로 다시 결제되지 않아요.
+        </Text>
+      </View>
     </View>
   );
 };
@@ -194,14 +252,12 @@ export default function PassScreen() {
 
     return (
       <>
-        <ScrollView contentContainerClassName="gap-6 px-5 py-4">
-          <PassIntro />
-          <PriceCard status={status} />
-          <Text className="text-xs text-neutral-400">
-            Google Play로 결제돼요. 결제 후 패스는 바로 적용되며, 자동으로 다시 결제되지 않아요.
-          </Text>
+        <ScrollView contentContainerClassName="gap-8 px-5 pb-6 pt-4">
+          <JourneyHero status={status} />
+          <FeatureList />
+          <PriceBlock status={status} />
         </ScrollView>
-        <View className="px-5 pb-6 pt-2">
+        <View className="gap-2 border-t border-neutral-100 px-5 pb-6 pt-3">
           <RippleButton
             outerClassName={disabled ? 'bg-neutral-300' : 'bg-green-600'}
             className="w-full py-4"
@@ -211,10 +267,13 @@ export default function PassScreen() {
               <ActivityIndicator color={colors.white} />
             ) : (
               <Text className="text-lg font-bold text-white">
-                {hasPass ? '연장하기' : '패스 구매하기'} · {price}
+                {price}으로 35일 {hasPass ? '연장하기' : '시작하기'}
               </Text>
             )}
           </RippleButton>
+          <Text className="text-center text-xs text-neutral-400">
+            Google Play로 결제되고, 결제하면 바로 적용돼요.
+          </Text>
         </View>
       </>
     );
