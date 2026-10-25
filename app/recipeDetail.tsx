@@ -28,9 +28,10 @@ import colors from 'tailwindcss/colors';
 import { RecipeDB } from 'types/database';
 import { IngredientSchema, Recipe, RecipeIngredient } from 'types/recipe';
 
-// 뒤로가기·공유·저장 버튼 아래(top-12 48 + h-12 48)에서 8 띄운 곳
-const BUTTONS_BOTTOM = 48 + 48 + 8;
 const CARD_HEIGHT = 160;
+// 사진을 다 덮었을 때: 뒤로가기·공유·저장 버튼(top-12 48 + h-12 48) 바로 아래부터 제목·영양 정보를 촘촘히
+const BUTTONS_ROW_BOTTOM = 48 + 48;
+const COLLAPSED_HEIGHT = BUTTONS_ROW_BOTTOM + 112;
 const CARD_OVERLAP = 56; // 처음에 카드가 사진 아래쪽과 겹치는 만큼
 // 이만큼 스크롤하면 카드가 화면 맨 위까지 늘어나 사진을 다 덮는다
 const COLLAPSE_SCROLL = 150;
@@ -77,7 +78,7 @@ export default function RecipeDetailScreen() {
     const startTop = heroHeight.value - CARD_OVERLAP + 20;
     return {
       top: startTop * (1 - progress),
-      height: CARD_HEIGHT + BUTTONS_BOTTOM * progress,
+      height: CARD_HEIGHT + (COLLAPSED_HEIGHT - CARD_HEIGHT) * progress,
       opacity: heroHeight.value > 0 ? 1 : 0,
       paddingHorizontal: 20 * (1 - progress),
     };
@@ -85,11 +86,21 @@ export default function RecipeDetailScreen() {
   const animatedCardStyle = useAnimatedStyle(() => {
     const progress = interpolate(scrollY.value, [0, COLLAPSE_SCROLL], [0, 1], Extrapolation.CLAMP);
     return {
-      paddingTop: BUTTONS_BOTTOM * progress,
+      paddingTop: BUTTONS_ROW_BOTTOM * progress,
       borderTopLeftRadius: 12 * (1 - progress),
       borderTopRightRadius: 12 * (1 - progress),
     };
   });
+
+  // 카드가 다 덮을 즈음 사진을 지운다 (사진이 카드보다 큰 기기에서 아래 끝이 남지 않게)
+  const photoStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      scrollY.value,
+      [COLLAPSE_SCROLL - 30, COLLAPSE_SCROLL],
+      [1, 0],
+      Extrapolation.CLAMP
+    ),
+  }));
 
   // 버튼: 사진 위에선 어두운 원 배경 + 밝은 아이콘, 카드 위에선 배경 없이 어두운 아이콘
   const coverStyle = useAnimatedStyle(() => ({
@@ -144,11 +155,12 @@ export default function RecipeDetailScreen() {
         onLayout={(event) => {
           heroHeight.value = event.nativeEvent.layout.height;
         }}>
-        {image_uri ? (
-          <Image source={{ uri: image_uri }} style={{ width: '100%', height: '100%' }} />
-        ) : (
-          <Image source={logo} style={{ width: '100%', height: '100%' }} />
-        )}
+        <Animated.View className="h-full w-full" style={photoStyle}>
+          <Image
+            source={image_uri ? { uri: image_uri } : logo}
+            style={{ width: '100%', height: '100%' }}
+          />
+        </Animated.View>
       </View>
 
       {/* 제목 카드 (높이·위치는 animatedTitleStyle) */}
