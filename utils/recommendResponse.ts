@@ -12,7 +12,7 @@ const str = (v: unknown): string | null => (typeof v === 'string' ? v : null);
 const num = (v: unknown): number | null => (typeof v === 'number' ? v : null);
 
 // 서버 행(recipe_with_is_saved 모양)을 탐색 탭 RecipeCard가 받는 RecipeDB 모양으로.
-// 응답에는 태그 열이 없으므로 null. 카드가 재료 JSON을 바로 파싱하므로 재료가 없는 행은 뺀다
+// 응답에는 태그 열이 없으므로 null (재료 태그는 []). 카드가 재료 JSON을 바로 파싱하므로 재료가 없는 행은 뺀다
 const toRecipe = (value: unknown): RecipeDB | null => {
   const r = asObject(value);
   if (!r || typeof r.id !== 'number' || typeof r.ingredients !== 'string') return null;
@@ -31,6 +31,7 @@ const toRecipe = (value: unknown): RecipeDB | null => {
     spicy: null,
     cuisine: null,
     method: null,
+    ingredient_tags: [],
     is_saved: r.is_saved === true,
     saved_count: num(r.saved_count) ?? 0,
   };

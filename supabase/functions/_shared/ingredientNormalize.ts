@@ -14,6 +14,9 @@ const compact = (raw: string) => raw.toLowerCase().replace(/\s+/g, '');
 // 괄호(반각·전각) 안 설명을 떼고 소문자·공백 제거
 const strip = (raw: string) => compact(raw.replace(/\([^)]*\)|（[^）]*）/g, ''));
 
+// buildIngredientNormalizer가 돌려주는 등록 이름과 같은 처리 (등록 이름 원문으로 되돌릴 때 키로 쓴다)
+export const ingredientKey = strip;
+
 // 부분 문자열 포함으로 비교할 최소 길이. 한 글자(파·김·소 등)는 양파·김치·소금까지 잡으므로
 // 정확히 같을 때만 쓴다.
 const MIN_CONTAINMENT_LENGTH = 2;

@@ -425,6 +425,7 @@ export type Database = {
           cuisine: string | null;
           id: number;
           image_uri: string | null;
+          ingredient_tags: string[];
           ingredients: string | null;
           is_zero_carb: boolean | null;
           method: string | null;
@@ -441,6 +442,7 @@ export type Database = {
           cuisine?: string | null;
           id?: number;
           image_uri?: string | null;
+          ingredient_tags?: string[];
           ingredients?: string | null;
           is_zero_carb?: boolean | null;
           method?: string | null;
@@ -457,6 +459,7 @@ export type Database = {
           cuisine?: string | null;
           id?: number;
           image_uri?: string | null;
+          ingredient_tags?: string[];
           ingredients?: string | null;
           is_zero_carb?: boolean | null;
           method?: string | null;

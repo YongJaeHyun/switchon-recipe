@@ -40,6 +40,7 @@ describe('interpretRecommendResponse', () => {
           spicy: null,
           cuisine: null,
           method: null,
+          ingredient_tags: [],
           is_saved: true,
           saved_count: 3,
         },
