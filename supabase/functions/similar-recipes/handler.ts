@@ -3,7 +3,7 @@
 // 무료 기능이라 패스 확인은 하지 않는다 (로그인만 필요).
 // 흐름: 인증 -> 본문 검증(recipeId 양의 정수, 아니면 400) -> 기준 레시피 조회(없으면 404)
 // -> 주차 계산 -> 후보 조회(맞춤 추천과 같은 공개 범위: week <= min(주차,4), 이미지 있는 레시피)
-// -> 점수(_shared/similarRecipes.ts) -> 동점 후보까지 저장 기록 조회 -> 상위 6개
+// -> 점수(_shared/similarRecipes.ts, 양념 제외) -> 동점 후보까지 저장 기록 조회 -> 거의 같은 요리를 뺀 상위 6개
 // -> 카드용 행 조회 + 저장 여부·저장 수를 붙여 recipe_with_is_saved 행 모양으로 응답.
 
 import {
@@ -119,19 +119,28 @@ export async function handleSimilar(req: Request, deps: SimilarDeps): Promise<Re
     const scored = scoreCandidates(target, candidates, buildIngredientNormalizer(registered));
     if (scored.length === 0) return json({ recipes: [] }, 200);
 
-    // 동점 정렬(저장 수)에 필요한 후보만 저장 기록을 조회한다. 상위 6개도 이 안에 있다
-    const pool = contenders(scored, SIMILAR_COUNT);
-    const saves = await deps.fetchSaves(pool.map((s) => s.id));
+    // 동점 정렬(저장 수)에 필요한 후보만 저장 기록을 조회한다. 상위 n개 안에 들 수 있는 후보(동점 포함)를
+    // 정렬하면 전체 정렬의 앞부분과 같다. 중복을 빼고 6개가 안 되면 n을 늘려 다음 후보까지 본다
     const totalCounts: Record<number, number> = {};
     const otherCounts: Record<number, number> = {};
     const savedAt = new Map<number, string>();
-    for (const s of saves) {
-      totalCounts[s.recipe_id] = (totalCounts[s.recipe_id] ?? 0) + 1;
-      if (s.uid === uid) savedAt.set(s.recipe_id, s.created_at);
-      else otherCounts[s.recipe_id] = (otherCounts[s.recipe_id] ?? 0) + 1;
+    const fetched = new Set<number>();
+    let ids: number[] = [];
+    for (let n = SIMILAR_COUNT; ; n += SIMILAR_COUNT) {
+      const pool = contenders(scored, n);
+      const newIds = pool.map((s) => s.id).filter((id) => !fetched.has(id));
+      if (newIds.length > 0) {
+        newIds.forEach((id) => fetched.add(id));
+        for (const s of await deps.fetchSaves(newIds)) {
+          totalCounts[s.recipe_id] = (totalCounts[s.recipe_id] ?? 0) + 1;
+          if (s.uid === uid) savedAt.set(s.recipe_id, s.created_at);
+          else otherCounts[s.recipe_id] = (otherCounts[s.recipe_id] ?? 0) + 1;
+        }
+      }
+      ids = rankSimilar(pool, totalCounts, SIMILAR_COUNT);
+      if (ids.length >= SIMILAR_COUNT || pool.length >= scored.length) break;
     }
 
-    const ids = rankSimilar(pool, totalCounts, SIMILAR_COUNT);
     const cards = await deps.fetchCards(ids);
     const cardById = new Map(cards.map((c) => [c.id, c]));
 

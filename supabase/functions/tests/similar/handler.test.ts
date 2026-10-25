@@ -133,7 +133,7 @@ describe('handleSimilar', () => {
   it('최대 6개, 점수 → 저장 수 → id 순', async () => {
     // 모두 공유 재료 없이 종류·방식이 같다 (동점 3.5)
     const candidates = Array.from({ length: 9 }, (_, i) =>
-      recipe({ id: i + 1, ingredients: ing('x') })
+      recipe({ id: i + 1, ingredients: ing(`x${i}`) })
     );
     // 재료가 겹치는 하나는 점수가 가장 높다
     candidates.push(recipe({ id: 50, ingredients: ing('두부') }));
@@ -154,6 +154,33 @@ describe('handleSimilar', () => {
       )
     ).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 50]);
     expect(deps.fetchCards).toHaveBeenCalledWith([50, 3, 1, 9, 8, 7]);
+  });
+
+  it('중복을 뺀 뒤 모자라면 다음 순위 후보로 6개를 채운다', async () => {
+    // 1~6: 이름이 같은 요리(점수가 가장 높음), 7~12: 서로 다른 요리(점수가 낮음)
+    const candidates = [
+      ...Array.from({ length: 6 }, (_, i) =>
+        recipe({
+          id: i + 1,
+          recipe_name: '두부 된장 볶음',
+          ingredients: ing('두부', '된장', `y${i}`),
+        })
+      ),
+      ...Array.from({ length: 6 }, (_, i) =>
+        recipe({
+          id: i + 7,
+          recipe_name: `다른 요리${i}`,
+          ingredients: ing('두부', `z${i}`, 'w', 'v'),
+        })
+      ),
+    ];
+    const deps = makeDeps({ fetchCandidates: vi.fn(async () => candidates) });
+    const { body } = await read(await handleSimilar(req({ recipeId: 100 }), deps));
+    expect(ids(body)).toEqual([6, 12, 11, 10, 9, 8]);
+    // 처음엔 상위 6개(1~6)만, 모자라서 다음 후보까지 저장 기록을 조회한다
+    const calls = (deps.fetchSaves as ReturnType<typeof vi.fn>).mock.calls;
+    expect(calls.length).toBe(2);
+    expect([...calls[0][0]].sort((a: number, b: number) => a - b)).toEqual([1, 2, 3, 4, 5, 6]);
   });
 
   it('비슷한 후보가 없으면 빈 목록, 카드 조회 안 함', async () => {
