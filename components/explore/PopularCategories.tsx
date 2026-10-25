@@ -7,6 +7,7 @@ import { useQueryWith402Retry } from 'hooks/useCustomQuery';
 import { View } from 'react-native';
 import { Nullable } from '../../types/common';
 import { requireOnline } from 'utils/network';
+import { uniqueSearchKeywords } from 'utils/searchKeyword';
 
 export function PopularCategories() {
   const { data: popularCategories } = useQueryWith402Retry({
@@ -35,11 +36,16 @@ export function PopularCategories() {
             showDeleteIcon={false}
           />
         ) : (
-          popularCategories?.map((category) => (
+          // 예전에 괄호 설명째 기록된 값('식용유 (코코넛 오일 …)')도 검색어로 정리해 보여준다
+          uniqueSearchKeywords(
+            (popularCategories ?? []).flatMap((category) =>
+              category.value ? [category.value] : []
+            )
+          ).map((keyword) => (
             <Chip
-              key={`category-${category.value}`}
-              onPress={() => search(category.value)}
-              value={category.value}
+              key={`category-${keyword}`}
+              onPress={() => search(keyword)}
+              value={keyword}
               outerClassName="border-neutral-300 bg-green-100"
               className="text-green-600"
               showDeleteIcon={false}

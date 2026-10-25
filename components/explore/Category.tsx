@@ -4,6 +4,7 @@ import { Link } from 'expo-router';
 import { View } from 'react-native';
 import colors from 'tailwindcss/colors';
 import { RecipeIngredient, RecipeCardData } from 'types/recipe';
+import { searchKeywordOf } from 'utils/searchKeyword';
 import { HighlightText } from './HighlightText';
 
 interface CategoryProps {
@@ -16,11 +17,15 @@ export function Category({ keyword, ingredient, recipe }: CategoryProps) {
   const isOldVersion = typeof ingredient === 'string';
   const ingredientName = isOldVersion ? ingredient : ingredient.name;
 
+  // 검색과 인기 카테고리 기록에는 괄호 속 부가 설명을 뺀 이름만 ('현미밥 (지은 밥)' → '현미밥')
+  const keywordToSearch = searchKeywordOf(ingredientName);
+
   const pressCategory = () => {
-    SearchCategoryHistoryAPI.insert(ingredientName);
+    SearchCategoryHistoryAPI.insert(keywordToSearch);
   };
 
-  if (isOldVersion || !ingredientName.length) {
+  // 검색어가 없으면(옛 형식·괄호 설명뿐인 이름) 누를 수 없는 칩
+  if (isOldVersion || !keywordToSearch) {
     return (
       <View
         key={`${recipe.recipe_name}-${ingredientName}`}
@@ -32,7 +37,13 @@ export function Category({ keyword, ingredient, recipe }: CategoryProps) {
     return (
       <Link
         key={`${recipe.recipe_name}-${ingredientName}`}
-        href={`/(tabs)/explore/searchResult?keyword=${ingredientName}&week=${recipe.week}`}
+        href={{
+          pathname: '/(tabs)/explore/searchResult',
+          params: {
+            keyword: keywordToSearch,
+            ...(recipe.week ? { week: String(recipe.week) } : {}),
+          },
+        }}
         asChild>
         <RippleButton
           onPress={pressCategory}
