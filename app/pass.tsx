@@ -52,7 +52,7 @@ const Centered = ({ children }: { children: React.ReactNode }) => (
   <View className="flex-1 items-center justify-center gap-3 px-5">{children}</View>
 );
 
-// 맨 위: 패스 35일이 내 다이어트 일정(주차)의 어디까지를 덮는지
+// 맨 위: 패스 5주(35일)가 내 다이어트 일정(주차)의 어디까지를 덮는지
 const JourneyHero = ({ status }: { status: PassStatus }) => {
   const startDate = useUserStore((state) => state.start_date);
   const remaining = formatPassRemaining(status.passExpiresAt, new Date());
@@ -74,7 +74,7 @@ const JourneyHero = ({ status }: { status: PassStatus }) => {
         </View>
       )}
       <View>
-        <Text className="text-6xl font-bold text-neutral-900">35일</Text>
+        <Text className="text-6xl font-bold text-neutral-900">5주</Text>
         <Text className="mt-1 text-lg text-neutral-700">
           {remaining ? '연장하면' : '오늘 결제하면'}{' '}
           <Text className="text-lg font-bold text-neutral-900">{endsOn}까지</Text> 모든 기능을 써요
@@ -267,7 +267,7 @@ export default function PassScreen() {
               <ActivityIndicator color={colors.white} />
             ) : (
               <Text className="text-lg font-bold text-white">
-                {price}으로 35일 {hasPass ? '연장하기' : '시작하기'}
+                {price}으로 5주 {hasPass ? '연장하기' : '시작하기'}
               </Text>
             )}
           </RippleButton>
