@@ -389,6 +389,13 @@ verify_jwt = true
 import_map = "./functions/sync-voided-purchases/deno.json"
 entrypoint = "./functions/sync-voided-purchases/index.ts"
 
+# 레시피 검색용 재료 태그 갱신: ingredient 변경 트리거·매일 cron이 service role 키로 호출 (JWT 서명은 게이트웨이, role은 함수 안에서 확인)
+[functions.refresh-ingredient-tags]
+enabled = true
+verify_jwt = true
+import_map = "./functions/refresh-ingredient-tags/deno.json"
+entrypoint = "./functions/refresh-ingredient-tags/index.ts"
+
 # AdMob 보상형 광고 SSV 콜백은 Google이 JWT 없이 호출한다 (서명은 함수 안에서 검증)
 [functions.admob-ssv]
 enabled = true

@@ -16,5 +16,5 @@
     "nativewind-env.d.ts",
     "supabase/functions/tsconfig.json"
 , "const/const.js", "vitest.config.mts"  ],
-  "exclude": ["supabase", "node_modules", "scripts/backfillIngredientTags.ts"]
+  "exclude": ["supabase", "node_modules"]
 }

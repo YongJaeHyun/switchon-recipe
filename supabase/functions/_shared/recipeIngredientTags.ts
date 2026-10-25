@@ -131,7 +131,7 @@ export function ingredientTagsFor(
 }
 
 // 레시피 생성용: 등록 재료를 읽어 태그를 만든다. 읽기에 실패해도 레시피 생성을 막지 않도록 []를 돌려주고 로그만 남긴다
-// (빠진 태그는 scripts/backfillIngredientTags.ts로 다시 채운다)
+// (빠진 태그는 refresh-ingredient-tags 함수의 매일 cron이 다시 채운다)
 export async function loadIngredientTags(
   fetchRegistered: () => Promise<RegisteredIngredient[]>,
   ingredientsJson: string,
@@ -164,7 +164,7 @@ export interface TagUpdate {
   tags: string[];
 }
 
-// 백필용: 새로 계산한 태그가 지금 저장된 것과 다른 행만
+// 태그 갱신(refresh-ingredient-tags)용: 새로 계산한 태그가 지금 저장된 것과 다른 행만
 export function planIngredientTagUpdates(
   rows: TagBackfillRow[],
   matcher: IngredientTagMatcher
