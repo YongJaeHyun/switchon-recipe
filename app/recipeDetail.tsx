@@ -28,9 +28,14 @@ import colors from 'tailwindcss/colors';
 import { RecipeDB } from 'types/database';
 import { IngredientSchema, Recipe, RecipeIngredient } from 'types/recipe';
 
+// 뒤로가기·공유·저장 버튼 아래(top-12 48 + h-12 48)에서 8 띄운 곳
 const BUTTONS_BOTTOM = 48 + 48 + 8;
-// 스크롤하면 사진이 흰색으로 덮여 위쪽이 흰 머리말이 된다 (이 구간에서 서서히)
-const COVER_RANGE = [40, 150];
+const CARD_HEIGHT = 160;
+const CARD_OVERLAP = 56; // 처음에 카드가 사진 아래쪽과 겹치는 만큼
+// 이만큼 스크롤하면 카드가 화면 맨 위까지 늘어나 사진을 다 덮는다
+const COLLAPSE_SCROLL = 150;
+// 버튼 모양(사진 위 → 카드 위)이 바뀌는 구간
+const COVER_RANGE = [COLLAPSE_SCROLL - 60, COLLAPSE_SCROLL];
 
 export default function RecipeDetailScreen() {
   const { recipe }: { recipe: string } = useLocalSearchParams();
@@ -65,26 +70,28 @@ export default function RecipeDetailScreen() {
     },
   });
 
+  // 제목 카드: 처음엔 사진 아래쪽에 겹쳐 있고, 스크롤하면 윗변이 화면 맨 위까지 올라가며 늘어나 사진을 덮는다.
+  // 제목·영양 정보는 카드 아래쪽에 남도록 늘어난 만큼 위 여백을 준다 (버튼과 겹치지 않게)
   const animatedTitleStyle = useAnimatedStyle(() => {
-    // 카드 윗변 = 사진 아래 - 56(-top-14) + translateY. 버튼 아래(48 + 48)에서 8 더 띄운 곳까지만 올린다
-    const lowestUp = heroHeight.value > 0 ? BUTTONS_BOTTOM - (heroHeight.value - 56) : -90;
-    const translateY = interpolate(
-      scrollY.value,
-      [0, 150],
-      [20, Math.min(20, Math.max(-90, lowestUp))],
-      Extrapolation.CLAMP
-    );
-    const paddingHorizontal = interpolate(scrollY.value, [0, 150], [20, 0], Extrapolation.CLAMP);
-
+    const progress = interpolate(scrollY.value, [0, COLLAPSE_SCROLL], [0, 1], Extrapolation.CLAMP);
+    const startTop = heroHeight.value - CARD_OVERLAP + 20;
     return {
-      top: heroHeight.value - 56,
+      top: startTop * (1 - progress),
+      height: CARD_HEIGHT + BUTTONS_BOTTOM * progress,
       opacity: heroHeight.value > 0 ? 1 : 0,
-      transform: [{ translateY }],
-      paddingHorizontal,
+      paddingHorizontal: 20 * (1 - progress),
+    };
+  });
+  const animatedCardStyle = useAnimatedStyle(() => {
+    const progress = interpolate(scrollY.value, [0, COLLAPSE_SCROLL], [0, 1], Extrapolation.CLAMP);
+    return {
+      paddingTop: BUTTONS_BOTTOM * progress,
+      borderTopLeftRadius: 12 * (1 - progress),
+      borderTopRightRadius: 12 * (1 - progress),
     };
   });
 
-  // 사진을 덮는 흰 막, 버튼의 어두운 원 배경(사진 위용)과 아이콘 색(밝은색 → 어두운색)
+  // 버튼: 사진 위에선 어두운 원 배경 + 밝은 아이콘, 카드 위에선 배경 없이 어두운 아이콘
   const coverStyle = useAnimatedStyle(() => ({
     opacity: interpolate(scrollY.value, COVER_RANGE, [0, 1], Extrapolation.CLAMP),
   }));
@@ -92,7 +99,7 @@ export default function RecipeDetailScreen() {
     opacity: interpolate(scrollY.value, COVER_RANGE, [1, 0], Extrapolation.CLAMP),
   }));
 
-  // 사진이 덮이면 상태 표시줄 글자도 어둡게
+  // 카드가 사진을 덮으면 상태 표시줄 글자도 어둡게
   const [isCovered, setIsCovered] = useState(false);
   useAnimatedReaction(
     () => scrollY.value > COVER_RANGE[1] - 30,
@@ -137,23 +144,44 @@ export default function RecipeDetailScreen() {
         onLayout={(event) => {
           heroHeight.value = event.nativeEvent.layout.height;
         }}>
-        <TouchableOpacity onPress={handleGoBack} className="absolute left-5 top-12 z-10">
-          <MaterialIcons name="arrow-back" size={32} color="black" />
-        </TouchableOpacity>
         {image_uri ? (
           <Image source={{ uri: image_uri }} style={{ width: '100%', height: '100%' }} />
         ) : (
           <Image source={logo} style={{ width: '100%', height: '100%' }} />
         )}
-        <Animated.View
-          pointerEvents="none"
-          className="absolute inset-0 bg-white"
-          style={coverStyle}
-        />
+      </View>
 
+      {/* 제목 카드 (높이·위치는 animatedTitleStyle) */}
+      <Animated.View style={animatedTitleStyle} className="absolute left-0 right-0 z-50">
+        <Animated.View
+          style={animatedCardStyle}
+          className="h-full w-full items-center justify-evenly rounded-b-xl bg-white px-8 shadow-xl">
+          <Text className="break-keep text-center text-3xl font-bold">{recipe_name}</Text>
+          <View className="flex-row gap-6">
+            <View className="flex-row items-center gap-2">
+              <MaterialCommunityIcons name="rice" size={16} color={colors.blue[500]} />
+              <Text className="text-medium font-semibold">약 {parsedNutrition.carbohydrates}g</Text>
+            </View>
+            <View className="flex-row items-center gap-2">
+              <FontAwesome6 name="cow" size={16} color={colors.red[500]} />
+              <Text className="text-medium font-semibold">약 {parsedNutrition.protein}g</Text>
+            </View>
+            <View className="flex-row items-center gap-2">
+              <FontAwesome5 name="cheese" size={16} color={colors.yellow[500]} />
+              <Text className="text-medium font-semibold">약 {parsedNutrition.fat}g</Text>
+            </View>
+          </View>
+        </Animated.View>
+      </Animated.View>
+
+      {/* 버튼은 카드보다 위에 (카드가 사진을 덮어도 누를 수 있게) */}
+      <View pointerEvents="box-none" className="absolute inset-x-0 top-0 z-[60]">
+        <TouchableOpacity onPress={handleGoBack} className="absolute left-5 top-12">
+          <MaterialIcons name="arrow-back" size={32} color="black" />
+        </TouchableOpacity>
         <Pressable
           onPress={shareRecipeWithKakao}
-          className="absolute right-24 top-12 z-10 h-12 w-12 items-center justify-center">
+          className="absolute right-24 top-12 h-12 w-12 items-center justify-center">
           <Animated.View
             className="absolute left-0 top-0 h-full w-full rounded-full bg-black/30"
             style={onPhotoStyle}
@@ -167,7 +195,7 @@ export default function RecipeDetailScreen() {
         </Pressable>
         <Pressable
           onPress={toggleIsSaved}
-          className="absolute right-5 top-12 z-10 h-12 w-12 items-center justify-center">
+          className="absolute right-5 top-12 h-12 w-12 items-center justify-center">
           <Animated.View
             className="absolute left-0 top-0 h-full w-full rounded-full bg-black/30"
             style={onPhotoStyle}
@@ -187,27 +215,6 @@ export default function RecipeDetailScreen() {
           )}
         </Pressable>
       </View>
-
-      {/* 제목 카드: 사진 아래쪽과 56만큼 겹치게 둔다 (스크롤하면 버튼 아래까지 올라간다) */}
-      <Animated.View style={animatedTitleStyle} className="absolute left-0 right-0 z-50 h-40">
-        <View className="h-full w-full items-center justify-evenly rounded-xl bg-white px-8 shadow-xl">
-          <Text className="break-keep text-center text-3xl font-bold">{recipe_name}</Text>
-          <View className="flex-row gap-6">
-            <View className="flex-row items-center gap-2">
-              <MaterialCommunityIcons name="rice" size={16} color={colors.blue[500]} />
-              <Text className="text-medium font-semibold">약 {parsedNutrition.carbohydrates}g</Text>
-            </View>
-            <View className="flex-row items-center gap-2">
-              <FontAwesome6 name="cow" size={16} color={colors.red[500]} />
-              <Text className="text-medium font-semibold">약 {parsedNutrition.protein}g</Text>
-            </View>
-            <View className="flex-row items-center gap-2">
-              <FontAwesome5 name="cheese" size={16} color={colors.yellow[500]} />
-              <Text className="text-medium font-semibold">약 {parsedNutrition.fat}g</Text>
-            </View>
-          </View>
-        </View>
-      </Animated.View>
 
       <Animated.ScrollView
         className="relative mb-10 flex-[7]"
