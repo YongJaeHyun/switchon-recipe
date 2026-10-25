@@ -13,10 +13,13 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useQueryWith402Retry } from 'hooks/useCustomQuery';
 import { useToggleSaveRecipe } from 'hooks/useToggleSaveRecipe';
+import { useState } from 'react';
 import { Pressable, TouchableOpacity, View } from 'react-native';
 import Animated, {
   Extrapolation,
   interpolate,
+  runOnJS,
+  useAnimatedReaction,
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
@@ -26,6 +29,8 @@ import { RecipeDB } from 'types/database';
 import { IngredientSchema, Recipe, RecipeIngredient } from 'types/recipe';
 
 const BUTTONS_BOTTOM = 48 + 48 + 8;
+// 스크롤하면 사진이 흰색으로 덮여 위쪽이 흰 머리말이 된다 (이 구간에서 서서히)
+const COVER_RANGE = [40, 150];
 
 export default function RecipeDetailScreen() {
   const { recipe }: { recipe: string } = useLocalSearchParams();
@@ -72,10 +77,29 @@ export default function RecipeDetailScreen() {
     const paddingHorizontal = interpolate(scrollY.value, [0, 150], [20, 0], Extrapolation.CLAMP);
 
     return {
+      top: heroHeight.value - 56,
+      opacity: heroHeight.value > 0 ? 1 : 0,
       transform: [{ translateY }],
       paddingHorizontal,
     };
   });
+
+  // 사진을 덮는 흰 막, 버튼의 어두운 원 배경(사진 위용)과 아이콘 색(밝은색 → 어두운색)
+  const coverStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, COVER_RANGE, [0, 1], Extrapolation.CLAMP),
+  }));
+  const onPhotoStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, COVER_RANGE, [1, 0], Extrapolation.CLAMP),
+  }));
+
+  // 사진이 덮이면 상태 표시줄 글자도 어둡게
+  const [isCovered, setIsCovered] = useState(false);
+  useAnimatedReaction(
+    () => scrollY.value > COVER_RANGE[1] - 30,
+    (covered, previous) => {
+      if (covered !== previous) runOnJS(setIsCovered)(covered);
+    }
+  );
 
   const animatedContentStyle = useAnimatedStyle(() => {
     const translateY = interpolate(scrollY.value, [0, 100], [160, 110], Extrapolation.CLAMP);
@@ -121,27 +145,52 @@ export default function RecipeDetailScreen() {
         ) : (
           <Image source={logo} style={{ width: '100%', height: '100%' }} />
         )}
+        <Animated.View
+          pointerEvents="none"
+          className="absolute inset-0 bg-white"
+          style={coverStyle}
+        />
 
         <Pressable
           onPress={shareRecipeWithKakao}
           className="absolute right-24 top-12 z-10 h-12 w-12 items-center justify-center">
-          <View className="absolute left-0 top-0 h-full w-full rounded-full bg-black/30" />
-          <MaterialIcons name={'share'} size={32} color={colors.neutral[200]} />
+          <Animated.View
+            className="absolute left-0 top-0 h-full w-full rounded-full bg-black/30"
+            style={onPhotoStyle}
+          />
+          <Animated.View style={onPhotoStyle}>
+            <MaterialIcons name="share" size={32} color={colors.neutral[200]} />
+          </Animated.View>
+          <Animated.View className="absolute" style={coverStyle}>
+            <MaterialIcons name="share" size={32} color={colors.neutral[700]} />
+          </Animated.View>
         </Pressable>
         <Pressable
           onPress={toggleIsSaved}
           className="absolute right-5 top-12 z-10 h-12 w-12 items-center justify-center">
-          <View className="absolute left-0 top-0 h-full w-full rounded-full bg-black/30" />
-          <MaterialIcons
-            name={isSaved ? 'star' : 'star-outline'}
-            size={36}
-            color={colors.yellow[500]}
+          <Animated.View
+            className="absolute left-0 top-0 h-full w-full rounded-full bg-black/30"
+            style={onPhotoStyle}
           />
+          {isSaved ? (
+            <MaterialIcons name="star" size={36} color={colors.yellow[500]} />
+          ) : (
+            <>
+              {/* 빈 별은 흰 바탕에서 노란색이 잘 안 보여 어두운색으로 바꾼다 */}
+              <Animated.View style={onPhotoStyle}>
+                <MaterialIcons name="star-outline" size={36} color={colors.yellow[500]} />
+              </Animated.View>
+              <Animated.View className="absolute" style={coverStyle}>
+                <MaterialIcons name="star-outline" size={36} color={colors.neutral[700]} />
+              </Animated.View>
+            </>
+          )}
         </Pressable>
       </View>
 
-      <Animated.View style={animatedTitleStyle} className="relative z-50 items-center">
-        <View className="absolute -top-14 h-40 w-full items-center justify-evenly rounded-xl bg-white px-8 shadow-xl">
+      {/* 제목 카드: 사진 아래쪽과 56만큼 겹치게 둔다 (스크롤하면 버튼 아래까지 올라간다) */}
+      <Animated.View style={animatedTitleStyle} className="absolute left-0 right-0 z-50 h-40">
+        <View className="h-full w-full items-center justify-evenly rounded-xl bg-white px-8 shadow-xl">
           <Text className="break-keep text-center text-3xl font-bold">{recipe_name}</Text>
           <View className="flex-row gap-6">
             <View className="flex-row items-center gap-2">
@@ -220,7 +269,7 @@ export default function RecipeDetailScreen() {
           <SimilarRecipes recipeId={id} />
         </Animated.View>
       </Animated.ScrollView>
-      <StatusBar style="light" />
+      <StatusBar style={isCovered ? 'dark' : 'light'} />
     </View>
   );
 }
