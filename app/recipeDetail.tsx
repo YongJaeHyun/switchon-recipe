@@ -13,13 +13,10 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useQueryWith402Retry } from 'hooks/useCustomQuery';
 import { useToggleSaveRecipe } from 'hooks/useToggleSaveRecipe';
-import { useState } from 'react';
 import { Pressable, TouchableOpacity, View } from 'react-native';
 import Animated, {
   Extrapolation,
   interpolate,
-  runOnJS,
-  useAnimatedReaction,
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
@@ -28,15 +25,7 @@ import colors from 'tailwindcss/colors';
 import { RecipeDB } from 'types/database';
 import { IngredientSchema, Recipe, RecipeIngredient } from 'types/recipe';
 
-const CARD_HEIGHT = 160;
-// 사진을 다 덮었을 때: 뒤로가기·공유·저장 버튼(top-12 48 + h-12 48) 바로 아래부터 제목·영양 정보를 촘촘히
-const BUTTONS_ROW_BOTTOM = 48 + 48;
-const COLLAPSED_HEIGHT = BUTTONS_ROW_BOTTOM + 112;
-const CARD_OVERLAP = 56; // 처음에 카드가 사진 아래쪽과 겹치는 만큼
-// 이만큼 스크롤하면 카드가 화면 맨 위까지 늘어나 사진을 다 덮는다
-const COLLAPSE_SCROLL = 150;
-// 버튼 모양(사진 위 → 카드 위)이 바뀌는 구간
-const COVER_RANGE = [COLLAPSE_SCROLL - 60, COLLAPSE_SCROLL];
+const BUTTONS_BOTTOM = 48 + 48 + 8;
 
 export default function RecipeDetailScreen() {
   const { recipe }: { recipe: string } = useLocalSearchParams();
@@ -71,53 +60,22 @@ export default function RecipeDetailScreen() {
     },
   });
 
-  // 제목 카드: 처음엔 사진 아래쪽에 겹쳐 있고, 스크롤하면 윗변이 화면 맨 위까지 올라가며 늘어나 사진을 덮는다.
-  // 제목·영양 정보는 카드 아래쪽에 남도록 늘어난 만큼 위 여백을 준다 (버튼과 겹치지 않게)
   const animatedTitleStyle = useAnimatedStyle(() => {
-    const progress = interpolate(scrollY.value, [0, COLLAPSE_SCROLL], [0, 1], Extrapolation.CLAMP);
-    const startTop = heroHeight.value - CARD_OVERLAP + 20;
-    return {
-      top: startTop * (1 - progress),
-      height: CARD_HEIGHT + (COLLAPSED_HEIGHT - CARD_HEIGHT) * progress,
-      opacity: heroHeight.value > 0 ? 1 : 0,
-      paddingHorizontal: 20 * (1 - progress),
-    };
-  });
-  const animatedCardStyle = useAnimatedStyle(() => {
-    const progress = interpolate(scrollY.value, [0, COLLAPSE_SCROLL], [0, 1], Extrapolation.CLAMP);
-    return {
-      paddingTop: BUTTONS_ROW_BOTTOM * progress,
-      borderTopLeftRadius: 12 * (1 - progress),
-      borderTopRightRadius: 12 * (1 - progress),
-    };
-  });
-
-  // 카드가 다 덮을 즈음 사진을 지운다 (사진이 카드보다 큰 기기에서 아래 끝이 남지 않게)
-  const photoStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(
+    // 카드 윗변 = 사진 아래 - 56(-top-14) + translateY. 버튼 아래(48 + 48)에서 8 더 띄운 곳까지만 올린다
+    const lowestUp = heroHeight.value > 0 ? BUTTONS_BOTTOM - (heroHeight.value - 56) : -90;
+    const translateY = interpolate(
       scrollY.value,
-      [COLLAPSE_SCROLL - 30, COLLAPSE_SCROLL],
-      [1, 0],
+      [0, 150],
+      [20, Math.min(20, Math.max(-90, lowestUp))],
       Extrapolation.CLAMP
-    ),
-  }));
+    );
+    const paddingHorizontal = interpolate(scrollY.value, [0, 150], [20, 0], Extrapolation.CLAMP);
 
-  // 버튼: 사진 위에선 어두운 원 배경 + 밝은 아이콘, 카드 위에선 배경 없이 어두운 아이콘
-  const coverStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(scrollY.value, COVER_RANGE, [0, 1], Extrapolation.CLAMP),
-  }));
-  const onPhotoStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(scrollY.value, COVER_RANGE, [1, 0], Extrapolation.CLAMP),
-  }));
-
-  // 카드가 사진을 덮으면 상태 표시줄 글자도 어둡게
-  const [isCovered, setIsCovered] = useState(false);
-  useAnimatedReaction(
-    () => scrollY.value > COVER_RANGE[1] - 30,
-    (covered, previous) => {
-      if (covered !== previous) runOnJS(setIsCovered)(covered);
-    }
-  );
+    return {
+      transform: [{ translateY }],
+      paddingHorizontal,
+    };
+  });
 
   const animatedContentStyle = useAnimatedStyle(() => {
     const translateY = interpolate(scrollY.value, [0, 100], [160, 110], Extrapolation.CLAMP);
@@ -155,19 +113,35 @@ export default function RecipeDetailScreen() {
         onLayout={(event) => {
           heroHeight.value = event.nativeEvent.layout.height;
         }}>
-        <Animated.View className="h-full w-full" style={photoStyle}>
-          <Image
-            source={image_uri ? { uri: image_uri } : logo}
-            style={{ width: '100%', height: '100%' }}
+        <TouchableOpacity onPress={handleGoBack} className="absolute left-5 top-12 z-10">
+          <MaterialIcons name="arrow-back" size={32} color="black" />
+        </TouchableOpacity>
+        {image_uri ? (
+          <Image source={{ uri: image_uri }} style={{ width: '100%', height: '100%' }} />
+        ) : (
+          <Image source={logo} style={{ width: '100%', height: '100%' }} />
+        )}
+
+        <Pressable
+          onPress={shareRecipeWithKakao}
+          className="absolute right-24 top-12 z-10 h-12 w-12 items-center justify-center">
+          <View className="absolute left-0 top-0 h-full w-full rounded-full bg-black/30" />
+          <MaterialIcons name={'share'} size={32} color={colors.neutral[200]} />
+        </Pressable>
+        <Pressable
+          onPress={toggleIsSaved}
+          className="absolute right-5 top-12 z-10 h-12 w-12 items-center justify-center">
+          <View className="absolute left-0 top-0 h-full w-full rounded-full bg-black/30" />
+          <MaterialIcons
+            name={isSaved ? 'star' : 'star-outline'}
+            size={36}
+            color={colors.yellow[500]}
           />
-        </Animated.View>
+        </Pressable>
       </View>
 
-      {/* 제목 카드 (높이·위치는 animatedTitleStyle) */}
-      <Animated.View style={animatedTitleStyle} className="absolute left-0 right-0 z-50">
-        <Animated.View
-          style={animatedCardStyle}
-          className="h-full w-full items-center justify-evenly rounded-b-xl bg-white px-8 shadow-xl">
+      <Animated.View style={animatedTitleStyle} className="relative z-50 items-center">
+        <View className="absolute -top-14 h-40 w-full items-center justify-evenly rounded-xl bg-white px-8 shadow-xl">
           <Text className="break-keep text-center text-3xl font-bold">{recipe_name}</Text>
           <View className="flex-row gap-6">
             <View className="flex-row items-center gap-2">
@@ -183,50 +157,8 @@ export default function RecipeDetailScreen() {
               <Text className="text-medium font-semibold">약 {parsedNutrition.fat}g</Text>
             </View>
           </View>
-        </Animated.View>
+        </View>
       </Animated.View>
-
-      {/* 버튼은 카드보다 위에 (카드가 사진을 덮어도 누를 수 있게) */}
-      <View pointerEvents="box-none" className="absolute inset-x-0 top-0 z-[60]">
-        <TouchableOpacity onPress={handleGoBack} className="absolute left-5 top-12">
-          <MaterialIcons name="arrow-back" size={32} color="black" />
-        </TouchableOpacity>
-        <Pressable
-          onPress={shareRecipeWithKakao}
-          className="absolute right-24 top-12 h-12 w-12 items-center justify-center">
-          <Animated.View
-            className="absolute left-0 top-0 h-full w-full rounded-full bg-black/30"
-            style={onPhotoStyle}
-          />
-          <Animated.View style={onPhotoStyle}>
-            <MaterialIcons name="share" size={32} color={colors.neutral[200]} />
-          </Animated.View>
-          <Animated.View className="absolute" style={coverStyle}>
-            <MaterialIcons name="share" size={32} color={colors.neutral[700]} />
-          </Animated.View>
-        </Pressable>
-        <Pressable
-          onPress={toggleIsSaved}
-          className="absolute right-5 top-12 h-12 w-12 items-center justify-center">
-          <Animated.View
-            className="absolute left-0 top-0 h-full w-full rounded-full bg-black/30"
-            style={onPhotoStyle}
-          />
-          {isSaved ? (
-            <MaterialIcons name="star" size={36} color={colors.yellow[500]} />
-          ) : (
-            <>
-              {/* 빈 별은 흰 바탕에서 노란색이 잘 안 보여 어두운색으로 바꾼다 */}
-              <Animated.View style={onPhotoStyle}>
-                <MaterialIcons name="star-outline" size={36} color={colors.yellow[500]} />
-              </Animated.View>
-              <Animated.View className="absolute" style={coverStyle}>
-                <MaterialIcons name="star-outline" size={36} color={colors.neutral[700]} />
-              </Animated.View>
-            </>
-          )}
-        </Pressable>
-      </View>
 
       <Animated.ScrollView
         className="relative mb-10 flex-[7]"
@@ -288,7 +220,7 @@ export default function RecipeDetailScreen() {
           <SimilarRecipes recipeId={id} />
         </Animated.View>
       </Animated.ScrollView>
-      <StatusBar style={isCovered ? 'dark' : 'light'} />
+      <StatusBar style="light" />
     </View>
   );
 }
