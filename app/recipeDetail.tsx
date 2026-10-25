@@ -6,6 +6,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { shareCustomTemplate } from '@react-native-kakao/share';
 import { RecipeAPI } from 'api/RecipeAPI';
 import { Text } from 'components/common/Text';
+import { SimilarRecipes } from 'components/recipes/SimilarRecipes';
 import { logo } from 'const/assets';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -200,6 +201,8 @@ export default function RecipeDetailScreen() {
               </View>
             ))}
           </View>
+
+          <SimilarRecipes recipeId={id} />
         </Animated.View>
       </Animated.ScrollView>
       <StatusBar style="light" />

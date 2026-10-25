@@ -410,6 +410,13 @@ verify_jwt = true
 import_map = "./functions/recommend-recipes/deno.json"
 entrypoint = "./functions/recommend-recipes/index.ts"
 
+# 레시피 상세의 비슷한 레시피 (무료, 유저 JWT)
+[functions.similar-recipes]
+enabled = true
+verify_jwt = true
+import_map = "./functions/similar-recipes/deno.json"
+entrypoint = "./functions/similar-recipes/index.ts"
+
 # 기존 레시피 태그 백필: service role 키로만 호출 (JWT 서명은 게이트웨이, role은 함수 안에서 확인)
 [functions.tag-recipes]
 enabled = true

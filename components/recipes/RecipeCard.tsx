@@ -10,7 +10,13 @@ import colors from 'tailwindcss/colors';
 import { RecipeWithIsSavedDB } from 'types/database';
 import { getWeekColor } from 'utils/getWeekColor';
 
-export function RecipeCard(recipe: RecipeWithIsSavedDB) {
+interface RecipeCardProps extends RecipeWithIsSavedDB {
+  // 상세 화면에서 다른 레시피 상세로 갈 때: 같은 화면이면 Link 기본 동작(navigate)이 새 화면을 쌓지 않고
+  // 현재 화면의 params만 바꾸므로, 쌓아서 뒤로 가기로 돌아올 수 있게 push한다
+  push?: boolean;
+}
+
+export function RecipeCard({ push, ...recipe }: RecipeCardProps) {
   const { isSavedMap, toggleIsSaved } = useRecipeStore();
   if (!recipe.id) return;
 
@@ -20,6 +26,7 @@ export function RecipeCard(recipe: RecipeWithIsSavedDB) {
   return (
     <Link
       href={`/recipeDetail?recipe=${JSON.stringify({ ...recipe, isSaved })}`}
+      push={push}
       className="h-48 w-48">
       <View
         className="w-full flex-1 overflow-hidden rounded-xl"

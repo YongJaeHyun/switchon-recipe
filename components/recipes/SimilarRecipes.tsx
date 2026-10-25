@@ -1,0 +1,40 @@
+import { ImageSkeleton } from 'components/common/ImageSkeleton';
+import { Text } from 'components/common/Text';
+import { useSimilarRecipes } from 'hooks/useSimilarRecipes';
+import { FlatList, View } from 'react-native';
+import { RecipeCard } from './RecipeCard';
+
+const SKELETON_COUNT = 3;
+
+// 레시피 상세 아래의 비슷한 레시피 (무료). 불러오는 중엔 카드 자리 스켈레톤, 실패·빈 결과면 섹션을 숨긴다
+export function SimilarRecipes({ recipeId }: { recipeId: number }) {
+  // isLoading: 첫 조회 중 (로그인 전처럼 조회하지 않는 동안은 false라 스켈레톤이 남지 않는다)
+  const { data: recipes, isLoading } = useSimilarRecipes(recipeId);
+
+  if (!isLoading && !recipes?.length) return null;
+
+  return (
+    <View className="mt-10">
+      <Text className="mb-4 text-lg font-bold">비슷한 레시피</Text>
+      {isLoading ? (
+        <View className="h-52 flex-row gap-5 overflow-hidden">
+          {Array.from({ length: SKELETON_COUNT }, (_, i) => (
+            <View key={i} className="h-48 w-48 overflow-hidden rounded-xl">
+              <ImageSkeleton />
+            </View>
+          ))}
+        </View>
+      ) : (
+        <FlatList
+          className="h-52"
+          data={recipes}
+          contentContainerClassName="gap-5"
+          keyExtractor={(item) => 'SimilarRecipes' + item.id?.toString()}
+          renderItem={({ item }) => <RecipeCard {...item} push />}
+          showsHorizontalScrollIndicator={false}
+          horizontal
+        />
+      )}
+    </View>
+  );
+}
