@@ -12,7 +12,7 @@ import { Keyboard, View } from 'react-native';
 import colors from 'tailwindcss/colors';
 import { Nullable } from 'types/common';
 import { requireOnline } from 'utils/network';
-import { registerForPushNotificationsAsync } from 'utils/notifications';
+import { enablePushForChannel, showNotificationPermissionAlert } from 'utils/notifications';
 import { showSuccessToast } from 'utils/showToast';
 import {
   MAX_WEIGHT_KG,
@@ -87,10 +87,12 @@ export function WeightInputSheet({ bottomSheetRef, target }: WeightInputSheetPro
 
   const answerReminder = async (on: boolean) => {
     setAskReminder(false);
-    // 체중·리포트 알림 채널 등록 (권한 요청 포함). 저장 결과와 상관없이, 화면을 막지 않는다
-    if (on) registerForPushNotificationsAsync(CHANNELS.REPORT).catch(() => {});
-    await updateSetting({ weight_reminder: on, weight_reminder_asked: true });
-    if (on) {
+    // 켜려면 알림 권한이 있어야 한다. 거부하면 꺼진 채로 저장하고(다시 묻지 않음) 설정에서 허용하도록 안내한다
+    const denied = on && (await enablePushForChannel(CHANNELS.REPORT)) === 'denied';
+    await updateSetting({ weight_reminder: on && !denied, weight_reminder_asked: true });
+    if (denied) {
+      showNotificationPermissionAlert();
+    } else if (on) {
       showSuccessToast({ textType: 'CUSTOM', title: '매일 아침 9시에 알려드릴게요' });
     }
   };

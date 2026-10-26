@@ -3,11 +3,12 @@ import { Channel, CHANNELS } from 'const/channels';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
+import { Alert, Linking, Platform } from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import { FastingDB } from 'types/database';
 import { Maybe } from '../types/common';
 import { formatMinutes, scheduleFrom } from './fastingSchedule';
+import { type PushEnableResult, pushEnableResult } from './pushEnable';
 import { captureError } from './sendError';
 
 const requestNotificationPermission = async () => {
@@ -57,6 +58,31 @@ export const registerForPushNotificationsAsync = async (channelId: Channel) => {
 
   await registerChannel(channelId);
   return true;
+};
+
+// 사용자가 알림을 켤 때: 권한 요청 + 푸시 토큰 저장 + 채널 등록. 권한을 거부했으면 'denied'
+export const enablePushForChannel = async (channelId: Channel): Promise<PushEnableResult> => {
+  const registered = await registerForPushNotificationsAsync(channelId).catch(() => false);
+  let permission: 'granted' | 'denied' | 'undetermined' = 'undetermined';
+  try {
+    permission = (await Notifications.getPermissionsAsync()).status;
+  } catch {
+    // 권한 상태를 못 읽으면 거부로 보지 않는다
+    permission = 'granted';
+  }
+  return pushEnableResult({ isDevice: Device.isDevice, registered, permission });
+};
+
+// 알림 권한이 꺼져 있어 알림을 켤 수 없을 때 안내 (휴대폰 설정으로 이동)
+export const showNotificationPermissionAlert = () => {
+  Alert.alert(
+    '알림이 꺼져 있어요',
+    '휴대폰 설정에서 스위치온 레시피 알림을 허용하면 매일 아침 체중 기록 알림을 받을 수 있어요.',
+    [
+      { text: '닫기', style: 'cancel' },
+      { text: '설정 열기', onPress: () => Linking.openSettings() },
+    ]
+  );
 };
 
 // 로컬 예약 알림용: 알림 권한(없으면 요청)과 채널만 준비한다. 푸시 토큰은 필요 없다
