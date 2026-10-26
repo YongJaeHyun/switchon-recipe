@@ -1,4 +1,5 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { PassBadge } from 'components/common/PassBadge';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import { type Href, router } from 'expo-router';
@@ -67,12 +68,7 @@ function ToolCard({ title, description, icon, locked, onPress }: ToolCardProps) 
         </View>
       </View>
       <View className="flex-row items-center gap-1">
-        {locked && (
-          <View className="flex-row items-center gap-0.5 rounded-full bg-green-600 px-2 py-0.5">
-            <MaterialIcons name="lock" size={12} color={colors.white} />
-            <Text className="text-xs font-bold text-white">패스</Text>
-          </View>
-        )}
+        {locked && <PassBadge locked />}
         <MaterialIcons name="navigate-next" size={24} color={colors.neutral[400]} />
       </View>
     </RippleButton>
