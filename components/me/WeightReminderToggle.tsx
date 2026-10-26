@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { Switch, View } from 'react-native';
 import colors from 'tailwindcss/colors';
 import { requireOnline } from 'utils/network';
-import { registerForPushNotificationsAsync } from 'utils/notifications';
+import { enablePushForChannel, showNotificationPermissionAlert } from 'utils/notifications';
 
 // 체중 기록 알림 켜기/끄기. 저장 실패 시 API가 토스트를 띄우고 스위치를 되돌린다
 export function WeightReminderToggle() {
@@ -25,8 +25,13 @@ export function WeightReminderToggle() {
     setValue(on);
     setIsSaving(true);
     try {
-      // 켤 때만 알림 채널 등록 (권한 요청 포함). 결과와 상관없이 설정은 저장한다
-      if (on) await registerForPushNotificationsAsync(CHANNELS.REPORT).catch(() => {});
+      // 켤 때 알림 권한을 받는다. 거부하면 켜지 않고 설정에서 허용하도록 안내한다
+      // (켜진 것처럼 보이는데 알림이 오지 않는 일을 막는다)
+      if (on && (await enablePushForChannel(CHANNELS.REPORT)) === 'denied') {
+        setValue(false);
+        showNotificationPermissionAlert();
+        return;
+      }
       const result = await updateSetting({ weight_reminder: on, weight_reminder_asked: true });
       if (!result) setValue(!on);
     } catch {
