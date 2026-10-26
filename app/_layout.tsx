@@ -72,8 +72,20 @@ function RootLayout() {
               <Stack.Screen name="(auth)" options={{ headerShown: false }} />
               <Stack.Screen name="(inquiry)" options={{ headerShown: false }} />
               <Stack.Screen name="recipeDetail" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="recipeCreation/zero"
+                options={{ title: '무탄수 레시피 제작', headerTitleStyle: { fontSize: 20 } }}
+              />
+              <Stack.Screen
+                name="recipeCreation/low"
+                options={{ title: '저탄수 레시피 제작', headerTitleStyle: { fontSize: 20 } }}
+              />
               <Stack.Screen name="profile" options={{ headerShown: false }} />
               <Stack.Screen name="pass" options={{ headerShown: false }} />
+              <Stack.Screen name="foodCheck" options={{ headerShown: false }} />
+              <Stack.Screen name="recommend" options={{ headerShown: false }} />
+              <Stack.Screen name="weight" options={{ headerShown: false }} />
+              <Stack.Screen name="report" options={{ headerShown: false }} />
               <Stack.Screen name="kakaolink" options={{ headerShown: false }} />
             </Stack>
           </PortalProvider>

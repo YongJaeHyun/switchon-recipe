@@ -6,6 +6,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { shareCustomTemplate } from '@react-native-kakao/share';
 import { RecipeAPI } from 'api/RecipeAPI';
 import { Text } from 'components/common/Text';
+import { SimilarRecipes } from 'components/recipes/SimilarRecipes';
 import { logo } from 'const/assets';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -23,6 +24,8 @@ import Animated, {
 import colors from 'tailwindcss/colors';
 import { RecipeDB } from 'types/database';
 import { IngredientSchema, Recipe, RecipeIngredient } from 'types/recipe';
+
+const BUTTONS_BOTTOM = 48 + 48 + 8;
 
 export default function RecipeDetailScreen() {
   const { recipe }: { recipe: string } = useLocalSearchParams();
@@ -48,6 +51,8 @@ export default function RecipeDetailScreen() {
   const { toggleIsSaved } = useToggleSaveRecipe({ id });
 
   const scrollY = useSharedValue(0);
+  // 위 사진 영역 높이. 제목 카드가 올라가도 뒤로가기·공유·저장 버튼(top-12 + h-12)을 덮지 않게 멈출 위치를 정한다
+  const heroHeight = useSharedValue(0);
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
@@ -56,7 +61,14 @@ export default function RecipeDetailScreen() {
   });
 
   const animatedTitleStyle = useAnimatedStyle(() => {
-    const translateY = interpolate(scrollY.value, [0, 150], [20, -90], Extrapolation.CLAMP);
+    // 카드 윗변 = 사진 아래 - 56(-top-14) + translateY. 버튼 아래(48 + 48)에서 8 더 띄운 곳까지만 올린다
+    const lowestUp = heroHeight.value > 0 ? BUTTONS_BOTTOM - (heroHeight.value - 56) : -90;
+    const translateY = interpolate(
+      scrollY.value,
+      [0, 150],
+      [20, Math.min(20, Math.max(-90, lowestUp))],
+      Extrapolation.CLAMP
+    );
     const paddingHorizontal = interpolate(scrollY.value, [0, 150], [20, 0], Extrapolation.CLAMP);
 
     return {
@@ -96,7 +108,11 @@ export default function RecipeDetailScreen() {
 
   return (
     <View className="flex-1 bg-white">
-      <View className="relative flex-[3]">
+      <View
+        className="relative flex-[3]"
+        onLayout={(event) => {
+          heroHeight.value = event.nativeEvent.layout.height;
+        }}>
         <TouchableOpacity onPress={handleGoBack} className="absolute left-5 top-12 z-10">
           <MaterialIcons name="arrow-back" size={32} color="black" />
         </TouchableOpacity>
@@ -200,6 +216,8 @@ export default function RecipeDetailScreen() {
               </View>
             ))}
           </View>
+
+          <SimilarRecipes recipeId={id} />
         </Animated.View>
       </Animated.ScrollView>
       <StatusBar style="light" />

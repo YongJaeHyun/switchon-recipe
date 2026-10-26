@@ -7,7 +7,9 @@ const version = APP_VERSION.split('+')[0];
 export const getLatestNotices = (
   latestIngredient: ReturnType<typeof getLatestIngredientNotice>
 ) => {
-  const notices = [`🚀 [v${version} 업데이트] - 오프라인 화면 유지, 오늘 남은 레시피 표시`];
+  const notices = [
+    `🚀 [v${version} 업데이트] - 하단 탭 개편, 오프라인 화면 유지, 오늘 남은 레시피 표시`,
+  ];
 
   if (latestIngredient) {
     const { month, week, names } = latestIngredient;
@@ -21,6 +23,7 @@ export const allNotices = [
   {
     version: 'v6.0.0',
     changes: [
+      '✨ 하단 탭이 오늘 · 레시피 · 기록 · 내 정보로 바뀌었어요',
       '✨ 오프라인에서도 마지막으로 본 화면 유지',
       '✨ 레시피 생성 화면에 오늘 남은 무료 레시피 표시',
       '✨ 광고를 보고 레시피를 더 만들 수 있어요',

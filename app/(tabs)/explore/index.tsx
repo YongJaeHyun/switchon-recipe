@@ -40,10 +40,10 @@ export default function ExploreScreen() {
   const flattenedRecipes = useMemo(() => recipes?.pages.flatMap((page) => page) ?? [], [recipes]);
 
   return (
-    <SafeAreaViewWithNav className="flex-1 bg-neutral-50 ">
+    <SafeAreaViewWithNav className="flex-1 bg-neutral-50">
+      <Text className="mt-4 px-5 text-2xl font-bold">탐색</Text>
       <Link href={'/(tabs)/explore/search'} className="px-5">
         <View className="w-full">
-          <Text className="pt-5 text-center text-lg font-bold">탐색</Text>
           <SearchInput
             keyword={keyword}
             onChangeText={setKeyword}

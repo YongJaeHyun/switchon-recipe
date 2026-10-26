@@ -1,0 +1,75 @@
+import { fastingResultWindow, getFastingStatus, type FastingWeekContext } from 'utils/dietGuide';
+import { fastingDayOf } from 'utils/fastingEarlyEnd';
+import type { FastingSchedule } from 'utils/fastingSchedule';
+
+// 오늘 탭 목록에서 식단 할 일 말고 더 보여줄 줄들
+export interface TodayExtraRows {
+  fastingUpcoming: boolean; // 오늘이 단식일이고 아직 시작 전 → 목록 위 "오늘 …부터 24시간 단식이에요" 줄
+  fastingProgress: boolean; // 단식 진행 중 → 목록 위 남은 시간 줄 (진행 중에 일찍 끝냈으면 없음)
+  fastingResultDay: string | null; // 목록 안 결과 질문 줄 (단식이 끝난 뒤 응답 창 안, 답했으면 결과+바꾸기)
+  fastingEndedEarlyDay: string | null; // 진행 중에 일찍 끝냄 → 진행 줄 자리에 그 단식의 결과 카드(취소 가능). 목록에는 줄을 더하지 않는다
+  weight: true; // 체중 줄은 항상
+  fastingDayLine: 'set' | 'unset' | null; // 목록 아래 단식 요일 줄: 설정됨 / 미설정 안내 / 단식 없는 주차
+}
+
+const MAINTENANCE_WEEK = 5;
+
+export function todayExtraRows(input: {
+  week: number;
+  now: Date;
+  fastingDays: number[];
+  schedule: FastingSchedule; // 요일별 시작 시각 (분)
+  weekContext?: FastingWeekContext;
+  currentFastAnswered?: boolean; // 진행 중인 단식(시작일 fastingDayOf(startsAt))에 이미 결과가 있음
+}): TodayExtraRows {
+  const { week, now, fastingDays, schedule, weekContext, currentFastAnswered } = input;
+  // 1주차는 단식이 없다
+  if (week < 2) {
+    return {
+      fastingUpcoming: false,
+      fastingProgress: false,
+      fastingResultDay: null,
+      fastingEndedEarlyDay: null,
+      weight: true,
+      fastingDayLine: null,
+    };
+  }
+
+  const status = getFastingStatus(now, schedule, weekContext);
+  // 진행 중에 "일찍 끝냈어요"로 답했으면 진행 줄 자리에 그 단식의 결과 카드 (응답 창이 열리기 전이어도)
+  const endedEarly = status.phase === 'fasting' && !!currentFastAnswered;
+
+  // 단식 요일 설정은 할 일 목록이 있는 2~4주차에만 (유지기는 할 일이 없어 설정 줄도 없었다)
+  const fastingDayLine =
+    week < MAINTENANCE_WEEK ? (fastingDays.length > 0 ? 'set' : 'unset') : null;
+
+  return {
+    fastingUpcoming: status.phase === 'upcoming',
+    fastingProgress: status.phase === 'fasting' && !endedEarly,
+    fastingResultDay: endedEarly
+      ? null
+      : (fastingResultWindow(now, schedule, weekContext)?.day ?? null),
+    fastingEndedEarlyDay: endedEarly ? fastingDayOf(status.startsAt) : null,
+    weight: true,
+    fastingDayLine,
+  };
+}
+
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const kstDay = (date: Date) => new Date(date.getTime() + KST_OFFSET_MS).toISOString().slice(0, 10);
+
+// 결과 질문 문구: 어제 시작한 단식이면 "어제", 아니면 시작일 날짜
+export function fastingResultQuestion(day: string, now: Date): string {
+  const yesterday = kstDay(new Date(now.getTime() - DAY_MS));
+  if (day === yesterday) return '어제 단식 어땠나요?';
+  const [, month, date] = day.split('-').map(Number);
+  return `${month}월 ${date}일 단식 어땠나요?`;
+}
+
+// 1주차는 1~3일·4~7일 할 일이 달라서 제목 옆에 단계 표시
+export function weekStepLabel(week: number, day: number): string | null {
+  if (week !== 1) return null;
+  return day <= 3 ? '(1 ~ 3일)' : '(4 ~ 7일)';
+}

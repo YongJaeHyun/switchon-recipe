@@ -13,6 +13,7 @@ export type Database = {
           created_at: string;
           days: number[] | null;
           id: number;
+          start_minutes: Json | null;
           start_time: string | null;
           uid: string | null;
           was_sunday: boolean | null;
@@ -21,6 +22,7 @@ export type Database = {
           created_at?: string;
           days?: number[] | null;
           id?: number;
+          start_minutes?: Json | null;
           start_time?: string | null;
           uid?: string | null;
           was_sunday?: boolean | null;
@@ -29,6 +31,7 @@ export type Database = {
           created_at?: string;
           days?: number[] | null;
           id?: number;
+          start_minutes?: Json | null;
           start_time?: string | null;
           uid?: string | null;
           was_sunday?: boolean | null;
@@ -38,6 +41,135 @@ export type Database = {
             foreignKeyName: 'fasting_uid_fkey';
             columns: ['uid'];
             isOneToOne: true;
+            referencedRelation: 'user';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      fasting_plan: {
+        Row: {
+          days: number[];
+          start_date: string;
+          start_minutes: Json | null;
+          start_time: string | null;
+          uid: string;
+          updated_at: string;
+          week_index: number;
+        };
+        Insert: {
+          days: number[];
+          start_date: string;
+          start_minutes?: Json | null;
+          start_time?: string | null;
+          uid: string;
+          updated_at?: string;
+          week_index: number;
+        };
+        Update: {
+          days?: number[];
+          start_date?: string;
+          start_minutes?: Json | null;
+          start_time?: string | null;
+          uid?: string;
+          updated_at?: string;
+          week_index?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'fasting_plan_uid_fkey';
+            columns: ['uid'];
+            isOneToOne: false;
+            referencedRelation: 'user';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      fasting_result: {
+        Row: {
+          day: string;
+          fasted_minutes: number | null;
+          result: string;
+          uid: string;
+          updated_at: string;
+        };
+        Insert: {
+          day: string;
+          fasted_minutes?: number | null;
+          result: string;
+          uid: string;
+          updated_at?: string;
+        };
+        Update: {
+          day?: string;
+          fasted_minutes?: number | null;
+          result?: string;
+          uid?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'fasting_result_uid_fkey';
+            columns: ['uid'];
+            isOneToOne: false;
+            referencedRelation: 'user';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      food_check: {
+        Row: {
+          alternatives: string[] | null;
+          basis: string | null;
+          created_at: string;
+          id: number;
+          image_path: string | null;
+          input_text: string | null;
+          input_type: string;
+          product_name: string | null;
+          reasons: string[] | null;
+          score: number | null;
+          thumb_path: string | null;
+          uid: string;
+          verdict: string | null;
+          week: number | null;
+        };
+        Insert: {
+          alternatives?: string[] | null;
+          basis?: string | null;
+          created_at?: string;
+          id?: number;
+          image_path?: string | null;
+          input_text?: string | null;
+          input_type: string;
+          product_name?: string | null;
+          reasons?: string[] | null;
+          score?: number | null;
+          thumb_path?: string | null;
+          uid: string;
+          verdict?: string | null;
+          week?: number | null;
+        };
+        Update: {
+          alternatives?: string[] | null;
+          basis?: string | null;
+          created_at?: string;
+          id?: number;
+          image_path?: string | null;
+          input_text?: string | null;
+          input_type?: string;
+          product_name?: string | null;
+          reasons?: string[] | null;
+          score?: number | null;
+          thumb_path?: string | null;
+          uid?: string;
+          verdict?: string | null;
+          week?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'food_check_uid_fkey';
+            columns: ['uid'];
+            isOneToOne: false;
             referencedRelation: 'user';
             referencedColumns: ['id'];
           },
@@ -290,12 +422,16 @@ export type Database = {
           cooking_steps: string | null;
           cooking_time: number | null;
           created_at: string;
+          cuisine: string | null;
           id: number;
           image_uri: string | null;
+          ingredient_tags: string[];
           ingredients: string | null;
           is_zero_carb: boolean | null;
+          method: string | null;
           nutrition: string | null;
           recipe_name: string | null;
+          spicy: boolean | null;
           uid: string | null;
           week: number | null;
         };
@@ -303,12 +439,16 @@ export type Database = {
           cooking_steps?: string | null;
           cooking_time?: number | null;
           created_at?: string;
+          cuisine?: string | null;
           id?: number;
           image_uri?: string | null;
+          ingredient_tags?: string[];
           ingredients?: string | null;
           is_zero_carb?: boolean | null;
+          method?: string | null;
           nutrition?: string | null;
           recipe_name?: string | null;
+          spicy?: boolean | null;
           uid?: string | null;
           week?: number | null;
         };
@@ -316,12 +456,16 @@ export type Database = {
           cooking_steps?: string | null;
           cooking_time?: number | null;
           created_at?: string;
+          cuisine?: string | null;
           id?: number;
           image_uri?: string | null;
+          ingredient_tags?: string[];
           ingredients?: string | null;
           is_zero_carb?: boolean | null;
+          method?: string | null;
           nutrition?: string | null;
           recipe_name?: string | null;
+          spicy?: boolean | null;
           uid?: string | null;
           week?: number | null;
         };
@@ -530,6 +674,38 @@ export type Database = {
           },
         ];
       };
+      todo_daily: {
+        Row: {
+          checked: number[];
+          day: string;
+          items: string[];
+          uid: string;
+          updated_at: string;
+        };
+        Insert: {
+          checked: number[];
+          day: string;
+          items: string[];
+          uid: string;
+          updated_at?: string;
+        };
+        Update: {
+          checked?: number[];
+          day?: string;
+          items?: string[];
+          uid?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'todo_daily_uid_fkey';
+            columns: ['uid'];
+            isOneToOne: false;
+            referencedRelation: 'user';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       user: {
         Row: {
           avatar_url: string | null;
@@ -582,6 +758,32 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: 'user_pass_uid_fkey';
+            columns: ['uid'];
+            isOneToOne: true;
+            referencedRelation: 'user';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      user_recipe_preference: {
+        Row: {
+          excluded_ingredients: string[];
+          uid: string;
+          updated_at: string;
+        };
+        Insert: {
+          excluded_ingredients?: string[];
+          uid: string;
+          updated_at?: string;
+        };
+        Update: {
+          excluded_ingredients?: string[];
+          uid?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'user_recipe_preference_uid_fkey';
             columns: ['uid'];
             isOneToOne: true;
             referencedRelation: 'user';
@@ -647,6 +849,35 @@ export type Database = {
           },
         ];
       };
+      user_setting: {
+        Row: {
+          uid: string;
+          updated_at: string;
+          weight_reminder: boolean;
+          weight_reminder_asked: boolean;
+        };
+        Insert: {
+          uid: string;
+          updated_at?: string;
+          weight_reminder?: boolean;
+          weight_reminder_asked?: boolean;
+        };
+        Update: {
+          uid?: string;
+          updated_at?: string;
+          weight_reminder?: boolean;
+          weight_reminder_asked?: boolean;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'user_setting_uid_fkey';
+            columns: ['uid'];
+            isOneToOne: true;
+            referencedRelation: 'user';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       version: {
         Row: {
           created_at: string;
@@ -664,6 +895,99 @@ export type Database = {
           latest_version?: string | null;
         };
         Relationships: [];
+      };
+      weekly_report: {
+        Row: {
+          content: Json | null;
+          created_at: string;
+          start_date: string;
+          stats: Json;
+          status: string;
+          uid: string;
+          week_index: number;
+        };
+        Insert: {
+          content?: Json | null;
+          created_at?: string;
+          start_date: string;
+          stats: Json;
+          status?: string;
+          uid: string;
+          week_index: number;
+        };
+        Update: {
+          content?: Json | null;
+          created_at?: string;
+          start_date?: string;
+          stats?: Json;
+          status?: string;
+          uid?: string;
+          week_index?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'weekly_report_uid_fkey';
+            columns: ['uid'];
+            isOneToOne: false;
+            referencedRelation: 'user';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      weight_log: {
+        Row: {
+          day: string;
+          uid: string;
+          updated_at: string;
+          weight_kg: number;
+        };
+        Insert: {
+          day: string;
+          uid: string;
+          updated_at?: string;
+          weight_kg: number;
+        };
+        Update: {
+          day?: string;
+          uid?: string;
+          updated_at?: string;
+          weight_kg?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'weight_log_uid_fkey';
+            columns: ['uid'];
+            isOneToOne: false;
+            referencedRelation: 'user';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      weight_reminder_sent: {
+        Row: {
+          created_at: string;
+          day: string;
+          uid: string;
+        };
+        Insert: {
+          created_at?: string;
+          day: string;
+          uid: string;
+        };
+        Update: {
+          created_at?: string;
+          day?: string;
+          uid?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'weight_reminder_sent_uid_fkey';
+            columns: ['uid'];
+            isOneToOne: false;
+            referencedRelation: 'user';
+            referencedColumns: ['id'];
+          },
+        ];
       };
     };
     Views: {
@@ -719,6 +1043,7 @@ export type Database = {
           value: string;
         }[];
       };
+      get_premium_quota: { Args: { p_feature: string }; Returns: Json };
       get_recipe_quota: { Args: never; Returns: Json };
       has_premium_access: { Args: never; Returns: boolean };
       has_premium_access_for: { Args: { p_uid: string }; Returns: boolean };
@@ -770,6 +1095,13 @@ export type Database = {
           saved_count: number;
           uid: string;
           week: number;
+        }[];
+      };
+      weekly_report_candidates: {
+        Args: { p_today: string };
+        Returns: {
+          start_date: string;
+          uid: string;
         }[];
       };
     };

@@ -8,8 +8,17 @@ import { Image } from 'https://deno.land/x/imagescript@1.2.15/mod.ts';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { requireEnv } from './auth.ts';
+import type { RegisteredIngredient } from './ingredientNormalize.ts';
+import { fetchAllPages } from './pagination.ts';
 import { parseQuotaDecision, quotaExceededBody, runWithQuota } from './quota.ts';
+import { loadIngredientTags } from './recipeIngredientTags.ts';
 import { requestRecipeImage } from './recipeImage.ts';
+import {
+  RECIPE_TAG_REQUIRED,
+  RECIPE_TAG_RESPONSE_PROPERTIES,
+  RECIPE_TAG_SCHEMA_PROMPT,
+  parseRecipeTags,
+} from './recipeTags.ts';
 
 const RecipeSchema = z.object({
   recipeName: z.string(),
@@ -159,13 +168,19 @@ export async function handleCreateRecipe(req: Request): Promise<Response> {
                       type: 'STRING',
                     },
                   },
+                  ...RECIPE_TAG_RESPONSE_PROPERTIES,
                 },
+                // 다른 필드는 지금까지처럼 required 없이 둔다 (동작 유지). 태그만 required로 요청한다.
+                // 그래도 태그는 RecipeSchema(zod) 밖에서 parseRecipeTags로 해석하므로 빠지거나
+                // 잘못돼도 생성은 실패하지 않고 null로 저장된다
+                required: [...RECIPE_TAG_REQUIRED],
               },
             },
             system_instruction: {
               parts: [
                 {
-                  text: 'You are an AI assistant specialized in generating cooking recipes for the Switch-On Diet. When a user requests a recipe, you should create a suitable recipe. Ingredient quantities should be as specific as possible. All responses must always be in Korean.',
+                  text: 'You are an AI assistant specialized in generating cooking recipes for the Switch-On Diet. When a user requests a recipe, you should create a suitable recipe. Ingredient quantities should be as specific as possible. All responses must always be in Korean. ' +
+                    RECIPE_TAG_SCHEMA_PROMPT,
                 },
               ],
             },
@@ -192,6 +207,8 @@ export async function handleCreateRecipe(req: Request): Promise<Response> {
 
       const recipeJson = JSON.parse(contentText);
       const validated = validateRecipe(recipeJson);
+      // 태그는 RecipeSchema 밖에서 따로 검증한다. 잘못된 태그가 레시피 생성을 막지 않도록 null로 저장한다.
+      const tags = parseRecipeTags(recipeJson);
 
       // 🔹 2. 이미지 생성
       const imageBase64 = await requestRecipeImage(validated.recipeName, geminiKey);
@@ -225,18 +242,39 @@ export async function handleCreateRecipe(req: Request): Promise<Response> {
 
       validated.imageUri = imageUrlData.publicUrl;
 
+      const ingredientsJson = JSON.stringify(validated.ingredients);
+      // 검색용 재료 태그 (등록 재료 이름). 등록 재료를 못 읽어도 생성은 계속하고 빈 태그로 저장한다
+      const ingredientTags = await loadIngredientTags(
+        () =>
+          fetchAllPages(async (from, to) => {
+            const { data, error } = await adminClient
+              .from('ingredient')
+              .select('name, sub_keywords')
+              .eq('is_active', true)
+              .order('id')
+              .range(from, to);
+            if (error) throw error;
+            return (data ?? []) as RegisteredIngredient[];
+          }),
+        ingredientsJson
+      );
+
       // 🔹 4. DB 저장
       const { data, error } = await supabaseClient
         .from('recipe')
         .insert({
           cooking_steps: JSON.stringify(validated.cookingSteps),
-          ingredients: JSON.stringify(validated.ingredients),
+          ingredients: ingredientsJson,
+          ingredient_tags: ingredientTags,
           nutrition: JSON.stringify(validated.nutrition),
           cooking_time: validated.cookingTime,
           recipe_name: validated.recipeName,
           image_uri: validated.imageUri,
           is_zero_carb,
           week,
+          spicy: tags?.spicy ?? null,
+          cuisine: tags?.cuisine ?? null,
+          method: tags?.method ?? null,
         })
         .select()
         .single();

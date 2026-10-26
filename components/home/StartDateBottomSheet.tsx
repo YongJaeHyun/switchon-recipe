@@ -2,13 +2,15 @@ import { BottomSheetView } from '@gorhom/bottom-sheet';
 import { BottomSheetMethods } from '@gorhom/bottom-sheet/lib/typescript/types';
 import { StatisticsAPI } from 'api/StatisticsAPI';
 import { UserAPI } from 'api/UserAPI';
+import { QueryKey } from 'const/queryKey';
+import { queryClient } from 'lib/queryClient';
 import { CustomBottomSheet } from 'components/common/CustomBottomSheet';
 import CustomCalendar from 'components/common/CustomCalendar';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import useKoreanToday from 'hooks/useKoreanToday';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { TouchableOpacity, View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import { getWeekAndDay } from 'utils/date';
@@ -30,6 +32,13 @@ export function StartDateBottomSheet({ bottomSheetRef }: StartDateBottomSheetPro
   const [calendarKey, setCalendarKey] = useState(false); // 캘린더 리렌더링용 키
   const [selectedDate, setSelectedDate] = useState<string>(startDate ?? today);
 
+  // 오늘 탭과 내 정보 탭에 시트가 하나씩 있어서, 다른 쪽에서 바꾼 시작일을 따라간다
+  useEffect(() => {
+    if (!startDate) return;
+    setSelectedDate(startDate);
+    setCalendarKey((prev) => !prev);
+  }, [startDate]);
+
   const setDateToToday = () => {
     setSelectedDate(today);
     setCalendarKey((prev) => !prev);
@@ -50,6 +59,7 @@ export function StartDateBottomSheet({ bottomSheetRef }: StartDateBottomSheetPro
 
     await UserAPI.updateStartDate(selectedDate);
     await StatisticsAPI.deleteFrom(week, day);
+    void queryClient.invalidateQueries({ queryKey: [QueryKey.todoRateStatistics] });
 
     bottomSheetRef.current?.close();
   };

@@ -1,9 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import {
-  fetchAllPages,
-  fileNameFromUri,
-  findUnusedFiles,
-} from '../../delete-unused-images/cleanup.ts';
+import { fetchAllPages } from '../../_shared/pagination.ts';
+import { fileNameFromUri, findUnusedFiles } from '../../delete-unused-images/cleanup.ts';
 
 describe('fileNameFromUri', () => {
   it('extracts the file name without query string', () => {

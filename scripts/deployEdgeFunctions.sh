@@ -7,3 +7,11 @@ npx supabase functions deploy verify-pass-purchase
 npx supabase functions deploy get-pass-status
 npx supabase functions deploy sync-voided-purchases
 npx supabase functions deploy admob-ssv
+npx supabase functions deploy food-check
+npx supabase functions deploy cleanup-food-check-images
+npx supabase functions deploy recommend-recipes
+npx supabase functions deploy tag-recipes
+npx supabase functions deploy generate-weekly-reports
+npx supabase functions deploy weight-reminder
+npx supabase functions deploy push
+npx supabase functions deploy sentry-to-github

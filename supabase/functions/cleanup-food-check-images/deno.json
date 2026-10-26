@@ -1,0 +1,7 @@
+{
+  "imports": {},
+  "compilerOptions": {
+    "lib": ["esnext", "dom"],
+    "types": ["deno"]
+  }
+}

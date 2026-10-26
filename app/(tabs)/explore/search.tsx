@@ -7,7 +7,7 @@ import { QueryKey } from 'const/queryKey';
 import { router } from 'expo-router';
 import { useRecentKeywords } from 'hooks/useRecentKeywords';
 import { useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, TouchableOpacity, View } from 'react-native';
 import colors from 'tailwindcss/colors';
 import { RecentKeywords } from '../../../components/explore/RecentKeywords';
 import { useQueryWith402Retry } from 'hooks/useCustomQuery';
@@ -45,7 +45,9 @@ export default function SearchScreen() {
   return (
     <SafeAreaViewWithNav className="flex-1 bg-neutral-50 px-5">
       <View className="flex-row items-center gap-3">
-        <MaterialIcons name="arrow-back" size={24} />
+        <TouchableOpacity onPress={router.back} hitSlop={10}>
+          <MaterialIcons name="arrow-back" size={24} />
+        </TouchableOpacity>
         <SearchInputWithoutBorder
           keyword={keyword}
           onChangeText={setKeyword}
