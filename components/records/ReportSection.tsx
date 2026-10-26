@@ -1,10 +1,12 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { PassBadge } from 'components/common/PassBadge';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import { FourWeekReport } from 'components/records/FourWeekReport';
 import { ReportPreviewCard } from 'components/report/ReportPreviewCard';
 import { CHANNELS } from 'const/channels';
 import { router } from 'expo-router';
+import { useBillingAvailable } from 'hooks/useBillingAvailable';
 import { usePass } from 'hooks/usePass';
 import { useWeeklyReports } from 'hooks/useWeeklyReports';
 import { useEffect, useMemo } from 'react';
@@ -14,6 +16,7 @@ import colors from 'tailwindcss/colors';
 import type { WeeklyReport } from 'types/report';
 import { getWeekColorHex } from 'utils/getWeekColor';
 import { registerChannelIfPermitted } from 'utils/notifications';
+import { shouldShowPremiumEntry } from 'utils/passScreen';
 import {
   formatProgramStart,
   formatReportRange,
@@ -73,6 +76,9 @@ export function ReportSection() {
 
   // 패스 유저가 목록을 열면 리포트 알림 채널을 등록한다. 권한이 이미 있을 때만 (요청 창을 띄우지 않는다)
   const hasAccess = status?.hasAccess === true;
+  // 패스 전용 표시: 패스를 팔거나 이미 쓰고 있을 때만 (판매 전엔 레시피 탭 도구 카드처럼 숨김)
+  const billingAvailable = useBillingAvailable();
+  const showPassBadge = shouldShowPremiumEntry(status, billingAvailable);
   useEffect(() => {
     if (hasAccess) registerChannelIfPermitted(CHANNELS.REPORT);
   }, [hasAccess]);
@@ -83,7 +89,10 @@ export function ReportSection() {
       showsVerticalScrollIndicator={false}>
       <FourWeekReport />
 
-      <Text className="text-lg font-bold">주간 리포트</Text>
+      <View className="flex-row items-center gap-2">
+        <Text className="text-lg font-bold">주간 리포트</Text>
+        {showPassBadge && <PassBadge locked={!hasAccess} label="패스 전용" />}
+      </View>
       <ReportPreviewCard />
 
       {isLoading ? (
