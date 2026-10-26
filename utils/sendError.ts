@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/react-native';
 import { ErrorToastTextProps } from 'types/toast';
+import { isNetworkError } from './networkError';
 import { showNetworkErrorToast } from './network';
 import { showErrorToast } from './showToast';
 
@@ -13,13 +14,6 @@ interface OptionsProps extends ErrorToastTextProps {
   prefix?: string;
 }
 
-const isNetworkError = (error: unknown) => {
-  if (error instanceof Error) {
-    return error.message.includes('Network request failed');
-  }
-  return false;
-};
-
 const isGatewayTimeoutError = (error: any) => {
   if ('code' in error && error.code === '504') {
     return true;
@@ -27,7 +21,16 @@ const isGatewayTimeoutError = (error: any) => {
   return false;
 };
 
+// 인터넷이 끊긴 오류는 앱 문제가 아니라서 Sentry로 보내지 않는다 (흔적만 남긴다)
 const captureError = ({ error, prefix, level = 'error' }: CaptureErrorProps) => {
+  if (isNetworkError(error)) {
+    Sentry.addBreadcrumb({
+      category: 'network',
+      level: 'info',
+      message: `${prefix}network request failed`,
+    });
+    return;
+  }
   if (error instanceof Error) {
     Sentry.captureException(error, { level });
   } else {
