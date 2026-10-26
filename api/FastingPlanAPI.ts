@@ -3,11 +3,8 @@ import { useUserStore } from 'stores/userStore';
 import { FastingPlanDB } from 'types/database';
 import { Json } from 'types/database.types';
 import { FastingSchedule, scheduleColumns } from 'utils/fastingSchedule';
+import { isNetworkError } from 'utils/networkError';
 import { captureError } from 'utils/sendError';
-
-// supabase는 fetch 실패를 Error가 아닌 { message } 객체로 돌려주기도 한다
-const isOfflineError = (error: unknown) =>
-  String((error as { message?: unknown })?.message ?? error).includes('Network request failed');
 
 // 주차별 단식 계획 (start_date, week_index 기준). 단식 요일 저장 흐름을 막지 않도록
 // 실패해도 토스트 없이 넘어간다 (네트워크 오류는 Sentry에도 보내지 않음)
@@ -41,7 +38,7 @@ const write = async (
 
     if (error) throw error;
   } catch (error) {
-    if (!isOfflineError(error)) captureError({ error, prefix: '[FastingPlanAPI.write]: ' });
+    if (!isNetworkError(error)) captureError({ error, prefix: '[FastingPlanAPI.write]: ' });
   }
 };
 
