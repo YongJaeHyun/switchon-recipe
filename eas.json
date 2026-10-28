@@ -29,6 +29,11 @@
       "android": {
         "track": "alpha"
       }
+    },
+    "internal": {
+      "android": {
+        "track": "internal"
+      }
     }
   }
 }
