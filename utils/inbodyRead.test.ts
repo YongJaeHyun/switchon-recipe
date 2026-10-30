@@ -3,6 +3,7 @@ import { prefillBodyComp, weightUpsertPayload } from './bodyComp';
 import {
   dayLogTexts,
   formatMonthDay,
+  formatReadDay,
   INBODY_NOT_FOUND_MESSAGE,
   inbodyFill,
   inbodyTextsForDay,
@@ -129,6 +130,23 @@ describe('formatMonthDay', () => {
   it('M/D', () => {
     expect(formatMonthDay('2026-10-28')).toBe('10/28');
     expect(formatMonthDay('2026-01-05')).toBe('1/5');
+  });
+});
+
+describe('formatReadDay (결과지 날짜: 올해가 아니면 연도까지)', () => {
+  it('올해(KST)면 M/D', () => {
+    expect(formatReadDay('2026-10-25', '2026-10-30')).toBe('10/25');
+    expect(formatReadDay('2026-01-05', '2026-10-30')).toBe('1/5');
+  });
+
+  it('다른 해면 YYYY.MM.DD', () => {
+    expect(formatReadDay('2018-10-25', '2026-10-30')).toBe('2018.10.25');
+    expect(formatReadDay('2025-12-31', '2026-01-01')).toBe('2025.12.31');
+    expect(formatReadDay('2025-01-05', '2026-01-01')).toBe('2025.01.05');
+  });
+
+  it('오늘에 시각이 붙어 있어도 연도만 본다', () => {
+    expect(formatReadDay('2026-10-25', '2026-10-30T09:00:00+09:00')).toBe('10/25');
   });
 });
 

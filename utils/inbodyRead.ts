@@ -155,3 +155,9 @@ export const formatMonthDay = (day: string) => {
   const [, m, d] = day.split('-').map(Number);
   return `${m}/${d}`;
 };
+
+// 결과지 날짜 표시: 올해(todayKst의 해)면 M/D, 다른 해면 YYYY.MM.DD (앨범의 몇 년 전 결과지)
+export const formatReadDay = (day: string, todayKst: string) => {
+  if (day.slice(0, 4) === todayKst.slice(0, 4)) return formatMonthDay(day);
+  return day.slice(0, 10).replace(/-/g, '.');
+};

@@ -37,6 +37,7 @@ import {
 import {
   dayLogTexts,
   formatMonthDay,
+  formatReadDay,
   INBODY_NOT_FOUND_MESSAGE,
   type InbodyFieldTexts,
   inbodyFill,
@@ -188,6 +189,9 @@ export function WeightInputSheet({ bottomSheetRef, target }: WeightInputSheetPro
   const readIdRef = useRef(0);
 
   const saveDay = target ? (measuredDay && useMeasuredDay ? measuredDay : target.day) : null;
+  // 결과지 날짜 표시 (올해가 아니면 연도까지)
+  const todayKst = getKoreanDateString({ formatType: 'date' });
+  const measuredLabel = measuredDay ? formatReadDay(measuredDay, todayKst) : '';
   // 저장할 날의 기존 인바디 값 (바꾼 칸만 보내려고). 시트를 연 날이면 시트가 받은 값
   const saveDayInitial =
     target && saveDay && saveDay !== target.day
@@ -411,7 +415,7 @@ export function WeightInputSheet({ bottomSheetRef, target }: WeightInputSheetPro
           </Text>
           {weightNeeded && saveDay && (
             <Text className="-mt-4 mb-6 text-sm text-amber-600">
-              {`결과지에서 체중을 읽지 못했어요. ${formatMonthDay(saveDay)} 체중을 적어 주세요`}
+              {`결과지에서 체중을 읽지 못했어요. ${formatReadDay(saveDay, todayKst)} 체중을 적어 주세요`}
             </Text>
           )}
 
@@ -477,12 +481,12 @@ export function WeightInputSheet({ bottomSheetRef, target }: WeightInputSheetPro
             <View className="mb-6 rounded-xl bg-neutral-100 p-3">
               <Text className="mb-2 text-sm text-neutral-600">
                 {measuredDayOld
-                  ? `결과지 날짜가 ${formatMonthDay(measuredDay)}로 오래됐어요 · 어느 날로 저장할까요?`
-                  : `결과지 날짜 ${formatMonthDay(measuredDay)} · 어느 날로 저장할까요?`}
+                  ? `결과지 날짜가 ${measuredLabel}로 오래됐어요 · 어느 날로 저장할까요?`
+                  : `결과지 날짜 ${measuredLabel} · 어느 날로 저장할까요?`}
               </Text>
               <View className="flex-row gap-2">
                 {[
-                  { use: true, label: `결과지 날짜(${formatMonthDay(measuredDay)})` },
+                  { use: true, label: `결과지 날짜(${measuredLabel})` },
                   {
                     use: false,
                     label: target.isToday
