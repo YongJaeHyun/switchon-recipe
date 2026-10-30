@@ -22,6 +22,7 @@ import { FastingDayLine } from './FastingDayLine';
 import { FastingProgressLine } from './FastingProgressLine';
 import { FastingResultRow } from './FastingResultRow';
 import { TipBottomSheet } from './TipBottomSheet';
+import { Week1GuideCard } from './Week1GuideCard';
 import { Todo } from './Todo';
 import { WeightRow } from './WeightRow';
 
@@ -30,6 +31,7 @@ const MINUTE_MS = 60 * 1000;
 // 오늘 탭의 할 일 목록 하나: (단식 중이면 남은 시간 줄) → 식단 할 일 → 단식 결과 → 체중 → (아래) 단식 요일.
 // 진행 중에 일찍 끝냈으면 남은 시간 줄 자리에 그 단식의 결과 카드 (할 일 목록은 그대로).
 // 완료율(%)은 식단 할 일만 센다.
+// 1주차 1~7일에는 할 일 카드 위에 그날 한 줄 안내.
 // 시작일이 미래(시작 전)면 할 일·단식 대신 '시작 전' 준비 카드 (할 일·단식 훅을 아예 돌리지 않는다)
 export function TodayChecklist() {
   const startDate = useUserStore((state) => state.start_date);
@@ -48,10 +50,10 @@ export function TodayChecklist() {
       </View>
     );
   }
-  return <ProgramChecklist />;
+  return <ProgramChecklist today={today} />;
 }
 
-function ProgramChecklist() {
+function ProgramChecklist({ today }: { today: string }) {
   const startDate = useUserStore((state) => state.start_date);
 
   // 화면에 하나뿐이라 여기서 못 보낸 todo_daily 다시 보내기를 켠다
@@ -106,6 +108,9 @@ function ProgramChecklist() {
       {rows.fastingDayLine === 'unset' && (
         <FastingDayLine state="unset" week={week} days={days} schedule={schedule} />
       )}
+
+      {/* 1주차 1~7일 그날 한 줄 안내 (닫으면 그날 숨김) */}
+      <Week1GuideCard week={week} day={day} today={today} />
 
       <View className="rounded-xl border border-neutral-200 bg-white px-4 pb-2 pt-4">
         <View className="mb-1 flex-row items-center justify-between">
