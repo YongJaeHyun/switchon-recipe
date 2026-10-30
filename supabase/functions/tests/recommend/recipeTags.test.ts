@@ -158,7 +158,7 @@ describe('생성 responseSchema의 태그 필드', () => {
 
   it('createRecipe.ts가 공용 태그 스키마를 쓰고 enum 값을 따로 적지 않는다', () => {
     expect(source).toContain('...RECIPE_TAG_RESPONSE_PROPERTIES');
-    expect(source).toContain('required: [...RECIPE_TAG_REQUIRED]');
+    expect(source).toContain("required: [...RECIPE_TAG_REQUIRED, 'servings']");
     expect(source).not.toMatch(/'stir_fry'|'korean'/);
   });
 

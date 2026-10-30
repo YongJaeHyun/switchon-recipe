@@ -431,6 +431,13 @@ verify_jwt = true
 import_map = "./functions/tag-recipes/deno.json"
 entrypoint = "./functions/tag-recipes/index.ts"
 
+# 기존 레시피 기준 인분 백필: service role 키로만 호출 (JWT 서명은 게이트웨이, role은 함수 안에서 확인)
+[functions.estimate-recipe-servings]
+enabled = true
+verify_jwt = true
+import_map = "./functions/estimate-recipe-servings/deno.json"
+entrypoint = "./functions/estimate-recipe-servings/index.ts"
+
 # 주간 리포트 생성 배치: 매일 08:00 KST cron이 service role 키로 호출 (JWT 서명은 게이트웨이, role은 함수 안에서 확인)
 [functions.generate-weekly-reports]
 enabled = true

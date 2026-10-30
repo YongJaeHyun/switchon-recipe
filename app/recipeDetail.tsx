@@ -6,6 +6,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { shareCustomTemplate } from '@react-native-kakao/share';
 import { RecipeAPI } from 'api/RecipeAPI';
 import { Text } from 'components/common/Text';
+import { ServingsStepper } from 'components/recipes/ServingsStepper';
 import { SimilarRecipes } from 'components/recipes/SimilarRecipes';
 import { logo } from 'const/assets';
 import { Image } from 'expo-image';
@@ -13,6 +14,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useQueryWith402Retry } from 'hooks/useCustomQuery';
 import { useToggleSaveRecipe } from 'hooks/useToggleSaveRecipe';
+import { useState } from 'react';
 import { Pressable, TouchableOpacity, View } from 'react-native';
 import Animated, {
   Extrapolation,
@@ -24,6 +26,12 @@ import Animated, {
 import colors from 'tailwindcss/colors';
 import { RecipeDB } from 'types/database';
 import { IngredientSchema, Recipe, RecipeIngredient } from 'types/recipe';
+import {
+  SERVINGS_STEPPER_MIN,
+  baseServingsOf,
+  scaleAmount,
+  servingsStepperMax,
+} from 'utils/scaleAmount';
 
 const BUTTONS_BOTTOM = 48 + 48 + 8;
 
@@ -43,6 +51,13 @@ export default function RecipeDetailScreen() {
 
   const parsedNutrition: Recipe['nutrition'] = JSON.parse(nutrition ?? '');
   const parsedCookingSteps: Recipe['cookingSteps'] = JSON.parse(cooking_steps ?? '');
+
+  // 기준 인분을 모르면(null) 인분 조절을 숨기고 재료 양을 그대로 보여 준다.
+  // 비슷한 레시피로 이동해 같은 화면이 다른 레시피로 바뀌면 그 레시피의 기준 인분부터 다시 시작한다
+  const baseServings = baseServingsOf(parsedRecipe);
+  const [selected, setSelected] = useState<{ id: number; servings: number } | null>(null);
+  const servings = selected?.id === id ? selected.servings : (baseServings ?? 1);
+  const servingsFactor = baseServings ? servings / baseServings : 1;
 
   const { data: isSaved = false } = useQueryWith402Retry({
     queryKey: ['savedRecipe', id],
@@ -167,7 +182,17 @@ export default function RecipeDetailScreen() {
         contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 20 }}>
         <Animated.View style={animatedContentStyle} className="w-full gap-6 px-3">
           <View>
-            <Text className="text-2xl font-bold">재료 요약</Text>
+            <View className="flex-row items-center justify-between">
+              <Text className="text-2xl font-bold">재료 요약</Text>
+              {baseServings !== null && (
+                <ServingsStepper
+                  value={servings}
+                  min={SERVINGS_STEPPER_MIN}
+                  max={servingsStepperMax(baseServings)}
+                  onChange={(value) => setSelected({ id, servings: value })}
+                />
+              )}
+            </View>
             <View className="mb-10 mt-2 border border-neutral-300" />
             {parsedIngredients.map((item: RecipeIngredient) => {
               const ingredient = IngredientSchema.safeParse(item);
@@ -184,7 +209,9 @@ export default function RecipeDetailScreen() {
                         </View>
                       )}
                     </View>
-                    <Text className="text-medium font-semibold tracking-wide">{amount}</Text>
+                    <Text className="text-medium font-semibold tracking-wide">
+                      {scaleAmount(amount, servingsFactor)}
+                    </Text>
                   </View>
                 );
               } else if (typeof item === 'string') {
@@ -196,6 +223,11 @@ export default function RecipeDetailScreen() {
                 );
               }
             })}
+            {baseServings !== null && servings !== baseServings && (
+              <Text className="-mt-4 text-sm text-neutral-500">
+                조리 순서의 양은 {baseServings}인분 기준이에요
+              </Text>
+            )}
           </View>
 
           <View className="mt-10">

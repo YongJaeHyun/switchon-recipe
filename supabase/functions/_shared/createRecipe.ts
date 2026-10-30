@@ -14,6 +14,11 @@ import { parseQuotaDecision, quotaExceededBody, runWithQuota } from './quota.ts'
 import { loadIngredientTags } from './recipeIngredientTags.ts';
 import { requestRecipeImage } from './recipeImage.ts';
 import {
+  RECIPE_SERVINGS_PROMPT,
+  RECIPE_SERVINGS_RESPONSE_PROPERTY,
+  parseServings,
+} from './recipeServings.ts';
+import {
   RECIPE_TAG_REQUIRED,
   RECIPE_TAG_RESPONSE_PROPERTIES,
   RECIPE_TAG_SCHEMA_PROMPT,
@@ -39,6 +44,8 @@ const RecipeSchema = z.object({
   ),
   cookingSteps: z.array(z.string()),
   imageUri: z.string().nullish(),
+  // 기준 인분. 빠지거나 1~8 정수가 아니어도 생성을 실패시키지 않고 null로 저장한다
+  servings: z.unknown().transform((v) => parseServings(v)),
 });
 
 type Recipe = z.infer<typeof RecipeSchema>;
@@ -169,18 +176,22 @@ export async function handleCreateRecipe(req: Request): Promise<Response> {
                     },
                   },
                   ...RECIPE_TAG_RESPONSE_PROPERTIES,
+                  ...RECIPE_SERVINGS_RESPONSE_PROPERTY,
                 },
-                // 다른 필드는 지금까지처럼 required 없이 둔다 (동작 유지). 태그만 required로 요청한다.
-                // 그래도 태그는 RecipeSchema(zod) 밖에서 parseRecipeTags로 해석하므로 빠지거나
-                // 잘못돼도 생성은 실패하지 않고 null로 저장된다
-                required: [...RECIPE_TAG_REQUIRED],
+                // 다른 필드는 지금까지처럼 required 없이 둔다 (동작 유지). 태그와 기준 인분만 required로 요청한다.
+                // 그래도 태그는 RecipeSchema(zod) 밖에서 parseRecipeTags로, 인분은 parseServings로 해석하므로
+                // 빠지거나 잘못돼도 생성은 실패하지 않고 null로 저장된다
+                required: [...RECIPE_TAG_REQUIRED, 'servings'],
               },
             },
             system_instruction: {
               parts: [
                 {
-                  text: 'You are an AI assistant specialized in generating cooking recipes for the Switch-On Diet. When a user requests a recipe, you should create a suitable recipe. Ingredient quantities should be as specific as possible. All responses must always be in Korean. ' +
-                    RECIPE_TAG_SCHEMA_PROMPT,
+                  text:
+                    'You are an AI assistant specialized in generating cooking recipes for the Switch-On Diet. When a user requests a recipe, you should create a suitable recipe. Ingredient quantities should be as specific as possible. All responses must always be in Korean. ' +
+                    RECIPE_TAG_SCHEMA_PROMPT +
+                    ' ' +
+                    RECIPE_SERVINGS_PROMPT,
                 },
               ],
             },
@@ -275,6 +286,7 @@ export async function handleCreateRecipe(req: Request): Promise<Response> {
           spicy: tags?.spicy ?? null,
           cuisine: tags?.cuisine ?? null,
           method: tags?.method ?? null,
+          servings: validated.servings,
         })
         .select()
         .single();

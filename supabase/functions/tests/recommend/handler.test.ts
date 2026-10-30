@@ -32,6 +32,7 @@ const card = (id: number): RecipeCardRow => ({
   week: 1,
   created_at: '2026-10-01T00:00:00Z',
   uid: null,
+  servings: 2,
 });
 
 const makeDeps = (o: Partial<RecommendDeps> = {}): RecommendDeps => ({

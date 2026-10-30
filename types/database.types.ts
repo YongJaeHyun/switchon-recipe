@@ -431,6 +431,7 @@ export type Database = {
           method: string | null;
           nutrition: string | null;
           recipe_name: string | null;
+          servings: number | null;
           spicy: boolean | null;
           uid: string | null;
           week: number | null;
@@ -448,6 +449,7 @@ export type Database = {
           method?: string | null;
           nutrition?: string | null;
           recipe_name?: string | null;
+          servings?: number | null;
           spicy?: boolean | null;
           uid?: string | null;
           week?: number | null;
@@ -465,6 +467,7 @@ export type Database = {
           method?: string | null;
           nutrition?: string | null;
           recipe_name?: string | null;
+          servings?: number | null;
           spicy?: boolean | null;
           uid?: string | null;
           week?: number | null;
@@ -1019,6 +1022,7 @@ export type Database = {
           recipe_name: string | null;
           saved_at: string | null;
           saved_count: number | null;
+          servings: number | null;
           uid: string | null;
           week: number | null;
         };
@@ -1075,6 +1079,7 @@ export type Database = {
           recipe_name: string;
           saved_at: string;
           saved_count: number;
+          servings: number;
           week: number;
         }[];
       };
@@ -1093,6 +1098,7 @@ export type Database = {
           recipe_name: string;
           saved_at: string;
           saved_count: number;
+          servings: number;
           uid: string;
           week: number;
         }[];
