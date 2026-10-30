@@ -1,13 +1,17 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getWeekAndDay } from './date';
+import { getKoreanDateString, getWeekAndDay } from './date';
 import {
   addDaysToDay,
   BEFORE_START_DAY,
   daysUntilStart,
   isBeforeStart,
   programWeekAndDay,
+  restartStartDate,
   startCountdownLabel,
+  startDateCleanup,
+  startDateForWeekDay,
   todayRevalidation,
+  weekDaySelection,
 } from './programStart';
 
 describe('daysUntilStart', () => {
@@ -359,5 +363,140 @@ describe('addDaysToDay', () => {
 
   it('내일 시작으로 정하면 시작 전 1일', () => {
     expect(daysUntilStart(addDaysToDay('2026-10-30', 1), '2026-10-30')).toBe(1);
+  });
+});
+
+describe('startDateForWeekDay (주차 맞추기)', () => {
+  it('1주차 1일이면 오늘이 시작일', () => {
+    expect(startDateForWeekDay('2026-10-30', 1, 1)).toBe('2026-10-30');
+  });
+
+  it('2주차 3일이면 오늘 − (7 + 2)일', () => {
+    expect(startDateForWeekDay('2026-10-30', 2, 3)).toBe('2026-10-21');
+    expect(programWeekAndDay('2026-10-21', '2026-10-30')).toMatchObject({ week: 2, day: 3 });
+  });
+
+  it('4주차 7일이면 오늘 − 27일 (달이 바뀌는 경계)', () => {
+    expect(startDateForWeekDay('2026-11-02', 4, 7)).toBe('2026-10-06');
+  });
+
+  it('유지기(5주차 이상)는 일차와 상관없이 5주차 1일로 계산', () => {
+    expect(startDateForWeekDay('2026-10-30', 5, 1)).toBe('2026-10-02');
+    expect(startDateForWeekDay('2026-10-30', 5, 6)).toBe('2026-10-02');
+    expect(startDateForWeekDay('2026-10-30', 9, 3)).toBe('2026-10-02');
+    expect(programWeekAndDay('2026-10-02', '2026-10-30')).toMatchObject({ week: 5, day: 1 });
+  });
+
+  it('미래 시작일은 만들지 않는다 (0·음수 주차·일차는 1로)', () => {
+    expect(startDateForWeekDay('2026-10-30', 0, 0)).toBe('2026-10-30');
+    expect(startDateForWeekDay('2026-10-30', -1, 3)).toBe('2026-10-28');
+    expect(startDateForWeekDay('2026-10-30', 2, -4)).toBe('2026-10-23');
+    for (let week = -2; week <= 7; week++) {
+      for (let day = -2; day <= 9; day++) {
+        expect(
+          daysUntilStart(startDateForWeekDay('2026-10-30', week, day), '2026-10-30')
+        ).toBeLessThanOrEqual(0);
+      }
+    }
+  });
+
+  it('일차가 7을 넘으면 7일로 본다', () => {
+    expect(startDateForWeekDay('2026-10-30', 1, 10)).toBe('2026-10-24');
+  });
+});
+
+describe('restartStartDate (처음부터 다시 시작)', () => {
+  it('오늘부터면 오늘, 내일부터면 내일', () => {
+    expect(restartStartDate('2026-10-30', 'today')).toBe('2026-10-30');
+    expect(restartStartDate('2026-10-30', 'tomorrow')).toBe('2026-10-31');
+  });
+
+  it('해가 바뀌는 경계', () => {
+    expect(restartStartDate('2026-12-31', 'tomorrow')).toBe('2027-01-01');
+  });
+});
+
+describe('weekDaySelection (주차 맞추기 기본 선택)', () => {
+  it('지금 주차·일차를 그대로', () => {
+    expect(weekDaySelection('2026-10-21', '2026-10-30')).toEqual({ week: 2, day: 3 });
+  });
+
+  it('유지기면 5주차 1일', () => {
+    expect(weekDaySelection('2026-09-01', '2026-10-30')).toEqual({ week: 5, day: 1 });
+  });
+
+  it('시작 전·시작일 없음이면 1주차 1일', () => {
+    expect(weekDaySelection('2026-10-31', '2026-10-30')).toEqual({ week: 1, day: 1 });
+    expect(weekDaySelection(null, '2026-10-30')).toEqual({ week: 1, day: 1 });
+  });
+});
+
+describe('startDateCleanup (시작일 바꾼 뒤 정리할 것)', () => {
+  const ing = (name: string, week: number) => ({ name, week });
+
+  it('새 시작일 기준 오늘 주차·일차부터 통계를 지우고, 그 주차보다 높은 재료는 뺀다', () => {
+    const plan = startDateCleanup({
+      newStart: '2026-10-21',
+      today: '2026-10-30',
+      low: [ing('a', 1), ing('b', 2), ing('c', 3)],
+      zero: [ing('z', 2)],
+    });
+    expect(plan.statisticsFrom).toEqual({ week: 2, day: 3 });
+    expect(plan.low).toEqual([ing('a', 1), ing('b', 2)]);
+    expect(plan.zero).toBeNull(); // 바뀐 게 없으면 저장하지 않는다
+  });
+
+  it('내일부터 다시 시작(시작 전)이면 1주차 1일부터 모두 지우고 1주차 재료만 남긴다', () => {
+    const plan = startDateCleanup({
+      newStart: '2026-10-31',
+      today: '2026-10-30',
+      low: [ing('a', 1), ing('b', 4)],
+      zero: [ing('z', 3)],
+    });
+    expect(plan.statisticsFrom).toEqual({ week: 1, day: 1 });
+    expect(plan.low).toEqual([ing('a', 1)]);
+    expect(plan.zero).toEqual([]);
+  });
+
+  it('한 주 더 하기(시작일 +7)와 같은 결과', () => {
+    // 4주차 1일에 한 주 더 → 3주차 1일
+    const plan = startDateCleanup({
+      newStart: addDaysToDay('2026-10-09', 7),
+      today: '2026-10-30',
+      low: [ing('a', 4)],
+      zero: [],
+    });
+    expect(plan.statisticsFrom).toEqual({ week: 3, day: 1 });
+    expect(plan.low).toEqual([]);
+    expect(plan.zero).toBeNull();
+  });
+});
+
+describe('주차 맞추기 KST 경계 (기기 시간대가 KST가 아닐 때)', () => {
+  const originalTZ = process.env.TZ;
+  afterEach(() => {
+    vi.useRealTimers();
+    process.env.TZ = originalTZ;
+  });
+
+  it('뉴욕 기기에서 KST 자정 직후: 오늘은 KST 날짜, 1주차 1일 = KST 오늘', () => {
+    process.env.TZ = 'America/New_York';
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-30T15:30:00Z')); // KST 10-31 00:30, 뉴욕 10-30 11:30
+    const today = getKoreanDateString({ formatType: 'date' });
+    expect(today).toBe('2026-10-31');
+    expect(startDateForWeekDay(today, 1, 1)).toBe('2026-10-31');
+    expect(getWeekAndDay(startDateForWeekDay(today, 2, 3))).toEqual({ week: 2, day: 3 });
+    expect(getWeekAndDay(restartStartDate(today, 'today'))).toEqual({ week: 1, day: 1 });
+  });
+
+  it('LA 기기에서 KST 자정 직전: 아직 KST 전날', () => {
+    process.env.TZ = 'America/Los_Angeles';
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-30T14:59:00Z')); // KST 10-30 23:59
+    const today = getKoreanDateString({ formatType: 'date' });
+    expect(today).toBe('2026-10-30');
+    expect(startDateForWeekDay(today, 4, 7)).toBe('2026-10-03');
+    expect(getWeekAndDay(startDateForWeekDay(today, 4, 7))).toEqual({ week: 4, day: 7 });
   });
 });
