@@ -316,9 +316,11 @@ async function cancelDailyRemindersNow() {
 // 권한 요청 창은 띄우지 않는다(권한이 없으면 건너뜀). 실패해도 throw하지 않는다
 export function syncDailyReminder({
   startDate,
+  weightReminderOn,
   now = new Date(),
 }: {
   startDate: string | null | undefined;
+  weightReminderOn: boolean | undefined;
   now?: Date;
 }) {
   return enqueue(async () => {
@@ -326,7 +328,7 @@ export function syncDailyReminder({
       const { status } = await Notifications.getPermissionsAsync();
       if (status !== 'granted') return;
       await cancelDailyRemindersNow();
-      const reminder = nextMorningReminder({ startDate, now });
+      const reminder = nextMorningReminder({ startDate, weightReminderOn, now });
       if (!reminder) return;
       await registerChannel(CHANNELS.DAILY);
       await Notifications.scheduleNotificationAsync({

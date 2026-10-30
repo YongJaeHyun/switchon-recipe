@@ -320,7 +320,7 @@ describe('syncDailyReminder (아침 리마인드: 앱을 열면 오늘 것 취�
   });
 
   it('오늘 것을 지우고 내일 09:00 KST 것 하나를 DAILY 채널에 data.kind=daily로 건다', async () => {
-    await syncDailyReminder({ startDate, now: kst('2026-11-01T08:00') });
+    await syncDailyReminder({ startDate, weightReminderOn: false, now: kst('2026-11-01T08:00') });
     expect(cancelScheduledNotificationAsync).toHaveBeenCalledWith('daily-today');
     expect(dailies()).toHaveLength(1);
     expect(scheduleNotificationAsync).toHaveBeenCalledWith(
@@ -338,37 +338,55 @@ describe('syncDailyReminder (아침 리마인드: 앱을 열면 오늘 것 취�
 
   it('여러 번 열어도 하나만 (바꿔 건다)', async () => {
     await Promise.all([
-      syncDailyReminder({ startDate, now: kst('2026-11-01T08:00') }),
-      syncDailyReminder({ startDate, now: kst('2026-11-01T08:00') }),
+      syncDailyReminder({ startDate, weightReminderOn: false, now: kst('2026-11-01T08:00') }),
+      syncDailyReminder({ startDate, weightReminderOn: false, now: kst('2026-11-01T08:00') }),
     ]);
-    await syncDailyReminder({ startDate, now: kst('2026-11-01T21:00') });
+    await syncDailyReminder({ startDate, weightReminderOn: false, now: kst('2026-11-01T21:00') });
     expect(dailies()).toHaveLength(1);
   });
 
   it('끼니·단식 알림은 건드리지 않는다', async () => {
-    await syncDailyReminder({ startDate, now: kst('2026-11-01T08:00') });
-    await syncDailyReminder({ startDate, now: kst('2026-12-01T08:00') });
+    await syncDailyReminder({ startDate, weightReminderOn: false, now: kst('2026-11-01T08:00') });
+    await syncDailyReminder({ startDate, weightReminderOn: false, now: kst('2026-12-01T08:00') });
     expect(scheduled).toEqual([fastingAlarm, mealAlarm]);
     expect(cancelScheduledNotificationAsync).not.toHaveBeenCalledWith('fasting-1');
     expect(cancelScheduledNotificationAsync).not.toHaveBeenCalledWith('meal-1');
   });
 
   it('내일이 대상이 아니면(2주차 1일 이후) 오늘 것만 지우고 새로 걸지 않는다', async () => {
-    await syncDailyReminder({ startDate, now: kst('2026-11-06T08:00') });
+    await syncDailyReminder({ startDate, weightReminderOn: false, now: kst('2026-11-06T08:00') });
     expect(dailies()).toEqual([]);
     expect(scheduleNotificationAsync).not.toHaveBeenCalled();
   });
 
+  it('체중 기록 알림이 켜져 있으면 걸어 둔 것을 지우고 새로 걸지 않는다 (09:00 배너 겹침 방지)', async () => {
+    await syncDailyReminder({ startDate, weightReminderOn: true, now: kst('2026-11-01T08:00') });
+    expect(cancelScheduledNotificationAsync).toHaveBeenCalledWith('daily-today');
+    expect(dailies()).toEqual([]);
+    expect(scheduleNotificationAsync).not.toHaveBeenCalled();
+  });
+
+  it('체중 기록 알림 설정을 아직 모르면 걸지 않고, 꺼짐으로 확인되면 다시 건다', async () => {
+    await syncDailyReminder({
+      startDate,
+      weightReminderOn: undefined,
+      now: kst('2026-11-01T08:00'),
+    });
+    expect(dailies()).toEqual([]);
+    await syncDailyReminder({ startDate, weightReminderOn: false, now: kst('2026-11-01T08:00') });
+    expect(dailies()).toHaveLength(1);
+  });
+
   it('권한이 없으면 요청하지 않고 아무것도 바꾸지 않는다', async () => {
     state.permission = 'undetermined';
-    await syncDailyReminder({ startDate, now: kst('2026-11-01T08:00') });
+    await syncDailyReminder({ startDate, weightReminderOn: false, now: kst('2026-11-01T08:00') });
     expect(requestPermissionsAsync).not.toHaveBeenCalled();
     expect(scheduleNotificationAsync).not.toHaveBeenCalled();
     expect(cancelScheduledNotificationAsync).not.toHaveBeenCalled();
   });
 
   it('끼니·단식 알림 다시 걸기는 아침 리마인드를 지우지 않는다', async () => {
-    await syncDailyReminder({ startDate, now: kst('2026-11-01T08:00') });
+    await syncDailyReminder({ startDate, weightReminderOn: false, now: kst('2026-11-01T08:00') });
     await syncMealAlarms({
       on: false,
       times: DEFAULT_MEAL_MINUTES,

@@ -15,6 +15,8 @@ interface MealAlarmStore {
   times: MealTimes;
   setOn: (on: boolean) => void;
   setTime: (meal: MealKey, minutes: number) => void;
+  // 로그아웃·탈퇴 때: 기기에 남은 설정이 다음 계정으로 넘어가지 않게 꺼짐 + 기본 시각으로
+  reset: () => void;
 }
 
 export const useMealAlarmStore = create<MealAlarmStore>()(
@@ -25,6 +27,7 @@ export const useMealAlarmStore = create<MealAlarmStore>()(
       setOn: (on) => set({ on }),
       setTime: (meal, minutes) =>
         set((state) => ({ times: normalizeMealTimes({ ...state.times, [meal]: minutes }) })),
+      reset: () => set({ on: false, times: DEFAULT_MEAL_MINUTES }),
     }),
     {
       name: 'mealAlarmStore',

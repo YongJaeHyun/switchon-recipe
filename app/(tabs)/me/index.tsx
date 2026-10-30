@@ -21,6 +21,7 @@ import { usePass } from 'hooks/usePass';
 import { queryClient } from 'lib/queryClient';
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
+import { useMealAlarmStore } from 'stores/mealAlarmStore';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { requireOnline } from 'utils/network';
@@ -72,6 +73,8 @@ export default function MeScreen() {
     await clearCachedUser();
     // 탈퇴한 계정 기준으로 걸어 둔 아침 리마인드·끼니·단식 알림이 남지 않게
     await cancelAccountAlarms();
+    // 끼니 알림 설정·시각은 기기에 남으니 다음 계정이 깨끗하게 시작하도록 초기화
+    useMealAlarmStore.getState().reset();
 
     if (provider === 'google') await GoogleSignin.signOut();
     if (provider === 'kakao') await unlink();
@@ -82,9 +85,11 @@ export default function MeScreen() {
     queryClient.clear();
   };
 
-  // 로그아웃: 이 계정 기준 로컬 알림을 지우고 나간다 (다시 로그인하면 앱을 열 때 다시 걸린다)
+  // 로그아웃: 이 계정 기준 로컬 알림을 지우고, 기기에 남는 끼니 알림 설정을 초기화하고 나간다
+  // (다시 로그인하면 아침 리마인드는 앱을 열 때 다시 걸리고, 끼니 알림은 다시 켜야 한다)
   const handleLogout = async () => {
     await cancelAccountAlarms();
+    useMealAlarmStore.getState().reset();
     await UserAPI.logout();
   };
 

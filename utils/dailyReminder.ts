@@ -18,14 +18,20 @@ const kstDay = (now: Date) => new Date(now.getTime() + KST_OFFSET_MS).toISOStrin
 
 // 내일(KST)이 1주차 1~7일 또는 2주차 1일이면 내일 09:00 KST 알림 하나, 아니면 null.
 // 앱을 열 때마다 이것으로 바꿔 걸어, 그날 앱을 안 연 사람에게만 간다 (기기 시간대와 상관없음).
-// 시작 전날 앱을 연 사람(내일부터 시작)도 시작일 아침에 받는다
+// 시작 전날 앱을 연 사람(내일부터 시작)도 시작일 아침에 받는다.
+// weightReminderOn = 체중 기록 알림(user_setting.weight_reminder, 09:00 KST 서버 푸시) 켜짐 여부.
+// 켜져 있으면 같은 시각 배너 두 개가 되지 않게 걸지 않는다 (체중 푸시가 앱으로 불러온다).
+// 아직 모르면(undefined: 설정을 불러오는 중·실패) 겹칠 수 있으니 걸지 않는다 — 불러오면 다시 맞춘다
 export function nextMorningReminder({
   startDate,
+  weightReminderOn,
   now,
 }: {
   startDate: string | null | undefined;
+  weightReminderOn: boolean | undefined;
   now: Date;
 }): DailyReminder | null {
+  if (weightReminderOn !== false) return null;
   if (!startDate) return null;
   const tomorrow = addDaysToDay(kstDay(now), 1);
   const { week, day, beforeStart } = programWeekAndDay(startDate, tomorrow);
@@ -70,4 +76,13 @@ export function shouldCelebrate({
 export function markCelebratedDay(celebratedDays: string[], day: string): string[] {
   if (celebratedDays.includes(day)) return celebratedDays;
   return [...celebratedDays, day].slice(-CELEBRATED_DAYS_KEEP);
+}
+
+// useUserSetting의 setting(user_setting 캐시) → nextMorningReminder의 weightReminderOn.
+// undefined = 아직 안 불러옴(모름), null = 행 없음 → 기본값 꺼짐 (DB default false)
+export function weightReminderOnFrom(
+  setting: { weight_reminder: boolean } | null | undefined
+): boolean | undefined {
+  if (setting === undefined) return undefined;
+  return setting?.weight_reminder ?? false;
 }
