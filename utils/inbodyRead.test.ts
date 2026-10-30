@@ -6,6 +6,7 @@ import {
   formatReadDay,
   INBODY_NOT_FOUND_MESSAGE,
   inbodyFill,
+  inbodyReadKinds,
   inbodyTextsForDay,
   interpretInbodyResponse,
 } from './inbodyRead';
@@ -199,5 +200,17 @@ describe('inbodyTextsForDay', () => {
         input: { muscle_kg: 30.1, fat_kg: null },
       })
     ).toEqual({ day: '2026-10-28', weight_kg: 72.4, muscle_kg: 30.1 });
+  });
+});
+
+describe('inbodyReadKinds', () => {
+  it('읽은 칸만', () => {
+    expect(inbodyReadKinds(RESULT)).toEqual(['weight', 'muscle', 'fat']);
+    expect(inbodyReadKinds({ ...RESULT, weight_kg: null })).toEqual(['muscle', 'fat']);
+    expect(inbodyReadKinds({ ...EMPTY, fat_kg: 0 })).toEqual(['fat']);
+  });
+
+  it('하나도 못 읽으면 빈 배열', () => {
+    expect(inbodyReadKinds(EMPTY)).toEqual([]);
   });
 });

@@ -161,3 +161,14 @@ export const formatReadDay = (day: string, todayKst: string) => {
   if (day.slice(0, 4) === todayKst.slice(0, 4)) return formatMonthDay(day);
   return day.slice(0, 10).replace(/-/g, '.');
 };
+
+export type InbodyFieldKind = keyof InbodyFieldTexts;
+
+// 사진에서 읽어 채운 칸 (채운 뒤 잠깐 초록으로 깜빡여 보여준다). 못 읽은 칸은 빠진다
+export function inbodyReadKinds(result: InbodyReadResult): InbodyFieldKind[] {
+  const kinds: InbodyFieldKind[] = [];
+  if (result.weight_kg != null) kinds.push('weight');
+  if (result.muscle_kg != null) kinds.push('muscle');
+  if (result.fat_kg != null) kinds.push('fat');
+  return kinds;
+}

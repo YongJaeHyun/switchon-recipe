@@ -7,6 +7,7 @@ import { PassBadge } from 'components/common/PassBadge';
 import { CustomBottomSheet } from 'components/common/CustomBottomSheet';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
+import { FlashField, InbodyPhotoPanel, type PhotoSource } from 'components/weight/InbodyPhotoPanel';
 import { CHANNELS } from 'const/channels';
 import { QueryKey } from 'const/queryKey';
 import * as ImagePicker from 'expo-image-picker';
@@ -17,7 +18,7 @@ import { usePremiumGate } from 'hooks/usePremiumGate';
 import { useUserSetting, useWeights } from 'hooks/useWeights';
 import { queryClient } from 'lib/queryClient';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Keyboard, TouchableOpacity, View } from 'react-native';
+import { Keyboard, TouchableOpacity, View } from 'react-native';
 import colors from 'tailwindcss/colors';
 import { Nullable } from 'types/common';
 import {
@@ -39,8 +40,10 @@ import {
   formatMonthDay,
   formatReadDay,
   INBODY_NOT_FOUND_MESSAGE,
+  type InbodyFieldKind,
   type InbodyFieldTexts,
   inbodyFill,
+  inbodyReadKinds,
   type InbodyReadResult,
   inbodyTextsForDay,
 } from 'utils/inbodyRead';
@@ -70,9 +73,9 @@ const BODY_COMP_FIELDS: { kind: BodyCompKind; label: string; placeholder: string
 const EMPTY_BODY_COMP: Record<BodyCompKind, string> = { muscle: '', fat: '' };
 const NO_BODY_COMP_ERROR: Record<BodyCompKind, boolean> = { muscle: false, fat: false };
 
-const toText = (value: number | null) => (value != null ? value.toFixed(1) : '');
+const NO_FLASH: Record<InbodyFieldKind, number> = { weight: 0, muscle: 0, fat: 0 };
 
-type PhotoSource = 'camera' | 'library';
+const toText = (value: number | null) => (value != null ? value.toFixed(1) : '');
 
 // 편의점 판정(app/foodCheck)과 같은 피커 설정: 크기 줄이기는 네이티브 모듈이 필요해 품질만 낮춘다
 const PICKER_OPTIONS: ImagePicker.ImagePickerOptions = {
@@ -122,22 +125,8 @@ const pickPhoto = async (source: PhotoSource) => {
     showInfoToast({ textType: 'CUSTOM', title: 'JPEG 또는 PNG 사진만 읽을 수 있어요' });
     return null;
   }
-  return { imageBase64: asset.base64, mimeType };
+  return { uri: asset.uri, image: { imageBase64: asset.base64, mimeType } };
 };
-
-const askPhotoSource = () =>
-  new Promise<PhotoSource | null>((resolve) =>
-    Alert.alert(
-      '인바디 결과지 사진',
-      '결과지나 인바디 앱 화면을 찍거나 골라 주세요',
-      [
-        { text: '취소', style: 'cancel', onPress: () => resolve(null) },
-        { text: '앨범에서 고르기', onPress: () => resolve('library') },
-        { text: '사진 찍기', onPress: () => resolve('camera') },
-      ],
-      { cancelable: true, onDismiss: () => resolve(null) }
-    )
-  );
 
 interface WeightInputSheetProps {
   bottomSheetRef: React.RefObject<Nullable<BottomSheetMethods>>;
@@ -187,6 +176,11 @@ export function WeightInputSheet({ bottomSheetRef, target }: WeightInputSheetPro
   const [weightMissing, setWeightMissing] = useState(false);
   // 시트 대상이 바뀐 뒤 늦게 온 읽기 결과는 버린다
   const readIdRef = useRef(0);
+  // 결과지 사진 칸: 펼침 여부와 읽는 중인 사진 (읽는 동안 썸네일로 보여준다)
+  const [photoPanelOpen, setPhotoPanelOpen] = useState(false);
+  const [readingUri, setReadingUri] = useState<string | null>(null);
+  // 사진에서 채운 칸을 잠깐 깜빡이게 (칸마다 값이 바뀔 때마다 깜빡인다)
+  const [flashKeys, setFlashKeys] = useState<Record<InbodyFieldKind, number>>(NO_FLASH);
 
   const saveDay = target ? (measuredDay && useMeasuredDay ? measuredDay : target.day) : null;
   // 결과지 날짜 표시 (올해가 아니면 연도까지)
@@ -204,6 +198,9 @@ export function WeightInputSheet({ bottomSheetRef, target }: WeightInputSheetPro
   useEffect(() => {
     readIdRef.current += 1;
     setReading(false);
+    setPhotoPanelOpen(false);
+    setReadingUri(null);
+    setFlashKeys(NO_FLASH);
     setNotice(null);
     setMeasuredDay(null);
     setMeasuredDayOld(false);
@@ -277,25 +274,35 @@ export function WeightInputSheet({ bottomSheetRef, target }: WeightInputSheetPro
     }
   };
 
-  // 패스가 없으면 usePremiumGate가 결제 화면으로 보낸다. 시트가 결제 화면 위에 남지 않게 먼저 닫는다
+  // 패스가 없으면 usePremiumGate가 결제 화면으로 보낸다. 시트가 결제 화면 위에 남지 않게 먼저 닫는다.
+  // 패스가 있으면 인바디 줄 아래에 사진 찍기/앨범 고르기 칸을 펼친다 (다시 누르면 접는다)
   const handlePhotoPress = () => {
+    if (photoPanelOpen) {
+      setPhotoPanelOpen(false);
+      return;
+    }
     if (passStatus && !passStatus.hasAccess) {
       Keyboard.dismiss();
       bottomSheetRef.current?.close();
     }
-    gate(() => void handleReadPhoto())();
+    gate(() => {
+      if (!target || reading) return;
+      Keyboard.dismiss();
+      setNotice(null);
+      setPhotoPanelOpen(true);
+    })();
   };
 
-  const handleReadPhoto = async () => {
+  // 고른 사진을 읽는다. 취소하거나 못 고르면 칸은 펼친 채로 둔다
+  const handleReadPhoto = async (source: PhotoSource) => {
     if (!target || reading) return;
-    Keyboard.dismiss();
-    const source = await askPhotoSource();
-    if (!source) return;
-    const image = await pickPhoto(source);
-    if (!image) return;
+    const picked = await pickPhoto(source);
+    if (!picked) return;
+    const { uri, image } = picked;
 
     const readId = ++readIdRef.current;
     setReading(true);
+    setReadingUri(uri);
     setNotice(null);
     // 피커를 여는 동안 연결이 끊겼을 수 있다
     await requireOnline(async () => {
@@ -325,8 +332,18 @@ export function WeightInputSheet({ bottomSheetRef, target }: WeightInputSheetPro
       setMeasuredDayOld(filled.measuredDayOld);
       // 오래된 결과지는 기본을 시트 날짜(보통 오늘)로
       chooseDay(read, filled.measuredDay, !filled.measuredDayOld);
+      const kinds = inbodyReadKinds(outcome.result);
+      setFlashKeys((prev) => {
+        const next = { ...prev };
+        kinds.forEach((kind) => (next[kind] = readId));
+        return next;
+      });
     })();
-    if (readId === readIdRef.current) setReading(false);
+    if (readId === readIdRef.current) {
+      setReading(false);
+      setReadingUri(null);
+      setPhotoPanelOpen(false);
+    }
   };
 
   const handleSave = requireOnline(async () => {
@@ -389,10 +406,10 @@ export function WeightInputSheet({ bottomSheetRef, target }: WeightInputSheetPro
               : ''}
           </Text>
 
-          <View
-            className={`mb-2 flex-row items-center rounded-xl border bg-white px-4 ${
-              invalid ? 'border-red-400' : 'border-neutral-300'
-            }`}>
+          <FlashField
+            flashKey={flashKeys.weight}
+            borderColor={invalid ? colors.red[400] : colors.neutral[300]}
+            className="mb-2 flex-row items-center rounded-xl border px-4">
             <BottomSheetTextInput
               style={{ flex: 1, fontSize: 28, fontWeight: '700', paddingVertical: 12 }}
               value={text}
@@ -407,7 +424,7 @@ export function WeightInputSheet({ bottomSheetRef, target }: WeightInputSheetPro
               onSubmitEditing={handleSave}
             />
             <Text className="text-xl font-bold text-neutral-500">kg</Text>
-          </View>
+          </FlashField>
           <Text className={`mb-6 text-sm ${invalid ? 'text-red-500' : 'text-neutral-400'}`}>
             {invalid
               ? `${MIN_WEIGHT_KG}~${MAX_WEIGHT_KG}kg 사이로 입력해 주세요`
@@ -429,20 +446,29 @@ export function WeightInputSheet({ bottomSheetRef, target }: WeightInputSheetPro
                 disabled={reading}
                 onPress={handlePhotoPress}
                 hitSlop={8}
-                className="flex-row items-center gap-1 rounded-full border border-green-600 py-1.5 pl-3 pr-1.5">
-                {reading ? (
-                  <ActivityIndicator size="small" color={colors.green[600]} />
-                ) : (
-                  <MaterialIcons name="photo-camera" size={16} color={colors.green[600]} />
-                )}
-                <Text className="text-sm font-semibold text-green-600">
-                  {reading ? '결과지 읽는 중...' : '결과지 사진으로 입력'}
-                </Text>
+                accessibilityState={{ expanded: photoPanelOpen, disabled: reading }}
+                className={`flex-row items-center gap-1 rounded-full border border-green-600 py-1.5 pl-3 pr-1.5 ${
+                  photoPanelOpen ? 'bg-green-50' : ''
+                } ${reading ? 'opacity-50' : ''}`}>
+                <MaterialIcons name="photo-camera" size={16} color={colors.green[600]} />
+                <Text className="text-sm font-semibold text-green-600">결과지 사진으로 입력</Text>
                 <PassBadge locked={photoLocked} />
               </TouchableOpacity>
             )}
           </View>
-          {notice && <Text className="mb-3 text-sm text-amber-600">{notice}</Text>}
+          {photoPanelOpen && (
+            <InbodyPhotoPanel
+              readingUri={readingUri}
+              onPick={(source) => void handleReadPhoto(source)}
+              onClose={() => setPhotoPanelOpen(false)}
+            />
+          )}
+          {notice && (
+            <View className="mb-3 flex-row items-start gap-2 rounded-xl bg-neutral-100 px-3 py-2.5">
+              <MaterialIcons name="info-outline" size={18} color={colors.amber[600]} />
+              <Text className="flex-1 text-sm leading-5 text-neutral-700">{notice}</Text>
+            </View>
+          )}
           <View className={`flex-row gap-3 ${measuredDay ? 'mb-4' : 'mb-6'}`}>
             {BODY_COMP_FIELDS.map(({ kind, label, placeholder }) => {
               const fieldInvalid = bodyInvalid(kind);
@@ -450,10 +476,10 @@ export function WeightInputSheet({ bottomSheetRef, target }: WeightInputSheetPro
               return (
                 <View key={kind} className="flex-1">
                   <Text className="mb-1 text-sm text-neutral-500">{label}</Text>
-                  <View
-                    className={`flex-row items-center rounded-xl border bg-white px-3 ${
-                      fieldInvalid ? 'border-red-400' : 'border-neutral-300'
-                    }`}>
+                  <FlashField
+                    flashKey={flashKeys[kind]}
+                    borderColor={fieldInvalid ? colors.red[400] : colors.neutral[300]}
+                    className="flex-row items-center rounded-xl border px-3">
                     <BottomSheetTextInput
                       style={{ flex: 1, fontSize: 20, fontWeight: '700', paddingVertical: 10 }}
                       value={bodyText[kind]}
@@ -468,7 +494,7 @@ export function WeightInputSheet({ bottomSheetRef, target }: WeightInputSheetPro
                       onSubmitEditing={handleSave}
                     />
                     <Text className="font-bold text-neutral-500">kg</Text>
-                  </View>
+                  </FlashField>
                   {fieldInvalid && (
                     <Text className="mt-1 text-sm text-red-500">{`${min}~${max}kg 사이로`}</Text>
                   )}
@@ -500,8 +526,8 @@ export function WeightInputSheet({ bottomSheetRef, target }: WeightInputSheetPro
                       key={label}
                       disabled={reading}
                       onPress={() => readResult && chooseDay(readResult, measuredDay, use)}
-                      className={`flex-1 items-center rounded-lg border py-2 ${
-                        selected ? 'border-green-600 bg-white' : 'border-neutral-200'
+                      className={`flex-1 items-center rounded-xl border py-2.5 ${
+                        selected ? 'border-green-600 bg-green-50' : 'border-neutral-200 bg-white'
                       }`}>
                       <Text className={selected ? 'font-bold text-green-600' : 'text-neutral-500'}>
                         {label}
