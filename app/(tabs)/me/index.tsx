@@ -9,6 +9,7 @@ import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import AllNoticesModal from 'components/home/AllNoticesModal';
 import { StartDateBottomSheet } from 'components/home/StartDateBottomSheet';
+import { MealAlarmSetting } from 'components/me/MealAlarmSetting';
 import { StartDateRow } from 'components/me/StartDateRow';
 import { WeightReminderToggle } from 'components/me/WeightReminderToggle';
 import { baseProfile, googleIcon, kakaoIconSmall } from 'const/assets';
@@ -125,6 +126,7 @@ export default function MeScreen() {
           <View className="gap-4">
             <StartDateRow onPress={() => startDateSheetRef.current?.expand()} />
             <WeightReminderToggle />
+            <MealAlarmSetting />
             <MenuButton
               title="공지사항"
               icon={<MaterialIcons name="campaign" size={24} color={colors.neutral[600]} />}

@@ -9,10 +9,12 @@ import { queryClient } from 'lib/queryClient';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AppState } from 'react-native';
 import { useUserStore } from 'stores/userStore';
+import { useMealAlarmStore } from 'stores/mealAlarmStore';
 import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
 import { Todo } from 'types/todo';
 import { getKoreanDate, getKoreanDateString, getWeekAndDay } from 'utils/date';
 import { fastingDayTodos } from 'utils/fastingTodos';
+import { mealEndMinutes } from 'utils/mealTimes';
 import { isBeforeStart } from 'utils/programStart';
 import { orEmptyArray } from 'utils/stableDefaults';
 import {
@@ -23,6 +25,7 @@ import {
 } from 'utils/todoDaily';
 import { useQueryWith402Retry } from './useCustomQuery';
 import { RESET_FASTING_MUTATION_KEY, useFasting } from './useFasting';
+import { useMealAlarmSync } from './useMealAlarmSync';
 
 // 날이 바뀌어 할 일을 초기화하는 중인지 확인용 (todo_daily 다시 보내기)
 const RESET_TODOS_MUTATION_KEY = ['resetTodos'];
@@ -36,7 +39,8 @@ const todoDaily = createTodoDailySync({
 });
 
 // syncTodoDaily: 앱이 다시 열리거나 네트워크가 돌아오면 못 보낸 todo_daily를 다시 보낸다.
-// 리스너가 하나면 되므로 화면에 하나만 있는 곳(TodayChecklist)에서만 켠다
+// 리스너가 하나면 되므로 화면에 하나만 있는 곳(TodayChecklist)에서만 켠다. 끼니 알림 맞추기도 여기서 같이 한다
+// (오늘 체크가 바뀌면 체크한 끼니 알림을 빼고, 풀면 다시 건다)
 export const useTodos = (options?: { syncTodoDaily?: boolean }) => {
   const syncTodoDaily = options?.syncTodoDaily ?? false;
   const userId = useUserStore((state) => state.id);
@@ -48,6 +52,9 @@ export const useTodos = (options?: { syncTodoDaily?: boolean }) => {
   const currentStep = week === 1 ? (day <= 3 ? 1 : 2) : week + 1;
 
   const { schedule: fastingSchedule, isLoading: isFastingLoading } = useFasting();
+  // 단식 중 숨기는 끼니는 사용자 끼니 시각의 '식후'로 판정한다
+  const mealTimes = useMealAlarmStore((state) => state.times);
+  const mealEnds = useMemo(() => mealEndMinutes(mealTimes), [mealTimes]);
 
   const baseTodos = useMemo(
     () =>
@@ -139,8 +146,8 @@ export const useTodos = (options?: { syncTodoDaily?: boolean }) => {
 
   // 오늘 보이는 할 일 (단식일·단식 다음 날은 단식 시간에 걸린 끼니를 뺀다)
   const getTodayTodos = useCallback(() => {
-    return fastingDayTodos([...baseTodos], getKoreanDate().getDay(), fastingSchedule);
-  }, [baseTodos, fastingSchedule]);
+    return fastingDayTodos([...baseTodos], getKoreanDate().getDay(), fastingSchedule, mealEnds);
+  }, [baseTodos, fastingSchedule, mealEnds]);
 
   // 오늘 목록·체크가 오늘 것인지 (revalidateToday가 주차·일차를 반영하고 초기화가 끝났는지)
   const hydrated = useWeekCompletePopupStore((state) => state.isHydrated);
@@ -151,6 +158,12 @@ export const useTodos = (options?: { syncTodoDaily?: boolean }) => {
   const todayState = { hydrated, week, storeWeek, fastingResetting };
   const listCurrent = isTodoListCurrent(todayState);
   const checksCurrent = areTodoChecksCurrent({ ...todayState, day, storeDay, todosResetting });
+
+  // 끼니 알림: 오늘 체크가 오늘 것일 때만 (어제 체크로 오늘 알림을 빼지 않게). 시작 전이면 체크 없음
+  useMealAlarmSync(
+    beforeStart ? [] : !isLoading && checksCurrent ? checkedIds : null,
+    syncTodoDaily
+  );
 
   // 앱 복귀·네트워크 재연결 때마다 늘려서 아래 보내기 effect를 다시 돌린다
   const [syncTick, setSyncTick] = useState(0);

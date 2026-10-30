@@ -6,34 +6,45 @@ import { Text } from 'components/common/Text';
 import { onboardQuestionImage } from 'const/assets';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
+import { turnOnMealAlarm } from 'hooks/useMealAlarmSync';
 import useSteps from 'hooks/useSteps';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useMealAlarmStore } from 'stores/mealAlarmStore';
 import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
 import colors from 'tailwindcss/colors';
 import { getKoreanDateString, getKoreanDateWeeksAgo } from 'utils/date';
 import { getWeekColor } from 'utils/getWeekColor';
+import { formatMinutes } from 'utils/fastingSchedule';
+import { MEAL_KEYS, MEAL_LABELS } from 'utils/mealTimes';
 import { addDaysToDay, programWeekAndDay } from 'utils/programStart';
 import RippleButton from '../../components/common/RippleButton';
 
 // 1 소개 → 2 지금 하고 있는지 → 3 (하고 있음) 시작한 날 달력 / 4 (새로 시작) 언제부터 → 5 확인
-const totalSteps = 5;
+// → 6 끼니 알림 (1주차이거나 시작 전일 때만. 끼니 알림은 1주차에만 온다)
+const totalSteps = 6;
 const START_CHOICE_STEP = 4;
+const CONFIRM_STEP = 5;
+const MEAL_ALARM_STEP = 6;
 
 export default function OnboardingScreen() {
-  const { step, goLastStep, goNextStep, goToStep } = useSteps(totalSteps);
+  const { step, goNextStep, goToStep } = useSteps(totalSteps);
   const { setWeek } = useWeekCompletePopupStore();
+  const mealTimes = useMealAlarmStore((state) => state.times);
+  const setMealAlarmOn = useMealAlarmStore((state) => state.setOn);
+  const [isAsking, setIsAsking] = useState(false);
 
   const today = getKoreanDateString({ formatType: 'date' });
   const tomorrow = addDaysToDay(today, 1);
   const [selectedDate, setSelectedDate] = useState(today);
   const { week, day, beforeStart } = programWeekAndDay(selectedDate, today);
+  const asksMealAlarm = beforeStart || week === 1;
 
   const setDateAndGoLastStep = (startDate: string) => {
     setSelectedDate(startDate);
-    goLastStep();
+    goToStep(CONFIRM_STEP);
   };
 
   const completeOnboarding = async () => {
@@ -41,10 +52,22 @@ export default function OnboardingScreen() {
     await UserAPI.updateOnboarding(selectedDate);
     router.replace('/(tabs)/home');
   };
+  // 끼니 알림: 예 → 권한 요청(거부하면 꺼짐), 아니오 → 꺼짐. 나중에 내 정보에서 켤 수 있다
+  const answerMealAlarm = async (yes: boolean) => {
+    if (isAsking) return;
+    setIsAsking(true);
+    try {
+      if (yes) await turnOnMealAlarm();
+      else setMealAlarmOn(false);
+      await completeOnboarding();
+    } finally {
+      setIsAsking(false);
+    }
+  };
   return (
     <SafeAreaView className="flex-1 bg-white px-5">
       <View className="flex-[1.3] items-end justify-center gap-3">
-        {step < totalSteps && <ProgressBar progress={(step - 1) / (totalSteps - 1)} />}
+        {step < CONFIRM_STEP && <ProgressBar progress={(step - 1) / (CONFIRM_STEP - 1)} />}
       </View>
       <View className="flex-[10] justify-between">
         {step === 1 && (
@@ -110,7 +133,9 @@ export default function OnboardingScreen() {
               <CustomCalendar selectedDate={selectedDate} setSelectedDate={setSelectedDate} />
             </AnimatedTextView>
             <AnimatedTextView delay={1500}>
-              <RippleButton className="w-full bg-green-600 py-5" onPress={goLastStep}>
+              <RippleButton
+                className="w-full bg-green-600 py-5"
+                onPress={() => goToStep(CONFIRM_STEP)}>
                 <Text className="text-xl text-white">선택하기</Text>
               </RippleButton>
             </AnimatedTextView>
@@ -148,7 +173,7 @@ export default function OnboardingScreen() {
             </AnimatedTextView>
           </>
         )}
-        {step === 5 && (
+        {step === CONFIRM_STEP && (
           <>
             <View className="gap-10">
               <AnimatedTextView delay={500}>
@@ -186,8 +211,55 @@ export default function OnboardingScreen() {
               </AnimatedTextView>
             </View>
             <AnimatedTextView delay={1500}>
-              <RippleButton className="w-full bg-green-600 py-5" onPress={completeOnboarding}>
-                <Text className="text-xl text-white">시작하기</Text>
+              <RippleButton
+                className="w-full bg-green-600 py-5"
+                onPress={asksMealAlarm ? goNextStep : completeOnboarding}>
+                <Text className="text-xl text-white">{asksMealAlarm ? '다음' : '시작하기'}</Text>
+              </RippleButton>
+            </AnimatedTextView>
+          </>
+        )}
+        {step === MEAL_ALARM_STEP && (
+          <>
+            <View className="gap-4">
+              <AnimatedTextView delay={500}>
+                <Text className="text-4xl font-bold leading-snug">
+                  <Text className="text-green-600">끼니 시간</Text>에 알려드릴까요?
+                </Text>
+              </AnimatedTextView>
+              <AnimatedTextView className="gap-3" delay={800}>
+                <Text className="text-lg font-medium text-neutral-500">
+                  1주차 동안 끼니마다 그날 먹을 것을 알려드려요. 먹고 체크하면 그 알림은 오지
+                  않아요.
+                </Text>
+                <View className="flex-row gap-2">
+                  {MEAL_KEYS.map((meal) => (
+                    <View key={meal} className="flex-1 items-center rounded-xl bg-neutral-100 py-3">
+                      <Text className="text-sm text-neutral-500">{MEAL_LABELS[meal]}</Text>
+                      <Text className="text-lg font-bold text-neutral-800">
+                        {formatMinutes(mealTimes[meal])}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+                <Text className="text-base text-neutral-400">
+                  시각은 나중에 내 정보 → 끼니 알림에서 바꿀 수 있어요.
+                </Text>
+              </AnimatedTextView>
+            </View>
+            <AnimatedTextView className="gap-5" delay={1000}>
+              <RippleButton
+                className="w-full bg-green-600 py-5"
+                disabled={isAsking}
+                onPress={() => answerMealAlarm(true)}>
+                <Text className="text-xl text-white">네, 알려주세요</Text>
+              </RippleButton>
+              <RippleButton
+                className="w-full py-5"
+                outerClassName="border border-green-600"
+                disabled={isAsking}
+                onPress={() => answerMealAlarm(false)}>
+                <Text className="text-xl text-green-600">괜찮아요</Text>
               </RippleButton>
             </AnimatedTextView>
           </>

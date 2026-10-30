@@ -8,6 +8,8 @@ import { useUserStore } from 'stores/userStore';
 import { FastingDB } from 'types/database';
 import { Maybe } from '../types/common';
 import { formatMinutes, scheduleFrom } from './fastingSchedule';
+import { mealAlarms } from './mealAlarms';
+import type { MealTimes } from './mealTimes';
 import { type PushEnableResult, pushEnableResult } from './pushEnable';
 import { captureError } from './sendError';
 
@@ -74,10 +76,10 @@ export const enablePushForChannel = async (channelId: Channel): Promise<PushEnab
 };
 
 // 알림 권한이 꺼져 있어 알림을 켤 수 없을 때 안내 (휴대폰 설정으로 이동)
-export const showNotificationPermissionAlert = () => {
+export const showNotificationPermissionAlert = (what = '매일 아침 체중 기록 알림') => {
   Alert.alert(
     '알림이 꺼져 있어요',
-    '휴대폰 설정에서 스위치온 레시피 알림을 허용하면 매일 아침 체중 기록 알림을 받을 수 있어요.',
+    `휴대폰 설정에서 스위치온 레시피 알림을 허용하면 ${what}을 받을 수 있어요.`,
     [
       { text: '닫기', style: 'cancel' },
       { text: '설정 열기', onPress: () => Linking.openSettings() },
@@ -86,8 +88,9 @@ export const showNotificationPermissionAlert = () => {
 };
 
 // 로컬 예약 알림용: 알림 권한(없으면 요청)과 채널만 준비한다. 푸시 토큰은 필요 없다
-// (토큰 받기·저장이 실패해도 예약 알림은 걸 수 있어야 한다). 실패하면 false
-const prepareLocalNotifications = async (channelId: Channel): Promise<boolean> => {
+// (토큰 받기·저장이 실패해도 예약 알림은 걸 수 있어야 한다). 실패하면 false.
+// 끼니 알림을 켤 때(온보딩·내 정보)도 이걸로 권한을 받는다
+export const prepareLocalNotifications = async (channelId: Channel): Promise<boolean> => {
   try {
     let { status } = await Notifications.getPermissionsAsync();
     if (status !== 'granted') status = (await Notifications.requestPermissionsAsync()).status;
@@ -228,6 +231,68 @@ export async function syncFastingAlarms(fasting: Maybe<FastingDB>, weekFrom: str
 
 export function cancelFastingAlarms() {
   return enqueue(cancelFastingAlarmsNow);
+}
+
+const MEAL_ALARM_KIND = 'meal';
+
+export const isMealAlarm = (request: { content: { data?: Record<string, unknown> | null } }) =>
+  request.content.data?.kind === MEAL_ALARM_KIND;
+
+// 끼니 알림만 지운다 (단식·다른 알림은 그대로)
+async function cancelMealAlarmsNow() {
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  await Promise.all(
+    scheduled
+      .filter(isMealAlarm)
+      .map((request) => Notifications.cancelScheduledNotificationAsync(request.identifier))
+  );
+}
+
+// 1주차 끼니 알림을 지금 상태에 맞춘다: 켜져 있으면 남은 끼니(오늘 체크한 끼니 제외)를 다시 걸고,
+// 꺼져 있거나 1주차가 지났으면 끼니 알림만 지운다. 앱을 열 때·할 일 체크 때·설정을 바꿀 때.
+// 권한 요청 창은 띄우지 않는다(권한이 없으면 건너뜀). 실패해도 throw하지 않는다
+export function syncMealAlarms({
+  on,
+  times,
+  startDate,
+  checkedToday,
+  now = new Date(),
+}: {
+  on: boolean;
+  times: MealTimes;
+  startDate: string | null | undefined;
+  checkedToday: number[];
+  now?: Date;
+}) {
+  return enqueue(async () => {
+    try {
+      if (!on) {
+        await cancelMealAlarmsNow();
+        return;
+      }
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status !== 'granted') return;
+      await registerChannel(CHANNELS.MEAL);
+      await cancelMealAlarmsNow();
+      for (const { date, body, day } of mealAlarms({ startDate, now, times, checkedToday })) {
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: `1주차 ${day}일차`,
+            body,
+            // 누르면 오늘 탭 (utils/notificationHref)
+            data: { kind: MEAL_ALARM_KIND, href: '/home' },
+          },
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
+            date,
+            channelId: CHANNELS.MEAL,
+          },
+        });
+      }
+    } catch (error) {
+      captureError({ error, prefix: '[syncMealAlarms]: ' });
+    }
+  });
 }
 
 // 디버깅용

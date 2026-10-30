@@ -17,6 +17,8 @@ describe('resolveNotificationHref', () => {
       href: '/(tabs)/records?view=report',
       tab: true,
     }));
+  it('/home은 오늘 탭 (끼니 알림)', () =>
+    expect(resolveNotificationHref('/home')).toEqual({ href: '/(tabs)/home', tab: true }));
   it('/profile은 내 정보 탭 (탭 이동)', () =>
     expect(resolveNotificationHref('/profile')).toEqual({ href: '/(tabs)/me', tab: true }));
   it('리포트 상세는 그대로 push', () =>
