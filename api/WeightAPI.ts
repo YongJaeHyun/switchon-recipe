@@ -2,6 +2,7 @@ import { supabase } from 'lib/supabase';
 import { useUserStore } from 'stores/userStore';
 import { Maybe } from 'types/common';
 import { WeightLogDB } from 'types/database';
+import type { WeightUpsertPayload } from 'utils/bodyComp';
 import { captureError, sendError } from 'utils/sendError';
 
 // 내 체중 기록 전체 (날짜순). 실패 시 throw: 호출부(React Query)가 재시도/표시를 정한다
@@ -15,11 +16,19 @@ const list = async (): Promise<WeightLogDB[]> => {
     captureError({ error: error ?? new Error('empty response'), prefix: '[WeightAPI.list]: ' });
     throw error ?? new Error('weight_log: empty response');
   }
-  return data.map((row) => ({ ...row, weight_kg: Number(row.weight_kg) }));
+  // numeric 열은 문자열로 올 수 있어 숫자로 바꾼다. 인바디 값은 없으면 null 그대로
+  const toNum = (v: number | string | null) => (v == null ? null : Number(v));
+  return data.map((row) => ({
+    ...row,
+    weight_kg: Number(row.weight_kg),
+    muscle_kg: toNum(row.muscle_kg),
+    fat_kg: toNum(row.fat_kg),
+  }));
 };
 
-// 그날 체중 저장. 같은 날 다시 저장하면 값을 바꾼다. 실패하면 토스트 후 undefined
-const upsert = async ({ day, weight_kg }: { day: string; weight_kg: number }) =>
+// 그날 체중(+인바디) 저장. 같은 날 다시 저장하면 보낸 열만 바꾼다. 실패하면 토스트 후 undefined.
+// 인바디 키는 값이 정해진 것만 보낸다 (undefined를 보내면 안 됨: 같은 날 인바디 값이 남아야 한다)
+const upsert = async ({ day, weight_kg, muscle_kg, fat_kg }: WeightUpsertPayload) =>
   sendError<Maybe<WeightLogDB>>(async () => {
     const uid = useUserStore.getState().id;
     if (!uid) return;
@@ -27,7 +36,14 @@ const upsert = async ({ day, weight_kg }: { day: string; weight_kg: number }) =>
     const { data, error } = await supabase
       .from('weight_log')
       .upsert(
-        { uid, day, weight_kg, updated_at: new Date().toISOString() },
+        {
+          uid,
+          day,
+          weight_kg,
+          ...(muscle_kg !== undefined && { muscle_kg }),
+          ...(fat_kg !== undefined && { fat_kg }),
+          updated_at: new Date().toISOString(),
+        },
         { onConflict: 'uid,day' }
       )
       .select()

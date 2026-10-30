@@ -940,18 +940,24 @@ export type Database = {
       weight_log: {
         Row: {
           day: string;
+          fat_kg: number | null;
+          muscle_kg: number | null;
           uid: string;
           updated_at: string;
           weight_kg: number;
         };
         Insert: {
           day: string;
+          fat_kg?: number | null;
+          muscle_kg?: number | null;
           uid: string;
           updated_at?: string;
           weight_kg: number;
         };
         Update: {
           day?: string;
+          fat_kg?: number | null;
+          muscle_kg?: number | null;
           uid?: string;
           updated_at?: string;
           weight_kg?: number;
