@@ -66,7 +66,11 @@ const updateOnboarding = async (start_date: string) =>
     setUser(data);
   });
 
-const updateStartDate = async (start_date: string) =>
+// toast: 이 흐름에 맞는 성공 문구 (없으면 기본 "시작날짜 재설정 성공"). 성공하면 true, 실패하면 undefined
+const updateStartDate = async (
+  start_date: string,
+  options?: { toast?: { title: string; subtitle: string } }
+) =>
   sendError(async () => {
     const setUser = useUserStore.getState().setUser;
     const userId = useUserStore.getState().id;
@@ -82,9 +86,10 @@ const updateStartDate = async (start_date: string) =>
     setUser(data);
     showSuccessToast({
       textType: 'CUSTOM',
-      title: '시작날짜 재설정 성공',
-      subtitle: `${start_date}일로 정상적으로 변경되었습니다`,
+      title: options?.toast?.title ?? '시작날짜 재설정 성공',
+      subtitle: options?.toast?.subtitle ?? `${start_date}일로 정상적으로 변경되었습니다`,
     });
+    return true;
   });
 
 const updatePushToken = async (pushToken: string) =>

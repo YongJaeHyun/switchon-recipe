@@ -207,7 +207,9 @@ describe('todayRevalidation 서버 초기화 (시작 전엔 쓰지 않는다)', 
     expect(r.resetFasting).toBe(false);
   });
 
-  it('시작 전에 저장 주차가 1이 아니었어도 단식 초기화(서버 쓰기)는 하지 않는다', () => {
+  it('시작 전에 저장 주차가 1이 아니었으면(다시 시작) 단식 계획은 지운다 — 할 일은 그대로', () => {
+    // 3주차에서 미래 시작일로 다시 시작: 지금 주차가 1로 내려간다. 시작일에는 주차가 바뀌지 않아
+    // 여기서 지우지 않으면 지난 프로그램의 단식 계획이 남는다
     const r = todayRevalidation({
       week: 1,
       day: 1,
@@ -217,7 +219,7 @@ describe('todayRevalidation 서버 초기화 (시작 전엔 쓰지 않는다)', 
       isChecked: true,
     });
     expect(r.weekChanged).toBe(true);
-    expect(r.resetFasting).toBe(false);
+    expect(r.resetFasting).toBe(true);
     expect(r.resetTodos).toBe(false);
   });
 
@@ -245,6 +247,98 @@ describe('todayRevalidation 서버 초기화 (시작 전엔 쓰지 않는다)', 
     });
     expect(r.resetTodos).toBe(true);
     expect(r.resetFasting).toBe(true);
+  });
+});
+
+describe('todayRevalidation 한 주 더 하기 (시작일 +7일 → 주차 감소)', () => {
+  it('4주차 1일 → 3주차 1일: 주차 팝업은 다시 열지 않고 닫힌 것으로 둔다', () => {
+    // 팝업에서 "한 주 더 하기"를 누르면 close()로 isChecked = true가 된 뒤 시작일이 바뀐다
+    const r = todayRevalidation({
+      week: 3,
+      day: 1,
+      beforeStart: false,
+      prevWeek: 4,
+      prevDay: 1,
+      isChecked: true,
+    });
+    expect(r).toMatchObject({
+      week: 3,
+      day: 1,
+      weekChanged: true,
+      dayChanged: false,
+      closePopup: true,
+      openPopup: false,
+    });
+  });
+
+  it('같은 날 주차만 줄어도 할 일·단식 계획을 새 주차 기준으로 초기화한다', () => {
+    // 할 일 목록은 주차마다 다르고 체크는 목록 순번이라, 4주차 체크가 3주차 목록에 남으면 안 된다
+    const r = todayRevalidation({
+      week: 3,
+      day: 1,
+      beforeStart: false,
+      prevWeek: 4,
+      prevDay: 1,
+      isChecked: true,
+    });
+    expect(r.resetTodos).toBe(true);
+    expect(r.resetFasting).toBe(true);
+  });
+
+  it('3주차 중간(5일)에 한 주 더 → 2주차 5일: 팝업 없음, 초기화', () => {
+    const r = todayRevalidation({
+      week: 2,
+      day: 5,
+      beforeStart: false,
+      prevWeek: 3,
+      prevDay: 5,
+      isChecked: true,
+    });
+    expect(r).toMatchObject({
+      week: 2,
+      day: 5,
+      closePopup: true,
+      openPopup: false,
+      resetTodos: true,
+      resetFasting: true,
+    });
+  });
+
+  it('팝업을 닫기 전에(isChecked false) 주차가 줄어도 다시 열지 않는다', () => {
+    const r = todayRevalidation({
+      week: 3,
+      day: 1,
+      beforeStart: false,
+      prevWeek: 4,
+      prevDay: 1,
+      isChecked: false,
+    });
+    expect(r.openPopup).toBe(false);
+    expect(r.closePopup).toBe(true);
+  });
+
+  it('줄어든 뒤 다음 재검증(같은 주차·닫힘)에서도 열지 않는다', () => {
+    const r = todayRevalidation({
+      week: 3,
+      day: 2,
+      beforeStart: false,
+      prevWeek: 3,
+      prevDay: 1,
+      isChecked: true,
+    });
+    expect(r).toMatchObject({ openPopup: false, weekChanged: false, resetFasting: false });
+  });
+
+  it('한 주를 다시 한 뒤 다음 주차(4주차)에 들어서면 다시 연다', () => {
+    const r = todayRevalidation({
+      week: 4,
+      day: 1,
+      beforeStart: false,
+      prevWeek: 3,
+      prevDay: 7,
+      isChecked: true,
+    });
+    expect(r.openPopup).toBe(true);
   });
 });
 

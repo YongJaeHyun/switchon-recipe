@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { addWeekRepeatAskedKey } from 'utils/weekRepeat';
 
 interface WeekCompletePopupStore {
   visible: boolean;
@@ -8,12 +9,15 @@ interface WeekCompletePopupStore {
   day: number;
   isChecked: boolean;
   isHydrated: boolean;
+  // "한 주 더 하기"를 이미 물은 전환 (utils/weekRepeat weekRepeatKey: 시작일 + 진입 주차)
+  repeatAskedKeys: string[];
 
   setWeek: (week: number) => void;
   setDay: (day: number) => void;
   setHydrated: (isHydrated: boolean) => void;
   open: () => void;
   close: () => void;
+  markRepeatAsked: (key: string) => void;
 }
 
 const initialValue = {
@@ -22,6 +26,7 @@ const initialValue = {
   day: 1,
   isChecked: false,
   isHydrated: false,
+  repeatAskedKeys: [] as string[],
 };
 
 export const useWeekCompletePopupStore = create<WeekCompletePopupStore>()(
@@ -33,6 +38,8 @@ export const useWeekCompletePopupStore = create<WeekCompletePopupStore>()(
       setHydrated: (isHydrated) => set({ isHydrated }),
       open: () => set({ visible: true }),
       close: () => set({ visible: false, isChecked: true }),
+      markRepeatAsked: (key) =>
+        set((state) => ({ repeatAskedKeys: addWeekRepeatAskedKey(state.repeatAskedKeys, key) })),
     }),
     {
       name: 'weekCompletePopupStore',

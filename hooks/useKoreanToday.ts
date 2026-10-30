@@ -38,10 +38,9 @@ export default function useKoreanToday() {
       if (next.resetFasting) resetFasting();
       if (next.closePopup) close();
     }
-    if (next.dayChanged) {
-      setDay(next.day);
-      if (next.resetTodos) resetTodos();
-    }
+    if (next.dayChanged) setDay(next.day);
+    // 한 주 더 하기처럼 같은 날 주차만 바뀌어도 할 일을 초기화한다
+    if (next.resetTodos) resetTodos();
     if (next.openPopup) open();
   }, [start_date, resetFasting, resetTodos]);
 

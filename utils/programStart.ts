@@ -40,9 +40,11 @@ export function programWeekAndDay(
 }
 
 // 앱을 열 때·날이 바뀔 때(useKoreanToday) 주차 팝업 store를 어떻게 맞출지.
-// weekChanged → setWeek, dayChanged → setDay. resetFasting·resetTodos는 서버 행을 쓰는 초기화라
-// 시작 전에는 하지 않는다 (store만 맞춘다. 시작일 0 → 1일 전환 때 할 일 초기화가 일어난다).
-// 시작 전에는 팝업을 열지 않고 일차를 BEFORE_START_DAY로 둔다
+// weekChanged → setWeek, dayChanged → setDay. 시작 전에는 팝업을 열지 않고 일차를 BEFORE_START_DAY로 둔다.
+// - resetFasting: 주차가 바뀌면 언제나 (시작 전으로 다시 시작해 주차가 1로 내려갈 때도 지난 단식 계획을 지운다.
+//   시작일에는 주차가 바뀌지 않으므로 여기서 지워야 한다)
+// - resetTodos: 일차나 주차가 바뀌면 (한 주 더 하기로 같은 날 주차만 줄어도 목록이 바뀌므로). 시작 전에는 하지 않고
+//   시작일 0 → 1일 전환 때 초기화한다
 export function todayRevalidation(input: {
   week: number;
   day: number;
@@ -70,8 +72,8 @@ export function todayRevalidation(input: {
     day,
     weekChanged,
     dayChanged,
-    resetFasting: weekChanged && !beforeStart,
-    resetTodos: dayChanged && !beforeStart,
+    resetFasting: weekChanged,
+    resetTodos: (dayChanged || weekChanged) && !beforeStart,
     // 시작일을 뒤로 미뤄 주차가 줄었으면 그 주차 팝업은 이미 본 것으로 둔다
     closePopup: weekChanged && week < prevWeek,
     openPopup: !beforeStart && shouldOpenWeekPopup({ prevWeek, week, isChecked }),

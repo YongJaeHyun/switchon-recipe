@@ -2,7 +2,7 @@ import { weekCompleteLottie } from 'const/assets';
 import { useIngredients } from 'hooks/useIngredients';
 import useSteps from 'hooks/useSteps';
 import LottieView from 'lottie-react-native';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal, ScrollView, useWindowDimensions, View } from 'react-native';
 import Animated, {
   Easing,
@@ -10,23 +10,47 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { useUserStore } from 'stores/userStore';
 import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
 import colors from 'tailwindcss/colors';
 import { WEEK_CHANGES } from 'utils/dietGuide';
 import { getWeekColor } from 'utils/getWeekColor';
+import { shouldAskWeekRepeat, weekRepeatKey } from 'utils/weekRepeat';
 import AnimatedTextView from './AnimatedTextView';
 import RippleButton from './RippleButton';
 import { Text } from './Text';
+import { WeekRepeatStep } from './WeekRepeatStep';
 
 export function WeekCompletePopup() {
-  const { close, week, visible } = useWeekCompletePopupStore();
+  const { close, week, visible, repeatAskedKeys, markRepeatAsked } = useWeekCompletePopupStore();
+  const startDate = useUserStore((state) => state.start_date);
   const { step, goNextStep, resetStep } = useSteps(2);
   const { ingredients } = useIngredients();
   const { height: windowHeight } = useWindowDimensions();
 
   const scale = useSharedValue(0);
 
+  // 3·4주차 진입이고 이 전환에서 아직 안 물었으면 첫 단계 앞에 '지난 주 돌아보기'.
+  // 팝업이 열릴 때 한 번 정한다 (닫히는 동안 시작일·주차가 바뀌어도 내용이 바뀌지 않게)
+  const askRepeat = shouldAskWeekRepeat({ startDate, week, askedKeys: repeatAskedKeys });
+  // 돌아보는 중이면 들어서는 주차와 전환 키 (아니면 null). 키가 바뀌면 단계를 새로 그린다
+  const reviewOf = () =>
+    askRepeat && startDate ? { week, key: weekRepeatKey(startDate, week) } : null;
+  const [review, setReview] = useState(visible ? reviewOf() : null);
+  const [prevVisible, setPrevVisible] = useState(visible);
+  if (visible !== prevVisible) {
+    setPrevVisible(visible);
+    if (visible) setReview(reviewOf());
+  }
+
   const handleClose = () => {
+    // 돌아보기 중 뒤로 가기로 닫아도 이 전환에서는 다시 묻지 않는다
+    if (review) markRepeatAsked(review.key);
+    resetStep();
+    close();
+  };
+
+  const handleRepeated = () => {
     resetStep();
     close();
   };
@@ -58,7 +82,16 @@ export function WeekCompletePopup() {
               alignItems: 'center',
             },
           ]}>
-          {step === 1 && (
+          {review && (
+            <WeekRepeatStep
+              key={review.key}
+              week={review.week}
+              onNext={() => setReview(null)}
+              onRepeated={handleRepeated}
+            />
+          )}
+
+          {!review && step === 1 && (
             <>
               <LottieView
                 source={weekCompleteLottie}
@@ -82,7 +115,7 @@ export function WeekCompletePopup() {
             </>
           )}
 
-          {step === 2 && (
+          {!review && step === 2 && (
             <>
               {/* 재료가 많으면 팝업이 화면을 넘치므로 내용만 스크롤하고 확인 버튼은 항상 보이게 함 */}
               <ScrollView
