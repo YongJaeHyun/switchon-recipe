@@ -39,7 +39,8 @@
 
 ### Task 3: 끼니 시간 알림
 **Files:** Create `utils/mealAlarms.ts`(+test) — `mealAlarms({ startDate, now, times, checkedToday, todos }): { date, body, meal }[]`(1주차 남은 날의 끼니, 오늘 체크한 끼니·지난 시각 제외, 그날 할 일 문구로 본문); Modify `utils/notifications.ts`(meal 예약·취소 `syncMealAlarms`, `data.kind='meal'`, 채널 `CHANNELS.MEAL`), `const/channels.ts`; Create `stores/mealAlarmStore.ts` 또는 `firstWeekStore`에 설정(on, times); Create `components/me/MealAlarmSetting.tsx`(켜기/끄기 + 시각 4개, 기존 `WheelPicker`/`TimeWheel` 재사용, 30분 단위); Modify `app/(tabs)/me/index.tsx`, `app/(auth)/onboard.tsx`(마지막 단계 "끼니 시간에 알려드릴까요?" — 예면 `prepareLocalNotifications` 권한 요청, 거부면 꺼짐), `hooks/useTodos.ts`(체크 변경 때 sync), 앱 열 때 sync(단식 sync와 같은 자리).
-- [ ] 테스트 먼저(경계·KST·체크 취소·1주차 밖 없음·단식 알림 보존), 구현, Commit `✨ 1주차 끼니 시간 알림`
+- 끼니 시각 ↔ 단식 연결(스펙 '추가'): `utils/mealTimes.ts` — `DEFAULT_MEAL_MINUTES {breakfast 480, lunch 750, snack 960, dinner 1110}`, `afterMealMinutes(times) = times + 30`; `QUICK_TIMES`(fastingSchedule 앱 쪽 사용처)·새 요일 기본값·`utils/fastingTodos.ts` 끼니 마치는 시각이 사용자 끼니 시각에서 나오게. 서버 복사본·legacyLabel은 그대로.
+- [ ] 테스트 먼저(경계·KST·체크 취소·1주차 밖 없음·단식 알림 보존, 식후 = 끼니+30 기본값 08:30/13:00/19:00), 구현, Commit `✨ 1주차 끼니 시간 알림`
 
 ### Task 4: 완주 축하 + 다음 날 아침 리마인드
 **Files:** Create `utils/dailyReminder.ts`(+test) — `nextMorningReminder({ startDate, now }): { date, body } | null`(내일이 1주차 2~7일 또는 2주차 1일이면 내일 09:00 KST, 아니면 null), `shouldCelebrate({ week, day, completedRate, celebratedDays, today })`; Modify `utils/notifications.ts`(`data.kind='daily'` 예약·취소: 앱 열 때 오늘 것 취소 + 내일 것 예약), Create `components/home/DayCompleteSheet.tsx`(lottie 재사용, "N일차 완주!" + `week1Guide` 내일 예고), Modify `TodayChecklist.tsx`.
