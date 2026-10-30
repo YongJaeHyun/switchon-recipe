@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { mealAlarmBody, mealAlarms } from './mealAlarms';
+import { checksForSettingSync, mealAlarmBody, mealAlarms } from './mealAlarms';
 import { DEFAULT_MEAL_MINUTES } from './mealTimes';
 
 const kst = (iso: string) => new Date(`${iso}+09:00`);
@@ -111,5 +111,23 @@ describe('mealAlarms', () => {
     });
     expect(before).toHaveLength(28);
     expect(kstIso(before[0].date)).toBe('2026-10-31T08:00');
+  });
+});
+
+describe('checksForSettingSync (리뷰 M2: 내 정보에서 바로 맞출 때 쓸 오늘 체크)', () => {
+  const current = { beforeStart: false, week: 1, day: 2, storeWeek: 1, storeDay: 2 };
+
+  it('시작 전이면 체크 없음', () => {
+    expect(checksForSettingSync({ ...current, beforeStart: true, cached: [0, 1] })).toEqual([]);
+  });
+
+  it('오늘 일차로 맞춰진 캐시면 그 체크', () => {
+    expect(checksForSettingSync({ ...current, cached: [1, 0] })).toEqual([1, 0]);
+  });
+
+  it('캐시가 없거나 어제 것일 수 있으면 체크 없음 (오늘 알림을 잘못 빼지 않는다)', () => {
+    expect(checksForSettingSync({ ...current, cached: undefined })).toEqual([]);
+    expect(checksForSettingSync({ ...current, storeDay: 1, cached: [0] })).toEqual([]);
+    expect(checksForSettingSync({ ...current, storeWeek: 2, cached: [0] })).toEqual([]);
   });
 });

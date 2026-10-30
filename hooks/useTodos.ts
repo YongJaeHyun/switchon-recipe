@@ -14,7 +14,7 @@ import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
 import { Todo } from 'types/todo';
 import { getKoreanDate, getKoreanDateString, getWeekAndDay } from 'utils/date';
 import { fastingDayTodos } from 'utils/fastingTodos';
-import { mealEndMinutes } from 'utils/mealTimes';
+import { mealEndMinutes, snapLegacySchedule } from 'utils/mealTimes';
 import { isBeforeStart } from 'utils/programStart';
 import { orEmptyArray } from 'utils/stableDefaults';
 import {
@@ -55,6 +55,11 @@ export const useTodos = (options?: { syncTodoDaily?: boolean }) => {
   // 단식 중 숨기는 끼니는 사용자 끼니 시각의 '식후'로 판정한다
   const mealTimes = useMealAlarmStore((state) => state.times);
   const mealEnds = useMemo(() => mealEndMinutes(mealTimes), [mealTimes]);
+  // 옛 식후 라벨 시각(540 등)으로 저장된 단식은 지금 식후 시각으로 읽는다 (다음 날 아침이 숨지 않게)
+  const visibleSchedule = useMemo(
+    () => snapLegacySchedule(fastingSchedule, mealTimes),
+    [fastingSchedule, mealTimes]
+  );
 
   const baseTodos = useMemo(
     () =>
@@ -146,8 +151,8 @@ export const useTodos = (options?: { syncTodoDaily?: boolean }) => {
 
   // 오늘 보이는 할 일 (단식일·단식 다음 날은 단식 시간에 걸린 끼니를 뺀다)
   const getTodayTodos = useCallback(() => {
-    return fastingDayTodos([...baseTodos], getKoreanDate().getDay(), fastingSchedule, mealEnds);
-  }, [baseTodos, fastingSchedule, mealEnds]);
+    return fastingDayTodos([...baseTodos], getKoreanDate().getDay(), visibleSchedule, mealEnds);
+  }, [baseTodos, visibleSchedule, mealEnds]);
 
   // 오늘 목록·체크가 오늘 것인지 (revalidateToday가 주차·일차를 반영하고 초기화가 끝났는지)
   const hydrated = useWeekCompletePopupStore((state) => state.isHydrated);

@@ -10,7 +10,12 @@ import { View } from 'react-native';
 import { fastingDayRowLabel, sheetDaysOrdered, withNewDays } from 'utils/fastingDaySheet';
 import { nextFastingDays } from 'utils/fastingDaySelect';
 import { FASTING_START_RANGE, type FastingSchedule } from 'utils/fastingSchedule';
-import { defaultFastingStart, quickTimes } from 'utils/mealTimes';
+import {
+  defaultFastingStart,
+  quickTimes,
+  snapLegacyMinutes,
+  type MealTimes,
+} from 'utils/mealTimes';
 import { useMealAlarmStore } from 'stores/mealAlarmStore';
 import { Nullable } from '../../types/common';
 import { CustomBottomSheet } from '../common/CustomBottomSheet';
@@ -31,6 +36,7 @@ interface DayStartTimeRowProps {
   minutes: number;
   onChange: (day: number, minutes: number) => void;
   quick: { label: string; minutes: number }[];
+  mealTimes: MealTimes;
 }
 
 const displayDays = [...FASTING_DAYS.slice(1), FASTING_DAYS[0]];
@@ -49,7 +55,15 @@ const DayButton = ({ day, isSelected, disabled, onPress }: DayButtonProps) => {
 };
 
 // 요일 하나의 시작 시각: "목요일 · 19:00 시작 → 금 19:00 끝", 시·분 휠, 빠른 선택
-const DayStartTimeRow = ({ day, minutes, onChange, quick: quickOptions }: DayStartTimeRowProps) => {
+const DayStartTimeRow = ({
+  day,
+  minutes,
+  onChange,
+  quick: quickOptions,
+  mealTimes,
+}: DayStartTimeRowProps) => {
+  // 옛 식후 라벨 시각(540 등)으로 저장된 값도 그 식후 버튼이 골라진 것으로 보인다
+  const shownQuick = snapLegacyMinutes(minutes, mealTimes);
   return (
     <View className="gap-1 rounded-xl border border-neutral-100 bg-white px-3 py-3">
       <Text className="text-sm font-bold text-neutral-800">{fastingDayRowLabel(day, minutes)}</Text>
@@ -63,7 +77,7 @@ const DayStartTimeRow = ({ day, minutes, onChange, quick: quickOptions }: DaySta
       />
       <View className="w-full flex-row gap-2">
         {quickOptions.map((quick) => {
-          const isSelected = quick.minutes === minutes;
+          const isSelected = quick.minutes === shownQuick;
           return (
             <RippleButton
               key={`fasting-quick-time-${day}-${quick.label}`}
@@ -187,6 +201,7 @@ export const FastingDayBottomSheet = ({ bottomSheetRef, week }: FastingDayBottom
                 minutes={selectedSchedule[day] ?? lastSetMinutes ?? fallbackStart}
                 onChange={changeStartTime}
                 quick={quick}
+                mealTimes={mealTimes}
               />
             ))}
           </View>

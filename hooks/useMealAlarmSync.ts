@@ -1,9 +1,39 @@
+import { CHANNELS } from 'const/channels';
+import { QueryKey } from 'const/queryKey';
+import { queryClient } from 'lib/queryClient';
 import { useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 import { useMealAlarmStore } from 'stores/mealAlarmStore';
 import { useUserStore } from 'stores/userStore';
-import { CHANNELS } from 'const/channels';
+import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
+import { getKoreanDateString } from 'utils/date';
+import { checksForSettingSync } from 'utils/mealAlarms';
 import { prepareLocalNotifications, syncMealAlarms } from 'utils/notifications';
+import { programWeekAndDay } from 'utils/programStart';
+
+// 내 정보에서 켜기·시각 바꾸기 뒤 바로 맞춘다 (오늘 탭이 아직 안 떠 있어도). 휠을 돌리는 동안
+// 매번 28개를 다시 걸지 않게 멈춘 뒤 한 번만
+const SETTING_SYNC_DELAY_MS = 800;
+let settingSyncTimer: ReturnType<typeof setTimeout> | undefined;
+export function syncMealAlarmsSoon() {
+  clearTimeout(settingSyncTimer);
+  settingSyncTimer = setTimeout(() => {
+    const { on, times } = useMealAlarmStore.getState();
+    const { start_date: startDate, id: userId } = useUserStore.getState();
+    const { week: storeWeek, day: storeDay } = useWeekCompletePopupStore.getState();
+    const today = getKoreanDateString({ formatType: 'date' });
+    const { week, day, beforeStart } = programWeekAndDay(startDate, today);
+    const checkedToday = checksForSettingSync({
+      beforeStart,
+      week,
+      day,
+      storeWeek,
+      storeDay,
+      cached: queryClient.getQueryData<number[]>([QueryKey.todos, userId]),
+    });
+    void syncMealAlarms({ on, times, startDate, checkedToday });
+  }, SETTING_SYNC_DELAY_MS);
+}
 
 // 끼니 알림 켜기 (온보딩·내 정보·시작 전 준비): 알림 권한을 받고, 받으면 켠다. 거부하면 꺼 둔다.
 // 켜진 뒤 예약은 useMealAlarmSync가 설정 변경을 보고 맞춘다

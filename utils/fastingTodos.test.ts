@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { fastingDayTodos } from './fastingTodos';
-import { DEFAULT_MEAL_MINUTES, mealEndMinutes } from './mealTimes';
+import { DEFAULT_MEAL_MINUTES, mealEndMinutes, snapLegacySchedule } from './mealTimes';
 
 const todos = ['아침', '점심', '오후간식', '저녁'];
 
@@ -57,5 +57,16 @@ describe('fastingDayTodos', () => {
     expect(fastingDayTodos(todos, 5, { 4: 450 }, ends)).toEqual(todos);
     // 19:00 시작이면 저녁(20:00에 마침)은 단식 중
     expect(fastingDayTodos(todos, 4, { 4: 1140 }, ends)).toEqual(['아침', '점심', '오후간식']);
+  });
+
+  it('리뷰 I1: 옛 아침 식후(540)로 저장된 단식은 식후로 맞춰 읽으면 다음 날 아침이 그대로 보인다', () => {
+    const schedule = snapLegacySchedule({ 4: 540 }, DEFAULT_MEAL_MINUTES);
+    expect(fastingDayTodos(todos, 5, schedule)).toEqual(todos);
+    expect(fastingDayTodos(todos, 4, schedule)).toEqual(['아침']);
+    // 옛 점심·저녁 식후는 기본 끼니 시각이면 그대로
+    expect(snapLegacySchedule({ 4: 780, 5: 1140 }, DEFAULT_MEAL_MINUTES)).toEqual({
+      4: 780,
+      5: 1140,
+    });
   });
 });

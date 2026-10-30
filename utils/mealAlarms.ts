@@ -67,3 +67,18 @@ export function mealAlarms({
   }
   return alarms;
 }
+
+// 내 정보에서 끼니 알림을 바로 맞출 때 쓸 오늘 체크. 오늘 탭이 안 떠 있으면 할 일 캐시가 어제 것일 수 있어,
+// 주차 팝업 store의 주차·일차가 오늘과 같을 때(오늘로 초기화가 끝났을 때)만 캐시를 믿는다. 아니면 체크 없음
+export function checksForSettingSync(input: {
+  beforeStart: boolean;
+  week: number;
+  day: number;
+  storeWeek: number;
+  storeDay: number;
+  cached: number[] | undefined;
+}): number[] {
+  const { beforeStart, week, day, storeWeek, storeDay, cached } = input;
+  if (beforeStart || !cached) return [];
+  return week === storeWeek && day === storeDay ? cached : [];
+}

@@ -2,6 +2,7 @@
 // 단식 요일 설정의 빠른 선택·새 요일 기본 시각, 단식 중 숨기는 끼니 판정(utils/fastingTodos).
 // 서버 호환용 옛 라벨 시각(QUICK_TIMES 540/780/1140, legacyLabel)은 utils/fastingSchedule에 그대로 둔다
 import type { FastingTime } from 'const/fastingDays';
+import { QUICK_TIMES, type FastingSchedule } from './fastingSchedule';
 
 export type MealKey = 'breakfast' | 'lunch' | 'snack' | 'dinner';
 export type MealTimes = Record<MealKey, number>;
@@ -64,6 +65,23 @@ export function quickTimes(times: MealTimes): { label: FastingTime; minutes: num
 // 새 단식 요일의 기본 시작 시각 (직전에 정한 값이 없을 때) = 저녁 식후
 export function defaultFastingStart(times: MealTimes): number {
   return afterMealMinutes(times).dinner;
+}
+
+// 저장된 단식 시작이 옛 '○○ 식후' 라벨 시각(540·780·1140: 옛 빠른 선택 버튼·라벨만 있는 행)이면
+// 지금 사용자 식후 시각으로 읽는다. 보이는 할 일(단식 다음 날 아침이 숨지 않게)과 빠른 선택 표시에만 쓴다.
+// 저장 값·단식 알림·서버는 그대로
+export function snapLegacyMinutes(minutes: number, times: MealTimes): number {
+  const legacy = QUICK_TIMES.find((quick) => quick.minutes === minutes);
+  if (!legacy) return minutes;
+  return quickTimes(times).find((quick) => quick.label === legacy.label)?.minutes ?? minutes;
+}
+
+export function snapLegacySchedule(schedule: FastingSchedule, times: MealTimes): FastingSchedule {
+  const snapped: FastingSchedule = {};
+  for (const [day, minutes] of Object.entries(schedule)) {
+    snapped[Number(day)] = snapLegacyMinutes(minutes, times);
+  }
+  return snapped;
 }
 
 const isMealMinutes = (key: MealKey, value: unknown): value is number => {

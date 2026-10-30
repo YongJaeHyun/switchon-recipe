@@ -6,6 +6,8 @@ import {
   mealEndMinutes,
   normalizeMealTimes,
   quickTimes,
+  snapLegacyMinutes,
+  snapLegacySchedule,
 } from './mealTimes';
 import { formatMinutes } from './fastingSchedule';
 
@@ -54,5 +56,20 @@ describe('mealTimes', () => {
     });
     // 끼니 휠 범위 밖
     expect(normalizeMealTimes({ ...DEFAULT_MEAL_MINUTES, breakfast: 1200 }).breakfast).toBe(480);
+  });
+
+  it('옛 식후 라벨 시각(540·780·1140)은 지금 사용자 식후로 읽는다 (보이는 할 일·빠른 선택 표시용)', () => {
+    expect(snapLegacyMinutes(540, DEFAULT_MEAL_MINUTES)).toBe(510);
+    expect(snapLegacyMinutes(780, DEFAULT_MEAL_MINUTES)).toBe(780);
+    expect(snapLegacyMinutes(1140, DEFAULT_MEAL_MINUTES)).toBe(1140);
+    expect(snapLegacyMinutes(600, DEFAULT_MEAL_MINUTES)).toBe(600);
+    const custom = { breakfast: 420, lunch: 720, snack: 900, dinner: 1200 };
+    expect(snapLegacyMinutes(540, custom)).toBe(450);
+    expect(snapLegacyMinutes(780, custom)).toBe(750);
+    expect(snapLegacyMinutes(1140, custom)).toBe(1230);
+    expect(snapLegacySchedule({ 4: 540, 6: 600 }, DEFAULT_MEAL_MINUTES)).toEqual({
+      4: 510,
+      6: 600,
+    });
   });
 });
