@@ -35,8 +35,16 @@ describe('nextMorningReminder (내일 09:00 KST 아침 리마인드)', () => {
     expect(nextMorningReminder({ startDate, now: kst('2026-12-01T10:00') })).toBeNull();
   });
 
-  it('내일이 1주차 1일(시작일)이거나 그보다 전이면 없다 (시작 전 준비 카드가 맡는다)', () => {
-    expect(nextMorningReminder({ startDate, now: kst('2026-10-29T10:00') })).toBeNull();
+  it('시작 전날이면 시작일 09:00 KST에 1주차 시작 알림', () => {
+    expect(nextMorningReminder({ startDate, now: kst('2026-10-29T10:00') })).toEqual({
+      date: kst('2026-10-30T09:00'),
+      title: '1주차 1일차',
+      body: '1주차가 시작됐어요. 오늘 할 일을 확인해 보세요',
+    });
+  });
+
+  it('시작까지 이틀 이상 남았으면 없다', () => {
+    expect(nextMorningReminder({ startDate, now: kst('2026-10-28T10:00') })).toBeNull();
     expect(nextMorningReminder({ startDate, now: kst('2026-10-20T10:00') })).toBeNull();
   });
 
@@ -84,11 +92,17 @@ describe('nextMorningReminder (내일 09:00 KST 아침 리마인드)', () => {
       );
     });
 
-    it('시작 전날 KST 자정 직후면 (오늘이 시작일) 내일 2일차', () => {
+    it('시작일·시작 전날 KST 자정 경계', () => {
       expect(nextMorningReminder({ startDate, now: kst('2026-10-30T00:00') })?.date).toEqual(
         kst('2026-10-31T09:00')
       );
-      expect(nextMorningReminder({ startDate, now: kst('2026-10-29T23:59') })).toBeNull();
+      expect(nextMorningReminder({ startDate, now: kst('2026-10-29T23:59') })?.date).toEqual(
+        kst('2026-10-30T09:00')
+      );
+      expect(nextMorningReminder({ startDate, now: kst('2026-10-28T23:59') })).toBeNull();
+      expect(nextMorningReminder({ startDate, now: kst('2026-10-29T00:01') })?.date).toEqual(
+        kst('2026-10-30T09:00')
+      );
     });
   });
 });

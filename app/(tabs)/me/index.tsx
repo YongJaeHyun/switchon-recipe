@@ -24,6 +24,7 @@ import { ScrollView, View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { requireOnline } from 'utils/network';
+import { cancelAccountAlarms } from 'utils/notifications';
 import { formatPassRemaining } from 'utils/passDisplay';
 import { getDeleteAccountMessage, getPassRemainingDays, isPassOnSale } from 'utils/passScreen';
 import { clearCachedUser } from 'utils/userCache';
@@ -69,6 +70,8 @@ export default function MeScreen() {
   const handleConfirm = async () => {
     await UserAPI.deleteOne();
     await clearCachedUser();
+    // 탈퇴한 계정 기준으로 걸어 둔 아침 리마인드·끼니·단식 알림이 남지 않게
+    await cancelAccountAlarms();
 
     if (provider === 'google') await GoogleSignin.signOut();
     if (provider === 'kakao') await unlink();
@@ -77,6 +80,12 @@ export default function MeScreen() {
     router.replace('/(auth)');
 
     queryClient.clear();
+  };
+
+  // 로그아웃: 이 계정 기준 로컬 알림을 지우고 나간다 (다시 로그인하면 앱을 열 때 다시 걸린다)
+  const handleLogout = async () => {
+    await cancelAccountAlarms();
+    await UserAPI.logout();
   };
 
   useEffect(() => {
@@ -143,7 +152,7 @@ export default function MeScreen() {
               icon={
                 <MaterialIcons name="power-settings-new" size={24} color={colors.neutral[600]} />
               }
-              onPress={requireOnline(UserAPI.logout)}
+              onPress={requireOnline(handleLogout)}
             />
           </View>
         </View>

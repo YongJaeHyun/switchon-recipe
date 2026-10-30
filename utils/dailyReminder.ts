@@ -16,8 +16,9 @@ export interface DailyReminder {
 
 const kstDay = (now: Date) => new Date(now.getTime() + KST_OFFSET_MS).toISOString().slice(0, 10);
 
-// 내일(KST)이 1주차 2~7일 또는 2주차 1일이면 내일 09:00 KST 알림 하나, 아니면 null.
-// 앱을 열 때마다 이것으로 바꿔 걸어, 그날 앱을 안 연 사람에게만 간다 (기기 시간대와 상관없음)
+// 내일(KST)이 1주차 1~7일 또는 2주차 1일이면 내일 09:00 KST 알림 하나, 아니면 null.
+// 앱을 열 때마다 이것으로 바꿔 걸어, 그날 앱을 안 연 사람에게만 간다 (기기 시간대와 상관없음).
+// 시작 전날 앱을 연 사람(내일부터 시작)도 시작일 아침에 받는다
 export function nextMorningReminder({
   startDate,
   now,
@@ -29,16 +30,15 @@ export function nextMorningReminder({
   const tomorrow = addDaysToDay(kstDay(now), 1);
   const { week, day, beforeStart } = programWeekAndDay(startDate, tomorrow);
   if (beforeStart) return null;
-  const isWeek1 = week === 1 && day >= 2;
-  const isWeek2First = week === 2 && day === 1;
-  if (!isWeek1 && !isWeek2First) return null;
+  if (week !== 1 && !(week === 2 && day === 1)) return null;
 
   const [y, m, d] = tomorrow.split('-').map(Number);
   const midnight = Date.UTC(y, m - 1, d) - KST_OFFSET_MS; // 내일 KST 자정
   return {
     date: new Date(midnight + DAILY_REMINDER_MINUTES * MINUTE_MS),
     title: `${week}주차 ${day}일차`,
-    body: `${isWeek1 ? `${day}일차` : '2주차'}가 시작됐어요. 오늘 할 일을 확인해 보세요`,
+    // 주차 첫날은 "N주차가", 그 밖은 "N일차가"
+    body: `${day === 1 ? `${week}주차` : `${day}일차`}가 시작됐어요. 오늘 할 일을 확인해 보세요`,
   };
 }
 

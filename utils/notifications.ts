@@ -312,7 +312,7 @@ async function cancelDailyRemindersNow() {
 }
 
 // 다음 날 아침 리마인드: 앱을 열 때·돌아올 때 걸어 둔 것(오늘 09:00 포함)을 지우고 내일 09:00 KST 것 하나를
-// 건다 → 그날 앱을 안 연 사람에게만 간다. 내일이 1주차 2~7일·2주차 1일이 아니면 지우기만.
+// 건다 → 그날 앱을 안 연 사람에게만 간다. 내일이 1주차 1~7일·2주차 1일이 아니면 지우기만.
 // 권한 요청 창은 띄우지 않는다(권한이 없으면 건너뜀). 실패해도 throw하지 않는다
 export function syncDailyReminder({
   startDate,
@@ -344,6 +344,19 @@ export function syncDailyReminder({
       });
     } catch (error) {
       captureError({ error, prefix: '[syncDailyReminder]: ' });
+    }
+  });
+}
+
+// 탈퇴·로그아웃 때: 이 계정 기준으로 건 로컬 알림(아침 리마인드·끼니·단식)을 지운다. 실패해도 throw하지 않는다
+export function cancelAccountAlarms() {
+  return enqueue(async () => {
+    try {
+      await cancelDailyRemindersNow();
+      await cancelMealAlarmsNow();
+      await cancelFastingAlarmsNow();
+    } catch (error) {
+      captureError({ error, prefix: '[cancelAccountAlarms]: ' });
     }
   });
 }

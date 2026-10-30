@@ -56,6 +56,7 @@ const {
   registerChannelIfPermitted,
   registerWeeklyFastingAlarms,
   syncFastingAlarms,
+  cancelAccountAlarms,
   syncDailyReminder,
   syncMealAlarms,
 } = await import('./notifications');
@@ -378,5 +379,35 @@ describe('syncDailyReminder (아침 리마인드: 앱을 열면 오늘 것 취�
     const fasting = { days: [4], start_time: '저녁 식후', start_minutes: { '4': 1140 } } as never;
     await syncFastingAlarms(fasting, '2099-01-01');
     expect(dailies()).toHaveLength(1);
+  });
+});
+
+describe('cancelAccountAlarms (탈퇴·로그아웃: 이 계정이 건 로컬 알림 정리)', () => {
+  const other = { identifier: 'other', content: { title: '기타', data: {} } };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    scheduled.splice(
+      0,
+      scheduled.length,
+      { identifier: 'daily', content: { title: '1주차 2일차', data: { kind: 'daily' } } },
+      { identifier: 'meal', content: { title: '1주차 1일차', data: { kind: 'meal' } } },
+      {
+        identifier: 'fasting',
+        content: { title: '단식 시작 예정 알림', data: { kind: 'fasting' } },
+      },
+      { identifier: 'legacy-fasting', content: { title: '단식 시작 예정 알림', data: {} } },
+      { ...other }
+    );
+  });
+
+  it('아침 리마인드·끼니·단식 알림을 지우고 다른 알림은 둔다', async () => {
+    await cancelAccountAlarms();
+    expect(scheduled).toEqual([other]);
+  });
+
+  it('지우다 실패해도 throw하지 않는다', async () => {
+    getAllScheduledNotificationsAsync.mockRejectedValueOnce(new Error('x'));
+    await expect(cancelAccountAlarms()).resolves.toBeUndefined();
   });
 });
