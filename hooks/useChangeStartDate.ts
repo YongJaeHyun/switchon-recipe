@@ -4,13 +4,7 @@ import { QueryKey } from 'const/queryKey';
 import { queryClient } from 'lib/queryClient';
 import { getKoreanDateString } from 'utils/date';
 import { useUserStore } from 'stores/userStore';
-import {
-  isSameStartDate,
-  nextProgramStart,
-  programStartOf,
-  startDateCleanup,
-  type StartDateChangeKind,
-} from 'utils/programStart';
+import { startDateChange, startDateCleanup, type StartDateChangeKind } from 'utils/programStart';
 import { useSelectedIngredients } from './useSelectedIngredients';
 
 interface ChangeStartDateOptions {
@@ -22,7 +16,7 @@ interface ChangeStartDateOptions {
 }
 
 // 시작일을 바꾸는 단 하나의 길 (프로그램 설정 시트, 한 주 더 하기, 온보딩). 회차 시작일(program_start)도 함께 저장한다.
-// 지금과 같은 시작일이면 아무것도 하지 않고 true. 시작일 저장이 실패하면 아무것도 지우지 않는다. 성공하면 새 시작일 기준으로
+// 바꿀 것이 없으면(같은 시작일·같은 회차 시작일) 아무것도 하지 않고 true. 시작일 저장이 실패하면 아무것도 지우지 않는다. 성공하면 새 시작일 기준으로
 // 그 주차보다 높은 선택 재료를 빼고, 오늘 주차·일차부터의 할 일 통계를 지운다.
 // 주차 store·할 일·단식 초기화는 useKoreanToday 재검증이 한다
 export function useChangeStartDate() {
@@ -36,16 +30,21 @@ export function useChangeStartDate() {
     options: ChangeStartDateOptions
   ): Promise<boolean> => {
     const { start_date, program_start } = useUserStore.getState();
-    // 같은 시작일이면 저장도 정리도 하지 않는다 (오늘 기록한 할 일 완료율이 지워져 체크리스트와 어긋나지 않게)
-    if (isSameStartDate(start_date, newStart)) return true;
-    const programStart = nextProgramStart(
-      options.kind,
-      programStartOf(program_start, start_date),
-      newStart
-    );
-    const ok = await UserAPI.updateStartDate(newStart, programStart, { toast: options.toast });
+    const change = startDateChange({
+      kind: options.kind,
+      startDate: start_date,
+      programStart: program_start,
+      newStart,
+    });
+    // 바꿀 것이 없으면 저장도 정리도 하지 않는다
+    if (!change) return true;
+    const ok = await UserAPI.updateStartDate(newStart, change.programStart, {
+      toast: options.toast,
+    });
     if (!ok) return false;
     options.onSaved?.();
+    // 같은 시작일(회차 시작일만 바뀜)이면 정리하지 않는다 (오늘 기록한 할 일 완료율이 지워져 체크리스트와 어긋나지 않게)
+    if (!change.startChanged) return true;
 
     const plan = startDateCleanup({
       newStart,

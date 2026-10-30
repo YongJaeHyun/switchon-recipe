@@ -8,6 +8,7 @@ import {
   daysUntilStart,
   groupPastStarts,
   nextProgramStart,
+  startDateChange,
   PROGRAM_CHAIN_DAYS,
   programStartOf,
   isBeforeStart,
@@ -636,5 +637,48 @@ describe('groupPastStarts (지난 회차 묶기)', () => {
       ['2026-10-01'],
       ['2025-08-04'],
     ]);
+  });
+});
+
+describe('startDateChange (저장할 것)', () => {
+  it('시작일이 바뀌면 시작일·회차 시작일을 저장하고 정리한다', () => {
+    expect(
+      startDateChange({
+        kind: 'repeat',
+        startDate: '2026-10-01',
+        programStart: null,
+        newStart: '2026-10-08',
+      })
+    ).toEqual({ programStart: '2026-10-01', startChanged: true });
+  });
+
+  it('같은 시작일이고 회차 시작일도 같으면 할 것이 없다', () => {
+    expect(
+      startDateChange({
+        kind: 'restart',
+        startDate: '2026-10-31',
+        programStart: '2026-10-31',
+        newStart: '2026-10-31',
+      })
+    ).toBeNull();
+    expect(
+      startDateChange({
+        kind: 'align',
+        startDate: '2026-10-08',
+        programStart: '2026-10-01',
+        newStart: '2026-10-08',
+      })
+    ).toBeNull();
+  });
+
+  it('같은 날 다시 시작인데 회차 시작일이 다르면 회차 시작일만 바꾼다 (정리하지 않음)', () => {
+    expect(
+      startDateChange({
+        kind: 'restart',
+        startDate: '2026-10-31',
+        programStart: '2026-10-24',
+        newStart: '2026-10-31',
+      })
+    ).toEqual({ programStart: '2026-10-31', startChanged: false });
   });
 });

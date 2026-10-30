@@ -8,7 +8,13 @@
 
 alter table public.user add column if not exists program_start date;
 
-update public.user set program_start = start_date where program_start is null;
+-- start_date가 date든 text·timestamp든 앞 10자(yyyy-MM-dd)만 날짜로 옮긴다. 형식이 아니면 건너뛴다(null로 둠 → 앱이 start_date로 본다).
+-- (weekly_report_candidates와 같은 방어. 2월 30일처럼 형식만 맞는 값은 없다고 본다)
+update public.user
+set program_start = left(start_date::text, 10)::date
+where program_start is null
+  and start_date is not null
+  and start_date::text ~ '^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])';
 
 -- PostgREST가 새 열을 바로 보도록 스키마 캐시를 새로 읽게 한다
 notify pgrst, 'reload schema';

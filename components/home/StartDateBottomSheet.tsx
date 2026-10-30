@@ -13,7 +13,7 @@ import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import {
   adjustTarget,
-  isSameStartDate,
+  startDateChange,
   MAINTENANCE_WEEK,
   programWeekAndDay,
   restartStartDate,
@@ -50,6 +50,7 @@ const statusLine = (startDate: string | null | undefined, today: string) => {
 export function StartDateBottomSheet({ bottomSheetRef }: StartDateBottomSheetProps) {
   const today = useKoreanToday();
   const startDate = useUserStore((state) => state.start_date);
+  const programStart = useUserStore((state) => state.program_start);
   const { changeStartDate } = useChangeStartDate();
 
   const [confirming, setConfirming] = useState<RestartWhen | null>(null);
@@ -104,7 +105,14 @@ export function StartDateBottomSheet({ bottomSheetRef }: StartDateBottomSheetPro
           <RestartConfirm
             when={confirming}
             newStart={restartStartDate(today, confirming)}
-            alreadyStarts={isSameStartDate(startDate, restartStartDate(today, confirming))}
+            alreadyStarts={
+              startDateChange({
+                kind: 'restart',
+                startDate,
+                programStart,
+                newStart: restartStartDate(today, confirming),
+              }) === null
+            }
             saving={saving}
             onConfirm={() => restart(confirming)}
             onCancel={() => setConfirming(null)}

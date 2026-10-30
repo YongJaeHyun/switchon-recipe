@@ -67,8 +67,8 @@ export function ReportSection() {
   const programStart = useUserStore((state) => state.program_start);
   const { status } = usePass();
   const { reports, isLoading, isError, refetch } = useWeeklyReports({ refetchOnMount: 'always' });
-  // 회차 시작일(program_start, 없으면 시작일) 이후 리포트가 이번 프로그램. 한 주 더 하기·주차 맞추기로
-  // 시작일이 바뀌어도 이어지고, 다시 시작하면 예전 리포트는 지우지 않고 "이전 프로그램"으로 내려간다
+  // 회차 시작일(program_start, 없으면 시작일) 이후 리포트가 이번 회차. 한 주 더 하기·주차 맞추기로
+  // 시작일이 바뀌어도 이어지고, 다시 시작하면 예전 리포트는 지우지 않고 "이전 회차"로 내려간다
   const { current, previous } = useMemo(
     () => groupReportsByProgram(reports, programStartOf(programStart, startDate)),
     [reports, programStart, startDate]
@@ -122,7 +122,7 @@ export function ReportSection() {
         <>
           {current.length > 0 && (
             <View className="gap-3">
-              <Text className="text-lg font-bold text-neutral-800">이번 프로그램</Text>
+              <Text className="text-lg font-bold text-neutral-800">이번 회차</Text>
               {current.map((report) => (
                 <ReportRow key={`${report.start_date}-${report.week_index}`} report={report} />
               ))}
@@ -132,7 +132,7 @@ export function ReportSection() {
             <View key={group.startDate} className="gap-3">
               {programKnown ? (
                 <View className="gap-0.5">
-                  <Text className="text-lg font-bold text-neutral-800">이전 프로그램</Text>
+                  <Text className="text-lg font-bold text-neutral-800">이전 회차</Text>
                   <Text className="text-sm text-neutral-500">
                     {formatProgramStart(group.startDate)}
                   </Text>

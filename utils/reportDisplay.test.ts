@@ -4,6 +4,7 @@ import {
   formatItemRate,
   formatWeightDiff,
   groupReportsByProgram,
+  isPreviousProgramReport,
   isEmptyReport,
   isReportHref,
   parseReportContent,
@@ -103,6 +104,19 @@ describe('groupReportsByProgram', () => {
         ],
       },
     ]);
+  });
+});
+
+describe('isPreviousProgramReport', () => {
+  it('회차 시작일 전 시작일의 리포트만 이전 회차', () => {
+    expect(isPreviousProgramReport('2026-09-01', '2026-10-01')).toBe(true);
+    expect(isPreviousProgramReport('2026-10-01', '2026-10-01')).toBe(false);
+    // 한 주 더 하기로 시작일이 10/8이 돼도 10/1 시작 리포트는 이번 회차
+    expect(isPreviousProgramReport('2026-10-08', '2026-10-01T00:00:00+09:00')).toBe(false);
+  });
+
+  it('회차 시작일을 모르면(불러오는 중) 이전 회차로 표시하지 않는다', () => {
+    expect(isPreviousProgramReport('2026-09-01', null)).toBe(false);
   });
 });
 

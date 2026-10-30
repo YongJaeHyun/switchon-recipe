@@ -28,12 +28,37 @@ type Plan = {
   days: number[];
   start_time: string | null;
   start_minutes?: unknown;
+  updated_at?: string | null; // 계획을 저장한 시각 (시작일을 바꾼 때를 어림하는 데 쓴다)
 };
 type Result = { day: string; result: FastingResult; fastedMinutes?: number | null };
 
+// 시작일마다 계획이 쓰이는 기간의 첫날(KST): 그 시작일 계획을 처음 저장한 날 (시작일을 바꾼 때를 어림).
+// 시작일을 그 날 순으로 세우면, 각 시작일의 계획은 다음 시작일의 첫날 전까지만 쓴다 → 어느 날짜든 가장 새 계획이 이긴다.
+// 맨 앞 시작일은 처음부터 쓴다. 저장 시각이 없으면(옛 행) 맨 앞으로 본다. 결과: 시작일 → [첫날, 끝날) (null = 끝 없음)
+function planWindows(plans: Plan[]): Map<string, { from: string | null; until: string | null }> {
+  const firstSaved = new Map<string, string | null>();
+  for (const plan of plans) {
+    const saved = plan.updated_at ? utcToDay(Date.parse(plan.updated_at) + KST_OFFSET_MS) : null;
+    const prev = firstSaved.get(plan.start_date);
+    if (prev === undefined) firstSaved.set(plan.start_date, saved);
+    else if (prev !== null && (saved === null || saved < prev))
+      firstSaved.set(plan.start_date, saved);
+  }
+  const order = [...firstSaved.entries()].sort(([aStart, a], [bStart, b]) =>
+    (a ?? '') < (b ?? '') ? -1 : (a ?? '') > (b ?? '') ? 1 : aStart < bStart ? -1 : 1
+  );
+  return new Map(
+    // 맨 앞 시작일은 처음부터 (계획을 그 주 중간에 저장했어도 앞 날짜를 자르지 않는다)
+    order.map(([start, from], i) => [
+      start,
+      { from: i === 0 ? null : from, until: order[i + 1]?.[1] ?? null },
+    ])
+  );
+}
+
 // 한 회차의 단식 목록: [from, until) 안의 이미 시작된 계획일 ∪ 결과가 있는 날, 최근순.
-// starts = 이 회차의 시작일들(오름차순). 계획일은 그 계획의 시작일로 날짜를 세고 주차는 계획의 주차를 쓴다
-// (같은 날이 여럿이면 나중 시작일의 계획). 계획 없이 결과만 있는 날은, 그날이 2주차 이상이 되는 가장 늦은
+// starts = 이 회차의 시작일들(오름차순). 계획일은 그 계획의 시작일로 날짜를 세고 주차는 계획의 주차를 쓴다.
+// 시작일이 겹치는 날은 planWindows로 가장 새 계획만 쓴다 (주차 맞추기·한 주 더 하기 뒤 유령 날짜 방지). 계획 없이 결과만 있는 날은, 그날이 2주차 이상이 되는 가장 늦은
 // 시작일로 주차를 센다 (한 주 더 하기로 시작일이 밀려도 앞 시작일 기준으로 이어진다). 어느 시작일로도 1주차
 // (단식 없음)면 앞 회차 것이라 뺀다
 function programItems({
@@ -58,8 +83,11 @@ function programItems({
 
   const weekByDay = new Map<string, number>();
   const inProgress = new Set<string>();
-  const sortedPlans = [...plans].sort((a, b) => (a.start_date < b.start_date ? -1 : 1));
-  for (const plan of sortedPlans) {
+  const windows = planWindows(plans);
+  for (const plan of plans) {
+    const window = windows.get(plan.start_date);
+    const inWindow = (day: string) =>
+      (!window?.from || day >= window.from) && (!window?.until || day < window.until);
     // 요일별 시각(start_minutes 우선, 없으면 라벨). 시각이 없는 요일은 그날 자정부터로 본다
     const schedule = scheduleFrom(plan);
     const weekStart = dayToUtc(plan.start_date) + 7 * (plan.week_index - 1) * DAY_MS;
@@ -67,7 +95,7 @@ function programItems({
       const midnight = weekStart + i * DAY_MS;
       const day = utcToDay(midnight);
       const weekday = new Date(midnight).getUTCDay();
-      if (!plan.days.includes(weekday) || !inRange(day)) continue;
+      if (!plan.days.includes(weekday) || !inRange(day) || !inWindow(day)) continue;
       // KST 자정 + 그 요일 시작 시각이 지났는지
       const startsAt = midnight - KST_OFFSET_MS + (schedule[weekday] ?? 0) * MINUTE_MS;
       if (startsAt > t) continue;

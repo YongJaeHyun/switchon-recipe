@@ -275,6 +275,86 @@ describe('fastingHistory (회차)', () => {
   });
 });
 
+describe('fastingHistory (시작일이 겹칠 때 새 계획이 이긴다)', () => {
+  const now = new Date('2026-10-30T09:00+09:00');
+  const plan = (start_date: string, week_index: number, days: number[], updated_at: string) => ({
+    start_date,
+    week_index,
+    days,
+    start_time: null,
+    updated_at,
+  });
+
+  it('주차 맞추기로 앞당긴 뒤엔 예전 시작일 계획의 날짜가 유령처럼 남지 않는다', () => {
+    // 10/1 시작: 2주차 목(10/8), 3주차 월(10/19 예정). 10/16에 9/28 시작으로 앞당김 →
+    // 백필 (9/28, 3주차 월 = 10/12, 바꾸기 전 날짜라 빠짐), 4주차 수(10/21)
+    const { current } = fastingHistory({
+      startDate: '2026-09-28',
+      programStart: '2026-09-28',
+      plans: [
+        plan('2026-10-01', 2, [4], '2026-10-07T10:00:00Z'),
+        plan('2026-10-01', 3, [1], '2026-10-15T10:00:00Z'),
+        plan('2026-09-28', 3, [1], '2026-10-16T01:00:00Z'),
+        plan('2026-09-28', 4, [3], '2026-10-19T01:00:00Z'),
+      ],
+      results: [],
+      now,
+    });
+    expect(current).toEqual([item('2026-10-21', 4), item('2026-10-08', 2)]);
+  });
+
+  it('이미 다음 주차 계획이 있던 상태에서 한 주 더 하기: 바꾼 날부터는 새 시작일 계획만', () => {
+    // 10/1 시작: 2주차 목(10/8), 3주차 월(10/19 예정, 10/15 저장). 10/16 한 주 더 → 10/8 시작, 2주차 수(10/21)
+    const { current } = fastingHistory({
+      startDate: '2026-10-08',
+      programStart: '2026-10-01',
+      plans: [
+        plan('2026-10-01', 2, [4], '2026-10-05T10:00:00Z'),
+        plan('2026-10-01', 3, [1], '2026-10-15T10:00:00Z'),
+        plan('2026-10-08', 2, [3], '2026-10-16T10:00:00Z'),
+      ],
+      results: [{ day: '2026-10-08', result: 'success' }],
+      now,
+    });
+    expect(current).toEqual([item('2026-10-21', 2), item('2026-10-08', 2, 'success')]);
+  });
+
+  it('updated_at은 KST 날짜로 본다 (UTC 10/15 16:00 = KST 10/16)', () => {
+    const { current } = fastingHistory({
+      startDate: '2026-10-08',
+      programStart: '2026-10-01',
+      plans: [
+        plan('2026-10-01', 3, [4], '2026-10-14T10:00:00Z'), // 3주차 목 10/15 → 바꾸기 전이라 남음
+        plan('2026-10-08', 2, [4, 5], '2026-10-15T16:00:00Z'), // 2주차 목 10/15(빠짐)·금 10/16
+      ],
+      results: [],
+      now,
+    });
+    expect(current).toEqual([item('2026-10-16', 2), item('2026-10-15', 3)]);
+  });
+});
+
+describe('fastingHistory (계획 저장 시각)', () => {
+  it('시작일이 하나면 계획을 그 주 중간에 저장했어도 앞 날짜가 남는다', () => {
+    const { current } = fastingHistory({
+      startDate: '2026-10-01',
+      programStart: '2026-10-01',
+      plans: [
+        {
+          start_date: '2026-10-01',
+          week_index: 2,
+          days: [4],
+          start_time: null,
+          updated_at: '2026-10-12T00:00:00Z',
+        },
+      ],
+      results: [],
+      now: new Date('2026-10-30T09:00+09:00'),
+    });
+    expect(current).toEqual([item('2026-10-08', 2)]);
+  });
+});
+
 describe('formatHistoryDay', () => {
   it('올해 날짜는 연도 없이', () => {
     expect(formatHistoryDay('2026-10-30', '2026-10-30')).toBe('10월 30일 (금)');

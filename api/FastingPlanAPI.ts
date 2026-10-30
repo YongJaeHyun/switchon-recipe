@@ -95,6 +95,7 @@ const selectEvery = async (): Promise<
     days: number[];
     start_time: string | null;
     start_minutes: Json | null;
+    updated_at: string;
   }[]
 > => {
   const uid = useUserStore.getState().id;
@@ -102,7 +103,7 @@ const selectEvery = async (): Promise<
 
   const { data, error } = await supabase
     .from('fasting_plan')
-    .select('start_date, week_index, days, start_time, start_minutes')
+    .select('start_date, week_index, days, start_time, start_minutes, updated_at')
     .eq('uid', uid);
 
   if (error) throw error;

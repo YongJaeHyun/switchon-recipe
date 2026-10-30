@@ -154,10 +154,17 @@ export function FastingHistorySection() {
                 <HistoryRow key={item.day} item={item} today={today} onPress={() => open(item)} />
               ))
             ) : (
+              // 지난 회차가 있으면 아래 '이전 회차 보기'로 이어지게 이번 회차 기준으로 말한다
               <View className="items-center gap-1 py-8">
-                <Text className="font-bold text-neutral-500">아직 단식 기록이 없어요</Text>
+                <Text className="font-bold text-neutral-500">
+                  {previous.length > 0
+                    ? '이번 회차 단식 기록은 아직 없어요'
+                    : '아직 단식 기록이 없어요'}
+                </Text>
                 <Text className="text-center text-sm text-neutral-400">
-                  2주차부터 오늘 탭에서 단식 요일을 정하면 여기에 기록이 쌓여요
+                  {previous.length > 0
+                    ? '지난 회차 기록은 아래에서 볼 수 있어요'
+                    : '2주차부터 오늘 탭에서 단식 요일을 정하면 여기에 기록이 쌓여요'}
                 </Text>
               </View>
             )}

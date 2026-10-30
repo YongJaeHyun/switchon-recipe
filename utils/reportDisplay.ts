@@ -70,7 +70,7 @@ const byPeriodDesc = <T extends ReportKey>(a: T, b: T) =>
 // 지금 회차 리포트(current = 시작일이 회차 시작일 이후)와 지난 회차 리포트(previous)로 나눈다.
 // programStart = 지금 회차 시작일 (programStartOf: program_start, 없으면 start_date).
 // 지난 회차는 groupPastStarts(8주 이내로 이어지는 시작일 묶음)로 묶고 가장 이른 시작일을 이름으로 쓴다.
-// 예전 리포트는 지우지 않고 "이전 프로그램"으로 보여준다. 회차는 최근 먼저, 리포트는 기간 최신 먼저
+// 예전 리포트는 지우지 않고 "이전 회차"로 보여준다. 회차는 최근 먼저, 리포트는 기간 최신 먼저
 export function groupReportsByProgram<T extends ReportKey>(
   reports: T[],
   programStart: string | null
@@ -86,6 +86,12 @@ export function groupReportsByProgram<T extends ReportKey>(
   }));
 
   return { current: current.sort(byPeriodDesc), previous };
+}
+
+// 리포트 상세의 "이전 회차" 표시: 리포트 시작일이 지금 회차 시작일(programStartOf)보다 앞일 때만.
+// 회차 시작일을 모르면(사용자 정보 불러오는 중) 표시하지 않는다
+export function isPreviousProgramReport(reportStart: string, programStart: string | null): boolean {
+  return !!programStart && reportStart.slice(0, 10) < programStart.slice(0, 10);
 }
 
 const isObject = (value: unknown): value is Record<string, unknown> =>

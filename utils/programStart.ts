@@ -212,3 +212,19 @@ export function groupPastStarts(starts: string[], programStart: string | null): 
   }
   return groups.reverse();
 }
+
+// 시작일 변경으로 저장할 것. 할 것이 없으면 null (같은 시작일, 같은 회차 시작일).
+// startChanged = 시작일이 바뀜 (재료·통계 정리도 한다). 같은 날 다시 시작인데 회차 시작일만 다르면
+// (한 주 더 하기 뒤 오늘이 1주차 1일인 날 등) 회차 시작일만 바꾸고 정리하지 않는다
+export function startDateChange(input: {
+  kind: StartDateChangeKind;
+  startDate: string | null | undefined;
+  programStart: string | null | undefined;
+  newStart: string;
+}): { programStart: string; startChanged: boolean } | null {
+  const current = programStartOf(input.programStart, input.startDate);
+  const programStart = nextProgramStart(input.kind, current, input.newStart);
+  const startChanged = !isSameStartDate(input.startDate, input.newStart);
+  if (!startChanged && programStart === current) return null;
+  return { programStart, startChanged };
+}
