@@ -6,6 +6,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { shareCustomTemplate } from '@react-native-kakao/share';
 import { RecipeAPI } from 'api/RecipeAPI';
 import { Text } from 'components/common/Text';
+import { CarbBadge } from 'components/recipes/CarbBadge';
 import { ServingsStepper } from 'components/recipes/ServingsStepper';
 import { SimilarRecipes } from 'components/recipes/SimilarRecipes';
 import { logo } from 'const/assets';
@@ -26,6 +27,7 @@ import Animated, {
 import colors from 'tailwindcss/colors';
 import { RecipeDB } from 'types/database';
 import { IngredientSchema, Recipe, RecipeIngredient } from 'types/recipe';
+import { carbTypeStyle } from 'utils/carbType';
 import { nutritionPerServing } from 'utils/nutritionPerServing';
 import {
   SERVINGS_STEPPER_MIN,
@@ -35,13 +37,24 @@ import {
 } from 'utils/scaleAmount';
 
 const BUTTONS_BOTTOM = 48 + 48 + 8;
+// 제목 상자 윗변에 걸친 저탄수식·무탄수식 라벨이 위로 튀어나온 높이 (-top-4)
+const CARB_LABEL_OVERHANG = 16;
 
 export default function RecipeDetailScreen() {
   const { recipe }: { recipe: string } = useLocalSearchParams();
 
   const parsedRecipe: RecipeDB = JSON.parse(recipe);
-  const { id, recipe_name, cooking_time, ingredients, nutrition, cooking_steps, image_uri } =
-    parsedRecipe;
+  const {
+    id,
+    recipe_name,
+    cooking_time,
+    ingredients,
+    nutrition,
+    cooking_steps,
+    image_uri,
+    is_zero_carb,
+  } = parsedRecipe;
+  const carbType = carbTypeStyle(is_zero_carb);
 
   const parsedIngredients: RecipeIngredient[] = JSON.parse(ingredients ?? '');
   parsedIngredients.sort((a: RecipeIngredient, b: RecipeIngredient) => {
@@ -81,8 +94,10 @@ export default function RecipeDetailScreen() {
   });
 
   const animatedTitleStyle = useAnimatedStyle(() => {
-    // 카드 윗변 = 사진 아래 - 56(-top-14) + translateY. 버튼 아래(48 + 48)에서 8 더 띄운 곳까지만 올린다
-    const lowestUp = heroHeight.value > 0 ? BUTTONS_BOTTOM - (heroHeight.value - 56) : -90;
+    // 카드 윗변 = 사진 아래 - 56(-top-14) + translateY. 윗변에 걸친 라벨 꼭대기가
+    // 버튼 아래(48 + 48)에서 8 더 띄운 곳까지만 올린다
+    const lowestUp =
+      heroHeight.value > 0 ? BUTTONS_BOTTOM + CARB_LABEL_OVERHANG - (heroHeight.value - 56) : -90;
     const translateY = interpolate(
       scrollY.value,
       [0, 150],
@@ -161,7 +176,20 @@ export default function RecipeDetailScreen() {
       </View>
 
       <Animated.View style={animatedTitleStyle} className="relative z-50 items-center">
-        <View className="absolute -top-14 h-40 w-full items-center justify-evenly rounded-xl bg-white px-8 shadow-xl">
+        <View
+          className={`absolute -top-14 h-40 w-full items-center justify-evenly rounded-xl border-2 bg-white px-8 pt-3 ${carbType.border}`}
+          style={{
+            // 회색 대신 저탄수·무탄수 색으로 옅게 번지는 그림자. Android 9 미만은 그림자 색을 무시하고
+            // 기본 회색 elevation으로 그려지지만 테두리 색이 있어 구분은 그대로 된다
+            shadowColor: carbType.hex,
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.25,
+            shadowRadius: 14,
+            elevation: 10,
+          }}>
+          <View className="absolute -top-4 left-0 right-0 items-center">
+            <CarbBadge isZeroCarb={is_zero_carb} variant="title" />
+          </View>
           <Text className="break-keep text-center text-3xl font-bold">{recipe_name}</Text>
           <View className="flex-row gap-6">
             <View className="flex-row items-center gap-2">

@@ -9,6 +9,7 @@ import { useRecipeStore } from 'stores/recipeStore';
 import colors from 'tailwindcss/colors';
 import { RecipeWithIsSavedDB } from 'types/database';
 import { getWeekColor } from 'utils/getWeekColor';
+import { CarbBadge } from './CarbBadge';
 
 interface RecipeCardProps extends RecipeWithIsSavedDB {
   // 상세 화면에서 다른 레시피 상세로 갈 때: 같은 화면이면 Link 기본 동작(navigate)이 새 화면을 쌓지 않고
@@ -37,7 +38,8 @@ export function RecipeCard({ push, ...recipe }: RecipeCardProps) {
           elevation: 2,
         }}>
         <View className="relative h-full w-full flex-[5]">
-          <View className="absolute left-2 top-2 z-50 flex-row gap-1.5">
+          {/* 좁은 카드(비슷한 레시피 등)에선 저장 수와 겹치지 않게 오른쪽을 비워 두고, 모자라면 다음 줄로 넘긴다 */}
+          <View className="absolute left-2 right-16 top-2 z-50 flex-row flex-wrap gap-1.5">
             {recipe.week && (
               <View className={`rounded-full bg-white px-2 py-1`}>
                 <Text className={`text-sm ${getWeekColor(recipe.week)}`}>
@@ -45,11 +47,7 @@ export function RecipeCard({ push, ...recipe }: RecipeCardProps) {
                 </Text>
               </View>
             )}
-            <View className={`rounded-full bg-white px-2 py-1`}>
-              <Text className="text-sm text-neutral-500">
-                {recipe.is_zero_carb ? '무탄수' : '저탄수'}
-              </Text>
-            </View>
+            <CarbBadge isZeroCarb={recipe.is_zero_carb} />
           </View>
 
           <ImageSkeleton />

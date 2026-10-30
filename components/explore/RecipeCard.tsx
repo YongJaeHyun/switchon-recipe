@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ImageSkeleton } from 'components/common/ImageSkeleton';
 import { Text } from 'components/common/Text';
+import { CarbBadge } from 'components/recipes/CarbBadge';
 import { Image } from 'expo-image';
 import { Link } from 'expo-router';
 import React from 'react';
@@ -44,11 +45,7 @@ export const RecipeCard = React.memo(({ keyword, ...recipe }: RecipeCardProps) =
                 </Text>
               </View>
             )}
-            <View className={`rounded-full bg-white px-2 py-1`}>
-              <Text className="text-sm text-neutral-500">
-                {recipe.is_zero_carb ? '무탄수' : '저탄수'}
-              </Text>
-            </View>
+            <CarbBadge isZeroCarb={recipe.is_zero_carb} />
           </View>
 
           <ImageSkeleton />
