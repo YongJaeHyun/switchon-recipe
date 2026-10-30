@@ -7,8 +7,10 @@ import { router } from 'expo-router';
 import { TouchableWithoutFeedback, View } from 'react-native';
 import { useFirstWeekStore, type PrepItemId } from 'stores/firstWeekStore';
 import { useTipSheetStore } from 'stores/tipSheetStore';
+import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { getWeekColorHex } from 'utils/getWeekColor';
+import { prepChecksFor } from 'utils/prepChecks';
 import { startCountdownLabel } from 'utils/programStart';
 
 const WEEK1_COLOR = getWeekColorHex(1);
@@ -19,7 +21,7 @@ const ACTIONS: Partial<Record<PrepItemId, { label: string; run: () => void }>> =
     label: '읽기',
     run: () => {
       useTipSheetStore.getState().open(FIRST_DAYS_RULES_TIP);
-      useFirstWeekStore.getState().checkPrep('rules');
+      useFirstWeekStore.getState().checkPrep(useUserStore.getState().start_date, 'rules');
     },
   },
   // 저탄수식 만들기 화면이 1주차 재료부터 보여준다
@@ -30,8 +32,11 @@ const ACTIONS: Partial<Record<PrepItemId, { label: string; run: () => void }>> =
 
 // 시작일이 미래일 때 오늘 탭에서 할 일 대신 보여주는 카드: D-n + 준비 체크리스트(로컬 저장)
 export function BeforeStartCard({ daysUntil }: { daysUntil: number }) {
-  const prepChecks = useFirstWeekStore((state) => state.prepChecks);
+  const startDate = useUserStore((state) => state.start_date);
+  const prep = useFirstWeekStore((state) => state.prep);
   const togglePrep = useFirstWeekStore((state) => state.togglePrep);
+  // 시작일에 묶인 체크만 (시작일을 바꾸면 처음부터)
+  const prepChecks = prepChecksFor(prep, startDate);
   const doneCount = PREP_ITEMS.filter((item) => prepChecks[item.id]).length;
 
   return (
@@ -50,12 +55,12 @@ export function BeforeStartCard({ daysUntil }: { daysUntil: number }) {
         const checked = !!prepChecks[item.id];
         const action = ACTIONS[item.id];
         return (
-          <TouchableWithoutFeedback key={item.id} onPress={() => togglePrep(item.id)}>
+          <TouchableWithoutFeedback key={item.id} onPress={() => togglePrep(startDate, item.id)}>
             <View className="flex-row items-center gap-4 py-2">
               <Checkbox
                 color={WEEK1_COLOR}
                 value={checked}
-                onValueChange={() => togglePrep(item.id)}
+                onValueChange={() => togglePrep(startDate, item.id)}
               />
               <View className="flex-1">
                 <Text className={checked ? 'text-neutral-400 line-through' : 'text-neutral-800'}>

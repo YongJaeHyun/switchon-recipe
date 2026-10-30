@@ -1,15 +1,16 @@
 import { supabase } from 'lib/supabase';
 import { useUserStore } from 'stores/userStore';
-import { Nullable } from 'types/common';
 import { StatisticsDB } from 'types/database';
 import { TodoRateStatistics } from 'types/statistics';
-import { getWeekAndDay } from 'utils/date';
+import { getKoreanDateString } from 'utils/date';
+import { programWeekAndDay } from 'utils/programStart';
 import { sendError } from 'utils/sendError';
+import { buildTodoRateWeeks } from 'utils/todoRateWeeks';
 
 export const getTodoRatesByWeeks = async () =>
   sendError<TodoRateStatistics>(async () => {
     const { start_date, id } = useUserStore.getState();
-    const { week: userWeek, day: userDay } = getWeekAndDay(start_date);
+    const progress = programWeekAndDay(start_date, getKoreanDateString({ formatType: 'date' }));
 
     if (!start_date) {
       return {
@@ -28,53 +29,22 @@ export const getTodoRatesByWeeks = async () =>
 
     if (error) throw error;
 
-    const dateMap = new Map<string, number>();
-
-    statistics.forEach((row) => {
-      const dateKey = `${row.week}-${row.day}`;
-      dateMap.set(dateKey, row.todo_rate);
-    });
-
-    const weeks = [];
-
-    for (let week = 1; week <= 4; week++) {
-      let todoRatesByWeek: Nullable<number>[] = [];
-
-      for (let day = 1; day <= 7; day++) {
-        const isReached = week < userWeek || (week <= userWeek && day <= userDay);
-
-        if (!isReached) {
-          todoRatesByWeek.push(null);
-          continue;
-        }
-
-        const key = `${week}-${day}`;
-        const value = dateMap.get(key) ?? 0;
-        todoRatesByWeek.push(value);
-      }
-
-      const filteredTodoRates = todoRatesByWeek.filter(
-        (rate) => typeof rate === 'number'
-      ) satisfies number[];
-
-      const todoRatesSum = filteredTodoRates.reduce((acc, cur) => acc + cur, 0);
-      const average =
-        filteredTodoRates.length > 0 ? Math.round(todoRatesSum / filteredTodoRates.length) : 0;
-
-      weeks.push({
-        todoRatesByWeek,
-        average,
-      });
-    }
+    // 시작 전이면 어떤 날도 지나지 않은 것으로 (1주차 1일 0% 막대가 생기지 않게)
+    const weeks = buildTodoRateWeeks(statistics, progress);
 
     return { weeks };
   });
 
 const upsert = async (todoRate: number) =>
-  sendError<StatisticsDB>(async () => {
+  sendError<StatisticsDB | null>(async () => {
     const userId = useUserStore.getState().id;
     const startDate = useUserStore.getState().start_date;
-    const { week, day } = getWeekAndDay(startDate);
+    const { week, day, beforeStart } = programWeekAndDay(
+      startDate,
+      getKoreanDateString({ formatType: 'date' })
+    );
+    // 시작 전에는 1주차 1일로 기록하지 않는다
+    if (beforeStart) return null;
 
     const { data, error } = await supabase
       .from('statistics')

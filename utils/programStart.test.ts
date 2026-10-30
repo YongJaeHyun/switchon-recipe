@@ -192,6 +192,62 @@ describe('todayRevalidation (주차 팝업·할 일·단식 초기화)', () => {
   });
 });
 
+describe('todayRevalidation 서버 초기화 (시작 전엔 쓰지 않는다)', () => {
+  it('시작 전으로 처음 들어와 일차가 0으로 바뀌어도 할 일 초기화(서버 쓰기)는 하지 않는다', () => {
+    const r = todayRevalidation({
+      week: 1,
+      day: 1,
+      beforeStart: true,
+      prevWeek: 1,
+      prevDay: 1,
+      isChecked: false,
+    });
+    expect(r.dayChanged).toBe(true);
+    expect(r.resetTodos).toBe(false);
+    expect(r.resetFasting).toBe(false);
+  });
+
+  it('시작 전에 저장 주차가 1이 아니었어도 단식 초기화(서버 쓰기)는 하지 않는다', () => {
+    const r = todayRevalidation({
+      week: 1,
+      day: 1,
+      beforeStart: true,
+      prevWeek: 3,
+      prevDay: 4,
+      isChecked: true,
+    });
+    expect(r.weekChanged).toBe(true);
+    expect(r.resetFasting).toBe(false);
+    expect(r.resetTodos).toBe(false);
+  });
+
+  it('시작일이 되면(0 → 1일) 할 일을 초기화한다', () => {
+    const r = todayRevalidation({
+      week: 1,
+      day: 1,
+      beforeStart: false,
+      prevWeek: 1,
+      prevDay: BEFORE_START_DAY,
+      isChecked: false,
+    });
+    expect(r.resetTodos).toBe(true);
+    expect(r.resetFasting).toBe(false);
+  });
+
+  it('시작 뒤 새 주차면 할 일·단식 모두 초기화', () => {
+    const r = todayRevalidation({
+      week: 2,
+      day: 1,
+      beforeStart: false,
+      prevWeek: 1,
+      prevDay: 7,
+      isChecked: true,
+    });
+    expect(r.resetTodos).toBe(true);
+    expect(r.resetFasting).toBe(true);
+  });
+});
+
 describe('startCountdownLabel', () => {
   it('내일이면 "내일부터", 그 뒤면 "N일 뒤"', () => {
     expect(startCountdownLabel(1)).toBe('내일부터 1주차가 시작돼요');

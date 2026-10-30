@@ -26,16 +26,22 @@ export function Week1GuideCard({
 
   return (
     <View className="flex-row items-center gap-2 rounded-xl bg-green-50 py-3 pl-4 pr-2">
-      <Pressable onPress={openTip} className="flex-1 gap-0.5">
-        <Text className="text-xs font-bold text-green-700">{day}일차 안내</Text>
-        <Text className="text-sm text-neutral-800">{guide.line}</Text>
-      </Pressable>
-      <Pressable onPress={openTip} hitSlop={8} className="px-1 py-1">
-        <Text className="text-sm font-bold text-green-600">자세히</Text>
+      {/* 한 줄과 "자세히"는 한 버튼 (같은 팁 시트를 연다) */}
+      <Pressable
+        onPress={openTip}
+        accessibilityRole="button"
+        accessibilityLabel={`${day}일차 안내: ${guide.line}. 자세히 보기`}
+        className="flex-1 flex-row items-center gap-2">
+        <View className="flex-1 gap-0.5">
+          <Text className="text-xs font-bold text-green-700">{day}일차 안내</Text>
+          <Text className="text-sm text-neutral-800">{guide.line}</Text>
+        </View>
+        <Text className="px-1 py-1 text-sm font-bold text-green-600">자세히</Text>
       </Pressable>
       <Pressable
         onPress={() => dismissGuide(today)}
         hitSlop={8}
+        accessibilityRole="button"
         accessibilityLabel="오늘 안내 닫기"
         className="p-1">
         <Ionicons name="close" size={16} color={colors.neutral[400]} />

@@ -15,15 +15,15 @@ import { getWeekAndDay } from 'utils/date';
 import { getFastingStatus, WEEK_CHANGES } from 'utils/dietGuide';
 import { fastingDayOf } from 'utils/fastingEarlyEnd';
 import { getWeekColor, getWeekColorHex } from 'utils/getWeekColor';
-import { daysUntilStart } from 'utils/programStart';
+import { daysUntilStart, programWeekAndDay } from 'utils/programStart';
 import { todayExtraRows, weekStepLabel } from 'utils/todayRows';
 import { BeforeStartCard } from './BeforeStartCard';
 import { FastingDayLine } from './FastingDayLine';
 import { FastingProgressLine } from './FastingProgressLine';
 import { FastingResultRow } from './FastingResultRow';
 import { TipBottomSheet } from './TipBottomSheet';
-import { Week1GuideCard } from './Week1GuideCard';
 import { Todo } from './Todo';
+import { Week1GuideCard } from './Week1GuideCard';
 import { WeightRow } from './WeightRow';
 
 const MINUTE_MS = 60 * 1000;
@@ -31,7 +31,6 @@ const MINUTE_MS = 60 * 1000;
 // 오늘 탭의 할 일 목록 하나: (단식 중이면 남은 시간 줄) → 식단 할 일 → 단식 결과 → 체중 → (아래) 단식 요일.
 // 진행 중에 일찍 끝냈으면 남은 시간 줄 자리에 그 단식의 결과 카드 (할 일 목록은 그대로).
 // 완료율(%)은 식단 할 일만 센다.
-// 1주차 1~7일에는 할 일 카드 위에 그날 한 줄 안내.
 // 시작일이 미래(시작 전)면 할 일·단식 대신 '시작 전' 준비 카드 (할 일·단식 훅을 아예 돌리지 않는다)
 export function TodayChecklist() {
   const startDate = useUserStore((state) => state.start_date);
@@ -71,6 +70,7 @@ function ProgramChecklist({ today }: { today: string }) {
   }, []);
 
   const { week, day } = getWeekAndDay(startDate);
+  const guideDay = programWeekAndDay(startDate, today);
   const stepLabel = weekStepLabel(week, day);
   const isMaintenance = week >= 5;
   const status = getFastingStatus(now, schedule, weekContext);
@@ -109,8 +109,9 @@ function ProgramChecklist({ today }: { today: string }) {
         <FastingDayLine state="unset" week={week} days={days} schedule={schedule} />
       )}
 
-      {/* 1주차 1~7일 그날 한 줄 안내 (닫으면 그날 숨김) */}
-      <Week1GuideCard week={week} day={day} today={today} />
+      {/* 1주차 1~7일 그날 한 줄 안내 (닫으면 그날 숨김). 닫기 키와 같은 today로 일차를 정해
+          자정 직후 재검증 전에도 카드 일차와 닫은 날이 어긋나지 않게 한다 */}
+      <Week1GuideCard week={guideDay.week} day={guideDay.day} today={today} />
 
       <View className="rounded-xl border border-neutral-200 bg-white px-4 pb-2 pt-4">
         <View className="mb-1 flex-row items-center justify-between">

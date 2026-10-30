@@ -28,19 +28,19 @@ export default function useKoreanToday() {
     } = useWeekCompletePopupStore.getState();
     const newDay = getKoreanDateString({ formatType: 'date' });
     const { week, day, beforeStart } = programWeekAndDay(start_date, newDay);
-    // 시작 전에는 주차 팝업을 열지 않고 일차를 '시작 전'으로 둔다 → 시작일에 할 일이 초기화된다
+    // 시작 전에는 주차 팝업을 열지 않고 일차를 '시작 전'으로 둔다 (서버 초기화 없음) → 시작일에 할 일이 초기화된다
     const next = todayRevalidation({ week, day, beforeStart, prevWeek, prevDay, isChecked });
 
     setToday(newDay);
 
     if (next.weekChanged) {
       setWeek(next.week);
-      resetFasting();
+      if (next.resetFasting) resetFasting();
       if (next.closePopup) close();
     }
     if (next.dayChanged) {
       setDay(next.day);
-      resetTodos();
+      if (next.resetTodos) resetTodos();
     }
     if (next.openPopup) open();
   }, [start_date, resetFasting, resetTodos]);

@@ -41,8 +41,25 @@ describe('WEEK1_DAILY_GUIDE 문구', () => {
     expect(WEEK1_DAILY_GUIDE[3].tomorrow).toContain('저탄수식');
   });
 
-  it('7일차 내일 예고는 2주차', () => {
-    expect(WEEK1_DAILY_GUIDE[7].tomorrow).toContain('2주차');
+  it('7일차 내일 예고는 2주차: 저녁 밥 없는 식사(앱 할 일의 무탄수식)와 24시간 단식 (p.16)', () => {
+    const { tomorrow } = WEEK1_DAILY_GUIDE[7];
+    expect(tomorrow).toContain('2주차');
+    expect(tomorrow).toContain('밥이 없는');
+    expect(tomorrow).toContain('무탄수식');
+    expect(tomorrow).toContain('24시간');
+  });
+
+  it('책에 있는 내용을 빠뜨리지 않는다: 첫 3일 장 휴식(p.13), 4일차 두통이 낫는 것(p.20)', () => {
+    const text = (day: number) => JSON.stringify(WEEK1_DAILY_GUIDE[day]);
+    expect(text(1)).toContain('장을 쉬게');
+    expect(text(4)).toContain('두통');
+  });
+
+  it('책에 없는 표현을 쓰지 않는다 (리뷰 지적: 일찍 자기, 적게 먹으려고)', () => {
+    const all = JSON.stringify(WEEK1_DAILY_GUIDE);
+    expect(all).not.toContain('일찍 자');
+    expect(all).not.toContain('적게 먹으려고');
+    expect(all).not.toContain('배고픔이 느껴질 수');
   });
 });
 
