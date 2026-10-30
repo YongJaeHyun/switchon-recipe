@@ -8,6 +8,7 @@ import { useUserStore } from 'stores/userStore';
 import { FastingDB } from 'types/database';
 import { Maybe } from '../types/common';
 import { formatMinutes, scheduleFrom } from './fastingSchedule';
+import { nextMorningReminder } from './dailyReminder';
 import { mealAlarms } from './mealAlarms';
 import type { MealTimes } from './mealTimes';
 import { type PushEnableResult, pushEnableResult } from './pushEnable';
@@ -291,6 +292,58 @@ export function syncMealAlarms({
       }
     } catch (error) {
       captureError({ error, prefix: '[syncMealAlarms]: ' });
+    }
+  });
+}
+
+const DAILY_REMINDER_KIND = 'daily';
+
+export const isDailyReminder = (request: { content: { data?: Record<string, unknown> | null } }) =>
+  request.content.data?.kind === DAILY_REMINDER_KIND;
+
+// 아침 리마인드만 지운다 (끼니·단식·다른 알림은 그대로)
+async function cancelDailyRemindersNow() {
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  await Promise.all(
+    scheduled
+      .filter(isDailyReminder)
+      .map((request) => Notifications.cancelScheduledNotificationAsync(request.identifier))
+  );
+}
+
+// 다음 날 아침 리마인드: 앱을 열 때·돌아올 때 걸어 둔 것(오늘 09:00 포함)을 지우고 내일 09:00 KST 것 하나를
+// 건다 → 그날 앱을 안 연 사람에게만 간다. 내일이 1주차 2~7일·2주차 1일이 아니면 지우기만.
+// 권한 요청 창은 띄우지 않는다(권한이 없으면 건너뜀). 실패해도 throw하지 않는다
+export function syncDailyReminder({
+  startDate,
+  now = new Date(),
+}: {
+  startDate: string | null | undefined;
+  now?: Date;
+}) {
+  return enqueue(async () => {
+    try {
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status !== 'granted') return;
+      await cancelDailyRemindersNow();
+      const reminder = nextMorningReminder({ startDate, now });
+      if (!reminder) return;
+      await registerChannel(CHANNELS.DAILY);
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: reminder.title,
+          body: reminder.body,
+          // 누르면 오늘 탭 (utils/notificationHref)
+          data: { kind: DAILY_REMINDER_KIND, href: '/home' },
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: reminder.date,
+          channelId: CHANNELS.DAILY,
+        },
+      });
+    } catch (error) {
+      captureError({ error, prefix: '[syncDailyReminder]: ' });
     }
   });
 }

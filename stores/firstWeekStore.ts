@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { markCelebratedDay } from 'utils/dailyReminder';
 import {
   EMPTY_PREP,
   prepChecksFor,
@@ -42,11 +43,7 @@ export const useFirstWeekStore = create<FirstWeekStore>()(
         set((state) => ({ prep: setPrepCheck(state.prep, startDate, id, true) })),
       dismissGuide: (day) => set({ guideDismissedDay: day }),
       markCelebrated: (day) =>
-        set((state) =>
-          state.celebratedDays.includes(day)
-            ? state
-            : { celebratedDays: [...state.celebratedDays, day].slice(-14) }
-        ),
+        set((state) => ({ celebratedDays: markCelebratedDay(state.celebratedDays, day) })),
     }),
     {
       name: 'firstWeekStore',

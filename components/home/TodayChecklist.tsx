@@ -4,6 +4,7 @@ import { useFasting, useFastingAlarmSync } from 'hooks/useFasting';
 import useKoreanToday from 'hooks/useKoreanToday';
 import { useFastingPlanBackfill, useFastingWeekContext } from 'hooks/useFastingPlan';
 import { useFastingResult } from 'hooks/useFastingResult';
+import { useDayCelebration } from 'hooks/useDayCelebration';
 import { useTodos } from 'hooks/useTodos';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, View } from 'react-native';
@@ -18,6 +19,7 @@ import { getWeekColor, getWeekColorHex } from 'utils/getWeekColor';
 import { daysUntilStart, programWeekAndDay } from 'utils/programStart';
 import { todayExtraRows, weekStepLabel } from 'utils/todayRows';
 import { BeforeStartCard } from './BeforeStartCard';
+import { DayCompleteSheet } from './DayCompleteSheet';
 import { FastingDayLine } from './FastingDayLine';
 import { FastingProgressLine } from './FastingProgressLine';
 import { FastingResultRow } from './FastingResultRow';
@@ -56,7 +58,12 @@ function ProgramChecklist({ today }: { today: string }) {
   const startDate = useUserStore((state) => state.start_date);
 
   // 화면에 하나뿐이라 여기서 못 보낸 todo_daily 다시 보내기를 켠다
-  const { todos, completedRate, isLoading: isTodosLoading } = useTodos({ syncTodoDaily: true });
+  const {
+    todos,
+    completedRate,
+    currentRate,
+    isLoading: isTodosLoading,
+  } = useTodos({ syncTodoDaily: true });
   const { days, schedule, isLoading: isFastingLoading } = useFasting();
   const weekContext = useFastingWeekContext();
   useFastingPlanBackfill();
@@ -71,6 +78,13 @@ function ProgramChecklist({ today }: { today: string }) {
 
   const { week, day } = getWeekAndDay(startDate);
   const guideDay = programWeekAndDay(startDate, today);
+  // 1주차 그날 할 일을 방금 다 끝냈으면 하루 한 번 완주 축하 (안내 카드와 같은 today 기준 일차)
+  const { celebrateDay, closeCelebration } = useDayCelebration({
+    week: guideDay.week,
+    day: guideDay.day,
+    today,
+    currentRate,
+  });
   const stepLabel = weekStepLabel(week, day);
   const isMaintenance = week >= 5;
   const status = getFastingStatus(now, schedule, weekContext);
@@ -172,6 +186,7 @@ function ProgramChecklist({ today }: { today: string }) {
       )}
 
       <TipBottomSheet />
+      <DayCompleteSheet day={celebrateDay} onClose={closeCelebration} />
     </View>
   );
 }

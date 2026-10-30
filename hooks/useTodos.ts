@@ -224,9 +224,18 @@ export const useTodos = (options?: { syncTodoDaily?: boolean }) => {
     setCompletedRate(completedRate);
   }, [checkedIds, getTodayTodos]);
 
+  // 오늘 체크가 오늘 것일 때만 지금 완료율 (아니면 null). 위 completedRate(state)는 한 번 늦게 바뀌어
+  // 자정 초기화 직후 어제 100%가 잠깐 남을 수 있어, 완주 축하는 이 값을 쓴다
+  const currentRate = useMemo(() => {
+    if (beforeStart || isLoading || !checksCurrent) return null;
+    const count = getTodayTodos().length;
+    return count > 0 ? Math.round((checkedIds.length / count) * 100) : null;
+  }, [beforeStart, isLoading, checksCurrent, checkedIds, getTodayTodos]);
+
   return {
     todos,
     completedRate,
+    currentRate,
     isLoading,
     resetTodos,
     toggleChecked,

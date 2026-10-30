@@ -56,6 +56,7 @@ const {
   registerChannelIfPermitted,
   registerWeeklyFastingAlarms,
   syncFastingAlarms,
+  syncDailyReminder,
   syncMealAlarms,
 } = await import('./notifications');
 const { DEFAULT_MEAL_MINUTES } = await import('./mealTimes');
@@ -283,5 +284,99 @@ describe('syncMealAlarms', () => {
     const fasting = { days: [4], start_time: '저녁 식후', start_minutes: { '4': 1140 } } as never;
     await syncFastingAlarms(fasting, '2099-01-01');
     expect(meals()).toHaveLength(28);
+  });
+});
+
+describe('syncDailyReminder (아침 리마인드: 앱을 열면 오늘 것 취소, 내일 것 예약)', () => {
+  const kst = (iso: string) => new Date(`${iso}+09:00`);
+  const fastingAlarm = {
+    identifier: 'fasting-1',
+    content: { title: '단식 시작 예정 알림', data: { kind: 'fasting' } },
+  };
+  const mealAlarm = {
+    identifier: 'meal-1',
+    content: { title: '1주차 3일차', data: { kind: 'meal' } },
+  };
+  // 어제 앱을 열 때 걸어 둔 오늘 09:00 리마인드
+  const todaysReminder = {
+    identifier: 'daily-today',
+    content: { title: '1주차 3일차', data: { kind: 'daily', href: '/home' } },
+  };
+  const startDate = '2026-10-30';
+  const dailies = () => scheduled.filter((request) => request.content.data?.kind === 'daily');
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    scheduled.splice(
+      0,
+      scheduled.length,
+      { ...fastingAlarm },
+      { ...mealAlarm },
+      { ...todaysReminder }
+    );
+    state.permission = 'granted';
+    state.requestResult = 'granted';
+  });
+
+  it('오늘 것을 지우고 내일 09:00 KST 것 하나를 DAILY 채널에 data.kind=daily로 건다', async () => {
+    await syncDailyReminder({ startDate, now: kst('2026-11-01T08:00') });
+    expect(cancelScheduledNotificationAsync).toHaveBeenCalledWith('daily-today');
+    expect(dailies()).toHaveLength(1);
+    expect(scheduleNotificationAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.objectContaining({
+          title: '1주차 4일차',
+          body: '4일차가 시작됐어요. 오늘 할 일을 확인해 보세요',
+          data: { kind: 'daily', href: '/home' },
+        }),
+        trigger: expect.objectContaining({ channelId: 'DAILY', date: kst('2026-11-02T09:00') }),
+      })
+    );
+    expect(setNotificationChannelAsync).toHaveBeenCalledWith('DAILY', expect.anything());
+  });
+
+  it('여러 번 열어도 하나만 (바꿔 건다)', async () => {
+    await Promise.all([
+      syncDailyReminder({ startDate, now: kst('2026-11-01T08:00') }),
+      syncDailyReminder({ startDate, now: kst('2026-11-01T08:00') }),
+    ]);
+    await syncDailyReminder({ startDate, now: kst('2026-11-01T21:00') });
+    expect(dailies()).toHaveLength(1);
+  });
+
+  it('끼니·단식 알림은 건드리지 않는다', async () => {
+    await syncDailyReminder({ startDate, now: kst('2026-11-01T08:00') });
+    await syncDailyReminder({ startDate, now: kst('2026-12-01T08:00') });
+    expect(scheduled).toEqual([fastingAlarm, mealAlarm]);
+    expect(cancelScheduledNotificationAsync).not.toHaveBeenCalledWith('fasting-1');
+    expect(cancelScheduledNotificationAsync).not.toHaveBeenCalledWith('meal-1');
+  });
+
+  it('내일이 대상이 아니면(2주차 1일 이후) 오늘 것만 지우고 새로 걸지 않는다', async () => {
+    await syncDailyReminder({ startDate, now: kst('2026-11-06T08:00') });
+    expect(dailies()).toEqual([]);
+    expect(scheduleNotificationAsync).not.toHaveBeenCalled();
+  });
+
+  it('권한이 없으면 요청하지 않고 아무것도 바꾸지 않는다', async () => {
+    state.permission = 'undetermined';
+    await syncDailyReminder({ startDate, now: kst('2026-11-01T08:00') });
+    expect(requestPermissionsAsync).not.toHaveBeenCalled();
+    expect(scheduleNotificationAsync).not.toHaveBeenCalled();
+    expect(cancelScheduledNotificationAsync).not.toHaveBeenCalled();
+  });
+
+  it('끼니·단식 알림 다시 걸기는 아침 리마인드를 지우지 않는다', async () => {
+    await syncDailyReminder({ startDate, now: kst('2026-11-01T08:00') });
+    await syncMealAlarms({
+      on: false,
+      times: DEFAULT_MEAL_MINUTES,
+      startDate,
+      checkedToday: [],
+      now: kst('2026-11-01T08:00'),
+    });
+    const fasting = { days: [4], start_time: '저녁 식후', start_minutes: { '4': 1140 } } as never;
+    await syncFastingAlarms(fasting, '2099-01-01');
+    expect(dailies()).toHaveLength(1);
   });
 });

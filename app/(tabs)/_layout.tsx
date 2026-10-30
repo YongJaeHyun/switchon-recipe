@@ -1,9 +1,13 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import RippleButton from 'components/common/RippleButton';
 import { Tabs } from 'expo-router';
+import { useDailyReminderSync } from 'hooks/useDailyReminderSync';
 import colors from 'tailwindcss/colors';
 
 function TabLayout() {
+  // 다음 날 아침 리마인드 (그날 앱을 안 연 사람에게만)
+  useDailyReminderSync();
+
   return (
     <Tabs
       screenOptions={{
