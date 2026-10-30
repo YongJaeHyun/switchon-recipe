@@ -2,7 +2,7 @@ import { weekCompleteLottie } from 'const/assets';
 import { useIngredients } from 'hooks/useIngredients';
 import useSteps from 'hooks/useSteps';
 import LottieView from 'lottie-react-native';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Modal, ScrollView, useWindowDimensions, View } from 'react-native';
 import Animated, {
   Easing,
@@ -43,7 +43,12 @@ export function WeekCompletePopup() {
     if (visible) setReview(reviewOf());
   }
 
+  // 한 주 더 하기 요청 중에는 뒤로 가기로 닫지 않는다 (실패하면 다시 고를 수 있게 키도 남기지 않음)
+  const [repeatBusy, setRepeatBusy] = useState(false);
+  const skipReview = useCallback(() => setReview(null), []);
+
   const handleClose = () => {
+    if (repeatBusy) return;
     // 돌아보기 중 뒤로 가기로 닫아도 이 전환에서는 다시 묻지 않는다
     if (review) markRepeatAsked(review.key);
     resetStep();
@@ -86,8 +91,9 @@ export function WeekCompletePopup() {
             <WeekRepeatStep
               key={review.key}
               week={review.week}
-              onNext={() => setReview(null)}
+              onNext={skipReview}
               onRepeated={handleRepeated}
+              onBusyChange={setRepeatBusy}
             />
           )}
 

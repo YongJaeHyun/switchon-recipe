@@ -21,7 +21,8 @@ export function useWeekRepeat(enteringWeek: number) {
   const { selectedIngredients: zeroIngredients, upsertIngredients: upsertZeroIngredients } =
     useSelectedIngredients({ type: 'zero' });
 
-  // 기록을 못 받았으면(오프라인 등) 기록 없음과 같게 측정 권유를 보여 준다
+  // 기록을 못 받았으면(오프라인 등) 판정은 기록 없음과 같지만, 문구는 "없어요" 대신 못 불러왔다고 한다
+  const loadFailed = !isLoading && !isLogsFetched;
   const advice = weekRepeatAdvice({
     logs: isLogsFetched ? logs : [],
     startDate,
@@ -53,5 +54,5 @@ export function useWeekRepeat(enteringWeek: number) {
     return true;
   };
 
-  return { advice, isLoading: isLoading && !isLogsFetched, markAsked, repeatWeek };
+  return { advice, isLoading: isLoading && !isLogsFetched, loadFailed, markAsked, repeatWeek };
 }

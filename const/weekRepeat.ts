@@ -31,8 +31,10 @@ const basisFor = (repeatWeek: number, muscleDiff: number | null) => {
   return muscleDiff == null || muscleDiff < 0 ? BOOK_BASIS.muscleWeek3 : BOOK_BASIS.resultWeek3;
 };
 
+// loadFailed: 체중 기록을 못 불러왔을 때(오프라인 등). 기록이 있을 수 있으니 "없어요"라고 하지 않는다
 export function weekRepeatCopy(
-  advice: Exclude<WeekRepeatAdvice, { kind: 'none' }>
+  advice: Exclude<WeekRepeatAdvice, { kind: 'none' }>,
+  options?: { loadFailed?: boolean }
 ): WeekRepeatCopy {
   const { repeatWeek } = advice;
   const nextWeek = repeatWeek + 1;
@@ -40,6 +42,17 @@ export function weekRepeatCopy(
     repeatLabel: `${repeatWeek}주차 한 주 더 하기`,
     nextLabel: `${nextWeek}주차로 넘어가기`,
   };
+
+  if (advice.kind === 'noData' && options?.loadFailed) {
+    return {
+      title: '기록을 불러오지 못했어요',
+      message:
+        '시작할 때와 골격근을 비교하지 못했어요. 골격근이 시작할 때만큼 회복되지 않았다면 한 주 더 해도 괜찮아요.',
+      stats: null,
+      basis: basisFor(repeatWeek, null),
+      ...labels,
+    };
+  }
 
   if (advice.kind === 'noData') {
     return {

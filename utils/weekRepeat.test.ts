@@ -327,3 +327,21 @@ describe('weekRepeatCopy (팝업 문구)', () => {
     });
   });
 });
+
+describe('weekRepeatCopy 기록을 못 불러왔을 때', () => {
+  it('"기록이 없어요"라고 단정하지 않고 중립 문구 + 같은 두 버튼', () => {
+    const c = weekRepeatCopy({ kind: 'noData', repeatWeek: 3 }, { loadFailed: true });
+    expect(c.title).toBe('기록을 불러오지 못했어요');
+    expect(c.title).not.toContain('없어요');
+    expect(c.message).not.toContain('없어요');
+    expect(c.stats).toBeNull();
+    expect(c.repeatLabel).toBe('3주차 한 주 더 하기');
+    expect(c.nextLabel).toBe('4주차로 넘어가기');
+  });
+
+  it('불러온 경우(loadFailed 없음)는 그대로 "인바디 기록이 없어요"', () => {
+    expect(weekRepeatCopy({ kind: 'noData', repeatWeek: 3 }, { loadFailed: false }).title).toBe(
+      '인바디 기록이 없어요'
+    );
+  });
+});

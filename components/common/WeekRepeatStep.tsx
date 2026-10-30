@@ -1,6 +1,6 @@
 import { weekRepeatCopy } from 'const/weekRepeat';
 import { useWeekRepeat } from 'hooks/useWeekRepeat';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import colors from 'tailwindcss/colors';
 import { getWeekColor } from 'utils/getWeekColor';
@@ -12,22 +12,29 @@ interface WeekRepeatStepProps {
   week: number; // 들어서는 주차 (3·4)
   onNext: () => void; // 다음 주차로 → 기존 진입 팝업 단계로
   onRepeated: () => void; // 한 주 더 하기 성공 → 팝업 닫기
+  onBusyChange: (busy: boolean) => void; // 한 주 더 하기 요청 중 (그동안 뒤로 가기로 닫지 않게)
 }
 
 // 주차 진입 팝업 첫 단계 앞 '지난 주 돌아보기' (3·4주차 진입, 전환마다 한 번)
-export function WeekRepeatStep({ week, onNext, onRepeated }: WeekRepeatStepProps) {
-  const { advice: liveAdvice, isLoading, markAsked, repeatWeek } = useWeekRepeat(week);
+export function WeekRepeatStep({ week, onNext, onRepeated, onBusyChange }: WeekRepeatStepProps) {
+  const { advice: liveAdvice, isLoading, loadFailed, markAsked, repeatWeek } = useWeekRepeat(week);
   const [isRepeating, setIsRepeating] = useState(false);
   // 한 주 더 하기 중에는 시작일이 바뀌어도 누른 때 내용을 그대로 보여 준다 (닫히는 동안 숫자가 바뀌지 않게)
   const [frozenAdvice, setFrozenAdvice] = useState<WeekRepeatAdvice | null>(null);
   const advice = frozenAdvice ?? liveAdvice;
+
+  // 보여 주는 중에 판정할 수 없게 되면(시작일이 지워짐 등) 빈 카드 대신 기존 팝업 내용으로 넘어간다
+  const skip = !isLoading && advice.kind === 'none';
+  useEffect(() => {
+    if (skip) onNext();
+  }, [skip, onNext]);
 
   if (isLoading) {
     return <ActivityIndicator className="my-10" color={colors.green[600]} />;
   }
   if (advice.kind === 'none') return null;
 
-  const copy = weekRepeatCopy(advice);
+  const copy = weekRepeatCopy(advice, { loadFailed });
 
   const handleNext = () => {
     markAsked();
@@ -37,9 +44,15 @@ export function WeekRepeatStep({ week, onNext, onRepeated }: WeekRepeatStepProps
   const handleRepeat = async () => {
     if (isRepeating) return;
     setIsRepeating(true);
+    onBusyChange(true);
     setFrozenAdvice(advice);
-    const ok = await repeatWeek();
-    setIsRepeating(false);
+    let ok = false;
+    try {
+      ok = await repeatWeek();
+    } finally {
+      setIsRepeating(false);
+      onBusyChange(false);
+    }
     if (ok) onRepeated();
     else setFrozenAdvice(null);
   };
