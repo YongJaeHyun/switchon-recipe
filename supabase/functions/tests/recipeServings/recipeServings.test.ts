@@ -92,12 +92,14 @@ describe('parseServingsBatchResponse', () => {
 // createRecipe.ts는 URL import(Deno) 때문에 Vitest에서 로드할 수 없어 소스로 확인한다
 describe('createRecipe.ts 기준 인분', () => {
   const src = readFileSync(new URL('../../_shared/createRecipe.ts', import.meta.url), 'utf8');
-  const flat = src.replace(/\s+/g, ' ');
 
-  it('응답 스키마와 system instruction에 인분을 넣는다', () => {
-    expect(src).toContain('...RECIPE_SERVINGS_RESPONSE_PROPERTY');
-    expect(flat).toContain("RECIPE_TAG_SCHEMA_PROMPT + ' ' + RECIPE_SERVINGS_PROMPT");
-    expect(src).toContain("required: [...RECIPE_TAG_REQUIRED, 'servings']");
+  it('응답 스키마와 system instruction에 인분을 넣는다 (요청 본문은 recipeText.ts)', () => {
+    const text = readFileSync(new URL('../../_shared/recipeText.ts', import.meta.url), 'utf8');
+    expect(text).toContain('...RECIPE_SERVINGS_RESPONSE_PROPERTY');
+    expect(text.replace(/\s+/g, ' ')).toContain(
+      "RECIPE_TAG_SCHEMA_PROMPT + ' ' + RECIPE_SERVINGS_PROMPT"
+    );
+    expect(text).toContain("required: [...RECIPE_TAG_REQUIRED, 'servings']");
   });
 
   it('인분이 빠지거나 잘못돼도 생성은 실패하지 않고 null로 저장한다', () => {

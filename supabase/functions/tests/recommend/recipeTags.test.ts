@@ -156,9 +156,13 @@ describe('생성 responseSchema의 태그 필드', () => {
   // createRecipe.ts는 URL import(Deno) 때문에 Vitest에서 로드할 수 없어 소스로 확인한다
   const source = readFileSync(new URL('../../_shared/createRecipe.ts', import.meta.url), 'utf8');
 
-  it('createRecipe.ts가 공용 태그 스키마를 쓰고 enum 값을 따로 적지 않는다', () => {
-    expect(source).toContain('...RECIPE_TAG_RESPONSE_PROPERTIES');
-    expect(source).toContain("required: [...RECIPE_TAG_REQUIRED, 'servings']");
+  // 레시피 생성 요청 본문(응답 스키마)은 recipeText.ts에 있다
+  const textSource = readFileSync(new URL('../../_shared/recipeText.ts', import.meta.url), 'utf8');
+
+  it('레시피 생성이 공용 태그 스키마를 쓰고 enum 값을 따로 적지 않는다', () => {
+    expect(textSource).toContain('...RECIPE_TAG_RESPONSE_PROPERTIES');
+    expect(textSource).toContain("required: [...RECIPE_TAG_REQUIRED, 'servings']");
+    expect(textSource).not.toMatch(/'stir_fry'|'korean'/);
     expect(source).not.toMatch(/'stir_fry'|'korean'/);
   });
 

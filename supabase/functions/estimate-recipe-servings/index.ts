@@ -7,6 +7,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { requireEnv } from '../_shared/auth.ts';
+import { createProviderAlertFetch } from '../_shared/providerAlert.ts';
 import { RECIPE_SERVINGS_BATCH_RESPONSE_SCHEMA } from '../_shared/recipeServings.ts';
 import {
   handleEstimateServings,
@@ -17,6 +18,13 @@ import {
 const GEMINI_TIMEOUT_MS = 30_000;
 
 const supabase = createClient(requireEnv('SUPABASE_URL'), requireEnv('SUPABASE_SERVICE_ROLE_KEY'));
+
+// Gemini가 결제·키·장애로 실패하면 운영자 Slack 알림 (_shared/providerAlert.ts). 응답·오류 처리는 그대로다
+const providerFetch = createProviderAlertFetch({
+  functionName: 'estimate-recipe-servings',
+  client: supabase,
+  webhookUrl: Deno.env.get('SLACK_WEBHOOK_URL'),
+});
 
 const redactKey = (message: string) => message.replace(/key=[^&\s)]+/g, 'key=***');
 
@@ -37,7 +45,7 @@ const deps: EstimateServingsDeps = {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
     try {
-      const res = await fetch(
+      const res = await providerFetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
         {
           method: 'POST',
