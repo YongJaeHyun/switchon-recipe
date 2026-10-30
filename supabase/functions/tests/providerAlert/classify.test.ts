@@ -3,6 +3,7 @@ import {
   buildFailureMessage,
   buildRecoveryMessage,
   classifyProviderFailure,
+  modelOfUrl,
   providerOfUrl,
   redactSecrets,
   summarizeDetail,
@@ -100,6 +101,32 @@ describe('classifyProviderFailure', () => {
     expect(classifyProviderFailure(429, GEMINI_429_DAILY)).toBe('billing');
   });
 
+  it('선불·크레딧 문구가 있는 429는 billing', () => {
+    expect(
+      classifyProviderFailure(
+        429,
+        googleError(429, 'RESOURCE_EXHAUSTED', 'Your prepayment credits are depleted.')
+      )
+    ).toBe('billing');
+    expect(classifyProviderFailure(429, 'Insufficient credits for this request')).toBe('billing');
+  });
+
+  it('결제 문구 없는 RESOURCE_EXHAUSTED·quota 429는 billing이 아니라 용량 문제(outage)', () => {
+    const capacity = googleError(
+      429,
+      'RESOURCE_EXHAUSTED',
+      'Resource has been exhausted (e.g. check quota).'
+    );
+    expect(classifyProviderFailure(429, capacity)).toBe('outage');
+    // Google 429 안내문의 "check your plan and billing details"만으로는 billing이 아니다
+    const genericQuota = googleError(
+      429,
+      'RESOURCE_EXHAUSTED',
+      'You exceeded your current quota, please check your plan and billing details.'
+    );
+    expect(classifyProviderFailure(429, genericQuota)).toBe('outage');
+  });
+
   it('분 단위 호출 제한 429와 결제 문구 없는 429는 알리지 않는다', () => {
     expect(classifyProviderFailure(429, GEMINI_429_PER_MINUTE)).toBeNull();
     expect(classifyProviderFailure(429, '[ERROR 429] API rate limit exceeded')).toBeNull();
@@ -136,6 +163,17 @@ describe('classifyProviderFailure', () => {
   });
 });
 
+describe('modelOfUrl', () => {
+  it('Gemini URL에서 모델 이름을 뽑고, 없으면 빈 문자열', () => {
+    expect(
+      modelOfUrl(
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=x'
+      )
+    ).toBe('gemini-3-pro-image-preview');
+    expect(modelOfUrl('https://pixabay.com/api/?key=x&q=salmon')).toBe('');
+  });
+});
+
 describe('providerOfUrl', () => {
   it('Gemini·Pixabay API만 지켜본다', () => {
     expect(
@@ -157,6 +195,11 @@ describe('redactSecrets / summarizeDetail', () => {
     expect(redactSecrets('key AIzaSyA1234567890abcdefghijklmn used')).toBe('key *** used');
   });
 
+  it('JSON의 "key": "..." 형태도 지운다', () => {
+    expect(redactSecrets('{"key": "12345-abcdef", "q": "x"}')).toBe('{"key": "***", "q": "x"}');
+    expect(redactSecrets('{"api_key":"s3cr3t"}')).toBe('{"api_key":"***"}');
+  });
+
   it('Google 오류 JSON은 status: message로 짧게 줄인다', () => {
     expect(summarizeDetail(GEMINI_402_BODY)).toBe(
       'RESOURCE_EXHAUSTED: Your prepayment credits are depleted. Please go to AI Studio at https://ai.studio/projects to manage your project and billing.'
@@ -175,6 +218,7 @@ describe('Slack 메시지', () => {
   it('billing: 무엇이·어느 함수에서·추정 원인·충전 링크를 담는다', () => {
     const text = buildFailureMessage({
       provider: 'gemini',
+      model: 'gemini-2.5-flash',
       kind: 'billing',
       functionName: 'create-recipe-by-gemini',
       status: 402,
@@ -191,6 +235,7 @@ describe('Slack 메시지', () => {
   it('detail에 키가 섞여도 지운다', () => {
     const text = buildFailureMessage({
       provider: 'pixabay',
+      model: '',
       kind: 'auth',
       functionName: 'process-ingredient-request',
       status: 400,
@@ -201,8 +246,8 @@ describe('Slack 메시지', () => {
   });
 
   it('복구 메시지', () => {
-    expect(buildRecoveryMessage('gemini', ['billing'], 'food-check')).toBe(
-      '✅ [Gemini] 복구됨: food-check 호출이 다시 성공했습니다 (이전 알림: 결제·크레딧 문제로 호출 실패)'
+    expect(buildRecoveryMessage('gemini', 'gemini-2.5-flash', ['billing'], 'food-check')).toBe(
+      '✅ [Gemini] 복구됨: food-check 호출(gemini-2.5-flash)이 다시 성공했습니다 (이전 알림: 결제·크레딧 문제로 호출 실패)'
     );
   });
 });

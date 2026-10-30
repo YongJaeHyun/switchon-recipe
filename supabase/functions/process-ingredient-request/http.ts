@@ -31,7 +31,12 @@ export const fetchWithRetry = async (
     try {
       const res = await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
       if (res.ok || !isTransient(res.status) || isLastAttempt) {
-        onFinalResponse?.(url, res);
+        // 알림 쪽 오류가 재시도·반환 흐름을 바꾸지 않게 여기서 삼킨다
+        try {
+          onFinalResponse?.(url, res);
+        } catch (error) {
+          console.error('[fetchWithRetry] onFinalResponse 실패:', redactSecrets(String(error)));
+        }
         return res;
       }
     } catch (error) {

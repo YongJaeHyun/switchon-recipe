@@ -26,8 +26,11 @@ const setup = (gemini: (url: string) => Response) => {
   const postSlack = vi.fn(async (_text: string) => {});
   const claimed = new Set<string>();
   const store: ProviderAlertStore = {
-    claim: async (p, k, h) => !claimed.has(`${p}${k}${h}`) && !!claimed.add(`${p}${k}${h}`),
-    unclaim: async () => {},
+    recordFailure: async (s) => {
+      const key = `${s.provider}${s.model}${s.kind}${s.hour}`;
+      return !claimed.has(key) && !!claimed.add(key);
+    },
+    releaseAlert: async () => {},
     resolve: async () => [],
   };
   const providerFetch = withProviderAlert(

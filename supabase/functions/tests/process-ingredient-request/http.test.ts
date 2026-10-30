@@ -72,6 +72,29 @@ describe('fetchWithRetry onFinalResponse (장애 알림)', () => {
   });
 });
 
+describe('fetchWithRetry onFinalResponse 오류 격리', () => {
+  it('onFinalResponse가 던져도 재시도하지 않고 응답을 그대로 돌려준다', async () => {
+    const fetchMock = vi.fn(async () => new Response('', { status: 402 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const res = await fetchWithRetry(
+      'https://x',
+      {},
+      {
+        retryDelayMs: 0,
+        onFinalResponse: () => {
+          throw new Error('clone failed');
+        },
+      }
+    );
+
+    expect(res.status).toBe(402);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    errorSpy.mockRestore();
+  });
+});
+
 describe('redactSecrets', () => {
   it('removes API keys from URLs in messages', () => {
     expect(

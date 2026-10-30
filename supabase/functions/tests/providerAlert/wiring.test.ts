@@ -69,12 +69,21 @@ describe('Gemini/Pixabay 호출부가 모두 장애 알림을 거친다', () => 
 describe('20261030010000_provider_alert.sql', () => {
   const sql = flat(read('../../../migrations/20261030010000_provider_alert.sql'));
 
-  it('(provider, kind, hour) 기본키 테이블, RLS 켜고 정책 없음 (service role 전용)', () => {
+  it('(provider, model, kind, hour) 기본키 테이블, RLS 켜고 정책 없음 (service role 전용)', () => {
     expect(sql).toContain(
-      'create table if not exists public.provider_alert ( provider text not null, kind text not null, hour timestamptz not null, recovered_at timestamptz null, created_at timestamptz not null default now(), primary key (provider, kind, hour) );'
+      "create table if not exists public.provider_alert ( provider text not null, model text not null default '', kind text not null, hour timestamptz not null, fail_count int not null default 0, alerted_at timestamptz null, recovered_at timestamptz null, created_at timestamptz not null default now(), primary key (provider, model, kind, hour) );"
     );
     expect(sql).toContain('alter table public.provider_alert enable row level security;');
     expect(sql).toContain('revoke all on table public.provider_alert from anon, authenticated;');
     expect(sql).not.toMatch(/create policy/i);
+  });
+
+  it('record_provider_failure는 service role만 실행한다', () => {
+    expect(sql).toContain(
+      'revoke all on function public.record_provider_failure(text, text, text, timestamptz, int) from public, anon, authenticated;'
+    );
+    expect(sql).toContain(
+      'grant execute on function public.record_provider_failure(text, text, text, timestamptz, int) to service_role;'
+    );
   });
 });
