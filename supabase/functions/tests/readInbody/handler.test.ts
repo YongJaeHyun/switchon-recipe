@@ -4,6 +4,7 @@ import {
   INBODY_DAILY_LIMIT,
   INBODY_QUOTA_EXCEEDED_MESSAGE,
   MAX_BODY_BYTES,
+  MIN_IMAGE_BASE64_LENGTH,
   type ReadInbodyDeps,
 } from '../../read-inbody/handler.ts';
 import type { UsageStore } from '../../read-inbody/usage.ts';
@@ -41,6 +42,7 @@ const geminiOk = (o: Record<string, unknown> = {}) =>
 const makeDeps = (o: Partial<ReadInbodyDeps> = {}, store = memoryStore()) => {
   const deps: ReadInbodyDeps = {
     getUid: vi.fn(async () => UID),
+    premiumClient: { rpc: vi.fn(async () => ({ data: true, error: null })) },
     now: () => NOW,
     usageStore: vi.fn(() => store),
     askGemini: vi.fn(async () => geminiOk()),
@@ -56,7 +58,9 @@ const req = (body: unknown, headers: Record<string, string> = {}) =>
     body: typeof body === 'string' ? body : JSON.stringify(body),
   });
 
-const photo = { imageBase64: 'aGVsbG8=', mimeType: 'image/jpeg' };
+// 형식이 맞는 base64 (길이 4의 배수, 최소 길이 이상)
+const BASE64 = 'QUJD'.repeat(MIN_IMAGE_BASE64_LENGTH / 4);
+const photo = { imageBase64: BASE64, mimeType: 'image/jpeg' };
 
 describe('handleReadInbody', () => {
   it('로그인 정보가 없으면 401, 한도·Gemini 안 씀', async () => {
@@ -82,7 +86,10 @@ describe('handleReadInbody', () => {
 
   it('data URL 접두사는 떼고 Gemini에 넘긴다', async () => {
     const { deps } = makeDeps();
-    await handleReadInbody(req({ ...photo, imageBase64: 'data:image/jpeg;base64,aGVsbG8=' }), deps);
+    await handleReadInbody(
+      req({ ...photo, imageBase64: `data:image/jpeg;base64,${BASE64}` }),
+      deps
+    );
     expect(deps.askGemini).toHaveBeenCalledWith(expect.any(String), photo);
   });
 
@@ -166,18 +173,64 @@ describe('handleReadInbody', () => {
     ['JSON이 아님', 'nope'],
     ['사진 없음', { mimeType: 'image/jpeg' }],
     ['빈 사진', { imageBase64: '  ', mimeType: 'image/jpeg' }],
-    ['지원하지 않는 형식', { imageBase64: 'aGVsbG8=', mimeType: 'image/gif' }],
-  ])('잘못된 요청(%s)은 400, 차감 안 함', async (_, body) => {
+    ['지원하지 않는 형식', { imageBase64: BASE64, mimeType: 'image/gif' }],
+    ['base64가 아닌 글자', { imageBase64: `${BASE64.slice(4)}ab!?`, mimeType: 'image/jpeg' }],
+    ['base64 길이가 4의 배수가 아님', { imageBase64: `${BASE64}QUJ`, mimeType: 'image/jpeg' }],
+    ['패딩이 중간에 있음', { imageBase64: `QU==${BASE64}`, mimeType: 'image/jpeg' }],
+    ['너무 짧음 (사진일 수 없음)', { imageBase64: 'aGVsbG8=', mimeType: 'image/jpeg' }],
+  ])('잘못된 요청(%s)은 400, 패스 확인·차감 안 함', async (_, body) => {
     const { deps, store } = makeDeps();
     const res = await handleReadInbody(req(body), deps);
     expect(res.status).toBe(400);
+    expect(deps.premiumClient.rpc).not.toHaveBeenCalled();
     expect(store.ensure).not.toHaveBeenCalled();
     expect(deps.askGemini).not.toHaveBeenCalled();
   });
 
+  it('줄바꿈이 섞인 base64는 줄바꿈을 빼고 받는다', async () => {
+    const { deps } = makeDeps();
+    const wrapped = `${BASE64.slice(0, 76)}\n${BASE64.slice(76)}`;
+    const res = await handleReadInbody(req({ ...photo, imageBase64: wrapped }), deps);
+    expect(res.status).toBe(200);
+    expect(deps.askGemini).toHaveBeenCalledWith(expect.any(String), photo);
+  });
+
+  it('패스가 없으면 402 (food-check와 같은 본문), 차감·Gemini 안 함', async () => {
+    const { deps, store } = makeDeps({
+      premiumClient: { rpc: vi.fn(async () => ({ data: false, error: null })) },
+    });
+    const res = await handleReadInbody(req(photo), deps);
+    expect(res.status).toBe(402);
+    expect(await res.json()).toEqual({ error: '패스가 필요한 기능입니다.' });
+    expect(deps.premiumClient.rpc).toHaveBeenCalledWith('has_premium_access_for', { p_uid: UID });
+    expect(store.ensure).not.toHaveBeenCalled();
+    expect(deps.askGemini).not.toHaveBeenCalled();
+  });
+
+  it('패스 확인 rpc가 실패하면 500 (패스 없음으로 오판하지 않음), 차감 안 함', async () => {
+    const { deps, store } = makeDeps({
+      premiumClient: { rpc: vi.fn(async () => ({ data: null, error: new Error('rpc down') })) },
+    });
+    const res = await handleReadInbody(req(photo), deps);
+    expect(res.status).toBe(500);
+    expect(store.ensure).not.toHaveBeenCalled();
+  });
+
+  it('Gemini 응답 원문을 로그에 남기지 않는다 (건강 정보)', async () => {
+    const secret = '{"weight_kg": 72.4, 잘린 응답';
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { deps } = makeDeps({ askGemini: vi.fn(async () => secret) });
+    const res = await handleReadInbody(req(photo), deps);
+    expect(res.status).toBe(500);
+    const logged = errorLog.mock.calls.flat().map(String).join(' ');
+    expect(logged).not.toContain('72.4');
+    expect(logged).toContain(`길이 ${secret.length}`);
+    errorLog.mockRestore();
+  });
+
   it('본문이 너무 크면 413', async () => {
     const { deps } = makeDeps();
-    const big = { imageBase64: 'a'.repeat(MAX_BODY_BYTES + 1), mimeType: 'image/jpeg' };
+    const big = { imageBase64: 'QUJD'.repeat(MAX_BODY_BYTES / 4 + 1), mimeType: 'image/jpeg' };
     const res = await handleReadInbody(req(big), deps);
     expect(res.status).toBe(413);
     expect(deps.askGemini).not.toHaveBeenCalled();

@@ -1,6 +1,7 @@
 /// <reference lib="deno.ns" />
 
-// 인바디 결과지 읽기 엣지 함수: 실제 의존성(Supabase, Gemini)을 연결해 handleReadInbody를 서비스한다.
+// 인바디 결과지 읽기 엣지 함수(스위치온 패스 전용): 실제 의존성(Supabase, Gemini)을 연결해
+// handleReadInbody를 서비스한다. 패스 확인(has_premium_access_for)도 service role 클라이언트로 한다.
 // 한도(premium_usage, feature 'inbody_read')는 유저 헤더가 없는 service role 클라이언트로 읽고 쓴다
 // (premium_usage는 RLS만 켜고 정책이 없어 service role만 접근). 사진·결과는 저장하지 않는다.
 
@@ -65,7 +66,9 @@ const askGemini = async (prompt: string, image: InbodyImage): Promise<string> =>
       .map((p: { text?: unknown }) => (typeof p.text === 'string' ? p.text : ''))
       .join('');
     if (!text)
-      throw new Error(`Gemini 응답에 텍스트가 없습니다: ${JSON.stringify(data).slice(0, 300)}`);
+      throw new Error(
+        `Gemini 응답에 텍스트가 없습니다 (finishReason: ${data?.candidates?.[0]?.finishReason ?? '없음'})`
+      );
     return text;
   } catch (error) {
     throw new Error(redactKey(error instanceof Error ? error.message : String(error)));
@@ -115,6 +118,7 @@ const usageStore = (uid: string, day: string): UsageStore => {
 
 const deps: ReadInbodyDeps = {
   getUid,
+  premiumClient: supabase,
   now: () => new Date(),
   usageStore,
   askGemini,

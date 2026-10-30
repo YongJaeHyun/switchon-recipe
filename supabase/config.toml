@@ -458,7 +458,7 @@ verify_jwt = false
 import_map = "./functions/sentry-to-github/deno.json"
 entrypoint = "./functions/sentry-to-github/index.ts"
 
-# 인바디 결과지 사진 읽기: 로그인 사용자만 (하루 10회, premium_usage feature 'inbody_read'). 사진·결과는 저장하지 않음
+# 인바디 결과지 사진 읽기: 스위치온 패스 전용 (하루 10회, premium_usage feature 'inbody_read'). 사진·결과는 저장하지 않음
 [functions.read-inbody]
 enabled = true
 verify_jwt = true

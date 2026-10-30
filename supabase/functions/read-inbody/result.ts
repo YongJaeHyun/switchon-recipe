@@ -8,7 +8,10 @@ export interface InbodyResult {
   measured_on: string | null; // yyyy-MM-dd
 }
 
-export type ParsedInbody = { status: 'ok'; result: InbodyResult } | { status: 'invalid' };
+// invalid.reason은 로그용 (응답 원문은 건강 정보라 남기지 않는다)
+export type ParsedInbody =
+  | { status: 'ok'; result: InbodyResult }
+  | { status: 'invalid'; reason: string };
 
 // 앱 입력 범위와 같다 (utils/weight.ts MIN/MAX_WEIGHT_KG, utils/bodyComp.ts BODY_COMP_RANGE,
 // 마이그레이션 20261030020000_weight_body_comp.sql의 check). 한쪽을 고치면 함께 고친다
@@ -104,9 +107,11 @@ export function parseInbodyResponse(text: string, today: string): ParsedInbody {
   let raw: unknown;
   try {
     raw = JSON.parse(body);
-  } catch {
-    return { status: 'invalid' };
+  } catch (error) {
+    return { status: 'invalid', reason: error instanceof Error ? error.name : 'ParseError' };
   }
-  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return { status: 'invalid' };
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+    return { status: 'invalid', reason: 'notObject' };
+  }
   return { status: 'ok', result: normalizeInbodyResult(raw, today) };
 }

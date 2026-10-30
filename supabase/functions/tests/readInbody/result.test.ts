@@ -122,9 +122,12 @@ describe('parseInbodyResponse', () => {
   });
 
   it('JSON이 아니거나 객체가 아니면 invalid', () => {
-    expect(parseInbodyResponse('not json', TODAY)).toEqual({ status: 'invalid' });
-    expect(parseInbodyResponse('[1,2]', TODAY)).toEqual({ status: 'invalid' });
-    expect(parseInbodyResponse('null', TODAY)).toEqual({ status: 'invalid' });
+    expect(parseInbodyResponse('not json', TODAY)).toEqual({
+      status: 'invalid',
+      reason: 'SyntaxError',
+    });
+    expect(parseInbodyResponse('[1,2]', TODAY)).toEqual({ status: 'invalid', reason: 'notObject' });
+    expect(parseInbodyResponse('null', TODAY)).toEqual({ status: 'invalid', reason: 'notObject' });
   });
 });
 

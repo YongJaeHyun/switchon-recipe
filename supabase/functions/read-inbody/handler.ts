@@ -1,17 +1,27 @@
 // 인바디 결과지 읽기 요청 처리 본체. 외부 의존성(인증, 한도 저장소, Gemini)은 deps로 받아
 // Vitest(node)에서 가짜로 테스트한다. URL import를 두지 않는다 (실제 연결은 index.ts).
-// 흐름: 인증(로그인 사용자만) -> 본문 크기/입력 검증 -> 하루 한도 차감 -> Gemini 읽기·정규화.
+// 흐름: 인증 -> 본문 크기/입력 검증 -> 패스 확인(has_premium_access_for, 스위치온 패스 전용)
+// -> 하루 한도 차감 -> Gemini 읽기·정규화.
 // 사진은 Gemini에 넘기기만 하고 저장하지 않는다. 결과도 저장하지 않는다 (앱이 칸에 채우고 사용자가 저장).
 // 한도 차감 뒤 Gemini 호출·응답 해석이 실패하면 차감을 되돌린다. 결과지가 아니라 값이 전부 null인
 // 경우는 Gemini 비용이 들었으므로 되돌리지 않는다.
 
 import { kstToday } from '../_shared/kstToday.ts';
+import {
+  assertPremium,
+  type PremiumCheckClient,
+  PremiumRequiredError,
+  premiumRequiredResponse,
+} from '../_shared/premium.ts';
 import { runWithQuota } from '../_shared/quota.ts';
 import { buildInbodyPrompt, parseInbodyResponse } from './result.ts';
 import { consumeDailyUsage, releaseDailyUsage, type UsageStore } from './usage.ts';
 
 export const MAX_BODY_BYTES = 4 * 1024 * 1024;
 export const INBODY_DAILY_LIMIT = 10;
+// 이보다 짧은 base64는 사진일 수 없다 (약 750바이트)
+export const MIN_IMAGE_BASE64_LENGTH = 1000;
+const BASE64_PATTERN = /^[A-Za-z0-9+/]+={0,2}$/;
 export const INBODY_QUOTA_EXCEEDED_MESSAGE =
   '오늘 결과지 읽기를 모두 사용했어요 · 자정에 다시 채워져요';
 const SUPPORTED_MIME_TYPES = ['image/jpeg', 'image/png'];
@@ -24,6 +34,8 @@ export interface InbodyImage {
 export interface ReadInbodyDeps {
   // 요청 JWT로 구한 uid. 없거나 유효하지 않으면 null
   getUid(req: Request): Promise<string | null>;
+  // has_premium_access_for 호출용 (service role 클라이언트)
+  premiumClient: PremiumCheckClient;
   now(): Date;
   // uid의 그날(KST) 사용량 행
   usageStore(uid: string, day: string): UsageStore;
@@ -63,10 +75,20 @@ const parseInput = (body: unknown): InbodyImage => {
   if (typeof b.mimeType !== 'string' || !SUPPORTED_MIME_TYPES.includes(b.mimeType)) {
     throw new BadRequestError('JPEG 또는 PNG 사진만 읽을 수 있어요');
   }
-  // data URL 접두사가 붙어 와도 순수 base64만 쓴다
+  // data URL 접두사·줄바꿈이 붙어 와도 순수 base64만 쓴다
   const imageBase64 =
-    typeof b.imageBase64 === 'string' ? b.imageBase64.replace(/^data:[^,]*,/, '').trim() : '';
+    typeof b.imageBase64 === 'string'
+      ? b.imageBase64.replace(/^data:[^,]*,/, '').replace(/\s+/g, '')
+      : '';
   if (!imageBase64) throw new BadRequestError('사진이 없어요');
+  // 깨진 base64는 차감·Gemini 호출 전에 거른다
+  if (
+    imageBase64.length < MIN_IMAGE_BASE64_LENGTH ||
+    imageBase64.length % 4 !== 0 ||
+    !BASE64_PATTERN.test(imageBase64)
+  ) {
+    throw new BadRequestError('사진을 읽을 수 없어요. 다른 사진을 골라주세요');
+  }
   return { imageBase64, mimeType: b.mimeType };
 };
 
@@ -85,6 +107,13 @@ export async function handleReadInbody(req: Request, deps: ReadInbodyDeps): Prom
       throw error;
     }
 
+    try {
+      await assertPremium(deps.premiumClient, uid);
+    } catch (error) {
+      if (error instanceof PremiumRequiredError) return premiumRequiredResponse(error);
+      throw error;
+    }
+
     // 차감과 되돌림이 같은 날 행을 쓰도록 날짜를 한 번만 정한다
     const today = kstToday(deps.now());
     const store = deps.usageStore(uid, today);
@@ -97,7 +126,10 @@ export async function handleReadInbody(req: Request, deps: ReadInbodyDeps): Prom
         const text = await deps.askGemini(buildInbodyPrompt(), image);
         const parsed = parseInbodyResponse(text, today);
         if (parsed.status === 'invalid') {
-          throw new Error(`Gemini 응답 형식이 올바르지 않습니다: ${text.slice(0, 200)}`);
+          // 원문은 결과지 숫자(건강 정보)라 로그에 남기지 않는다
+          throw new Error(
+            `Gemini 응답 형식이 올바르지 않습니다 (${parsed.reason}, 길이 ${text.length})`
+          );
         }
         return parsed.result;
       }
