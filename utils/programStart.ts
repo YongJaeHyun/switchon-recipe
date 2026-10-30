@@ -133,3 +133,23 @@ export function startDateCleanup<T extends { week: number }>(input: {
   };
   return { statisticsFrom: { week, day }, low: prune(input.low), zero: prune(input.zero) };
 }
+
+// 주차 맞추기로 바뀔 시작일. 지금과 같으면 null (저장하지 않음).
+// 유지기는 5주차 1일로 계산하지만, 이미 유지기(5주차 이상)인 사람이 유지기를 고르면 시작일을 옮기지 않는다
+export function adjustTarget(
+  startDate: string | null | undefined,
+  today: string,
+  selection: { week: number; day: number }
+): string | null {
+  if (startDate && selection.week >= MAINTENANCE_WEEK) {
+    const { week, beforeStart } = programWeekAndDay(startDate, today);
+    if (!beforeStart && week >= MAINTENANCE_WEEK) return null;
+  }
+  const next = startDateForWeekDay(today, selection.week, selection.day);
+  return isSameStartDate(startDate, next) ? null : next;
+}
+
+// 시작일이 같은 날인지 (뒤에 시각이 붙어 있어도 날짜만 본다)
+export function isSameStartDate(current: string | null | undefined, next: string): boolean {
+  return !!current && current.slice(0, 10) === next.slice(0, 10);
+}

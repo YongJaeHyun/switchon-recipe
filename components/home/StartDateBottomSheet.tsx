@@ -12,10 +12,11 @@ import { Pressable, View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import {
+  adjustTarget,
+  isSameStartDate,
   MAINTENANCE_WEEK,
   programWeekAndDay,
   restartStartDate,
-  startDateForWeekDay,
   weekDaySelection,
 } from 'utils/programStart';
 import { Nullable } from '../../types/common';
@@ -65,8 +66,8 @@ export function StartDateBottomSheet({ bottomSheetRef }: StartDateBottomSheetPro
     setSelection(weekDaySelection(startDate, today));
   };
 
-  const adjustedStart = startDateForWeekDay(today, selection.week, selection.day);
-  const adjustUnchanged = startDate?.slice(0, 10) === adjustedStart;
+  // 지금과 같으면 null (이미 유지기인 사람이 유지기를 골라도 같음) → 저장 버튼을 끈다
+  const adjustedStart = adjustTarget(startDate, today, selection);
 
   const save = async (newStart: string, toast: { title: string; subtitle: string }) => {
     if (saving) return;
@@ -85,7 +86,7 @@ export function StartDateBottomSheet({ bottomSheetRef }: StartDateBottomSheetPro
   };
 
   const adjust = () => {
-    if (adjustUnchanged) return;
+    if (!adjustedStart) return;
     void save(adjustedStart, {
       title: `${weekDayLabel(selection)}로 맞췄어요`,
       subtitle: `시작일을 ${monthDay(adjustedStart)}로 옮겼어요`,
@@ -99,6 +100,7 @@ export function StartDateBottomSheet({ bottomSheetRef }: StartDateBottomSheetPro
           <RestartConfirm
             when={confirming}
             newStart={restartStartDate(today, confirming)}
+            alreadyStarts={isSameStartDate(startDate, restartStartDate(today, confirming))}
             saving={saving}
             onConfirm={() => restart(confirming)}
             onCancel={() => setConfirming(null)}
@@ -118,8 +120,8 @@ export function StartDateBottomSheet({ bottomSheetRef }: StartDateBottomSheetPro
                   disabled={saving}
                   onPress={() => setConfirming('tomorrow')}>
                   <Text className="text-base font-semibold text-white">내일부터</Text>
-                  <View className="rounded-full bg-white/25 px-2 py-0.5">
-                    <Text className="text-xs font-bold text-white">추천</Text>
+                  <View className="rounded-full bg-white px-2 py-0.5">
+                    <Text className="text-xs font-bold text-green-700">추천</Text>
                   </View>
                 </RippleButton>
                 <RippleButton
@@ -145,17 +147,19 @@ export function StartDateBottomSheet({ bottomSheetRef }: StartDateBottomSheetPro
                 disabled={saving}
               />
               <Text className="mt-4 text-center text-neutral-500">
-                {adjustUnchanged
-                  ? '지금 시작일과 같아요'
-                  : `시작일이 ${monthDay(adjustedStart)}로 바뀌어요`}
+                {adjustedStart
+                  ? `시작일이 ${monthDay(adjustedStart)}로 바뀌어요`
+                  : selection.week >= MAINTENANCE_WEEK
+                    ? '지금 유지기예요'
+                    : '지금 시작일과 같아요'}
               </Text>
               <RippleButton
                 outerClassName="mt-2"
-                className={`w-full py-4 ${adjustUnchanged ? 'bg-neutral-200' : 'bg-green-600'}`}
-                disabled={adjustUnchanged || saving}
+                className={`w-full py-4 ${!adjustedStart ? 'bg-neutral-200' : 'bg-green-600'}`}
+                disabled={!adjustedStart || saving}
                 onPress={adjust}>
                 <Text
-                  className={`text-lg font-semibold ${adjustUnchanged ? 'text-neutral-400' : 'text-white'}`}>
+                  className={`text-lg font-semibold ${!adjustedStart ? 'text-neutral-400' : 'text-white'}`}>
                   {weekDayLabel(selection)}로 맞추기
                 </Text>
               </RippleButton>
@@ -170,6 +174,7 @@ export function StartDateBottomSheet({ bottomSheetRef }: StartDateBottomSheetPro
 interface RestartConfirmProps {
   when: RestartWhen;
   newStart: string;
+  alreadyStarts: boolean; // 이미 그날 1주차 1일로 잡혀 있으면 바꿀 것이 없다 (통계도 지우지 않는다)
   saving: boolean;
   onConfirm: () => void;
   onCancel: () => void;
@@ -177,7 +182,28 @@ interface RestartConfirmProps {
 
 // 다시 시작 확인: 무엇이 남고 무엇이 지워지는지 사실대로
 // (체중·인바디는 날짜 기준, 주간 리포트는 날짜 범위 기준이라 남고, 할 일 완료율은 주차·일차 키라 지운다)
-function RestartConfirm({ when, newStart, saving, onConfirm, onCancel }: RestartConfirmProps) {
+function RestartConfirm({
+  when,
+  newStart,
+  alreadyStarts,
+  saving,
+  onConfirm,
+  onCancel,
+}: RestartConfirmProps) {
+  if (alreadyStarts) {
+    return (
+      <View>
+        <Text className="text-2xl font-bold">이미 {WHEN_LABEL[when]}이 1주차 1일이에요</Text>
+        <Text className="mt-1 text-neutral-500">
+          시작일이 {monthDay(newStart)}로 잡혀 있어서 바꿀 것이 없어요
+        </Text>
+        <RippleButton outerClassName="mt-6" className="w-full bg-green-600 py-4" onPress={onCancel}>
+          <Text className="text-lg font-semibold text-white">돌아가기</Text>
+        </RippleButton>
+      </View>
+    );
+  }
+
   return (
     <View>
       <Text className="text-2xl font-bold">{WHEN_LABEL[when]}부터 다시 시작할까요?</Text>

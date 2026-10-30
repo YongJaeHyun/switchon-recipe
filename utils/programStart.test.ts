@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getKoreanDateString, getWeekAndDay } from './date';
 import {
   addDaysToDay,
+  adjustTarget,
+  isSameStartDate,
   BEFORE_START_DAY,
   daysUntilStart,
   isBeforeStart,
@@ -498,5 +500,51 @@ describe('주차 맞추기 KST 경계 (기기 시간대가 KST가 아닐 때)', 
     expect(today).toBe('2026-10-30');
     expect(startDateForWeekDay(today, 4, 7)).toBe('2026-10-03');
     expect(getWeekAndDay(startDateForWeekDay(today, 4, 7))).toEqual({ week: 4, day: 7 });
+  });
+});
+
+describe('adjustTarget (주차 맞추기로 바뀔 시작일, 그대로면 null)', () => {
+  const today = '2026-10-30';
+
+  it('지금 주차·일차를 그대로 고르면 null', () => {
+    expect(adjustTarget('2026-10-21', today, { week: 2, day: 3 })).toBeNull();
+  });
+
+  it('다른 주차·일차면 새 시작일', () => {
+    expect(adjustTarget('2026-10-21', today, { week: 2, day: 6 })).toBe('2026-10-18');
+  });
+
+  it('유지기 5주차 1일에 유지기를 고르면 null', () => {
+    expect(adjustTarget('2026-10-02', today, { week: 5, day: 1 })).toBeNull();
+  });
+
+  it('유지기 5주차 4일에 유지기를 고르면 null (시작일을 옮기지 않는다)', () => {
+    expect(adjustTarget('2026-09-29', today, { week: 5, day: 1 })).toBeNull();
+  });
+
+  it('유지기 7주차에 유지기를 고르면 null', () => {
+    expect(adjustTarget('2026-09-15', today, { week: 5, day: 1 })).toBeNull();
+  });
+
+  it('유지기에서 주차를 고르면 그 주차로 옮긴다', () => {
+    expect(adjustTarget('2026-09-15', today, { week: 4, day: 7 })).toBe('2026-10-03');
+  });
+
+  it('지금 3주차인데 유지기를 고르면 5주차 1일', () => {
+    expect(adjustTarget('2026-10-16', today, { week: 5, day: 1 })).toBe('2026-10-02');
+  });
+
+  it('시작 전·시작일 없음이면 언제나 새 시작일 (1주차 1일 = 오늘)', () => {
+    expect(adjustTarget('2026-10-31', today, { week: 1, day: 1 })).toBe('2026-10-30');
+    expect(adjustTarget(null, today, { week: 1, day: 1 })).toBe('2026-10-30');
+  });
+});
+
+describe('isSameStartDate (같은 시작일이면 저장·정리하지 않는다)', () => {
+  it('날짜만 비교한다', () => {
+    expect(isSameStartDate('2026-10-30', '2026-10-30')).toBe(true);
+    expect(isSameStartDate('2026-10-30T00:00:00', '2026-10-30')).toBe(true);
+    expect(isSameStartDate('2026-10-30', '2026-10-31')).toBe(false);
+    expect(isSameStartDate(null, '2026-10-30')).toBe(false);
   });
 });
