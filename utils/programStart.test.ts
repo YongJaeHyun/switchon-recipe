@@ -6,6 +6,10 @@ import {
   isSameStartDate,
   BEFORE_START_DAY,
   daysUntilStart,
+  groupPastStarts,
+  nextProgramStart,
+  PROGRAM_CHAIN_DAYS,
+  programStartOf,
   isBeforeStart,
   programWeekAndDay,
   restartStartDate,
@@ -546,5 +550,91 @@ describe('isSameStartDate (같은 시작일이면 저장·정리하지 않는다
     expect(isSameStartDate('2026-10-30T00:00:00', '2026-10-30')).toBe(true);
     expect(isSameStartDate('2026-10-30', '2026-10-31')).toBe(false);
     expect(isSameStartDate(null, '2026-10-30')).toBe(false);
+  });
+});
+
+describe('programStartOf (회차 시작일)', () => {
+  it('program_start가 없으면(구버전 앱·마이그레이션 전) start_date', () => {
+    expect(programStartOf(null, '2026-10-01')).toBe('2026-10-01');
+    expect(programStartOf(undefined, '2026-10-01T00:00:00+09:00')).toBe('2026-10-01');
+  });
+
+  it('program_start가 start_date와 같거나 앞이면 program_start', () => {
+    expect(programStartOf('2026-09-24', '2026-10-01')).toBe('2026-09-24');
+    expect(programStartOf('2026-10-01', '2026-10-01')).toBe('2026-10-01');
+  });
+
+  it('program_start가 start_date보다 뒤면(구버전 앱이 시작일을 앞당김) start_date', () => {
+    expect(programStartOf('2026-10-08', '2026-10-01')).toBe('2026-10-01');
+  });
+
+  it('시작일을 모르면 null', () => {
+    expect(programStartOf(null, null)).toBeNull();
+    expect(programStartOf(null, '')).toBeNull();
+  });
+});
+
+describe('nextProgramStart (시작일을 바꿀 때 회차 시작일)', () => {
+  it('다시 시작은 새 시작일이 새 회차', () => {
+    expect(nextProgramStart('restart', '2026-08-01', '2026-10-31')).toBe('2026-10-31');
+  });
+
+  it('주차 맞추기로 앞당기면 새 시작일', () => {
+    expect(nextProgramStart('align', '2026-10-15', '2026-10-01')).toBe('2026-10-01');
+  });
+
+  it('주차 맞추기로 미루면 회차 시작일은 그대로', () => {
+    expect(nextProgramStart('align', '2026-10-01', '2026-10-15')).toBe('2026-10-01');
+  });
+
+  it('한 주 더 하기는 그대로', () => {
+    expect(nextProgramStart('repeat', '2026-10-01', '2026-10-08')).toBe('2026-10-01');
+  });
+
+  it('회차 시작일을 모르면 새 시작일', () => {
+    expect(nextProgramStart('repeat', null, '2026-10-08')).toBe('2026-10-08');
+    expect(nextProgramStart('align', null, '2026-10-08')).toBe('2026-10-08');
+  });
+});
+
+describe('groupPastStarts (지난 회차 묶기)', () => {
+  it('8주(56일)', () => expect(PROGRAM_CHAIN_DAYS).toBe(56));
+
+  it('한 주 더 하기로 7일씩 밀린 시작일은 한 회차', () => {
+    expect(groupPastStarts(['2026-08-15', '2026-08-01', '2026-08-08'], '2026-10-30')).toEqual([
+      ['2026-08-01', '2026-08-08', '2026-08-15'],
+    ]);
+  });
+
+  it('바로 앞 시작일과 56일 이내면 같은 회차, 57일이면 새 회차', () => {
+    expect(groupPastStarts(['2026-01-01', '2026-02-26'], '2026-10-30')).toEqual([
+      ['2026-01-01', '2026-02-26'],
+    ]);
+    expect(groupPastStarts(['2026-01-01', '2026-02-27'], '2026-10-30')).toEqual([
+      ['2026-02-27'],
+      ['2026-01-01'],
+    ]);
+  });
+
+  it('이어지는 사슬이면 처음과 끝이 56일을 넘어도 한 회차', () => {
+    expect(groupPastStarts(['2026-03-01', '2026-04-20', '2026-06-08'], '2026-10-30')).toEqual([
+      ['2026-03-01', '2026-04-20', '2026-06-08'],
+    ]);
+  });
+
+  it('회차 시작일 이후 시작일은 지금 회차라 빠지고, 중복·시각은 정리한다', () => {
+    expect(
+      groupPastStarts(
+        ['2026-10-01', '2026-10-08', '2025-08-04', '2025-08-04T00:00:00+09:00'],
+        '2026-10-01'
+      )
+    ).toEqual([['2025-08-04']]);
+  });
+
+  it('회차 시작일을 모르면 전부 지난 회차', () => {
+    expect(groupPastStarts(['2026-10-01', '2025-08-04'], null)).toEqual([
+      ['2026-10-01'],
+      ['2025-08-04'],
+    ]);
   });
 });

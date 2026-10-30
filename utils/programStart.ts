@@ -153,3 +153,62 @@ export function adjustTarget(
 export function isSameStartDate(current: string | null | undefined, next: string): boolean {
   return !!current && current.slice(0, 10) === next.slice(0, 10);
 }
+
+// ── 회차(program): 다시 시작·온보딩으로 시작한 한 묶음. 한 주 더 하기·주차 맞추기로 시작일(start_date)이
+// 바뀌어도 같은 회차다. 회차 시작일은 user.program_start에 둔다 (구버전 앱은 모르는 칸이라 null일 수 있다)
+
+// 지금 회차 시작일. program_start가 없거나(구버전 앱·마이그레이션 전) 시작일보다 뒤면
+// (구버전 앱이 시작일을 앞당김) 시작일로 본다. 둘 다 없으면 null
+export function programStartOf(
+  programStart: string | null | undefined,
+  startDate: string | null | undefined
+): string | null {
+  const start = startDate ? startDate.slice(0, 10) : null;
+  const program = programStart ? programStart.slice(0, 10) : null;
+  if (!start) return program;
+  return program && program <= start ? program : start;
+}
+
+// 시작일을 바꾸는 이유: 다시 시작(온보딩 포함) / 주차 맞추기 / 한 주 더 하기
+export type StartDateChangeKind = 'restart' | 'align' | 'repeat';
+
+// 시작일을 바꾼 뒤의 회차 시작일. current = 지금 회차 시작일(programStartOf)
+// - 다시 시작: 새 시작일 (새 회차)
+// - 주차 맞추기: 더 이른 쪽 (앞당기면 새 시작일, 미루면 그대로)
+// - 한 주 더 하기: 그대로
+// 지금 회차 시작일을 모르면 새 시작일
+export function nextProgramStart(
+  kind: StartDateChangeKind,
+  current: string | null,
+  newStart: string
+): string {
+  const next = newStart.slice(0, 10);
+  if (!current || kind === 'restart') return next;
+  const program = current.slice(0, 10);
+  if (kind === 'align') return next < program ? next : program;
+  return program;
+}
+
+// 지난 회차를 묶는 기준: 바로 앞 시작일과 8주(56일) 이내면 같은 회차
+export const PROGRAM_CHAIN_DAYS = 56;
+
+// 지난 회차 묶기. 회차 시작일(programStart) 전의 시작일들을 정렬해, 바로 앞 시작일과 PROGRAM_CHAIN_DAYS 이내로
+// 이어지면 같은 회차로 묶는다 (한 주 더 하기 +7일, 주차 맞추기는 몇 주 안쪽으로 움직인다).
+// 회차마다 시작일 오름차순, 회차는 최근 먼저. programStart가 없으면 모든 시작일이 지난 회차다.
+// 한계: 8주 안에 다시 시작한 회차는 앞 회차와 한 묶음이 된다 (지난 회차 경계는 저장하지 않으므로)
+export function groupPastStarts(starts: string[], programStart: string | null): string[][] {
+  const program = programStart ? programStart.slice(0, 10) : null;
+  const past = [...new Set(starts.map((start) => start.slice(0, 10)))]
+    .filter((start) => !program || start < program)
+    .sort();
+
+  const groups: string[][] = [];
+  for (const start of past) {
+    const group = groups[groups.length - 1];
+    const prev = group?.[group.length - 1];
+    if (prev && (dayToUtc(start) - dayToUtc(prev)) / DAY_MS <= PROGRAM_CHAIN_DAYS)
+      group.push(start);
+    else groups.push([start]);
+  }
+  return groups.reverse();
+}

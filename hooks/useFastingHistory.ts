@@ -7,27 +7,34 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { useUserStore } from 'stores/userStore';
 import { failFastWhenOffline } from 'utils/failFastWhenOffline';
-import { fastingHistory, type FastingHistoryItem } from 'utils/fastingHistory';
+import { fastingHistory } from 'utils/fastingHistory';
+import { programStartOf } from 'utils/programStart';
 import { useQueryWith402Retry } from './useCustomQuery';
 
 interface HistoryData {
-  plans: Awaited<ReturnType<typeof FastingPlanAPI.selectAll>>;
+  plans: Awaited<ReturnType<typeof FastingPlanAPI.selectEvery>>;
   results: Awaited<ReturnType<typeof FastingResultAPI.selectSince>>;
 }
 
-// 기록 탭 > 단식 칸: 현재 시작일 이후의 단식 기록과 결과 고치기. 무효화는 [QueryKey.fastingHistory] 접두어로 한다
+// 기록 탭 > 단식 칸: 지금 회차·지난 회차의 단식 기록과 (지금 회차) 결과 고치기.
+// 무효화는 [QueryKey.fastingHistory] 접두어로 한다
 export const useFastingHistory = () => {
   const uid = useUserStore((state) => state.id);
   const startDate = useUserStore((state) => state.start_date);
+  const programStart = useUserStore((state) => state.program_start);
   const start = startDate ? startDate.slice(0, 10) : '';
+  const program = programStartOf(programStart, start);
 
   const query = useQueryWith402Retry<HistoryData>({
-    queryKey: [QueryKey.fastingHistory, uid, start],
+    queryKey: [QueryKey.fastingHistory, uid, start, program],
     queryFn: failFastWhenOffline(async () => {
-      const [plans, results] = await Promise.all([
-        FastingPlanAPI.selectAll(start),
-        FastingResultAPI.selectSince(start),
-      ]);
+      const plans = await FastingPlanAPI.selectEvery();
+      // 가장 이른 계획 시작일부터의 결과 (지난 회차 포함)
+      const from = [
+        program ?? start,
+        ...plans.map((plan) => plan.start_date.slice(0, 10)),
+      ].sort()[0];
+      const results = await FastingResultAPI.selectSince(from);
       return { plans, results };
     }),
     enabled: !!uid && !!start,
@@ -37,9 +44,12 @@ export const useFastingHistory = () => {
   const [now, setNow] = useState(() => new Date());
   useFocusEffect(useCallback(() => setNow(new Date()), []));
 
-  const items = useMemo<FastingHistoryItem[]>(
-    () => (query.data && start ? fastingHistory({ startDate: start, ...query.data, now }) : []),
-    [query.data, start, now]
+  const history = useMemo(
+    () =>
+      query.data && start
+        ? fastingHistory({ startDate: start, programStart, ...query.data, now })
+        : { current: [], previous: [] },
+    [query.data, start, programStart, now]
   );
 
   const { mutateAsync: saveResult, isPending: isSaving } = useMutation({
@@ -54,7 +64,8 @@ export const useFastingHistory = () => {
   });
 
   return {
-    items,
+    items: history.current,
+    previous: history.previous,
     isLoading: query.isLoading,
     isError: query.isError,
     refetch: query.refetch,

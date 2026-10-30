@@ -12,12 +12,14 @@ export const useUserStore = create<UserState>()((set) => ({
   provider: '',
   created_at: '',
   start_date: '',
+  program_start: null,
   avatar_url: null,
   is_onboarded: false,
   push_token: '',
   setUser: (user) =>
     new Promise((resolve) => {
-      set({ ...user });
+      // 구버전 캐시·마이그레이션 전 행에는 program_start가 없다 (없으면 start_date로 본다: programStartOf)
+      set({ ...user, program_start: user.program_start ?? null });
       resolve();
     }),
   resetUser: () =>
@@ -28,6 +30,7 @@ export const useUserStore = create<UserState>()((set) => ({
         provider: '',
         created_at: '',
         start_date: '',
+        program_start: null,
         avatar_url: null,
         is_onboarded: false,
       });

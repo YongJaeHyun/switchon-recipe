@@ -49,6 +49,7 @@ const selectOne = async (userId: string) =>
     return data;
   });
 
+// 온보딩은 새 회차: 회차 시작일(program_start)도 시작일로
 const updateOnboarding = async (start_date: string) =>
   sendError(async () => {
     const setUser = useUserStore.getState().setUser;
@@ -56,7 +57,7 @@ const updateOnboarding = async (start_date: string) =>
 
     const { data, error } = await supabase
       .from('user')
-      .update({ start_date, is_onboarded: true })
+      .update({ start_date, program_start: start_date, is_onboarded: true })
       .eq('id', userId)
       .select()
       .single();
@@ -66,9 +67,11 @@ const updateOnboarding = async (start_date: string) =>
     setUser(data);
   });
 
+// program_start: 바뀐 뒤의 회차 시작일 (nextProgramStart). 시작일과 한 번에 저장한다.
 // toast: 이 흐름에 맞는 성공 문구 (없으면 기본 "시작날짜 재설정 성공"). 성공하면 true, 실패하면 undefined
 const updateStartDate = async (
   start_date: string,
+  program_start: string,
   options?: { toast?: { title: string; subtitle: string } }
 ) =>
   sendError(async () => {
@@ -76,7 +79,7 @@ const updateStartDate = async (
     const userId = useUserStore.getState().id;
     const { data, error } = await supabase
       .from('user')
-      .update({ start_date })
+      .update({ start_date, program_start })
       .eq('id', userId)
       .select()
       .single();

@@ -69,17 +69,21 @@ export function StartDateBottomSheet({ bottomSheetRef }: StartDateBottomSheetPro
   // 지금과 같으면 null (이미 유지기인 사람이 유지기를 골라도 같음) → 저장 버튼을 끈다
   const adjustedStart = adjustTarget(startDate, today, selection);
 
-  const save = async (newStart: string, toast: { title: string; subtitle: string }) => {
+  const save = async (
+    newStart: string,
+    kind: 'restart' | 'align',
+    toast: { title: string; subtitle: string }
+  ) => {
     if (saving) return;
     setSaving(true);
-    const ok = await changeStartDate(newStart, { toast });
+    const ok = await changeStartDate(newStart, { kind, toast });
     setSaving(false);
     if (ok) bottomSheetRef.current?.close();
   };
 
   const restart = (when: RestartWhen) => {
     const newStart = restartStartDate(today, when);
-    void save(newStart, {
+    void save(newStart, 'restart', {
       title: `${WHEN_LABEL[when]}부터 1주차를 시작해요`,
       subtitle: `시작일을 ${monthDay(newStart)}로 정했어요`,
     });
@@ -87,7 +91,7 @@ export function StartDateBottomSheet({ bottomSheetRef }: StartDateBottomSheetPro
 
   const adjust = () => {
     if (!adjustedStart) return;
-    void save(adjustedStart, {
+    void save(adjustedStart, 'align', {
       title: `${weekDayLabel(selection)}로 맞췄어요`,
       subtitle: `시작일을 ${monthDay(adjustedStart)}로 옮겼어요`,
     });

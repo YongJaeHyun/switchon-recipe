@@ -30,6 +30,7 @@ export function useWeekRepeat(enteringWeek: number) {
     if (!startDate) return false;
     const newStartDate = addDaysToDay(startDate.slice(0, 10), 7);
     return changeStartDate(newStartDate, {
+      kind: 'repeat',
       toast: weekRepeatToast(enteringWeek - 1, newStartDate),
       onSaved: () => markRepeatAsked(weekRepeatKey(startDate, enteringWeek)),
     });

@@ -9,6 +9,7 @@ import type {
 } from 'types/report';
 import { formatFastedHours } from './fastingEarlyEnd';
 import { isPassOnSale } from './passScreen';
+import { groupPastStarts } from './programStart';
 
 // 소수 한 자리 반올림. 'e' 표기로 올려 부동소수 오차를 피한다
 const round1 = (n: number) => Math.round(Number(`${n}e1`)) / 10;
@@ -56,33 +57,35 @@ export function formatProgramStart(startDate: string): string {
 
 type ReportKey = { start_date: string; week_index: number };
 
-const byWeekDesc = <T extends ReportKey>(a: T, b: T) => b.week_index - a.week_index;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const dayToUtc = (day: string) => {
+  const [y, m, d] = day.slice(0, 10).split('-').map(Number);
+  return Date.UTC(y, m - 1, d);
+};
+// 리포트 기간의 첫날(UTC ms). 한 주 더 하기로 같은 주차가 두 번 있어도 기간으로 줄 세운다
+const periodStart = (r: ReportKey) => dayToUtc(r.start_date) + (r.week_index - 1) * 7 * DAY_MS;
+const byPeriodDesc = <T extends ReportKey>(a: T, b: T) =>
+  periodStart(b) - periodStart(a) || (a.start_date < b.start_date ? 1 : -1);
 
-// 지금 시작일의 리포트(current)와 예전 시작일 리포트(previous, 시작일별 묶음)로 나눈다.
-// 시작일을 바꿔도 예전 리포트는 지우지 않고 "이전 프로그램"으로 보여준다. 최신이 먼저
+// 지금 회차 리포트(current = 시작일이 회차 시작일 이후)와 지난 회차 리포트(previous)로 나눈다.
+// programStart = 지금 회차 시작일 (programStartOf: program_start, 없으면 start_date).
+// 지난 회차는 groupPastStarts(8주 이내로 이어지는 시작일 묶음)로 묶고 가장 이른 시작일을 이름으로 쓴다.
+// 예전 리포트는 지우지 않고 "이전 프로그램"으로 보여준다. 회차는 최근 먼저, 리포트는 기간 최신 먼저
 export function groupReportsByProgram<T extends ReportKey>(
   reports: T[],
-  currentStartDate: string | null
+  programStart: string | null
 ): { current: T[]; previous: { startDate: string; reports: T[] }[] } {
-  const current = currentStartDate ? currentStartDate.slice(0, 10) : null;
-  const groups = new Map<string, T[]>();
-  const currentReports: T[] = [];
+  const program = programStart ? programStart.slice(0, 10) : null;
+  const current = reports.filter((r) => !!program && r.start_date.slice(0, 10) >= program);
+  const previous = groupPastStarts(
+    reports.map((r) => r.start_date),
+    program
+  ).map((starts) => ({
+    startDate: starts[0],
+    reports: reports.filter((r) => starts.includes(r.start_date.slice(0, 10))).sort(byPeriodDesc),
+  }));
 
-  for (const report of reports) {
-    if (report.start_date === current) {
-      currentReports.push(report);
-      continue;
-    }
-    const list = groups.get(report.start_date) ?? [];
-    list.push(report);
-    groups.set(report.start_date, list);
-  }
-
-  const previous = [...groups.entries()]
-    .sort(([a], [b]) => (a < b ? 1 : a > b ? -1 : 0))
-    .map(([startDate, list]) => ({ startDate, reports: list.sort(byWeekDesc) }));
-
-  return { current: currentReports.sort(byWeekDesc), previous };
+  return { current: current.sort(byPeriodDesc), previous };
 }
 
 const isObject = (value: unknown): value is Record<string, unknown> =>

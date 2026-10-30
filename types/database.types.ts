@@ -716,6 +716,7 @@ export type Database = {
           email: string | null;
           id: string;
           is_onboarded: boolean | null;
+          program_start: string | null;
           provider: string | null;
           push_token: string | null;
           start_date: string | null;
@@ -726,6 +727,7 @@ export type Database = {
           email?: string | null;
           id?: string;
           is_onboarded?: boolean | null;
+          program_start?: string | null;
           provider?: string | null;
           push_token?: string | null;
           start_date?: string | null;
@@ -736,6 +738,7 @@ export type Database = {
           email?: string | null;
           id?: string;
           is_onboarded?: boolean | null;
+          program_start?: string | null;
           provider?: string | null;
           push_token?: string | null;
           start_date?: string | null;

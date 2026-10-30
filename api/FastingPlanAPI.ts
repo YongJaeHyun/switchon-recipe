@@ -87,4 +87,26 @@ const selectAll = async (
   return data ?? [];
 };
 
-export const FastingPlanAPI = { upsert, insertIfAbsent, selectOne, selectAll };
+// 모든 시작일의 계획 (기록 탭 > 단식: 지금 회차와 지난 회차). 실패 시 throw
+const selectEvery = async (): Promise<
+  {
+    start_date: string;
+    week_index: number;
+    days: number[];
+    start_time: string | null;
+    start_minutes: Json | null;
+  }[]
+> => {
+  const uid = useUserStore.getState().id;
+  if (!uid) return [];
+
+  const { data, error } = await supabase
+    .from('fasting_plan')
+    .select('start_date, week_index, days, start_time, start_minutes')
+    .eq('uid', uid);
+
+  if (error) throw error;
+  return data ?? [];
+};
+
+export const FastingPlanAPI = { upsert, insertIfAbsent, selectOne, selectAll, selectEvery };
