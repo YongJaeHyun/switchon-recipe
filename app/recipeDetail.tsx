@@ -26,6 +26,7 @@ import Animated, {
 import colors from 'tailwindcss/colors';
 import { RecipeDB } from 'types/database';
 import { IngredientSchema, Recipe, RecipeIngredient } from 'types/recipe';
+import { nutritionPerServing } from 'utils/nutritionPerServing';
 import {
   SERVINGS_STEPPER_MIN,
   baseServingsOf,
@@ -49,7 +50,6 @@ export default function RecipeDetailScreen() {
     return a.isOptional ? 1 : -1;
   });
 
-  const parsedNutrition: Recipe['nutrition'] = JSON.parse(nutrition ?? '');
   const parsedCookingSteps: Recipe['cookingSteps'] = JSON.parse(cooking_steps ?? '');
 
   // 기준 인분을 모르면(null) 인분 조절을 숨기고 재료 양을 그대로 보여 준다.
@@ -58,6 +58,11 @@ export default function RecipeDetailScreen() {
   const [selected, setSelected] = useState<{ id: number; servings: number } | null>(null);
   const servings = selected?.id === id ? selected.servings : (baseServings ?? 1);
   const servingsFactor = baseServings ? servings / baseServings : 1;
+  // 영양 정보는 항상 1인분 기준 (재료 전체 양 기준으로 저장돼 있어 기준 인분으로 나눈다)
+  const parsedNutrition: Recipe['nutrition'] = nutritionPerServing(
+    JSON.parse(nutrition ?? ''),
+    baseServings
+  );
 
   const { data: isSaved = false } = useQueryWith402Retry({
     queryKey: ['savedRecipe', id],
@@ -171,6 +176,7 @@ export default function RecipeDetailScreen() {
               <FontAwesome5 name="cheese" size={16} color={colors.yellow[500]} />
               <Text className="text-medium font-semibold">약 {parsedNutrition.fat}g</Text>
             </View>
+            {baseServings !== null && <Text className="text-sm text-neutral-400">1인분</Text>}
           </View>
         </View>
       </Animated.View>
