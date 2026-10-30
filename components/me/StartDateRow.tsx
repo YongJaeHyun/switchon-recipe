@@ -23,7 +23,7 @@ export function StartDateRow({ onPress }: StartDateRowProps) {
       onPress={onPress}
       rippleColor={colors.neutral[300]}
       className="w-full flex-row items-center !justify-between rounded-xl border border-neutral-300 bg-neutral-50 p-5">
-      <View className="flex-row items-center gap-4">
+      <View className="flex-row items-center gap-5">
         <MaterialIcons name="event" size={24} color={colors.neutral[600]} />
         <Text className="text-lg text-neutral-600">프로그램 설정</Text>
       </View>
