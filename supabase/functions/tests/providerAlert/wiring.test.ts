@@ -6,17 +6,20 @@ const read = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf
 const flat = (s: string) => s.replace(/\s+/g, ' ');
 
 describe('Gemini/Pixabay 호출부가 모두 장애 알림을 거친다', () => {
-  it.each(['food-check', 'generate-weekly-reports', 'tag-recipes', 'estimate-recipe-servings'])(
-    '%s: 함수 이름으로 알림 fetch를 만들어 Gemini 호출에 쓴다',
-    (fn) => {
-      const src = read(`../../${fn}/index.ts`);
-      expect(flat(src)).toContain(
-        `createProviderAlertFetch({ functionName: '${fn}', client: supabase, webhookUrl: Deno.env.get('SLACK_WEBHOOK_URL'), })`
-      );
-      expect(flat(src)).toMatch(/await providerFetch\( `https:\/\/generativelanguage/);
-      expect(src).not.toMatch(/await fetch\(\s*`https:\/\/generativelanguage/);
-    }
-  );
+  it.each([
+    'food-check',
+    'generate-weekly-reports',
+    'tag-recipes',
+    'estimate-recipe-servings',
+    'read-inbody',
+  ])('%s: 함수 이름으로 알림 fetch를 만들어 Gemini 호출에 쓴다', (fn) => {
+    const src = read(`../../${fn}/index.ts`);
+    expect(flat(src)).toContain(
+      `createProviderAlertFetch({ functionName: '${fn}', client: supabase, webhookUrl: Deno.env.get('SLACK_WEBHOOK_URL'), })`
+    );
+    expect(flat(src)).toMatch(/await providerFetch\( `https:\/\/generativelanguage/);
+    expect(src).not.toMatch(/await fetch\(\s*`https:\/\/generativelanguage/);
+  });
 
   it('레시피 생성: 텍스트·이미지 요청 모두 알림 fetch를 쓴다', () => {
     const src = read('../../_shared/createRecipe.ts');
@@ -61,6 +64,7 @@ describe('Gemini/Pixabay 호출부가 모두 장애 알림을 거친다', () => 
       'generate-weekly-reports/index.ts',
       'process-ingredient-request/image.ts',
       'process-ingredient-request/judge.ts',
+      'read-inbody/index.ts',
       'tag-recipes/index.ts',
     ]);
   });
