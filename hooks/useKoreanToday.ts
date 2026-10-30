@@ -3,8 +3,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
-import { getKoreanDate, getKoreanDateString, getWeekAndDay } from 'utils/date';
-import { shouldOpenWeekPopup } from 'utils/weekPopup';
+import { getKoreanDate, getKoreanDateString } from 'utils/date';
+import { programWeekAndDay, todayRevalidation } from 'utils/programStart';
 import { useFasting } from './useFasting';
 import { useTodos } from './useTodos';
 
@@ -27,23 +27,22 @@ export default function useKoreanToday() {
       isChecked,
     } = useWeekCompletePopupStore.getState();
     const newDay = getKoreanDateString({ formatType: 'date' });
-    const { week, day } = getWeekAndDay(start_date);
-
-    const shouldOpen = shouldOpenWeekPopup({ prevWeek, week, isChecked });
+    const { week, day, beforeStart } = programWeekAndDay(start_date, newDay);
+    // 시작 전에는 주차 팝업을 열지 않고 일차를 '시작 전'으로 둔다 → 시작일에 할 일이 초기화된다
+    const next = todayRevalidation({ week, day, beforeStart, prevWeek, prevDay, isChecked });
 
     setToday(newDay);
 
-    if (week !== prevWeek) {
-      setWeek(week);
+    if (next.weekChanged) {
+      setWeek(next.week);
       resetFasting();
-      // 시작일을 뒤로 미뤄 주차가 줄었으면 그 주차 팝업은 이미 본 것으로 둔다
-      if (week < prevWeek) close();
+      if (next.closePopup) close();
     }
-    if (day !== prevDay) {
-      setDay(day);
+    if (next.dayChanged) {
+      setDay(next.day);
       resetTodos();
     }
-    if (shouldOpen) open();
+    if (next.openPopup) open();
   }, [start_date, resetFasting, resetTodos]);
 
   // 매일 자정에 다시 검증. 정리 함수를 돌려줘 언마운트·의존성 변경 시 타이머가 남지 않게 함

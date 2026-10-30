@@ -13,6 +13,7 @@ import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
 import { Todo } from 'types/todo';
 import { getKoreanDate, getKoreanDateString, getWeekAndDay } from 'utils/date';
 import { fastingDayTodos } from 'utils/fastingTodos';
+import { isBeforeStart } from 'utils/programStart';
 import { orEmptyArray } from 'utils/stableDefaults';
 import {
   areTodoChecksCurrent,
@@ -42,6 +43,8 @@ export const useTodos = (options?: { syncTodoDaily?: boolean }) => {
   const startDate = useUserStore((state) => state.start_date);
 
   const { week, day } = getWeekAndDay(startDate);
+  // 시작 전(시작일이 미래)에는 할 일을 쓰지 않는다: 체크·todo_daily·완료율 기록을 보내지 않는다
+  const beforeStart = isBeforeStart(startDate, getKoreanDateString({ formatType: 'date' }));
   const currentStep = week === 1 ? (day <= 3 ? 1 : 2) : week + 1;
 
   const { schedule: fastingSchedule, isLoading: isFastingLoading } = useFasting();
@@ -116,6 +119,7 @@ export const useTodos = (options?: { syncTodoDaily?: boolean }) => {
   });
 
   const toggleChecked = (todoId: number) => {
+    if (beforeStart) return;
     const checkedIds = queryClient.getQueryData<number[]>([QueryKey.todos, userId]) || [];
 
     const isChecked = checkedIds.includes(todoId);
@@ -169,21 +173,21 @@ export const useTodos = (options?: { syncTodoDaily?: boolean }) => {
   // 체크는 어제 값이 남아 있을 수 있어(초기화 전) 넣지 않는다. 새 주 첫날은 단식 초기화가 끝난 뒤에만
   // (지난 주 단식 요일로 자른 목록을 남기지 않게). 실패하면 다음 기회에 다시 보낸다. 화면에는 영향 없음
   useEffect(() => {
-    if (!userId || isLoading || isFastingLoading || !listCurrent) return;
+    if (!userId || beforeStart || isLoading || isFastingLoading || !listCurrent) return;
     const today = getKoreanDateString({ formatType: 'date' });
     const { items } = todoDailySnapshot(getTodayTodos(), []);
     if (items.length === 0) return;
     todoDaily.sendSnapshot(`${userId}:${today}`, { day: today, items });
-  }, [userId, isLoading, isFastingLoading, listCurrent, getTodayTodos, syncTick]);
+  }, [userId, beforeStart, isLoading, isFastingLoading, listCurrent, getTodayTodos, syncTick]);
 
   // 오프라인에서 체크해 못 보낸 오늘 기록: 체크 상태가 오늘 것일 때 지금 목록·체크 전체를 다시 보낸다
   useEffect(() => {
-    if (!userId || isLoading || isFastingLoading || !checksCurrent) return;
+    if (!userId || beforeStart || isLoading || isFastingLoading || !checksCurrent) return;
     const today = getKoreanDateString({ formatType: 'date' });
     if (!todoDaily.needsResend(today)) return;
     const checked = queryClient.getQueryData<number[]>([QueryKey.todos, userId]) ?? [];
     todoDaily.queueUpsert({ day: today, ...todoDailySnapshot(getTodayTodos(), checked) });
-  }, [userId, isLoading, isFastingLoading, checksCurrent, getTodayTodos, syncTick]);
+  }, [userId, beforeStart, isLoading, isFastingLoading, checksCurrent, getTodayTodos, syncTick]);
 
   useEffect(() => {
     const todos = getTodayTodos();

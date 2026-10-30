@@ -14,7 +14,8 @@ import Animated, {
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { Nullable } from 'types/common';
-import { getWeekAndDay } from 'utils/date';
+import { getKoreanDateString } from 'utils/date';
+import { programWeekAndDay } from 'utils/programStart';
 import { getWeekColor } from 'utils/getWeekColor';
 
 interface WeekProps {
@@ -57,12 +58,17 @@ const Day = ({ week, day, todoRate }: DayProps) => {
   const [showBlur, setShowBlur] = useState(false);
 
   const start_date = useUserStore((state) => state.start_date);
-  const { week: currentWeek, day: currentDay } = getWeekAndDay(start_date);
+  const {
+    week: currentWeek,
+    day: currentDay,
+    beforeStart,
+  } = programWeekAndDay(start_date, getKoreanDateString({ formatType: 'date' }));
 
   const safeRate = todoRate === null ? 0 : todoRate + MIN_BOOST;
   const barHeight = (safeRate / 100) * MAX_BAR_HEIGHT;
 
-  const isToday = week === currentWeek && day === currentDay;
+  // 시작 전에는 오늘 표시를 하지 않는다
+  const isToday = !beforeStart && week === currentWeek && day === currentDay;
 
   const blurOpacity = useSharedValue(0);
   const blurStyle = useAnimatedStyle(() => ({

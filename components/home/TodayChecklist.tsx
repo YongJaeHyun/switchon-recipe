@@ -1,6 +1,7 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { Text } from 'components/common/Text';
 import { useFasting, useFastingAlarmSync } from 'hooks/useFasting';
+import useKoreanToday from 'hooks/useKoreanToday';
 import { useFastingPlanBackfill, useFastingWeekContext } from 'hooks/useFastingPlan';
 import { useFastingResult } from 'hooks/useFastingResult';
 import { useTodos } from 'hooks/useTodos';
@@ -14,7 +15,9 @@ import { getWeekAndDay } from 'utils/date';
 import { getFastingStatus, WEEK_CHANGES } from 'utils/dietGuide';
 import { fastingDayOf } from 'utils/fastingEarlyEnd';
 import { getWeekColor, getWeekColorHex } from 'utils/getWeekColor';
+import { daysUntilStart } from 'utils/programStart';
 import { todayExtraRows, weekStepLabel } from 'utils/todayRows';
+import { BeforeStartCard } from './BeforeStartCard';
 import { FastingDayLine } from './FastingDayLine';
 import { FastingProgressLine } from './FastingProgressLine';
 import { FastingResultRow } from './FastingResultRow';
@@ -26,8 +29,29 @@ const MINUTE_MS = 60 * 1000;
 
 // 오늘 탭의 할 일 목록 하나: (단식 중이면 남은 시간 줄) → 식단 할 일 → 단식 결과 → 체중 → (아래) 단식 요일.
 // 진행 중에 일찍 끝냈으면 남은 시간 줄 자리에 그 단식의 결과 카드 (할 일 목록은 그대로).
-// 완료율(%)은 식단 할 일만 센다
+// 완료율(%)은 식단 할 일만 센다.
+// 시작일이 미래(시작 전)면 할 일·단식 대신 '시작 전' 준비 카드 (할 일·단식 훅을 아예 돌리지 않는다)
 export function TodayChecklist() {
+  const startDate = useUserStore((state) => state.start_date);
+  const today = useKoreanToday();
+  const until = daysUntilStart(startDate, today);
+
+  if (until > 0) {
+    return (
+      <View className="gap-3">
+        <BeforeStartCard daysUntil={until} />
+        {/* 시작 전 체중도 남길 수 있게 (기록 탭에서 '시작 전'으로 보인다) */}
+        <View className="rounded-xl border border-neutral-200 bg-white px-4 py-1">
+          <WeightRow />
+        </View>
+        <TipBottomSheet />
+      </View>
+    );
+  }
+  return <ProgramChecklist />;
+}
+
+function ProgramChecklist() {
   const startDate = useUserStore((state) => state.start_date);
 
   // 화면에 하나뿐이라 여기서 못 보낸 todo_daily 다시 보내기를 켠다

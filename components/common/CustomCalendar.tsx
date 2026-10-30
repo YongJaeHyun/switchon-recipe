@@ -3,8 +3,8 @@ import useKoreanToday from 'hooks/useKoreanToday';
 import { View } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import colors from 'tailwindcss/colors';
-import { getWeekAndDay } from 'utils/date';
 import { getWeekColor } from 'utils/getWeekColor';
+import { programWeekAndDay, startCountdownLabel } from 'utils/programStart';
 
 interface CustomCalendarProps {
   calendarKey?: React.Key;
@@ -19,7 +19,7 @@ export default function CustomCalendar({
 }: CustomCalendarProps) {
   const today = useKoreanToday();
 
-  const { week, day } = getWeekAndDay(selectedDate);
+  const { week, day, beforeStart, daysUntilStart } = programWeekAndDay(selectedDate, today);
   return (
     <View>
       <Calendar
@@ -44,8 +44,15 @@ export default function CustomCalendar({
       />
 
       <View className="my-6 flex-row justify-center gap-1">
-        <Text className={`text-lg ${getWeekColor(week)}`}>{week}주차</Text>
-        <Text className="text-lg">{day}일부터 시작해요</Text>
+        {beforeStart ? (
+          // 온보딩에서 미래로 정한 시작일 (달력은 오늘까지만 고를 수 있다)
+          <Text className="text-lg">{startCountdownLabel(daysUntilStart)}</Text>
+        ) : (
+          <>
+            <Text className={`text-lg ${getWeekColor(week)}`}>{week}주차</Text>
+            <Text className="text-lg">{day}일부터 시작해요</Text>
+          </>
+        )}
       </View>
     </View>
   );

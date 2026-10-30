@@ -1,7 +1,7 @@
 import { TIME_ZONE } from 'const/const';
-import { differenceInDays } from 'date-fns';
 import { format, toZonedTime } from 'date-fns-tz';
 import { Maybe } from '../types/common';
+import { programWeekAndDay } from './programStart';
 
 interface GetKoreanDateStringProps {
   formatType: 'detailed' | 'date';
@@ -11,17 +11,10 @@ export const convertToKoreanDate = (date: Date | string) => {
   return toZonedTime(date, TIME_ZONE);
 };
 
+// 오늘(KST)의 주차·일차. 시작일이 미래(시작 전)여도 1주차 1일 아래로 내려가지 않는다.
+// 시작 전인지는 utils/programStart의 isBeforeStart로 따로 본다
 export const getWeekAndDay = (startDate: Maybe<string>) => {
-  if (!startDate) return { week: 1, day: 1 };
-
-  const start = convertToKoreanDate(startDate);
-  const current = getKoreanDateString({ formatType: 'date' });
-
-  const daysDiff = differenceInDays(current, start);
-
-  const week = Math.floor(daysDiff / 7) + 1;
-  const day = (daysDiff % 7) + 1;
-
+  const { week, day } = programWeekAndDay(startDate, getKoreanDateString({ formatType: 'date' }));
   return { week, day };
 };
 

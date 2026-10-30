@@ -13,19 +13,23 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
 import colors from 'tailwindcss/colors';
-import { getKoreanDateString, getKoreanDateWeeksAgo, getWeekAndDay } from 'utils/date';
+import { getKoreanDateString, getKoreanDateWeeksAgo } from 'utils/date';
 import { getWeekColor } from 'utils/getWeekColor';
+import { addDaysToDay, programWeekAndDay } from 'utils/programStart';
 import RippleButton from '../../components/common/RippleButton';
 
-const totalSteps = 4;
+// 1 소개 → 2 지금 하고 있는지 → 3 (하고 있음) 시작한 날 달력 / 4 (새로 시작) 언제부터 → 5 확인
+const totalSteps = 5;
+const START_CHOICE_STEP = 4;
 
 export default function OnboardingScreen() {
-  const { step, goLastStep, goNextStep } = useSteps(totalSteps);
+  const { step, goLastStep, goNextStep, goToStep } = useSteps(totalSteps);
   const { setWeek } = useWeekCompletePopupStore();
 
   const today = getKoreanDateString({ formatType: 'date' });
+  const tomorrow = addDaysToDay(today, 1);
   const [selectedDate, setSelectedDate] = useState(today);
-  const { week, day } = getWeekAndDay(selectedDate);
+  const { week, day, beforeStart } = programWeekAndDay(selectedDate, today);
 
   const setDateAndGoLastStep = (startDate: string) => {
     setSelectedDate(startDate);
@@ -76,13 +80,20 @@ export default function OnboardingScreen() {
             </AnimatedTextView>
             <AnimatedTextView className="gap-5" delay={1000}>
               <RippleButton className="w-full bg-green-600 py-5" onPress={goNextStep}>
-                <Text className="text-xl text-white">네</Text>
+                <Text className="text-xl text-white">네, 하고 있어요</Text>
               </RippleButton>
               <RippleButton
                 className="w-full py-5"
                 outerClassName="border border-green-600"
+                onPress={() => goToStep(START_CHOICE_STEP)}>
+                <Text className="text-xl text-green-600">이제 시작하려고 해요</Text>
+              </RippleButton>
+              {/* 다이어트 없이 레시피만 보는 분: 지금처럼 유지기(4주 전 시작)로 둔다 */}
+              <RippleButton
+                className="w-full py-5"
+                outerClassName="border border-neutral-300"
                 onPress={() => setDateAndGoLastStep(getKoreanDateWeeksAgo(4))}>
-                <Text className="text-xl text-green-600">아니오</Text>
+                <Text className="text-xl text-neutral-500">아니오, 레시피만 볼래요</Text>
               </RippleButton>
             </AnimatedTextView>
           </>
@@ -98,25 +109,71 @@ export default function OnboardingScreen() {
               <CustomCalendar selectedDate={selectedDate} setSelectedDate={setSelectedDate} />
             </AnimatedTextView>
             <AnimatedTextView delay={1500}>
-              <RippleButton className="w-full bg-green-600 py-5" onPress={goNextStep}>
+              <RippleButton className="w-full bg-green-600 py-5" onPress={goLastStep}>
                 <Text className="text-xl text-white">선택하기</Text>
               </RippleButton>
             </AnimatedTextView>
           </>
         )}
-        {step === 4 && (
+        {step === START_CHOICE_STEP && (
+          <>
+            <View className="gap-4">
+              <AnimatedTextView delay={500}>
+                <Text className="text-4xl font-bold leading-snug">
+                  언제부터 <Text className="text-green-600">시작</Text>할까요?
+                </Text>
+              </AnimatedTextView>
+              <AnimatedTextView delay={800}>
+                <Text className="text-lg font-medium text-neutral-500">
+                  하루 준비하고 시작한 분들이 더 오래 이어가요.
+                </Text>
+                <Text className="text-lg font-medium text-neutral-500">
+                  오늘은 쉐이크와 장보기를 챙기고, 내일 1주차 1일을 시작해 보세요.
+                </Text>
+              </AnimatedTextView>
+            </View>
+            <AnimatedTextView className="gap-5" delay={1000}>
+              <RippleButton
+                className="w-full bg-green-600 py-5"
+                onPress={() => setDateAndGoLastStep(tomorrow)}>
+                <Text className="text-xl text-white">내일부터 시작 (추천)</Text>
+              </RippleButton>
+              <RippleButton
+                className="w-full py-5"
+                outerClassName="border border-green-600"
+                onPress={() => setDateAndGoLastStep(today)}>
+                <Text className="text-xl text-green-600">오늘부터 시작</Text>
+              </RippleButton>
+            </AnimatedTextView>
+          </>
+        )}
+        {step === 5 && (
           <>
             <View className="gap-10">
               <AnimatedTextView delay={500}>
                 <Text className="text-3xl font-bold leading-snug">
                   <Text className="text-green-600">다이어터</Text>님은...
                 </Text>
-                <Text className="text-3xl font-bold leading-snug">
-                  <Text className={getWeekColor(week)}>{week}주차</Text> {day}일{' '}
-                  {week >= 5 && '(유지기)'}부터 시작해요!
-                </Text>
+                {beforeStart ? (
+                  <Text className="text-3xl font-bold leading-snug">
+                    {selectedDate === tomorrow
+                      ? '내일'
+                      : `${selectedDate.slice(5).replace('-', '/')}`}
+                    부터 <Text className={getWeekColor(1)}>1주차</Text> 1일을 시작해요!
+                  </Text>
+                ) : (
+                  <Text className="text-3xl font-bold leading-snug">
+                    <Text className={getWeekColor(week)}>{week}주차</Text> {day}일{' '}
+                    {week >= 5 && '(유지기)'}부터 시작해요!
+                  </Text>
+                )}
               </AnimatedTextView>
               <AnimatedTextView className="gap-3" delay={1000}>
+                {beforeStart && (
+                  <Text className="text-lg font-medium text-neutral-500">
+                    시작 전까지 오늘 탭에서 준비할 것들을 챙겨 보세요.
+                  </Text>
+                )}
                 <Text className="text-lg font-medium text-neutral-500">
                   혹시 잘못 설정했더라도 걱정하지 마세요.
                 </Text>
