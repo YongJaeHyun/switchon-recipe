@@ -65,7 +65,8 @@ export default function OnboardingScreen() {
               <RippleButton
                 className="w-full py-5"
                 outerClassName="border border-green-600"
-                onPress={() => setDateAndGoLastStep(today)}>
+                // 건너뛰어도 하루 준비하고 시작하도록 내일부터 (준비하고 시작한 사람이 더 오래 이어감)
+                onPress={() => setDateAndGoLastStep(tomorrow)}>
                 <Text className="text-xl text-green-600">건너뛰기</Text>
               </RippleButton>
             </AnimatedTextView>
