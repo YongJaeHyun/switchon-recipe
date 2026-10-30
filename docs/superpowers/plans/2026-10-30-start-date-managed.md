@@ -34,3 +34,9 @@
 ### Task 2: 온보딩 달력 → 주차 맞추기
 **Files:** Modify `app/(auth)/onboard.tsx`(3단계 달력 → `WeekDayPicker`, 시작일 계산은 `startDateForWeekDay`), 마지막 단계 문구 확인.
 - [ ] 테스트(가능한 순수 부분), 구현, 스크린샷(온보딩 3단계 — 딥링크로 열고 완료하지 말 것), Commit `✨ 온보딩에서도 주차로 시작 맞추기`
+
+### Task 3: 회차 시작일(program_start) + 단식 기록 연도·지난 회차
+운영자 결정(2026-10-30): 한 주 더 하기·주차 맞추기로 start_date가 바뀌어도 같은 회차로 본다.
+**Files:** Create `supabase/migrations/20261030030000_user_program_start.sql` — `alter table public.user add column if not exists program_start date;` + 기존 행 `update ... set program_start = start_date where program_start is null` (적용은 컨트롤러가 승인 후); `types/database.types.ts`; `stores/userStore.ts`·`api/UserAPI.ts`(읽기/쓰기); `hooks/useChangeStartDate.ts` — 다시 시작·온보딩: program_start = 새 start_date, 주차 맞추기: program_start = min(program_start, 새 start_date), 한 주 더 하기: 그대로; `utils/reportDisplay.ts groupReportsByProgram` — 현재 회차 = report.start_date ≥ program_start(없으면 start_date) 인 것, 이전 회차는 program 경계로 묶기(이전 리포트들의 start_date를 회차 경계 없이 정렬해 묶되, 시작일 차이가 8주 이내로 이어지는 것은 한 묶음 — 규칙은 테스트로 고정); `utils/fastingHistory.ts` — 현재 회차의 모든 fasting_plan(start_date ≥ program_start)을 각자의 start_date로 날짜 계산해 합침, 결과는 day ≥ program_start; `components/records/FastingHistorySection.tsx` — 올해가 아닌 날짜는 "YYYY년 M월 D일 (요일)"; 지난 회차 단식 기록 보기(체중 '전체 기간 보기'와 같은 패턴, 회차별 접힘, 시안은 컨트롤러가 운영자 확인).
+- 구버전 앱은 program_start를 모르므로 서버 함수(주간 리포트 등)는 바꾸지 않는다. program_start가 null이면 start_date로 대체.
+- [ ] 테스트 먼저(회차 경계, 한 주 더 후 리포트·단식이 현재 회차로 유지, 주차 맞추기 앞당김, 연도 표시), 구현, Commit `✨ 회차 시작일로 리포트·단식 기록 이어 보기`
