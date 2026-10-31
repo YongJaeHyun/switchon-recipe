@@ -191,9 +191,10 @@ export async function verifyPurchase(deps: VerifyDeps, input: VerifyInput): Prom
   ]);
   const candidate = { purchaseToken: input.purchaseToken, productId: input.productId, purchasedAt };
 
-  // 지급하지 않는 구매: 환불하고 refunded_ineligible로 기록한다. 지급 전에만 쓰고, 지급한 구매는 되돌리지 않는다
+  // 지급하지 않는 구매: refunded_ineligible로 먼저 기록하고, 이 요청이 기록했을 때만 환불한다.
+  // 같은 토큰을 다른 요청이 이미 기록(지급 포함)했으면 환불하지 않는다 → 지급한 구매는 절대 되돌리지 않는다.
+  // (환불이 실패해도 소비하지 않은 구매라 Play가 3일 뒤 자동 환불한다)
   const rejectIneligible = async (): Promise<VerifyResult> => {
-    await refundIneligible(deps, purchase.orderId ?? null, input.purchaseToken);
     const inserted = await deps.insertPurchase({
       ...baseRow,
       grantedFrom: null,
@@ -201,6 +202,7 @@ export async function verifyPurchase(deps: VerifyDeps, input: VerifyInput): Prom
       status: 'refunded_ineligible',
     });
     if (inserted === 'duplicate') return processedByOtherRequest();
+    await refundIneligible(deps, purchase.orderId ?? null, input.purchaseToken);
     return { status: 'price_changed' };
   };
 
@@ -214,7 +216,10 @@ export async function verifyPurchase(deps: VerifyDeps, input: VerifyInput): Prom
     );
   };
 
-  if (!isPurchaseEligible(input.productId, purchasedAt, setting, existing)) {
+  // 이 토큰 자신은 빼고 본다: 같은 토큰의 다른 요청이 먼저 지급했으면 그 기록이 '이미 쓴 할인'으로 잡혀
+  // 지급된 구매를 환불하게 된다 (재시도와 복구가 동시에 올 때)
+  const others = existing.filter((p) => p.purchaseToken !== input.purchaseToken);
+  if (!isPurchaseEligible(input.productId, purchasedAt, setting, others)) {
     return rejectIneligible();
   }
 

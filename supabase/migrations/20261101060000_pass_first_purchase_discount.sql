@@ -61,3 +61,8 @@ $$;
 revoke all on function public.grant_pass_purchase(
   uuid, text, text, text, integer, timestamptz, timestamptz, timestamptz, jsonb, boolean
 ) from public, anon, authenticated;
+
+-- 기본 권한에 기대지 않고 verify-pass-purchase(service_role)가 부를 수 있게 명시한다
+grant execute on function public.grant_pass_purchase(
+  uuid, text, text, text, integer, timestamptz, timestamptz, timestamptz, jsonb, boolean
+) to service_role;

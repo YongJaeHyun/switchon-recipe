@@ -79,6 +79,7 @@ const createFakeDeps = (
     ),
     insertPurchase: vi.fn(async (row: PurchaseRow) => {
       if (options.insertResult === 'duplicate') return 'duplicate' as const;
+      if (rows.some((r) => r.purchaseToken === row.purchaseToken)) return 'duplicate' as const;
       rows.push(row);
       return 'inserted' as const;
     }),
@@ -771,6 +772,39 @@ describe('verifyPurchase: 첫 구매 할인 (운영자 결정 2026-11-01)', () =
     expect(play.refundOrder).toHaveBeenCalledWith('GPA.1234');
     expect(expiries.get(UID)).toEqual(grantedUntil);
     expect(play.consumeProductPurchase).not.toHaveBeenCalled();
+  });
+
+  it('같은 할인 구매 토큰의 다른 요청이 먼저 지급했으면 환불하지 않는다 (재시도·복구가 동시에 올 때)', async () => {
+    // 요청 B: findPurchase 때는 아직 없었고, Play 조회 사이에 요청 A가 같은 토큰을 granted로 기록했다
+    const { deps, play, rows } = createFakeDeps({
+      existing: [
+        existingRow({
+          productId: P2900,
+          purchaseToken: TOKEN,
+          orderId: 'GPA.1234',
+          priceKrw: 2900,
+        }),
+      ],
+    });
+    vi.mocked(deps.findPurchase).mockResolvedValueOnce(null);
+
+    const result = await verifyPurchase(deps, input);
+
+    expect(result.status).toBe('already_processed');
+    expect(play.refundOrder).not.toHaveBeenCalled();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].status).toBe('granted');
+  });
+
+  it('지급하지 않는 구매는 기록을 먼저 남기고, 이미 기록된 토큰이면 환불하지 않는다', async () => {
+    const { deps, play } = createFakeDeps({
+      existing: [existingRow({ productId: P4900, purchasedAt: earlier })],
+    });
+    vi.mocked(deps.insertPurchase).mockResolvedValueOnce('duplicate');
+
+    await verifyPurchase(deps, input);
+
+    expect(play.refundOrder).not.toHaveBeenCalled();
   });
 
   it('insert 전 확인 뒤 다른 요청이 먼저 지급했으면(lock 안 확인이 discount_used) 지급하지 않고 환불', async () => {
