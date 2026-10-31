@@ -16,7 +16,7 @@ export const PASS_FEATURES = [
   {
     icon: 'insights',
     title: 'AI 주간 리포트',
-    description: '체중·식단·단식을 한 주씩 정리',
+    description: '체중·식단·단식을 유지기 첫 주까지 한 주씩 정리',
     inQuotaModal: true,
   },
   {

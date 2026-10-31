@@ -23,6 +23,10 @@ update public.weekly_report set display_week = week_index where display_week is 
 -- 한 주 더 하기·주차 맞추기는 회차 시작일이 그대로거나 앞당겨져 지난 시작일 ≥ 회차 시작일이라 여기 걸리지 않는다
 -- (그 기간은 새 시작일 키로 만들어지고 display_week로 제목이 붙는다). 구버전 앱의 다시 시작(program_start가 옛 값)도 걸리지 않는다.
 -- 회차 시작일 = program_start (없거나 start_date보다 뒤면 start_date, 앱 programStartOf와 같은 규칙).
+-- 리포트는 1~4주차와 유지기 1주차까지만 (운영자 결정 2026-10-31): 끝난 주차 week_index = (p_today − 시작일) / 7이
+-- 5 이하인 것만 돌려준다. 최종 판단은 엣지 함수가 표시 주차로 한다 (MAX_REPORT_WEEK, 08:00 전 한 주 더로
+-- week_index 5가 실제 6주차일 수 있다). week_index 6 이상인데 표시 주차가 5 이하인 경우(이미 있는 리포트와 4일
+-- 이상 겹침)는 주차 맞추기가 많아야 5주차 1일로 앞당기므로 생기지 않는다.
 create or replace function public.weekly_report_candidates(p_today date)
 returns table (uid uuid, start_date date)
 language sql
@@ -66,11 +70,13 @@ as $$
   from e
   where e.start_date <= p_today - 7
     and (p_today - e.start_date) % 7 < 3
+    and (p_today - e.start_date) / 7 <= 5
   union
   select p.uid, p.start_date
   from p
   where p.start_date <= p_today - 7
     and (p_today - p.start_date) % 7 < 3
+    and (p_today - p.start_date) / 7 <= 5
     and p.program > p_today - (p_today - p.start_date) % 7 - 1;
 $$;
 

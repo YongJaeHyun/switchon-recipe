@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  alignedAheadOver,
   displayWeekFor,
+  MAX_REPORT_WEEK,
   generateWeeklyReports,
   handleGenerateWeeklyReports,
   reportWeekOf,
@@ -730,6 +732,165 @@ describe('generateWeeklyReports: 시작일이 바뀐 뒤 리포트 제목은 실
     db.reports.push(reportRow('other', '2026-10-01', 2));
     await generateWeeklyReports(deps, '2026-10-15');
     expect(db.reports[1]).toMatchObject({ uid: 'a', display_week: 1 });
+  });
+});
+
+// 운영자 결정 2026-10-31: 주간 리포트는 1~4주차와 유지기 1주차(표시 주차 5)까지만 만든다.
+// 표시 주차(resolveDisplayWeek)가 MAX_REPORT_WEEK보다 크면 이용 권한 rpc·AI·저장·푸시 없이 건너뛴다
+describe('generateWeeklyReports: 리포트는 유지기 1주차(표시 주차 5)까지만', () => {
+  it('MAX_REPORT_WEEK = 5', () => {
+    expect(MAX_REPORT_WEEK).toBe(5);
+  });
+
+  it('유지기 1주차(5주차) 리포트는 만든다', async () => {
+    // 09-10 시작, 10-15 = 6주차 1일차 → 5주차(10-08~10-14) 리포트
+    const { deps, db } = makeDeps({
+      fetchUsers: vi.fn(async () => [{ id: 'a', start_date: '2026-09-10' }]),
+    });
+    const result = await generateWeeklyReports(deps, TODAY);
+    expect(result).toMatchObject({ candidates: 1, generated: 1, capped: 0 });
+    expect(db.reports[0]).toMatchObject({ week_index: 5, display_week: 5 });
+    expect(db.notifications[0].title).toBe('5주차 리포트가 도착했어요');
+  });
+
+  it('유지기 2주차(6주차) 이후는 권한 rpc·AI·저장·푸시 없이 건너뛴다', async () => {
+    // 09-03 시작 → 6주차(10-08~10-14), 08-27 시작 → 7주차
+    const { deps, db } = makeDeps({
+      fetchUsers: vi.fn(async () => [
+        { id: 'a', start_date: '2026-09-03' },
+        { id: 'b', start_date: '2026-08-27' },
+      ]),
+    });
+    const result = await generateWeeklyReports(deps, TODAY);
+    expect(result).toMatchObject({ candidates: 2, capped: 2, generated: 0, noAccess: 0 });
+    expect(deps.hasPremiumAccess).not.toHaveBeenCalled();
+    expect(deps.fetchWeekData).not.toHaveBeenCalled();
+    expect(deps.askGemini).not.toHaveBeenCalled();
+    expect(deps.insertReport).not.toHaveBeenCalled();
+    expect(db.notifications).toHaveLength(0);
+  });
+
+  it('week_index가 5여도 표시 주차가 6이면 건너뛴다 (08:00 전 한 주 더)', async () => {
+    // 09-03 시작, (09-03, 5) = 10-01~10-07 있음. 10-15 07:30 한 주 더 → 시작일 09-10.
+    // (09-10, 5) = 10-08~10-14는 (09-03, 6)으로 지낸 기간 → 표시 주차 6
+    const { deps, db } = makeDeps({
+      fetchUsers: vi.fn(async () => [{ id: 'a', start_date: '2026-09-10' }]),
+      fetchProgramStart: vi.fn(async () => '2026-09-03'),
+    });
+    db.reports.push(reportRow('a', '2026-09-03', 5));
+    const result = await generateWeeklyReports(deps, TODAY);
+    expect(result).toMatchObject({ candidates: 1, capped: 1, generated: 0 });
+    expect(deps.hasPremiumAccess).not.toHaveBeenCalled();
+    expect(db.reports).toHaveLength(1);
+  });
+
+  it('한 주 더로 다시 지낸 유지기 1주차(표시 주차 5)는 만든다', async () => {
+    // (09-03, 5) = 10-01~10-07 뒤 한 주 더 → 시작일 09-10. (09-10, 4) = 같은 기간 → 5주차
+    const { deps, db } = makeDeps({
+      fetchUsers: vi.fn(async () => [{ id: 'a', start_date: '2026-09-10' }]),
+      fetchProgramStart: vi.fn(async () => '2026-09-03'),
+    });
+    vi.mocked(deps.fetchWeekData).mockResolvedValue({
+      ...emptyWeek(),
+      weights: [{ day: '2026-10-02', weight_kg: 70 }],
+    });
+    db.reports.push(reportRow('a', '2026-09-03', 5));
+    const result = await generateWeeklyReports(deps, '2026-10-08');
+    expect(result).toMatchObject({ generated: 1, capped: 0 });
+    expect(db.reports[1]).toMatchObject({ week_index: 4, display_week: 5 });
+  });
+});
+
+// 감사 #16: 주차 맞추기로 바로 몇 주 앞(예: 유지기 = 5주차 1일)으로 가면, 방금 끝난 기간이 새 시작일 키로
+// 큰 주차(4주차)가 되지만 실제로는 맞추기 전 1~3주차로 지낸 날들이다.
+describe('alignedAheadOver (주차 맞추기로 건너뛴 기간)', () => {
+  const p = (start_date: string, week_index: number, display_week: number | null = null) => ({
+    start_date,
+    week_index,
+    display_week,
+  });
+
+  it('가장 최근 리포트와 1~3일 겹치고 표시 주차가 2 이상 뛰면 true', () => {
+    // 10-01 시작, (10-01, 1) = 10-01~10-07. 10-13(2주차 6일) 유지기로 맞춤 → 09-15.
+    // (09-15, 4) = 10-06~10-12: 10-06·10-07은 1주차 리포트에 들어간 날
+    expect(
+      alignedAheadOver({ startDate: '2026-09-15', weekIndex: 4 }, 4, [p('2026-10-01', 1)])
+    ).toBe(true);
+    // 1일만 겹쳐도 (10-14 맞춤 → 09-16, (09-16, 4) = 10-07~10-13)
+    expect(
+      alignedAheadOver({ startDate: '2026-09-16', weekIndex: 4 }, 4, [p('2026-10-01', 1)])
+    ).toBe(true);
+    // 표시 주차로 비교한다 (한 주 더 뒤 (10-08, 1) = 2주차)
+    expect(
+      alignedAheadOver({ startDate: '2026-09-22', weekIndex: 4 }, 4, [
+        p('2026-10-01', 1),
+        p('2026-10-08', 1, 2),
+      ])
+    ).toBe(true); // (09-22, 4) = 10-13~10-19, (10-08, 1) = 10-08~10-14와 2일
+  });
+
+  it('주차가 1만 오르면 false (다음 주차로 맞춤)', () => {
+    expect(
+      alignedAheadOver({ startDate: '2026-09-29', weekIndex: 2 }, 2, [p('2026-10-01', 1)])
+    ).toBe(false); // (09-29, 2) = 10-06~10-12
+  });
+
+  it('겹치지 않으면(바로 이어지거나 빈 날이 있으면) false: 맞춘 뒤 지낸 날이 대부분일 수 있다', () => {
+    // 바로 이어짐: 기존 결정 (2주차 중 4주차로 맞춤 → 사용자가 정한 주차)
+    expect(
+      alignedAheadOver({ startDate: '2026-09-24', weekIndex: 4 }, 4, [p('2026-10-08', 1)])
+    ).toBe(false);
+    // 빈 날이 있음 (10-01~10-07 뒤 10-09~10-15)
+    expect(
+      alignedAheadOver({ startDate: '2026-09-18', weekIndex: 4 }, 4, [p('2026-10-01', 1)])
+    ).toBe(false);
+    // 리포트가 없음 (1주차 중 맞춤은 구별할 수 없다)
+    expect(alignedAheadOver({ startDate: '2026-09-15', weekIndex: 4 }, 4, [])).toBe(false);
+  });
+
+  it('4일 이상 겹치면 false (그 리포트의 주차를 이어받는 같은 주)', () => {
+    expect(
+      alignedAheadOver({ startDate: '2026-09-12', weekIndex: 4 }, 1, [p('2026-10-01', 1)])
+    ).toBe(false);
+  });
+
+  it('가장 최근 리포트만 본다', () => {
+    // (09-15, 4) = 10-06~10-12는 (10-01, 1)과 2일 겹치지만, 더 최근 리포트 (10-13, 1) = 10-13~10-19와는 안 겹친다
+    expect(
+      alignedAheadOver({ startDate: '2026-09-15', weekIndex: 4 }, 4, [
+        p('2026-10-13', 1),
+        p('2026-10-01', 1),
+      ])
+    ).toBe(false);
+  });
+});
+
+describe('generateWeeklyReports: 주차 맞추기로 건너뛴 기간은 만들지 않는다 (감사 #16)', () => {
+  it('2주차 6일에 유지기로 맞추면 바로 오는 "4주차"(1·2주차 기록)는 권한 rpc·AI·푸시 없이 건너뛴다', async () => {
+    const { deps, db } = makeDeps({
+      fetchUsers: vi.fn(async () => [{ id: 'a', start_date: '2026-09-15' }]),
+      fetchProgramStart: vi.fn(async () => '2026-09-15'), // 앞당기면 회차 시작일도 새 시작일
+    });
+    // 회차 시작일(09-15) 이후 시작일이라 같은 회차
+    db.reports.push(reportRow('a', '2026-10-01', 1));
+    const result = await generateWeeklyReports(deps, '2026-10-13');
+    expect(result).toMatchObject({ candidates: 1, alignedAhead: 1, generated: 0 });
+    expect(deps.hasPremiumAccess).not.toHaveBeenCalled();
+    expect(deps.askGemini).not.toHaveBeenCalled();
+    expect(db.reports).toHaveLength(1);
+    expect(db.notifications).toHaveLength(0);
+  });
+
+  it('맞춘 다음 주(겹치지 않는 기간)는 만든다', async () => {
+    const { deps, db } = makeDeps({
+      fetchUsers: vi.fn(async () => [{ id: 'a', start_date: '2026-09-15' }]),
+      fetchProgramStart: vi.fn(async () => '2026-09-15'),
+    });
+    db.reports.push(reportRow('a', '2026-10-01', 1));
+    // (09-15, 5) = 10-13~10-19
+    const result = await generateWeeklyReports(deps, '2026-10-20');
+    expect(result).toMatchObject({ generated: 1, alignedAhead: 0 });
+    expect(db.reports[1]).toMatchObject({ week_index: 5, display_week: 5 });
   });
 });
 

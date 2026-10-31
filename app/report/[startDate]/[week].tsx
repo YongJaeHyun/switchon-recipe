@@ -10,7 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import type { ReportContent } from 'types/report';
-import { programStartOf } from 'utils/programStart';
+import { MAINTENANCE_WEEK, programStartOf } from 'utils/programStart';
 import { MEAL_LABELS } from 'utils/recommendForm';
 import {
   formatProgramStart,
@@ -119,7 +119,10 @@ export default function ReportDetailScreen() {
           <MaterialIcons name="event-note" size={36} color={colors.neutral[300]} />
           <Text className="text-lg font-bold text-neutral-700">이번 주는 기록이 없어요</Text>
           <Text className="text-center text-sm text-neutral-500">
-            체중이나 할 일을 기록하면 다음 리포트에서 한 주를 정리해 드릴게요
+            {/* 리포트는 유지기 1주차까지만 만든다 (운영자 결정 2026-10-31) → 그 뒤엔 다음 리포트가 없다 */}
+            {reportDisplayWeek(report) >= MAINTENANCE_WEEK
+              ? '주간 리포트는 유지기 첫 주까지 정리해 드려요'
+              : '체중이나 할 일을 기록하면 다음 리포트에서 한 주를 정리해 드릴게요'}
           </Text>
         </View>
       );

@@ -8,6 +8,7 @@
 // 한 주 더 하기·주차 맞추기로 start_date가 바뀌면 같은 기간이 다른 키가 된다. 그래도 리포트는 만든다
 // (운영자 결정 2026-10-31: 한 주 더 하면 같은 7일 리포트가 하나 더 생기는 게 맞다). 대신 제목·푸시·
 // AI 문맥의 주차는 week_index가 아니라 실제로 지낸 주차(display_week, displayWeekFor)를 쓴다.
+// 리포트는 1~4주차와 유지기 1주차(표시 주차 5)까지만 만든다 (운영자 결정 2026-10-31, MAX_REPORT_WEEK).
 
 import { isServiceRoleRequest } from '../_shared/serviceRole.ts';
 import { scheduleFrom } from '../_shared/fastingSchedule.ts';
@@ -121,6 +122,8 @@ export interface GenerateResult {
   candidates: number; // 오늘이 새 주차 1~3일차인 유저
   noAccess: number;
   existing: number; // 이미 리포트가 있어 건너뜀
+  capped: number; // 표시 주차가 MAX_REPORT_WEEK보다 커서(유지기 2주차 이후) 건너뜀
+  alignedAhead: number; // 주차 맞추기로 건너뛴 기간이라 건너뜀 (alignedAheadOver, 감사 #16)
   generated: number; // 기록이 있어 문장까지 만든 리포트
   empty: number; // 체중·할 일 기록이 없어 status='empty'로 저장
   skipped: number; // 그 주 기록이 하나도 없어 만들지 않음
@@ -216,6 +219,39 @@ export function resolveDisplayWeek(
   return { week: target.weekIndex, source: null };
 }
 
+// 리포트를 만드는 마지막 표시 주차 = 유지기 1주차 (운영자 결정 2026-10-31: 1~4주차 + 유지기 1주차).
+// 유지기 2주차(표시 주차 6) 이후는 이용 권한 rpc·AI·저장·푸시 없이 건너뛴다. 판단은 week_index가 아니라 표시 주차로
+// 한다 (08:00 전 한 주 더로 week_index 5가 실제 6주차일 수 있다). 후보 SQL(weekly_report_candidates)은
+// week_index ≤ 5만 돌려준다: 표시 주차가 week_index보다 작은 건 이미 있는 리포트와 4일 이상 겹칠 때뿐인데,
+// 주차를 올리는 주차 맞추기는 많아야 5주차 1일로 가므로 6주차 이후 기간은 맞춘 날 뒤의 새 날짜라 겹치지 않는다
+export const MAX_REPORT_WEEK = 5;
+
+// 감사 #16: 주차 맞추기로 몇 주 앞(예: 유지기 = 5주차 1일)으로 가면 방금 끝난 기간이 새 시작일 키로 큰 주차가
+// 되지만, 실제로는 맞추기 전 주차로 지낸 날들이다 (2주차 6일에 유지기로 맞추면 1·2주차 기록이 "4주차 리포트").
+// 규칙: 같은 회차의 가장 최근 리포트(기간 기준)와 1~3일 겹치고(일부 날짜가 이미 그 주 리포트에 들어갔고)
+// 표시 주차가 그 리포트의 표시 주차보다 2 이상 크면 맞추기 전 날짜가 섞인 기간으로 보고 만들지 않는다.
+// 겹치지 않는 기간(바로 이어지거나 빈 날이 있음)은 만든다: 맞춘 뒤 지낸 날이 대부분일 수 있다 (기존 결정:
+// 2주차 중 4주차로 맞추면 그 주는 4주차).
+// 한계: 1주차 중 맞추거나(앞 리포트 없음) 새 주차 1일차 08:00 전에 맞추면(바로 이어짐) 구별할 수 없어 만든다.
+// 한계: 리포트를 받은 다음 날~사흘 안에 2주 이상 앞의 주차 2~4일로 맞추면, 맞춘 뒤 지낸 날이 많아도 그 주는 빠진다
+export function alignedAheadOver(
+  target: { startDate: string; weekIndex: number },
+  displayWeek: number,
+  reports: ReportPeriod[]
+): boolean {
+  const range = weekRange(target.startDate.slice(0, 10), target.weekIndex);
+  const latest = reports
+    .map((report) => ({ report, period: periodOf(report) }))
+    .sort(
+      (a, b) =>
+        dayMs(b.period.from) - dayMs(a.period.from) ||
+        (a.report.start_date < b.report.start_date ? 1 : -1)
+    )[0];
+  if (!latest) return false;
+  const days = overlapDays(range, latest.period);
+  return days > 0 && days < OVERLAP_MIN_DAYS && displayWeek >= displayOf(latest.report) + 2;
+}
+
 export function displayWeekFor(
   target: { startDate: string; weekIndex: number },
   reports: ReportPeriod[]
@@ -281,7 +317,14 @@ const writeContent = async (
   return fallbackContent(stats, nextWeekChanges);
 };
 
-type Outcome = 'noAccess' | 'existing' | 'generated' | 'empty' | 'skipped';
+type Outcome =
+  | 'noAccess'
+  | 'existing'
+  | 'capped'
+  | 'alignedAhead'
+  | 'generated'
+  | 'empty'
+  | 'skipped';
 
 // 리포트 대상은 그 주 기록이 1개 이상인 유저 (설계 §6). 앱을 열지 않은 주에 빈 리포트를 쌓지 않는다
 const hasAnyRecord = (stats: WeeklyStats) =>
@@ -303,16 +346,21 @@ const processUser = async (
   if (reports.some((r) => r.start_date.slice(0, 10) === startDate && r.week_index === weekIndex)) {
     return { outcome: 'existing', notified: false, failed: false };
   }
+
+  // 표시 주차로 만들지 말지 먼저 정한다 (만들지 않을 유저의 권한 rpc·AI를 아낀다)
+  const programStart = await deps.fetchProgramStart(uid);
+  const program = sameProgramReports(reports, startDate, programStart);
+  const { week: displayWeek, source } = resolveDisplayWeek({ startDate, weekIndex }, program);
+  if (displayWeek > MAX_REPORT_WEEK) return { outcome: 'capped', notified: false, failed: false };
+  if (alignedAheadOver({ startDate, weekIndex }, displayWeek, program)) {
+    return { outcome: 'alignedAhead', notified: false, failed: false };
+  }
+
   if (!(await deps.hasPremiumAccess(uid)))
     return { outcome: 'noAccess', notified: false, failed: false };
 
   const range = weekRange(startDate, weekIndex);
-  const programStart = await deps.fetchProgramStart(uid);
   const baselineStart = baselineStartOf(programStart, startDate);
-  const { week: displayWeek, source } = resolveDisplayWeek(
-    { startDate, weekIndex },
-    sameProgramReports(reports, startDate, programStart)
-  );
   const data = await deps.fetchWeekData({
     uid,
     startDate,
@@ -415,6 +463,8 @@ export async function generateWeeklyReports(
     candidates: targets.length,
     noAccess: 0,
     existing: 0,
+    capped: 0,
+    alignedAhead: 0,
     generated: 0,
     empty: 0,
     skipped: 0,

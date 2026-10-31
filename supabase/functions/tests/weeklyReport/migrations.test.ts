@@ -151,4 +151,15 @@ describe('weekly_report.display_week (리포트 제목 = 실제로 지낸 주차
       'grant execute on function public.weekly_report_candidates(date) to service_role;'
     );
   });
+
+  it('후보 함수는 끝난 주차(week_index)가 유지기 1주차(5) 이하인 시작일만 돌려준다 (운영자 결정 2026-10-31)', () => {
+    const s = sql();
+    // 지금 시작일·다시 시작 직전 회차 보충 둘 다
+    expect(s).toContain(
+      'where e.start_date <= p_today - 7 and (p_today - e.start_date) % 7 < 3 and (p_today - e.start_date) / 7 <= 5'
+    );
+    expect(s).toContain(
+      'where p.start_date <= p_today - 7 and (p_today - p.start_date) % 7 < 3 and (p_today - p.start_date) / 7 <= 5'
+    );
+  });
 });
