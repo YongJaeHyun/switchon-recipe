@@ -1,15 +1,20 @@
 import { StatisticsAPI } from 'api/StatisticsAPI';
 import { Text } from 'components/common/Text';
+import { KakaoShareButton } from 'components/share/KakaoShareButton';
+import { WeightLossCheckbox } from 'components/share/WeightLossCheckbox';
 import { QueryKey } from 'const/queryKey';
 import { useQueryWith402Retry } from 'hooks/useCustomQuery';
-import React from 'react';
+import { useProgramWeightLoss } from 'hooks/useWeights';
+import React, { useState } from 'react';
 import { View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { buildCompletionCalendar, type CalendarWeek, type DayMark } from 'utils/completionCalendar';
 import { getKoreanDateString } from 'utils/date';
 import { getWeekInkHex } from 'utils/getWeekColor';
+import { completionShareTarget } from 'utils/kakaoShare';
 import { programWeekAndDay } from 'utils/programStart';
+import { shareCompletion } from 'utils/shareKakao';
 
 const MARK = 16;
 const CELL = 28;
@@ -104,6 +109,10 @@ export function FourWeekReport() {
     isLoading ? undefined : data?.weeks.map((w) => w.todoRatesByWeek),
     notStarted || isLoading ? { ...progress, beforeStart: true } : progress
   );
+  // 자랑하기: 마친 주차 중 가장 최근(1주차 중이면 이번 주). 완주한 날이 없으면 숨긴다
+  const shareTarget = isLoading || notStarted ? null : completionShareTarget(calendar, progress);
+  const weightLossKg = useProgramWeightLoss();
+  const [withWeight, setWithWeight] = useState(false);
 
   return (
     <View className="gap-4">
@@ -139,6 +148,18 @@ export function FourWeekReport() {
           </View>
         ))}
       </View>
+
+      {shareTarget && (
+        <View className="gap-1">
+          <KakaoShareButton
+            label={`🔥 ${shareTarget.week}주차 ${shareTarget.kind === 'week' ? '완주 ' : ''}자랑하기`}
+            onPress={() => shareCompletion(shareTarget, withWeight ? weightLossKg : null)}
+          />
+          {weightLossKg !== null && (
+            <WeightLossCheckbox lossKg={weightLossKg} value={withWeight} onChange={setWithWeight} />
+          )}
+        </View>
+      )}
     </View>
   );
 }

@@ -9,7 +9,9 @@ import { isDayString } from './kakaoShare';
 
 export type KakaoLinkTarget =
   | { type: 'recipe'; recipe: string }
-  | { type: 'invite'; startDate: string };
+  | { type: 'invite'; startDate: string }
+  // 아는 파라미터가 없는 링크 (완주 인증 share=completion 등): 앱만 연다
+  | { type: 'open' };
 
 export interface KakaoLinkRoute {
   href: string; // 지금 갈 곳
@@ -66,7 +68,7 @@ export function parseKakaoLink(url: string | null | undefined): KakaoLinkTarget 
     const startDate = params.get('invite');
     return isDayString(startDate) ? { type: 'invite', startDate } : null;
   }
-  return null;
+  return { type: 'open' };
 }
 
 export const recipeDetailHref = (recipe: string) =>
@@ -84,8 +86,8 @@ export function kakaoLinkRoute({
   isLoggedIn: boolean;
   isOnboarded: boolean | null | undefined;
 }): KakaoLinkRoute {
-  // 깨진 주소: 시작 화면이 로그인 여부에 따라 홈·로그인으로 보낸다
-  if (!target) return { href: '/', afterLoginHref: null };
+  // 깨진 주소·앱만 여는 링크: 시작 화면이 로그인 여부에 따라 홈·로그인으로 보낸다
+  if (!target || target.type === 'open') return { href: '/', afterLoginHref: null };
   const ready = isLoggedIn && !!isOnboarded;
   if (target.type === 'invite') {
     return { href: ready ? '/(tabs)/home' : '/', afterLoginHref: null, invite: target.startDate };

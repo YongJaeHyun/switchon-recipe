@@ -1,6 +1,8 @@
 import type { KakaoFeedTemplate, KakaoTemplateLink } from '@react-native-kakao/share';
 import { STORE_URL } from 'const/const';
 import { APP_LOGO_URL } from 'const/kakaoTemplates';
+import type { Nullable } from 'types/common';
+import type { CompletionCalendar } from './completionCalendar';
 import {
   addDaysToDay,
   daysUntilStart,
@@ -8,6 +10,8 @@ import {
   programWeekAndDay,
   startDateForWeekDay,
 } from './programStart';
+import type { ProgramProgress } from './todoRateWeeks';
+import { round1, weightChange, type WeightPoint } from './weight';
 
 // 카톡으로 보내는 메시지 내용 (순수). 보내기는 utils/shareKakao, 받은 링크 해석은 utils/kakaoLink
 
@@ -127,6 +131,69 @@ export function inviteNotice(
     title: '친구가 같이 하자고 초대했어요',
     subtitle: `${friend}. 시작일은 오늘 탭 설정에서 바꿀 수 있어요`,
   };
+}
+
+// ── 완주 인증 (자랑하기). 받은 사람은 앱만 연다 (share=completion → app/kakaolink → 시작 화면)
+
+// week = 그 주차를 마침, day = 완주 축하 시트(그날 일차), ongoing = 아직 이번 주 중
+export type CompletionShare =
+  | { kind: 'week'; week: number; fullDays: number }
+  | { kind: 'day'; week: number; day: number; fullDays: number }
+  | { kind: 'ongoing'; week: number; fullDays: number };
+
+export function completionMessage(
+  share: CompletionShare & { weightLossKg?: number | null }
+): KakaoShareMessage {
+  const title =
+    share.kind === 'day'
+      ? `스위치온 ${share.week}주차 ${share.day}일차 완주! 🔥`
+      : share.kind === 'week'
+        ? `스위치온 ${share.week}주차 완주! 🔥`
+        : `스위치온 ${share.week}주차 도전 중! 🔥`;
+  // 체중은 사용자가 켠 경우만 (기본 꺼짐)
+  const weight = share.weightLossKg ? ` · 감량 -${round1(share.weightLossKg).toFixed(1)}kg` : '';
+  return {
+    title,
+    description: `7일 중 ${share.fullDays}일 완주${weight}`,
+    buttonTitle: '나도 스위치온 해보기',
+    imageUrl: APP_LOGO_URL,
+    params: { share: 'completion' },
+  };
+}
+
+// 이번 회차(program_start부터) 첫 체중 기록 대비 최근 기록이 준 만큼 (kg). 기록이 둘 미만이거나 줄지 않았으면 null
+// (null이면 "감량한 체중도 함께 보내기"를 숨긴다)
+export function programWeightLoss(
+  logs: WeightPoint[],
+  startDate: string | null | undefined,
+  programStart: string | null | undefined
+): number | null {
+  if (!startDate) return null;
+  const change = weightChange(logs, startDate, { programStart });
+  if (!change || change.diff >= 0) return null;
+  return round1(-change.diff);
+}
+
+// 완주 축하 시트: 오늘(day일차, 방금 100%)까지 이번 주 완주한 날. 오늘 통계는 아직 안 올라갔을 수 있어 오늘은 센다
+export function dayFullCount(weekRates: Nullable<number>[] | undefined, day: number): number {
+  const before = (weekRates ?? []).slice(0, day - 1).filter((rate) => (rate ?? 0) >= 100).length;
+  return before + 1;
+}
+
+const PROGRAM_WEEKS = 4;
+
+// 완주 달력의 자랑하기: 마친 주차 중 가장 최근(유지기면 4주차), 1주차 중이면 이번 주(도전 중).
+// 시작 전이거나 그 주에 완주한 날이 없으면 null (버튼을 숨긴다)
+export function completionShareTarget(
+  calendar: CompletionCalendar,
+  progress: ProgramProgress
+): Extract<CompletionShare, { kind: 'week' | 'ongoing' }> | null {
+  if (progress.beforeStart) return null;
+  const finished = Math.min(progress.week - 1, PROGRAM_WEEKS);
+  const week = finished >= 1 ? finished : 1;
+  const fullDays = calendar.weeks[week - 1]?.counts.full ?? 0;
+  if (fullDays === 0) return null;
+  return finished >= 1 ? { kind: 'week', week, fullDays } : { kind: 'ongoing', week, fullDays };
 }
 
 // ── 기본 피드 메시지 (콘솔 템플릿이 없을 때)

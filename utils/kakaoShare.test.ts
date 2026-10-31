@@ -2,13 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { STORE_URL } from 'const/const';
 import { APP_LOGO_URL } from 'const/kakaoTemplates';
 import {
+  completionMessage,
+  completionShareTarget,
+  dayFullCount,
   feedTemplate,
   inviteMessage,
   inviteNotice,
   inviteStartChoice,
   isDayString,
   monthDayLabel,
+  programWeightLoss,
 } from './kakaoShare';
+import { buildCompletionCalendar } from './completionCalendar';
 
 describe('isDayString', () => {
   it('yyyy-MM-dd 실제 날짜만', () => {
@@ -141,5 +146,124 @@ describe('feedTemplate (템플릿 ID가 없을 때 기본 피드)', () => {
       content: { title: 't', description: 'd', imageUrl: 'https://img/a.png', link },
       buttons: [{ title: 'b', link }],
     });
+  });
+});
+
+describe('completionMessage (완주 인증)', () => {
+  it('주차를 마쳤으면 "N주차 완주"와 7일 중 완주한 날', () => {
+    expect(completionMessage({ kind: 'week', week: 2, fullDays: 6 })).toEqual({
+      title: '스위치온 2주차 완주! 🔥',
+      description: '7일 중 6일 완주',
+      buttonTitle: '나도 스위치온 해보기',
+      imageUrl: APP_LOGO_URL,
+      params: { share: 'completion' },
+    });
+  });
+
+  it('완주 축하 시트는 그날 일차', () => {
+    expect(completionMessage({ kind: 'day', week: 1, day: 3, fullDays: 3 }).title).toBe(
+      '스위치온 1주차 3일차 완주! 🔥'
+    );
+  });
+
+  it('아직 주차를 마치지 않았으면 도전 중', () => {
+    expect(completionMessage({ kind: 'ongoing', week: 1, fullDays: 2 }).title).toBe(
+      '스위치온 1주차 도전 중! 🔥'
+    );
+  });
+
+  it('체중은 켠 경우만 붙인다', () => {
+    expect(
+      completionMessage({ kind: 'week', week: 1, fullDays: 7, weightLossKg: 2.04 }).description
+    ).toBe('7일 중 7일 완주 · 감량 -2.0kg');
+    expect(
+      completionMessage({ kind: 'week', week: 1, fullDays: 7, weightLossKg: null }).description
+    ).toBe('7일 중 7일 완주');
+  });
+});
+
+describe('programWeightLoss (회차 첫 기록 대비 최근 감량)', () => {
+  const logs = [
+    { day: '2026-09-20', weight_kg: 80 },
+    { day: '2026-10-07', weight_kg: 72.5 },
+    { day: '2026-10-20', weight_kg: 71 },
+    { day: '2026-10-30', weight_kg: 70.2 },
+  ];
+
+  it('회차 시작일 이후 첫 기록 − 최근 기록', () => {
+    expect(programWeightLoss(logs, '2026-10-07', '2026-10-07')).toBe(2.3);
+  });
+
+  it('회차 시작일(program_start)이 시작일보다 앞이면 그때부터', () => {
+    expect(programWeightLoss(logs, '2026-10-14', '2026-10-07')).toBe(2.3);
+  });
+
+  it('기록이 하나뿐이거나 줄지 않았으면 null (체크박스를 숨긴다)', () => {
+    expect(programWeightLoss([logs[1]], '2026-10-07', null)).toBeNull();
+    expect(
+      programWeightLoss(
+        [
+          { day: '2026-10-07', weight_kg: 70 },
+          { day: '2026-10-10', weight_kg: 70.4 },
+        ],
+        '2026-10-07',
+        null
+      )
+    ).toBeNull();
+    expect(programWeightLoss([], '2026-10-07', null)).toBeNull();
+    expect(programWeightLoss(logs, null, null)).toBeNull();
+  });
+});
+
+describe('dayFullCount (완주 축하 시트: 오늘까지 이번 주 완주한 날)', () => {
+  it('오늘 앞 날 중 100%인 날 + 오늘', () => {
+    expect(dayFullCount([100, 50, 100, 0, 0, 0, 0], 4)).toBe(3);
+    expect(dayFullCount([100, 50, 100, 0, 0, 0, 0], 1)).toBe(1);
+    expect(dayFullCount(undefined, 3)).toBe(1);
+  });
+});
+
+describe('completionShareTarget (완주 달력에서 무엇을 자랑할지)', () => {
+  const rates = [
+    [100, 100, 100, 100, 50, 100, 100],
+    [100, 0, 100, 100, 100, 100, 100],
+    [0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0],
+  ];
+  const calendarAt = (week: number, day: number) =>
+    buildCompletionCalendar(rates, { week, day, beforeStart: false });
+
+  it('지난 주차 중 가장 최근 주차', () => {
+    expect(
+      completionShareTarget(calendarAt(3, 2), { week: 3, day: 2, beforeStart: false })
+    ).toEqual({ kind: 'week', week: 2, fullDays: 6 });
+  });
+
+  it('1주차 중이면 도전 중', () => {
+    expect(
+      completionShareTarget(calendarAt(1, 4), { week: 1, day: 4, beforeStart: false })
+    ).toEqual({ kind: 'ongoing', week: 1, fullDays: 4 });
+  });
+
+  it('유지기면 4주차', () => {
+    const calendar = buildCompletionCalendar([rates[0], rates[1], rates[0], rates[1]], {
+      week: 6,
+      day: 1,
+      beforeStart: false,
+    });
+    expect(completionShareTarget(calendar, { week: 6, day: 1, beforeStart: false })).toEqual({
+      kind: 'week',
+      week: 4,
+      fullDays: 6,
+    });
+  });
+
+  it('시작 전이거나 완주한 날이 없으면 null', () => {
+    expect(
+      completionShareTarget(calendarAt(1, 1), { week: 1, day: 1, beforeStart: true })
+    ).toBeNull();
+    expect(
+      completionShareTarget(calendarAt(4, 2), { week: 4, day: 2, beforeStart: false })
+    ).toBeNull();
   });
 });

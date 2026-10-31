@@ -37,7 +37,6 @@ describe('parseKakaoLink (카톡 메시지 버튼으로 연 주소 해석)', () 
   });
 
   it('레시피가 없거나 깨졌으면 null (상세 화면이 JSON.parse로 죽지 않게)', () => {
-    expect(parseKakaoLink('switchon-recipe://kakaolink')).toBeNull();
     expect(parseKakaoLink(link('recipe='))).toBeNull();
     expect(parseKakaoLink(link('recipe=123'))).toBeNull();
     expect(parseKakaoLink(link('recipe=%7Bbroken'))).toBeNull();
@@ -79,6 +78,19 @@ describe('parseKakaoLink: 같이 하자 초대 (invite=시작일)', () => {
 
   it('레시피가 같이 있으면 레시피가 먼저', () => {
     expect(parseKakaoLink(`${recipeLink}&invite=2026-11-02`)?.type).toBe('recipe');
+  });
+});
+
+describe('parseKakaoLink: 앱만 여는 링크 (완주 인증 등)', () => {
+  it('아는 파라미터가 없으면 앱만 연다 (오류 아님)', () => {
+    expect(parseKakaoLink(link('share=completion'))).toEqual({ type: 'open' });
+    expect(parseKakaoLink('switchon-recipe://kakaolink')).toEqual({ type: 'open' });
+  });
+
+  it('앱만 열면 시작 화면으로 (로그인했으면 홈)', () => {
+    expect(
+      kakaoLinkRoute({ target: { type: 'open' }, isLoggedIn: true, isOnboarded: true })
+    ).toEqual({ href: '/', afterLoginHref: null });
   });
 });
 

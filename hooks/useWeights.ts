@@ -6,6 +6,7 @@ import { queryClient } from 'lib/queryClient';
 import { useUserStore } from 'stores/userStore';
 import type { UserSettingDB, WeightLogDB } from 'types/database';
 import { failFastWhenOffline } from 'utils/failFastWhenOffline';
+import { programWeightLoss } from 'utils/kakaoShare';
 import { useQueryWith402Retry } from './useCustomQuery';
 
 // 내 체중 기록 전체 (날짜순). 무효화는 [QueryKey.weightLogs] 접두어로 한다
@@ -66,4 +67,12 @@ export const useUserSetting = () => {
     isError: query.isError,
     updateSetting,
   };
+};
+
+// 이번 회차 첫 체중 기록 대비 줄어든 kg (완주 인증 "감량한 체중도 함께 보내기"). 없거나 줄지 않았으면 null
+export const useProgramWeightLoss = () => {
+  const { logs } = useWeights();
+  const startDate = useUserStore((state) => state.start_date);
+  const programStart = useUserStore((state) => state.program_start);
+  return programWeightLoss(logs, startDate, programStart);
 };

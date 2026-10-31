@@ -11,8 +11,10 @@ export function KakaoShareButton({
   onPress,
   className = '',
   compact = false,
+  accessibilityLabel,
 }: {
   label: string;
+  accessibilityLabel?: string;
   onPress: () => void;
   className?: string;
   // 한 줄에 둘 놓을 때 (완주 축하 시트)
@@ -26,6 +28,7 @@ export function KakaoShareButton({
       className={`w-full flex-row gap-1.5 ${compact ? 'py-2.5' : 'py-3'}`}
       style={{ backgroundColor: KAKAO_YELLOW }}
       accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? label}
       accessibilityHint="카카오톡 공유 창이 열려요">
       <Text className="font-bold" style={{ color: KAKAO_LABEL }} numberOfLines={1}>
         {label}

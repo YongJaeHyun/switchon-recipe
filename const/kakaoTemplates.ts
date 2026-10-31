@@ -8,6 +8,8 @@ export const KAKAO_TEMPLATE_IDS = {
   recipe: 122968,
   // 같이 하자 초대. 실행 파라미터 invite=${invite}
   invite: null,
+  // 완주 인증 (자랑하기). 실행 파라미터 share=completion (앱만 연다)
+  completion: null,
 } as const satisfies Record<string, number | null>;
 
 export type KakaoTemplateKey = keyof typeof KAKAO_TEMPLATE_IDS;

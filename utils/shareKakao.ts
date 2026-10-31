@@ -2,7 +2,13 @@ import { shareCustomTemplate, shareFeedTemplate } from '@react-native-kakao/shar
 import { KAKAO_TEMPLATE_IDS, type KakaoTemplateKey } from 'const/kakaoTemplates';
 import { useUserStore } from 'stores/userStore';
 import { getKoreanDateString } from './date';
-import { feedTemplate, inviteMessage, type KakaoShareMessage } from './kakaoShare';
+import {
+  completionMessage,
+  feedTemplate,
+  inviteMessage,
+  type CompletionShare,
+  type KakaoShareMessage,
+} from './kakaoShare';
 import { captureError } from './sendError';
 import { showErrorToast } from './showToast';
 
@@ -37,4 +43,9 @@ export function shareInvite() {
   if (!startDate) return;
   const today = getKoreanDateString({ formatType: 'date' });
   return shareKakaoMessage('invite', inviteMessage({ startDate, today }));
+}
+
+// 완주 인증 (완주 축하 시트·완주 달력). 체중은 사용자가 켠 경우만 넘긴다
+export function shareCompletion(share: CompletionShare, weightLossKg: number | null) {
+  return shareKakaoMessage('completion', completionMessage({ ...share, weightLossKg }));
 }
