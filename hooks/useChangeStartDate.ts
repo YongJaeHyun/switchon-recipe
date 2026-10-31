@@ -66,6 +66,13 @@ export function useChangeStartDate() {
     // 같은 시작일(회차 시작일만 바뀜)이면 정리하지 않는다 (오늘 기록한 할 일 완료율이 지워져 체크리스트와 어긋나지 않게)
     if (!change.startChanged) return true;
 
+    await cleanupAfterStartChange(newStart, today);
+    return true;
+  };
+
+  // 시작일이 바뀐 뒤 정리: 이번 주차 단식 계획 표시, 새 주차보다 높은 선택 재료 빼기, 오늘 주차·일차부터의 할 일 통계 지우기.
+  // 온보딩(UserAPI.updateOnboarding으로 따로 저장)도 이미 시작일이 있던 유저면 이것을 부른다
+  const cleanupAfterStartChange = async (newStart: string, today: string) => {
     // 이번 주차 단식 계획이 이미 있으면(같은 날 주차 맞추기를 되돌림 등) 표시해, 기록 탭이 오늘부터 새 시작일 계획을 쓰게 한다
     const touch = planToTouch(newStart, today);
     if (touch) void FastingPlanAPI.touch(touch);
@@ -80,8 +87,7 @@ export function useChangeStartDate() {
     if (plan.zero) upsertZeroIngredients(plan.zero);
     await StatisticsAPI.deleteFrom(plan.statisticsFrom.week, plan.statisticsFrom.day);
     void queryClient.invalidateQueries({ queryKey: [QueryKey.todoRateStatistics] });
-    return true;
   };
 
-  return { changeStartDate };
+  return { changeStartDate, cleanupAfterStartChange };
 }

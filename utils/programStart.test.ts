@@ -11,6 +11,7 @@ import {
   planToTouch,
   startDateChange,
   dayProgramBase,
+  onboardingNeedsCleanup,
   PROGRAM_CHAIN_DAYS,
   programStartOf,
   isBeforeStart,
@@ -841,5 +842,21 @@ describe('주차 맞추기 되돌리기 (오늘 첫 변경 전 회차 시작일)
         alignBase: '2026-10-17',
       })
     ).toEqual({ programStart: '2026-10-03', startChanged: true });
+  });
+});
+
+// 온보딩은 UserAPI.updateOnboarding으로 따로 저장한다. 이미 시작일이 있던 유저(온보딩을 안 끝낸 옛 행)만 정리한다
+describe('onboardingNeedsCleanup', () => {
+  it('처음 정하는 시작일이면 정리할 것이 없다', () => {
+    expect(onboardingNeedsCleanup(null, '2026-11-01')).toBe(false);
+    expect(onboardingNeedsCleanup('', '2026-11-01')).toBe(false);
+  });
+
+  it('같은 시작일이면 정리하지 않는다', () => {
+    expect(onboardingNeedsCleanup('2026-11-01T00:00:00+09:00', '2026-11-01')).toBe(false);
+  });
+
+  it('다른 시작일이 있었으면 정리한다 (통계·재료·단식 계획)', () => {
+    expect(onboardingNeedsCleanup('2026-09-01', '2026-11-01')).toBe(true);
   });
 });

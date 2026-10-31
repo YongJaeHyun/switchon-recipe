@@ -6,6 +6,7 @@ import { WeekDayPicker } from 'components/program/WeekDayPicker';
 import { onboardQuestionImage } from 'const/assets';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
+import { useChangeStartDate } from 'hooks/useChangeStartDate';
 import { turnOnMealAlarm } from 'hooks/useMealAlarmSync';
 import useSteps from 'hooks/useSteps';
 import { useEffect, useState } from 'react';
@@ -13,6 +14,7 @@ import { View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMealAlarmStore } from 'stores/mealAlarmStore';
+import { useUserStore } from 'stores/userStore';
 import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
 import colors from 'tailwindcss/colors';
 import { getKoreanDateString, getKoreanDateWeeksAgo } from 'utils/date';
@@ -23,6 +25,7 @@ import { declaredWeekRepeatKey } from 'utils/weekRepeat';
 import {
   addDaysToDay,
   MAINTENANCE_WEEK,
+  onboardingNeedsCleanup,
   programWeekAndDay,
   startDateForWeekDay,
 } from 'utils/programStart';
@@ -41,6 +44,7 @@ export default function OnboardingScreen() {
   const mealTimes = useMealAlarmStore((state) => state.times);
   const setMealAlarmOn = useMealAlarmStore((state) => state.setOn);
   const [isAsking, setIsAsking] = useState(false);
+  const { cleanupAfterStartChange } = useChangeStartDate();
 
   const today = getKoreanDateString({ formatType: 'date' });
   const tomorrow = addDaysToDay(today, 1);
@@ -65,7 +69,11 @@ export default function OnboardingScreen() {
     // 3·4주차라고 고르고 들어오면 그 전환에서 "한 주 더 하기"를 묻지 않는다 (홈에서 바로 열리는 주차 팝업보다 먼저)
     const declaredKey = declaredWeekRepeatKey(selectedDate, today);
     if (declaredKey) markRepeatAsked(declaredKey);
-    await UserAPI.updateOnboarding(selectedDate);
+    const previousStart = useUserStore.getState().start_date;
+    const ok = await UserAPI.updateOnboarding(selectedDate);
+    // 이미 다른 시작일로 기록이 남은 유저(온보딩을 안 끝낸 옛 행)면 시작일 변경과 같은 정리 (통계·재료·단식 계획)
+    if (ok && onboardingNeedsCleanup(previousStart, selectedDate))
+      await cleanupAfterStartChange(selectedDate, today);
     router.replace('/(tabs)/home');
   };
   // 끼니 알림: 예 → 권한 요청(거부하면 꺼짐), 아니오 → 꺼짐. 나중에 내 정보에서 켤 수 있다

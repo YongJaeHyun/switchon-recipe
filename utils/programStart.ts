@@ -289,3 +289,12 @@ export function planToTouch(
   if (beforeStart || week < 2) return null;
   return { start_date: newStart.slice(0, 10), week_index: week };
 }
+
+// 온보딩으로 시작일을 저장한 뒤 시작일 변경 정리(useChangeStartDate cleanup)가 필요한지: 이미 다른 시작일이 있던 유저
+// (온보딩을 끝내지 않은 채 기록이 남은 옛 행)만. 처음 시작일을 정하는 새 유저는 지울 것이 없다
+export function onboardingNeedsCleanup(
+  previousStart: string | null | undefined,
+  newStart: string
+): boolean {
+  return !!previousStart && !isSameStartDate(previousStart, newStart);
+}
