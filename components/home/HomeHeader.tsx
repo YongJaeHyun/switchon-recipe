@@ -2,9 +2,6 @@ import Feather from '@expo/vector-icons/Feather';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { BottomSheetMethods } from '@gorhom/bottom-sheet/lib/typescript/types';
 import { Text } from 'components/common/Text';
-import { baseProfile } from 'const/assets';
-import { Image } from 'expo-image';
-import { Link } from 'expo-router';
 import useKoreanToday from 'hooks/useKoreanToday';
 import React, { RefObject } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
@@ -18,7 +15,7 @@ interface HomeHeaderProps {
 }
 
 export const HomeHeader = ({ bottomSheetRef }: HomeHeaderProps) => {
-  const { start_date, avatar_url } = useUserStore((state) => state);
+  const start_date = useUserStore((state) => state.start_date);
   const today = useKoreanToday();
 
   // 시작 전이면 1주차 점은 모두 비워 두고, 1일 자리에 D-n을 보여준다
@@ -31,13 +28,9 @@ export const HomeHeader = ({ bottomSheetRef }: HomeHeaderProps) => {
   const day = beforeStart ? 0 : programDay;
   return (
     <View>
-      <View className="mb-1 mt-4 flex-row items-center justify-between">
+      {/* 프로필 아이콘은 뺐다: 하단 "내 정보" 탭과 같은 곳으로 가서 겹친다 */}
+      <View className="mb-1 mt-4">
         <Text className="text-neutral-600">오늘도 파이팅!</Text>
-        <View className="h-11 w-11 overflow-hidden rounded-full border-2 border-neutral-300">
-          <Link href={'/(tabs)/me'}>
-            <Image style={{ width: '100%', height: '100%' }} source={avatar_url ?? baseProfile} />
-          </Link>
-        </View>
       </View>
       <View className="flex-row items-end gap-3">
         <View className="flex-row items-end gap-2">
