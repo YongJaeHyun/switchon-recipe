@@ -13,6 +13,7 @@ import { useIngredients } from 'hooks/useIngredients';
 import { useRecipeCreation } from 'hooks/useRecipeCreation';
 import { useSelect } from 'hooks/useSelect';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
+import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -48,7 +49,9 @@ export default function ZeroRecipeCreationScreen() {
   const [category, toggleCategory] = useSelect<RecipeCategory>(null);
   const [method, toggleMethod] = useSelect<RecipeMethod>(null);
 
-  const [keyword, setKeyword] = useState('');
+  // 탐색에서 결과가 없어 "직접 만들기"로 오면 찾던 말을 재료 검색칸에 미리 넣는다
+  const { keyword: initialKeyword } = useLocalSearchParams<{ keyword?: string }>();
+  const [keyword, setKeyword] = useState(initialKeyword ?? '');
 
   const [resetTrigger, setResetTrigger] = useState(false);
 
