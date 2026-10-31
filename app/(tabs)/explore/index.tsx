@@ -10,14 +10,13 @@ import { RECIPE_FILTERS, RecipeFilterType } from 'const/filter';
 import { RECIPE_SORTS, RecipeSortType } from 'const/sort';
 import { Link } from 'expo-router';
 import { PassBadge } from 'components/common/PassBadge';
-import { PassOnlyModal, type PassOnlyModalView } from 'components/common/PassOnlyModal';
 import { passBadgeState } from 'utils/passFeatureLabel';
 import { RecommendView } from 'components/recommend/RecommendView';
 import { useBillingAvailable } from 'hooks/useBillingAvailable';
 import { usePass } from 'hooks/usePass';
 import { useUserStore } from 'stores/userStore';
 import { getWeekAndDay } from 'utils/date';
-import { isPassOnSale, shouldShowPremiumEntry } from 'utils/passScreen';
+import { shouldShowPremiumEntry } from 'utils/passScreen';
 import { useInfiniteRecipeCards } from 'hooks/useInfiniteRecipes';
 import { flattenRecipePages } from 'utils/recipePages';
 import { useMemo, useState } from 'react';
@@ -47,7 +46,6 @@ export default function ExploreScreen() {
   const [tab, setTab] = useState<ExploreTab>(
     () => lastExploreTab ?? (Math.min(Math.max(getWeekAndDay(startDate).week, 1), 3) as 1 | 2 | 3)
   );
-  const [passModal, setPassModal] = useState<PassOnlyModalView | null>(null);
   const tabItems = showRecommend ? [RECOMMEND_TAB, ...WEEK_TABS] : [...WEEK_TABS];
   const shownTab: ExploreTab = tab === RECOMMEND_TAB && !showRecommend ? 1 : tab;
   const tabIndex = shownTab === RECOMMEND_TAB ? 0 : shownTab - (showRecommend ? 0 : 1);
@@ -59,15 +57,7 @@ export default function ExploreScreen() {
         ? RECOMMEND_TAB
         : (index as 1 | 2 | 3)
       : ((index + 1) as 1 | 2 | 3);
-    // 추천은 패스 기능: 패스가 없으면 탭을 바꾸지 않고 "패스 기능이에요" 창으로 묻는다
-    if (next === RECOMMEND_TAB && !hasAccess) {
-      setPassModal({
-        feature: '맞춤 레시피 추천',
-        description: '먹고 싶은 걸 고르면 지금 주차에 맞는 레시피를 골라 드려요',
-        canBuy: isPassOnSale(status?.sales, billingAvailable),
-      });
-      return;
-    }
+    // 추천 탭은 패스가 없어도 열어서 조건을 볼 수 있다. 버튼을 누를 때 패스 기능임을 알린다 (RecommendView)
     lastExploreTab = next;
     setTab(next);
   };
@@ -162,7 +152,6 @@ export default function ExploreScreen() {
           )}
         </>
       )}
-      <PassOnlyModal view={passModal} onClose={() => setPassModal(null)} />
     </SafeAreaViewWithNav>
   );
 }

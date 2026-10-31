@@ -9,6 +9,8 @@ import IngredientTile from 'components/recipeCreation/IngredientTile';
 import { IngredientsLoadError } from 'components/recipeCreation/IngredientsLoadError';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useIngredients } from 'hooks/useIngredients';
+import { usePassOnlyPrompt } from 'hooks/usePassOnlyPrompt';
+import { PassOnlyModal } from 'components/common/PassOnlyModal';
 import { useRecipeCreation } from 'hooks/useRecipeCreation';
 import { useExcludedIngredients, useRecommend } from 'hooks/useRecommend';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -346,6 +348,12 @@ export function RecommendView({ embedded = false }: { embedded?: boolean }) {
 
   // 추천·새로 만들기 모두 화면의 목록을 쓴다. 저장 목록을 받기 전에는 손댔으면 서버가 합치고(mergeSaved),
   // 손대지 않았으면 서버의 저장 목록에 맡긴다
+  // 패스가 없어도 조건은 골라 볼 수 있고, 버튼을 누를 때 "패스 기능이에요" 창으로 묻는다 (운영자 결정 2026-11-01)
+  const recommendPrompt = usePassOnlyPrompt(
+    '맞춤 레시피 추천',
+    '먹고 싶은 걸 고르면 지금 주차에 맞는 레시피를 골라 드려요'
+  );
+
   const handleRecommend = requireOnline(async () => {
     const outcome = await recommend(
       toRecommendRequest(conditions, {
@@ -415,7 +423,7 @@ export function RecommendView({ embedded = false }: { embedded?: boolean }) {
         className={noMatches ? 'w-full py-5' : 'w-full py-3.5'}
         rippleColor={noMatches ? colors.green[700] : colors.green[100]}
         disabled={busy || creation.isCreating}
-        onPress={creation.create}>
+        onPress={recommendPrompt.guard(creation.create)}>
         <Text
           className={
             noMatches ? 'text-lg font-bold text-white' : 'text-base font-bold text-green-600'
@@ -515,7 +523,7 @@ export function RecommendView({ embedded = false }: { embedded?: boolean }) {
                 rounded="lg"
                 className="px-3 py-1.5"
                 disabled={saveDisabled}
-                onPress={handleSaveExclude}>
+                onPress={recommendPrompt.guard(handleSaveExclude)}>
                 <Text className="text-sm font-bold text-white">저장</Text>
               </RippleButton>
             </View>
@@ -538,7 +546,7 @@ export function RecommendView({ embedded = false }: { embedded?: boolean }) {
           rounded="lg"
           className="w-full py-4"
           disabled={busy}
-          onPress={handleRecommend}>
+          onPress={recommendPrompt.guard(handleRecommend)}>
           <Text className="text-lg font-bold text-white">추천 받기</Text>
         </RippleButton>
 
@@ -570,7 +578,7 @@ export function RecommendView({ embedded = false }: { embedded?: boolean }) {
                   className="w-full flex-row gap-1 py-3.5"
                   rippleColor={colors.neutral[200]}
                   disabled={busy}
-                  onPress={handleRecommend}>
+                  onPress={recommendPrompt.guard(handleRecommend)}>
                   <MaterialIcons name="refresh" size={20} color={colors.neutral[600]} />
                   <Text className="text-base font-bold text-neutral-600">다른 추천 보기</Text>
                 </RippleButton>
@@ -602,6 +610,7 @@ export function RecommendView({ embedded = false }: { embedded?: boolean }) {
         onToggle={toggleIngredient}
         onClose={() => setPicker(null)}
       />
+      <PassOnlyModal {...recommendPrompt.modalProps} />
     </Shell>
   );
 }
