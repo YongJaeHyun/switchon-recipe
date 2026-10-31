@@ -15,6 +15,7 @@ import { queryClient } from 'lib/queryClient';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Defs, Line, Pattern, Rect } from 'react-native-svg';
 import { BillingUnavailableError, purchasePass } from 'services/billing';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
@@ -22,7 +23,7 @@ import type { PassStatus } from 'types/pass';
 import { requireOnline } from 'utils/network';
 import { getKoreanDateString } from 'utils/date';
 import { getWeekColorHex } from 'utils/getWeekColor';
-import { passJourney } from 'utils/passJourney';
+import { passBar } from 'utils/passBar';
 import { formatPassRemaining, formatSalesHeadline } from 'utils/passDisplay';
 import {
   canPurchasePassSelection,
@@ -55,8 +56,42 @@ const Centered = ({ children }: { children: React.ReactNode }) => (
   <View className="flex-1 items-center justify-center gap-3 px-5">{children}</View>
 );
 
-// 패스 기간을 5주(35일) 눈금 위에 그린다. 1주 패스는 앞 7일만 칠하고 나머지는 회색
+// 패스가 없으면 고른 기간을 5주(35일) 눈금 위에 그린다. 1주 패스는 앞 7일만 칠하고 나머지는 회색.
+// 패스가 있으면 눈금 없이 오늘 → 지금 패스 끝 → 연장분 끝까지
 const SCALE_DAYS = 35;
+const BAR_HEIGHT = 12;
+
+const durationLabel = (days: number) => (days % 7 === 0 ? `${days / 7}주` : `${days}일`);
+
+// 연장분: 같은 주차 색을 옅게 + 사선 무늬
+const HatchFill = ({ color, id }: { color: string; id: string }) => (
+  <View style={{ flex: 1, height: BAR_HEIGHT, overflow: 'hidden' }}>
+    <View
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: color,
+        opacity: 0.28,
+      }}
+    />
+    <Svg width="100%" height={BAR_HEIGHT} style={{ position: 'absolute' }}>
+      <Defs>
+        <Pattern
+          id={id}
+          width={5}
+          height={5}
+          patternUnits="userSpaceOnUse"
+          patternTransform="rotate(45)">
+          <Line x1={0} y1={0} x2={0} y2={5} stroke={color} strokeWidth={1.6} strokeOpacity={0.55} />
+        </Pattern>
+      </Defs>
+      <Rect width="100%" height={BAR_HEIGHT} fill={`url(#${id})`} />
+    </Svg>
+  </View>
+);
 
 // 맨 위: 고른 패스가 내 다이어트 일정(주차)의 어디까지를 덮는지.
 // scheduleLoading = 유저를 아직 불러오지 않아 주차를 모름 → 주차 색 대신 회색 막대
@@ -71,17 +106,21 @@ const JourneyHero = ({
 }) => {
   const startDate = useUserStore((state) => state.start_date);
   const remaining = formatPassRemaining(status.passExpiresAt, new Date());
-  // 이미 패스가 있으면 연장분은 지금 패스가 끝나는 날부터
-  const from =
-    remaining && status.passExpiresAt
-      ? formatInTimeZone(new Date(status.passExpiresAt), TIME_ZONE, 'yyyy-MM-dd')
-      : getKoreanDateString({ formatType: 'date' });
-  const { endsOn, segments } = passJourney({
+  const holder = Boolean(remaining && status.passExpiresAt);
+  const bar = passBar({
     startDate: startDate ?? null,
-    from,
+    today: getKoreanDateString({ formatType: 'date' }),
+    passEnd:
+      holder && status.passExpiresAt
+        ? formatInTimeZone(new Date(status.passExpiresAt), TIME_ZONE, 'yyyy-MM-dd')
+        : null,
     days: option.days,
   });
-  const restDays = Math.max(0, SCALE_DAYS - option.days);
+  // 패스가 없을 때만 35일 눈금의 남는 칸을 회색으로
+  const restDays = holder ? 0 : Math.max(0, SCALE_DAYS - option.days);
+  const showMarker = holder && bar.currentDays > 0 && bar.currentEndsOn;
+  // 표시 위치: 지금 패스가 막대의 반 이상이면 경계 왼쪽에 붙이고, 아니면 경계 오른쪽에서 시작
+  const markerOnLeft = bar.currentDays * 2 >= bar.totalDays;
   const repeatNote = getRepeatWeekNote(option);
 
   return (
@@ -108,9 +147,9 @@ const JourneyHero = ({
           <Text className="text-xs text-neutral-400">내 일정을 불러오고 있어요</Text>
         ) : (
           <View className="flex-row gap-0.5">
-            {segments.map(({ week, days }) => (
-              <View key={week} style={{ flex: days }}>
-                {days >= 5 && (
+            {bar.weeks.map(({ week, current, extension }) => (
+              <View key={week} style={{ flex: current + extension }}>
+                {current + extension >= 5 && (
                   <Text className="text-xs font-bold" style={{ color: weekBarColor(week) }}>
                     {weekLabel(week)}
                   </Text>
@@ -122,20 +161,83 @@ const JourneyHero = ({
         )}
         <View className="h-3 flex-row gap-0.5 overflow-hidden rounded-full">
           {scheduleLoading ? (
-            <View style={{ flex: option.days, backgroundColor: colors.neutral[300] }} />
+            <>
+              {holder && bar.currentDays > 0 && (
+                <View style={{ flex: bar.currentDays, backgroundColor: colors.neutral[300] }} />
+              )}
+              <View style={{ flex: option.days, flexDirection: 'row' }}>
+                {holder ? (
+                  <HatchFill color={colors.neutral[400]} id="hatch-loading" />
+                ) : (
+                  <View style={{ flex: 1, backgroundColor: colors.neutral[300] }} />
+                )}
+              </View>
+            </>
           ) : (
-            segments.map(({ week, days }) => (
-              <View key={week} style={{ flex: days, backgroundColor: weekBarColor(week) }} />
+            bar.weeks.map(({ week, current, extension }) => (
+              <View key={week} style={{ flex: current + extension, flexDirection: 'row' }}>
+                {current > 0 && (
+                  <View style={{ flex: current, backgroundColor: weekBarColor(week) }} />
+                )}
+                {extension > 0 && (
+                  <View style={{ flex: extension, flexDirection: 'row' }}>
+                    {holder ? (
+                      <HatchFill color={weekBarColor(week)} id={`hatch-${week}`} />
+                    ) : (
+                      <View style={{ flex: 1, backgroundColor: weekBarColor(week) }} />
+                    )}
+                  </View>
+                )}
+              </View>
             ))
           )}
           {restDays > 0 && (
             <View style={{ flex: restDays, backgroundColor: colors.neutral[100] }} />
           )}
         </View>
+        {showMarker && (
+          <View className="flex-row">
+            <View
+              style={{ flex: bar.currentDays }}
+              className={markerOnLeft ? 'items-end border-r-2 border-neutral-900 pr-1.5' : ''}>
+              {markerOnLeft && (
+                <Text className="text-sm font-bold text-neutral-900">{bar.currentEndsOn}까지</Text>
+              )}
+            </View>
+            <View
+              style={{ flex: option.days }}
+              className={markerOnLeft ? '' : 'items-start border-l-2 border-neutral-900 pl-1.5'}>
+              {!markerOnLeft && (
+                <Text className="text-sm font-bold text-neutral-900">{bar.currentEndsOn}까지</Text>
+              )}
+            </View>
+          </View>
+        )}
         <View className="flex-row justify-between">
-          <Text className="text-xs text-neutral-500">{remaining ? '지금 패스 끝' : '오늘'}</Text>
-          <Text className="text-sm font-bold text-neutral-900">{endsOn}까지</Text>
+          <Text className="text-xs text-neutral-500">오늘</Text>
+          <Text className="text-sm font-bold text-neutral-900">
+            {holder ? `연장하면 ${bar.endsOn}까지` : `${bar.endsOn}까지`}
+          </Text>
         </View>
+        {holder && !scheduleLoading && (
+          <View className="mt-1 flex-row items-center gap-4">
+            <View className="flex-row items-center gap-1.5">
+              <View
+                className="h-2.5 w-2.5 rounded-sm"
+                style={{ backgroundColor: colors.neutral[700] }}
+              />
+              <Text className="text-xs text-neutral-500">지금 패스</Text>
+            </View>
+            <View className="flex-row items-center gap-1.5">
+              <View className="h-2.5 w-2.5 flex-row overflow-hidden rounded-sm">
+                <HatchFill color={colors.neutral[700]} id="hatch-legend" />
+              </View>
+              <Text className="text-xs text-neutral-500">
+                연장분 ({durationLabel(option.days)})
+              </Text>
+            </View>
+          </View>
+        )}
       </View>
 
       {repeatNote && (
