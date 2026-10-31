@@ -11,14 +11,10 @@ import { usePremiumGate } from 'hooks/usePremiumGate';
 import { type ComponentProps } from 'react';
 import { View } from 'react-native';
 import colors from 'tailwindcss/colors';
-import { RECOMMEND_LOCKED_MESSAGE } from 'types/recommend';
-import { getWeekAndDay } from 'utils/date';
-import { useUserStore } from 'stores/userStore';
 import { foodCheckEntryState } from 'utils/foodCheckTrial';
 import { type PassBadgeState, passBadgeState } from 'utils/passFeatureLabel';
 import { RECIPE_BY_NAME_DESCRIPTION, RECIPE_BY_NAME_TITLE } from 'utils/recipeByName';
 import { shouldShowPremiumEntry } from 'utils/passScreen';
-import { isRecommendLocked } from 'utils/recommendForm';
 
 type IconName = ComponentProps<typeof MaterialIcons>['name'];
 
@@ -27,21 +23,12 @@ interface Tool {
   description: string;
   icon: IconName;
   href: Href;
-  // 지금 주차·일차에 쓸 수 없으면 설명 대신 보여줄 안내
-  notice?(week: number, day: number): string | null;
 }
 
 const FOOD_CHECK_HREF = '/foodCheck';
 
-// 레시피 탭의 구독 전용 도구 목록
+// 레시피 탭의 패스 도구 목록 (맞춤 레시피 추천은 탐색 탭으로 옮김: components/explore/RecommendEntryCard)
 const TOOLS: Tool[] = [
-  {
-    title: '맞춤 레시피 추천',
-    description: '먹고 싶은 걸 고르면 레시피를 골라 드려요',
-    icon: 'restaurant-menu',
-    href: '/recommend',
-    notice: (week, day) => (isRecommendLocked(week, day) ? RECOMMEND_LOCKED_MESSAGE : null),
-  },
   {
     title: '음식 판정',
     description: '사진 한 장으로 먹어도 되는지 확인',
@@ -50,7 +37,7 @@ const TOOLS: Tool[] = [
   },
 ];
 
-interface ToolCardProps {
+export interface ToolCardProps {
   title: string;
   description: string;
   icon: IconName;
@@ -69,7 +56,7 @@ function TitleWithBadge({ title, badge }: { title: string; badge: PassBadgeState
   );
 }
 
-function ToolCard({ title, description, icon, badge, onPress }: ToolCardProps) {
+export function ToolCard({ title, description, icon, badge, onPress }: ToolCardProps) {
   return (
     <RippleButton
       outerClassName="border border-neutral-200 bg-white"
@@ -125,18 +112,16 @@ export function RecipeToolCards() {
   const { status } = usePass();
   const billingAvailable = useBillingAvailable();
   const gate = usePremiumGate();
-  const startDate = useUserStore((state) => state.start_date);
 
   const premiumEntry = shouldShowPremiumEntry(status, billingAvailable);
   const foodCheck = foodCheckEntryState(status, billingAvailable);
   const byName = useRecipeByNameEntry();
-  const { week, day } = getWeekAndDay(startDate);
   const hasAccess = status?.hasAccess === true;
 
   const cards = TOOLS.flatMap((tool) => {
     const base = {
       title: tool.title,
-      description: tool.notice?.(week, day) ?? tool.description,
+      description: tool.description,
       icon: tool.icon,
     };
     if (tool.href === FOOD_CHECK_HREF) {
