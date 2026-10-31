@@ -1,4 +1,7 @@
-// 스위치온 패스 상품(5주 가격 구간 early1/early2/regular, 1주 고정 가격) 및 만료일 계산 순수 로직.
+// 스위치온 패스 상품(5주 가격 구간, 1주 고정 가격) 및 만료일 계산 순수 로직.
+// 5주 패스 가격 (운영자 결정 2026-11-01): 출시 할인 기간(premium_setting free_start~free_end) 안에서
+// 5주 패스를 처음 사는 사람만 2,900원(early2), 그 밖에는 모두 4,900원(regular).
+// 1,900원(early1)은 더 팔지 않는다. 옛 기록을 알아보도록 상품 목록에만 남겨 둔다
 // Deno 엣지 함수와 Vitest(node) 양쪽에서 로드되므로 외부 import를 두지 않는다.
 
 export const PASS_DAYS = 35;
@@ -6,6 +9,7 @@ export const GRACE_MS = 24 * 60 * 60 * 1000;
 
 export type Tier = 'early1' | 'early2' | 'regular';
 
+// early1(1,900원)은 판매하지 않는다: getSalesState가 내주지 않고 새 구매는 isPurchaseEligible이 막는다
 export const PASS_PRODUCTS: Record<Tier, { productId: string; priceKrw: number }> = {
   early1: { productId: 'switchon_pass_5w_1900', priceKrw: 1900 },
   early2: { productId: 'switchon_pass_5w_2900', priceKrw: 2900 },
@@ -66,6 +70,51 @@ export interface SalesState {
   nextTier: { tier: Tier; priceKrw: number; startsAt: string } | null; // ISO, 다음 가격 변경 시각
   // 1주 패스: 판매 중이면 늘 같은 가격. 5주 패스(productId/priceKrw)와 함께 고를 수 있게 내려준다
   weekPass: typeof WEEK_PASS_PRODUCT | null;
+  // 지금 5주 패스 가격이 첫 구매 할인(2,900원)인지. 앱은 이때만 정가 줄긋기·"처음 한 번만" 안내를 보인다
+  firstPurchaseDiscount: boolean;
+}
+
+// 첫 구매 할인 상품 (출시 할인 기간 안, 5주 패스 첫 구매만)
+export const FIRST_PURCHASE_DISCOUNT_TIER: Tier = 'early2';
+
+export const isFiveWeekProduct = (productId: string) => tierOfProduct(productId) !== null;
+
+// 5주 패스 첫 구매 할인을 이미 썼는지: granted인 5주 패스 구매가 하나라도 있으면 썼다.
+// 환불(voided)되거나 서버가 돌려준(refunded_ineligible) 구매는 할인을 쓴 것으로 보지 않는다.
+// 1주 패스는 세지 않는다 (운영자 결정 2026-11-01)
+export function hasUsedFirstPurchaseDiscount(
+  purchases: Pick<PurchaseForExpiry, 'productId' | 'status'>[]
+): boolean {
+  return purchases.some((p) => p.status === 'granted' && isFiveWeekProduct(p.productId));
+}
+
+type OrderedPurchase = Pick<PurchaseForExpiry, 'purchaseToken' | 'purchasedAt'>;
+
+// 구매 순서: 구매 시각, 같으면 토큰 순 (어느 요청에서 봐도 같은 순서가 되게)
+const comparePurchases = (a: OrderedPurchase, b: OrderedPurchase) =>
+  a.purchasedAt.getTime() - b.purchasedAt.getTime() ||
+  (a.purchaseToken < b.purchaseToken ? -1 : a.purchaseToken > b.purchaseToken ? 1 : 0);
+
+// purchase보다 먼저 산 구매들 (자기 자신 제외)
+export function purchasesBefore<T extends OrderedPurchase>(
+  purchases: T[],
+  purchase: OrderedPurchase
+): T[] {
+  return purchases.filter(
+    (p) => p.purchaseToken !== purchase.purchaseToken && comparePurchases(p, purchase) < 0
+  );
+}
+
+// 첫 구매 할인을 받을 수 없는 granted 할인 구매의 토큰: 먼저 산 granted 5주 패스가 있는 할인 구매.
+// 동시에 검증된 두 할인 구매 중 늦게 산 쪽을 찾을 때 쓴다 (verify-pass-purchase가 환불·refunded_ineligible로 바꾼다)
+export function firstPurchaseDiscountViolations(purchases: PurchaseForExpiry[]): string[] {
+  const fiveWeek = purchases
+    .filter((p) => p.status === 'granted' && isFiveWeekProduct(p.productId))
+    .sort(comparePurchases);
+  return fiveWeek
+    .slice(1)
+    .filter((p) => tierOfProduct(p.productId) === FIRST_PURCHASE_DISCOUNT_TIER)
+    .map((p) => p.purchaseToken);
 }
 
 export interface PurchaseForExpiry {
@@ -108,31 +157,35 @@ const daysBetweenYmd = (fromStr: string, toStr: string): number => {
   return Math.round(ms / DAY_MS);
 };
 
-interface TierWindows {
-  early1Start: Date;
-  early1End: Date;
-  early2Start: Date;
-  early2End: Date;
+// 출시 할인 기간 = 무료 기간: free_start 00:00 KST ~ free_end 다음날 00:00 KST
+interface LaunchWindow {
+  start: Date;
+  end: Date;
 }
 
-const tierWindows = (setting: PremiumSetting): TierWindows | null => {
+const launchWindow = (setting: PremiumSetting): LaunchWindow | null => {
   if (!setting.freeStart || !setting.freeEnd) return null;
-  const early1Start = kstMidnightInstant(setting.freeStart);
-  const early1End = kstMidnightInstant(setting.freeStart, 7);
-  const early2End = kstMidnightInstant(setting.freeEnd, 1);
-  return { early1Start, early1End, early2Start: early1End, early2End };
+  return {
+    start: kstMidnightInstant(setting.freeStart),
+    end: kstMidnightInstant(setting.freeEnd, 1),
+  };
 };
 
 export function isFreeActive(now: Date, setting: PremiumSetting): boolean {
-  const windows = tierWindows(setting);
-  if (!windows) return false;
+  const launch = launchWindow(setting);
+  if (!launch) return false;
   const t = now.getTime();
-  return t >= windows.early1Start.getTime() && t < windows.early2End.getTime();
+  return t >= launch.start.getTime() && t < launch.end.getTime();
 }
 
-export function getSalesState(now: Date, setting: PremiumSetting): SalesState {
-  const windows = tierWindows(setting);
-  if (!windows) {
+// discountUsed: 이 유저가 5주 패스 첫 구매 할인을 이미 썼는지 (hasUsedFirstPurchaseDiscount)
+export function getSalesState(
+  now: Date,
+  setting: PremiumSetting,
+  { discountUsed = false }: { discountUsed?: boolean } = {}
+): SalesState {
+  const launch = launchWindow(setting);
+  if (!launch) {
     return {
       onSale: false,
       freeActive: false,
@@ -142,14 +195,15 @@ export function getSalesState(now: Date, setting: PremiumSetting): SalesState {
       freeDaysLeft: 0,
       nextTier: null,
       weekPass: null,
+      firstPurchaseDiscount: false,
     };
   }
 
-  const { early1Start, early1End, early2Start, early2End } = windows;
   const t = now.getTime();
+  const launchTier: Tier = discountUsed ? 'regular' : FIRST_PURCHASE_DISCOUNT_TIER;
 
   // 무료 기간 시작 전에는 팔지 않음: 하루 먼저 산 사람이 정가를 내는 일을 막기 위해 (운영자 결정)
-  if (t < early1Start.getTime()) {
+  if (t < launch.start.getTime()) {
     return {
       onSale: false,
       freeActive: false,
@@ -158,44 +212,32 @@ export function getSalesState(now: Date, setting: PremiumSetting): SalesState {
       priceKrw: null,
       freeDaysLeft: 0,
       nextTier: {
-        tier: 'early1',
-        priceKrw: PASS_PRODUCTS.early1.priceKrw,
-        startsAt: early1Start.toISOString(),
+        tier: launchTier,
+        priceKrw: PASS_PRODUCTS[launchTier].priceKrw,
+        startsAt: launch.start.toISOString(),
       },
       weekPass: null,
+      firstPurchaseDiscount: false,
     };
   }
 
-  let tier: Tier;
-  if (t >= early1Start.getTime() && t < early1End.getTime()) {
-    tier = 'early1';
-  } else if (t >= early2Start.getTime() && t < early2End.getTime()) {
-    tier = 'early2';
-  } else {
-    tier = 'regular';
-  }
-
-  const freeActive = tier === 'early1' || tier === 'early2';
+  const freeActive = t < launch.end.getTime();
+  const tier: Tier = freeActive ? launchTier : 'regular';
   const { productId, priceKrw } = PASS_PRODUCTS[tier];
 
   const freeDaysLeft = freeActive
     ? daysBetweenYmd(kstDateString(now), setting.freeEnd as string) + 1
     : 0;
 
-  let nextTier: SalesState['nextTier'] = null;
-  if (t < early1End.getTime()) {
-    nextTier = {
-      tier: 'early2',
-      priceKrw: PASS_PRODUCTS.early2.priceKrw,
-      startsAt: early1End.toISOString(),
-    };
-  } else if (t < early2End.getTime()) {
-    nextTier = {
-      tier: 'regular',
-      priceKrw: PASS_PRODUCTS.regular.priceKrw,
-      startsAt: early2End.toISOString(),
-    };
-  }
+  // 할인가로 파는 동안만 다음 가격(할인 기간이 끝나면 4,900원)을 알려준다
+  const nextTier: SalesState['nextTier'] =
+    tier === FIRST_PURCHASE_DISCOUNT_TIER
+      ? {
+          tier: 'regular',
+          priceKrw: PASS_PRODUCTS.regular.priceKrw,
+          startsAt: launch.end.toISOString(),
+        }
+      : null;
 
   return {
     onSale: true,
@@ -206,6 +248,7 @@ export function getSalesState(now: Date, setting: PremiumSetting): SalesState {
     freeDaysLeft,
     nextTier,
     weekPass: WEEK_PASS_PRODUCT,
+    firstPurchaseDiscount: tier === FIRST_PURCHASE_DISCOUNT_TIER,
   };
 }
 
@@ -216,26 +259,28 @@ export function tierOfProduct(productId: string): Tier | null {
   return entry ? entry[0] : null;
 }
 
+// earlierPurchases: 이 구매보다 먼저 산 이 유저의 구매 (purchasesBefore). 할인가 구매는 출시 할인 기간
+// (+ 유예) 안에 샀고 먼저 산 granted 5주 패스가 없을 때만 유효하다
 export function isPurchaseEligible(
   productId: string,
   purchasedAt: Date,
-  setting: PremiumSetting
+  setting: PremiumSetting,
+  earlierPurchases: Pick<PurchaseForExpiry, 'productId' | 'status'>[] = []
 ): boolean {
   // 1주 패스는 가격이 하나뿐이라 언제 사도 유효하다
   if (productId === WEEK_PASS_PRODUCT.productId) return true;
   const tier = tierOfProduct(productId);
   if (!tier) return false;
   if (tier === 'regular') return true;
+  // 1,900원은 더 팔지 않는다 (운영자 결정 2026-11-01)
+  if (tier !== FIRST_PURCHASE_DISCOUNT_TIER) return false;
 
-  const windows = tierWindows(setting);
-  if (!windows) return false;
+  const launch = launchWindow(setting);
+  if (!launch) return false;
+  if (hasUsedFirstPurchaseDiscount(earlierPurchases)) return false;
 
-  const [start, end] =
-    tier === 'early1'
-      ? [windows.early1Start, windows.early1End]
-      : [windows.early2Start, windows.early2End];
   const t = purchasedAt.getTime();
-  return t >= start.getTime() && t < end.getTime() + GRACE_MS;
+  return t >= launch.start.getTime() && t < launch.end.getTime() + GRACE_MS;
 }
 
 // granted 구매와 한 주 더 하기 연장을 시간 순으로 쌓아 만료일을 만든다.

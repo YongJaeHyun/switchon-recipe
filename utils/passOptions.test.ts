@@ -13,12 +13,13 @@ import {
 const sales: SalesState = {
   onSale: true,
   freeActive: false,
-  tier: 'early1',
-  productId: 'switchon_pass_5w_1900',
-  priceKrw: 1900,
+  tier: 'early2',
+  productId: 'switchon_pass_5w_2900',
+  priceKrw: 2900,
   freeDaysLeft: 0,
-  nextTier: { tier: 'early2', priceKrw: 2900, startsAt: '2026-11-07T15:00:00.000Z' },
+  nextTier: { tier: 'regular', priceKrw: 4900, startsAt: '2026-11-14T15:00:00.000Z' },
   weekPass: { productId: 'switchon_pass_1w_1500', priceKrw: 1500, days: 7 },
+  firstPurchaseDiscount: true,
 };
 
 describe('getPassOptions', () => {
@@ -26,14 +27,15 @@ describe('getPassOptions', () => {
     expect(getPassOptions(sales, 1)).toEqual([
       {
         kind: 'fiveWeek',
-        productId: 'switchon_pass_5w_1900',
+        productId: 'switchon_pass_5w_2900',
         days: 35,
         title: '스위치온 패스',
         subtitle: '5주 · 프로그램 전체',
-        price: '1,900원',
-        perWeek: '주당 380원',
+        price: '2,900원',
+        perWeek: '주당 580원',
         original: '4,900원',
-        badge: '61% 할인',
+        badge: '40% 할인',
+        note: '처음 한 번만 이 가격이에요',
         recommended: true,
       },
       {
@@ -46,6 +48,7 @@ describe('getPassOptions', () => {
         perWeek: null,
         original: null,
         badge: null,
+        note: null,
         recommended: false,
       },
     ]);
@@ -67,20 +70,29 @@ describe('getPassOptions', () => {
     });
   });
 
-  it('정가(정규 구간)면 5주 패스에 할인 표시가 없다', () => {
+  it('정가(할인을 이미 썼거나 할인 기간이 끝남)면 5주 패스에 할인 표시가 없다', () => {
     const [fiveWeek] = getPassOptions(
-      { ...sales, tier: 'regular', productId: 'switchon_pass_5w_4900', priceKrw: 4900 },
+      {
+        ...sales,
+        tier: 'regular',
+        productId: 'switchon_pass_5w_4900',
+        priceKrw: 4900,
+        nextTier: null,
+        firstPurchaseDiscount: false,
+      },
       1
     );
-    expect(fiveWeek).toMatchObject({ original: null, badge: null });
+    expect(fiveWeek).toMatchObject({ price: '4,900원', original: null, badge: null, note: null });
   });
 
-  it('2차 할인 구간은 40% 할인', () => {
-    const [fiveWeek] = getPassOptions(
-      { ...sales, productId: 'switchon_pass_5w_2900', priceKrw: 2900 },
-      1
-    );
-    expect(fiveWeek).toMatchObject({ original: '4,900원', badge: '40% 할인' });
+  it('첫 구매 할인: 정가 4,900원 대비 할인율을 계산해 보여준다 (2,900원 = 40%)', () => {
+    const [fiveWeek] = getPassOptions(sales, 1);
+    expect(fiveWeek).toMatchObject({
+      price: '2,900원',
+      original: '4,900원',
+      badge: '40% 할인',
+      note: '처음 한 번만 이 가격이에요',
+    });
   });
 
   it('1주 패스가 판매 중이 아니면(null) 5주 패스만', () => {
@@ -216,12 +228,12 @@ describe('getPassCtaLabel', () => {
   const [fiveWeek, week] = getPassOptions(sales, 1);
 
   it('처음 사면 시작하기', () => {
-    expect(getPassCtaLabel(fiveWeek, false)).toBe('1,900원으로 프로그램 시작하기');
+    expect(getPassCtaLabel(fiveWeek, false)).toBe('2,900원으로 프로그램 시작하기');
     expect(getPassCtaLabel(week, false)).toBe('1,500원으로 1주 시작하기');
   });
 
   it('패스가 남아 있으면 연장하기', () => {
-    expect(getPassCtaLabel(fiveWeek, true)).toBe('1,900원으로 5주 연장하기');
+    expect(getPassCtaLabel(fiveWeek, true)).toBe('2,900원으로 5주 연장하기');
     expect(getPassCtaLabel(week, true)).toBe('1,500원으로 1주 연장하기');
   });
 });

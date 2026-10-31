@@ -131,6 +131,34 @@ const deps = (): VerifyDeps => ({
     return new Date(data as string);
   },
 
+  async markPurchaseIneligible(token: string) {
+    // granted일 때만 바꿔서, 동시 요청 중 실제로 바꾼 쪽만 환불하게 한다
+    const { data, error } = await supabase
+      .from('pass_purchase')
+      .update({ status: 'refunded_ineligible', granted_from: null, granted_until: null })
+      .eq('purchase_token', token)
+      .eq('status', 'granted')
+      .select('order_id');
+    if (error) throw error;
+    const row = (data as { order_id: string | null }[])[0];
+    return row ? { orderId: row.order_id } : undefined;
+  },
+
+  // sync-voided-purchases setPassExpiry와 같은 방식
+  async setPassExpiry(uid: string, expiresAt: Date | null) {
+    if (expiresAt === null) {
+      const { error } = await supabase.from('user_pass').delete().eq('uid', uid);
+      if (error) throw error;
+      return;
+    }
+    const { error } = await supabase.from('user_pass').upsert({
+      uid,
+      pass_expires_at: expiresAt.toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+    if (error) throw error;
+  },
+
   play: getPlayClient(),
 
   // 응답 뒤 백그라운드(EdgeRuntime.waitUntil)로 돈다. 검증 응답을 기다리게 하거나 실패시키지 않는다
