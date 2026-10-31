@@ -13,12 +13,13 @@ import {
 
 interface FoodCheckResultCardProps {
   check: FoodCheckRecord;
-  // 추정 판정일 때 [성분표 찍고 더 정확히 보기]
+  // 포장 상품을 추정으로 판정했을 때 [성분표 찍고 더 정확히 보기]
   onCheckLabel?(): void;
   disabled?: boolean;
 }
 
-// 판정 결과: 점수(큰 숫자) + 세 단계 판정 + 근거 + 이유 + (주의·피하세요) 대체 추천 + (추정) 성분표 다시 보기
+// 판정 결과: 점수(큰 숫자) + 세 단계 판정 + 근거 + 이유 + (주의·피하세요) 대체 추천
+// + (포장 상품 추정) 성분표 찍기. 조리된 음식은 성분표가 없으므로 버튼을 두지 않는다
 export function FoodCheckResultCard({ check, onCheckLabel, disabled }: FoodCheckResultCardProps) {
   const level = foodCheckLevel(check);
   const accent = level ? FOOD_CHECK_LEVEL_TEXT[level] : 'text-neutral-500';
@@ -75,7 +76,7 @@ export function FoodCheckResultCard({ check, onCheckLabel, disabled }: FoodCheck
         </View>
       )}
 
-      {check.basis === 'estimate' && onCheckLabel && (
+      {check.basis === 'estimate' && check.foodKind === 'packaged' && onCheckLabel && (
         <RippleButton
           outerClassName="bg-green-600"
           className="w-full flex-row gap-2 py-3"

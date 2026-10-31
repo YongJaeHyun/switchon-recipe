@@ -1,4 +1,4 @@
-// 편의점 판정 입력(사진/글자) 검사. 서버(food-check)도 다시 검사한다
+// 음식 판정 입력(사진/글자) 검사. 서버(food-check)도 다시 검사한다
 import type { FoodCheckMimeType } from 'types/foodCheck';
 
 // base64 길이 상한. 서버(food-check MAX_BODY_BYTES = 4MB)는 base64가 든 JSON 본문 전체 바이트를 재므로
@@ -27,11 +27,11 @@ export type TextValidation = { ok: true; text: string } | { ok: false; message: 
 
 export function validateFoodCheckText(raw: string): TextValidation {
   const text = raw.trim();
-  if (text.length < 1) return { ok: false, message: '상품 이름을 입력해 주세요' };
+  if (text.length < 1) return { ok: false, message: '음식 이름을 입력해 주세요' };
   if (text.length > MAX_FOOD_CHECK_TEXT_LENGTH) {
     return {
       ok: false,
-      message: `상품 이름은 ${MAX_FOOD_CHECK_TEXT_LENGTH}자까지 입력할 수 있어요`,
+      message: `음식 이름은 ${MAX_FOOD_CHECK_TEXT_LENGTH}자까지 입력할 수 있어요`,
     };
   }
   return { ok: true, text };

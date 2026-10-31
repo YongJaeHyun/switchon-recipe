@@ -1,4 +1,4 @@
-// 편의점 판정 화면 문구. 화면 컴포넌트는 이 결과를 보여주기만 한다
+// 음식 판정 화면 문구. 화면 컴포넌트는 이 결과를 보여주기만 한다
 import type { FoodCheckBasis, FoodCheckRecord, PremiumQuotaStatus } from 'types/foodCheck';
 
 // 서버 supabase/functions/_shared/premiumQuota.ts와 같은 문구 (429 토스트, 남은 횟수 0)

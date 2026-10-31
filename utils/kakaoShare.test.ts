@@ -306,7 +306,7 @@ describe('completionShareTarget (완주 달력에서 무엇을 자랑할지)', (
   });
 });
 
-describe('foodCheckMessage (편의점 판정 결과 알려주기)', () => {
+describe('foodCheckMessage (음식 판정 결과 알려주기)', () => {
   const check = {
     productName: '닭가슴살 소시지',
     inputText: null,
@@ -337,13 +337,11 @@ describe('foodCheckMessage (편의점 판정 결과 알려주기)', () => {
     expect(message?.imageUrl).toBe(shareImageUrl('foodcheck-avoid'));
   });
 
-  it('제품 이름이 없으면 입력한 이름, 그것도 없으면 "편의점 음식"', () => {
+  it('제품 이름이 없으면 입력한 이름, 그것도 없으면 "음식"', () => {
     expect(foodCheckMessage({ ...check, productName: null, inputText: '바나나우유' })?.title).toBe(
       '바나나우유'
     );
-    expect(foodCheckMessage({ ...check, productName: '  ', inputText: null })?.title).toBe(
-      '편의점 음식'
-    );
+    expect(foodCheckMessage({ ...check, productName: '  ', inputText: null })?.title).toBe('음식');
   });
 
   it('주차를 모르면 "스위치온 중", 유지기면 "유지기"', () => {

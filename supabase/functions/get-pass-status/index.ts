@@ -3,7 +3,7 @@
 // 패스 상태 조회: 판매 구간(getSalesState), 패스 만료일, 그리고 서버 최종 판단인
 // has_premium_access_for(uid) RPC 결과를 합쳐서 돌려준다. hasAccess는 여기서 다시 계산하지 않고
 // DB 함수 결과를 그대로 전달한다 (서버 최종 판단은 단일 소스여야 하므로).
-// foodCheckTrialRemaining: 패스 없이 쓸 수 있는 편의점 판정 무료 횟수 (앱 표시용, food-check가 최종 판단)
+// foodCheckTrialRemaining: 패스 없이 쓸 수 있는 음식 판정 무료 횟수 (앱 표시용, food-check가 최종 판단)
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';

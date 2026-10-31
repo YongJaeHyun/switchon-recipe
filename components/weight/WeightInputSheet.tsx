@@ -88,7 +88,7 @@ const dayTexts = (target: Nullable<WeightInputTarget>): InbodyFieldTexts => ({
   fat: toText(target?.initialBodyComp.fat_kg ?? null),
 });
 
-// 편의점 판정(app/foodCheck)과 같은 피커 설정: 크기 줄이기는 네이티브 모듈이 필요해 품질만 낮춘다
+// 음식 판정(app/foodCheck)과 같은 피커 설정: 크기 줄이기는 네이티브 모듈이 필요해 품질만 낮춘다
 const PICKER_OPTIONS: ImagePicker.ImagePickerOptions = {
   mediaTypes: ['images'],
   quality: 0.6,
@@ -327,7 +327,7 @@ export function WeightInputSheet({ bottomSheetRef, target: openedTarget }: Weigh
     }
   };
 
-  // 서버가 패스 없음(402)이라고 하면: 상태를 다시 받고, 살 수 있으면 결제 화면으로 (편의점 판정과 같다)
+  // 서버가 패스 없음(402)이라고 하면: 상태를 다시 받고, 살 수 있으면 결제 화면으로 (음식 판정과 같다)
   const handleLocked = () => {
     void queryClient.invalidateQueries({ queryKey: [QueryKey.pass] });
     if (isPassOnSale(passStatus?.sales, billingAvailable)) {

@@ -1,4 +1,4 @@
-// 편의점 판정 원본 사진 정리 기준: 만든 지 days일이 지난(정확히 days일 포함) 원본만 대상
+// 음식 판정 원본 사진 정리 기준: 만든 지 days일이 지난(정확히 days일 포함) 원본만 대상
 
 export const DAY_MS = 24 * 60 * 60 * 1000;
 export const RETENTION_DAYS = 30;

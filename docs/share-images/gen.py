@@ -35,7 +35,7 @@ for w in range(1,6):
     files[f'completion-{w}']=page(f"<div class=wrap><div class=kicker style='color:{INK[w]}'>스위치온 완주 인증</div><h1>{title}</h1>{track(w)}</div>",bg,c)
 files['invite']=page(f"<div class=wrap><div class=kicker>스위치온 4주 식단</div><h1>같이 시작할래?</h1>{track(1)}</div>",'#EAF7EE','#16A34A')
 def fc(title, mark, bg, c, ink):
-    return page(f"<div class=wrap><div class=kicker style='color:{ink}'>스위치온 편의점 판정</div><h1>{title}</h1><div></div></div><div class=mark>{mark}</div>",bg,c)
+    return page(f"<div class=wrap><div class=kicker style='color:{ink}'>스위치온 음식 판정</div><h1>{title}</h1><div></div></div><div class=mark>{mark}</div>",bg,c)
 files['foodcheck-ok']=fc('먹어도<br>돼요','✓','#EAF7EE','#16A34A','#15803D')
 files['foodcheck-caution']=fc('주의가<br>필요해요','!','#FFFBEB','#F59E0B','#B45309')
 files['foodcheck-avoid']=fc('피하는 게<br>좋아요','✕','#FEF2F2','#EF4444','#B91C1C')

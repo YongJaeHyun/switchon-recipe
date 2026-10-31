@@ -2,9 +2,9 @@
 // inQuotaModal: 레시피 한도 초과 모달의 패스 안내 한 줄에 이름을 넣을 기능
 export const PASS_FEATURES = [
   {
-    icon: 'storefront',
-    title: '편의점 판정',
-    description: '먹어도 되는지 바로 확인',
+    icon: 'fact-check',
+    title: '음식 판정',
+    description: '사진 한 장으로 먹어도 되는지 확인',
     inQuotaModal: true,
   },
   {

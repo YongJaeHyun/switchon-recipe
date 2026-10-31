@@ -4,7 +4,7 @@
 // (stores/notificationGateStore afterLoginHref → hooks/useNotificationObserver가 탭이 뜬 뒤 연다)
 // 같이 하자 초대(invite=시작일)는 이동 대신 시작일을 넘긴다: 새 사용자는 온보딩이 친구 시작일을 선택지로 보이고,
 // 이미 시작한 사람은 탭이 뜬 뒤 안내만 한다 (stores/notificationGateStore pendingInvite).
-// 편의점 판정 결과(foodCheck=1)는 레시피처럼 판정 화면으로, 완주 인증 등 그 밖의 링크는 앱만 연다
+// 음식 판정 결과(foodCheck=1)는 레시피처럼 판정 화면으로, 완주 인증 등 그 밖의 링크는 앱만 연다
 
 import { isDayString } from './kakaoShare';
 import type { AppRoutePhase } from './notificationGate';
@@ -13,7 +13,7 @@ import { hasRecipeFieldShapes } from './recipeFields';
 export type KakaoLinkTarget =
   | { type: 'recipe'; recipe: string }
   | { type: 'invite'; startDate: string }
-  // 편의점 판정 결과를 받은 사람: 판정 화면으로 (foodCheck=1)
+  // 음식 판정 결과를 받은 사람: 판정 화면으로 (foodCheck=1)
   | { type: 'foodCheck' }
   // 아는 파라미터가 없는 링크 (완주 인증 share=completion 등): 앱만 연다
   | { type: 'open' };

@@ -99,8 +99,8 @@ describe('parseKakaoLink: 앱만 여는 링크 (완주 인증 등)', () => {
   });
 });
 
-describe('parseKakaoLink: 편의점 판정 (foodCheck=1)', () => {
-  it('편의점 판정 화면으로', () => {
+describe('parseKakaoLink: 음식 판정 (foodCheck=1)', () => {
+  it('음식 판정 화면으로', () => {
     expect(parseKakaoLink(link('foodCheck=1'))).toEqual({ type: 'foodCheck' });
   });
 

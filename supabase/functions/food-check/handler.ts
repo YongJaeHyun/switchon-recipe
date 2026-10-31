@@ -1,4 +1,4 @@
-// 편의점 판정 요청 처리 본체. 외부 의존성(인증, 한도, Gemini, DB/스토리지)은 deps로 받아
+// 음식 판정 요청 처리 본체. 외부 의존성(인증, 한도, Gemini, DB/스토리지)은 deps로 받아
 // Vitest(node)에서 가짜로 테스트한다. URL import를 두지 않는다 (실제 연결은 index.ts).
 // 흐름: 인증 -> 본문 크기/입력 검증 -> 패스 확인(has_premium_access_for) -> (패스가 없으면) 무료 체험 차감
 // (평생 3번, 다 썼으면 402) -> 하루 한도 차감
@@ -11,6 +11,7 @@ import {
   buildFoodCheckPrompt,
   type FoodCheckInput,
   type FoodCheckResult,
+  type FoodKind,
   parseFoodCheckResponse,
 } from '../_shared/foodCheck.ts';
 import {
@@ -29,7 +30,7 @@ import type { PreparedImages } from './images.ts';
 
 export const MAX_BODY_BYTES = 4 * 1024 * 1024;
 export const MAX_TEXT_LENGTH = 50;
-export const UNRECOGNIZED_MESSAGE = '제품명이 잘 보이게 다시 찍어주세요';
+export const UNRECOGNIZED_MESSAGE = '음식이 잘 보이게 다시 찍어주세요';
 const SUPPORTED_MIME_TYPES = ['image/jpeg', 'image/png'];
 
 // food_check 테이블 행 (snake_case 그대로)
@@ -44,6 +45,7 @@ export interface FoodCheckRow {
   score: number | null;
   verdict: 'ok' | 'avoid' | null;
   basis: 'estimate' | 'label' | null;
+  food_kind: FoodKind | null;
   reasons: string[] | null;
   alternatives: string[] | null;
   week: number | null;
@@ -63,6 +65,7 @@ export interface FoodCheckRecord {
   score: number | null;
   verdict: 'ok' | 'avoid' | null;
   basis: 'estimate' | 'label' | null;
+  foodKind: FoodKind | null;
   reasons: string[] | null;
   alternatives: string[] | null;
   week: number | null;
@@ -111,7 +114,7 @@ const INTERNAL_ERROR_BODY = { error: '판정에 실패했어요. 잠시 후 다�
 
 class UnrecognizedError extends Error {
   constructor() {
-    super('상품을 인식하지 못했습니다');
+    super('음식을 인식하지 못했습니다');
     this.name = 'UnrecognizedError';
   }
 }
@@ -141,12 +144,13 @@ const parseInput = (body: unknown): FoodCheckInput => {
   if (b.type === 'text') {
     const text = typeof b.text === 'string' ? b.text.trim() : '';
     if (text.length < 1 || text.length > MAX_TEXT_LENGTH) {
-      throw new BadRequestError(`상품 이름은 1~${MAX_TEXT_LENGTH}자로 입력해 주세요`);
+      throw new BadRequestError(`음식 이름은 1~${MAX_TEXT_LENGTH}자로 입력해 주세요`);
     }
     return { type: 'text', text };
   }
 
-  if (b.type === 'front' || b.type === 'label') {
+  // 'photo'가 지금 앱. 'front'·'label'은 옛 빌드라 같은 사진 경로로 받고 보낸 값 그대로 저장한다
+  if (b.type === 'photo' || b.type === 'front' || b.type === 'label') {
     if (typeof b.mimeType !== 'string' || !SUPPORTED_MIME_TYPES.includes(b.mimeType)) {
       throw new BadRequestError('JPEG 또는 PNG 사진만 판정할 수 있어요');
     }
@@ -171,6 +175,7 @@ const toRecord = (row: FoodCheckRow, thumbUrl: string | null): FoodCheckRecord =
   score: row.score,
   verdict: row.verdict,
   basis: row.basis,
+  foodKind: row.food_kind ?? null,
   reasons: row.reasons,
   alternatives: row.alternatives,
   week: row.week,
@@ -191,6 +196,7 @@ const toInsert = (
   score: result.score,
   verdict: result.verdict,
   basis: result.basis,
+  food_kind: result.foodKind,
   reasons: result.reasons,
   alternatives: result.alternatives,
   week,
@@ -267,7 +273,7 @@ export async function handleFoodCheck(req: Request, deps: FoodCheckDeps): Promis
     }
   } catch (error) {
     // 오류 상세는 로그에만 남긴다
-    console.error('편의점 판정 실패:', error);
+    console.error('음식 판정 실패:', error);
     return json(INTERNAL_ERROR_BODY, 500);
   }
 }

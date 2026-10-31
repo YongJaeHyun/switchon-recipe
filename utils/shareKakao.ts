@@ -52,7 +52,7 @@ export function shareCompletion(share: CompletionShare, weightLossKg: number | n
   return shareKakaoMessage('completion', completionMessage({ ...share, weightLossKg }));
 }
 
-// 편의점 판정 결과 (판정 결과 화면). 판정이 없으면 보내지 않는다
+// 음식 판정 결과 (판정 결과 화면). 판정이 없으면 보내지 않는다
 export function shareFoodCheck(check: FoodCheckRecord) {
   const message = foodCheckMessage(check);
   if (message) return shareKakaoMessage('foodCheck', message);

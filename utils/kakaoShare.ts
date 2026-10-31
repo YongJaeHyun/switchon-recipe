@@ -227,7 +227,7 @@ export function completionShareTarget(
   return finished >= 1 ? { kind: 'week', week, fullDays } : { kind: 'ongoing', week, fullDays };
 }
 
-// ── 편의점 판정 결과 (친구에게 알려주기). 받은 사람은 편의점 판정 화면으로 (foodCheck=1)
+// ── 음식 판정 결과 (친구에게 알려주기). 받은 사람은 음식 판정 화면으로 (foodCheck=1)
 
 const FOOD_CHECK_SHARE_TEXT: Record<FoodCheckLevel, (when: string) => string> = {
   ok: (when) => `스위치온 ${when}에 먹어도 돼요 ✅`,
@@ -241,7 +241,7 @@ export function foodCheckMessage(
 ): KakaoShareMessage | null {
   const level = foodCheckLevel(check);
   if (!level) return null;
-  const name = check.productName?.trim() || check.inputText?.trim() || '편의점 음식';
+  const name = check.productName?.trim() || check.inputText?.trim() || '음식';
   const when =
     check.week == null ? '중' : check.week >= MAINTENANCE_WEEK ? '유지기' : `${check.week}주차`;
   return {
