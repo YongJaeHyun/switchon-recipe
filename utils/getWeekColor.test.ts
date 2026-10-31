@@ -25,5 +25,4 @@ describe('주차 색 위 글자 대비 (칩 라벨 16px)', () => {
   it.each([1, 2, 3, 4, 5])('%i주차: 흰 칩 위 주차 글자색은 4.5:1 이상', (week) => {
     expect(contrast('#ffffff', toHex(getWeekInkHex(week)))).toBeGreaterThanOrEqual(4.5);
   });
-
 });
