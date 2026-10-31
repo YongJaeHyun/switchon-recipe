@@ -5,6 +5,7 @@ import { queryClient } from 'lib/queryClient';
 import { useEffect, useRef, useState } from 'react';
 import { isQuotaExceeded } from 'types/recipeQuota';
 import { requireOnline } from 'utils/network';
+import { showInfoToast, showRecipeReadyToast } from 'utils/showToast';
 import { useQuotaGate } from './useQuotaGate';
 
 export interface RecipeCreationRequest {
@@ -19,30 +20,37 @@ export interface RecipeCreationRequest {
 export const useRecipeCreation = (buildRequest: () => RecipeCreationRequest) => {
   const quotaGate = useQuotaGate();
   const [isRecipeLoading, setIsRecipeLoading] = useState(false);
-  const controller = useRef<AbortController>(null);
+  // 만드는 중에 화면을 떠나도(뒤로 가기) 요청은 끊지 않는다: 서버는 어차피 끝까지 만들고 횟수·비용도 쓰므로,
+  // 끝까지 받아서 "완성됐어요" 알림으로 레시피를 건넨다 (운영자 결정 2026-11-01)
+  const mounted = useRef(true);
+  const loading = useRef(false);
 
   useEffect(() => {
-    return () => controller.current?.abort();
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      if (loading.current) {
+        showInfoToast({
+          textType: 'CUSTOM',
+          title: '레시피는 계속 만들고 있어요',
+          subtitle: '다 되면 알려드릴게요',
+        });
+      }
+    };
   }, []);
 
   const createRecipeWithAI = async () => {
-    controller.current = new AbortController();
     const { command, week, isZeroCarb } = buildRequest();
 
     let recipe;
     try {
-      recipe = await createRecipe({
-        command,
-        week,
-        isZeroCarb,
-        signal: controller.current.signal,
-      });
+      recipe = await createRecipe({ command, week, isZeroCarb });
     } finally {
       void quotaGate.invalidateQuota();
     }
     if (!recipe) return null;
     if (isQuotaExceeded(recipe)) {
-      quotaGate.showExceeded(recipe);
+      if (mounted.current) quotaGate.showExceeded(recipe);
       return null;
     }
 
@@ -52,14 +60,17 @@ export const useRecipeCreation = (buildRequest: () => RecipeCreationRequest) => 
 
   const handleCreateRecipe = async () => {
     setIsRecipeLoading(true);
+    loading.current = true;
 
     try {
       const recipe = await createRecipeWithAI();
-      if (recipe) {
-        router.push(`/recipeDetail?recipe=${JSON.stringify(recipe)}`);
-      }
+      if (!recipe) return;
+      const openRecipe = () => router.push(`/recipeDetail?recipe=${JSON.stringify(recipe)}`);
+      if (mounted.current) openRecipe();
+      else showRecipeReadyToast({ recipeName: recipe.recipe_name ?? '', onPress: openRecipe });
     } finally {
-      setIsRecipeLoading(false);
+      loading.current = false;
+      if (mounted.current) setIsRecipeLoading(false);
     }
   };
 
