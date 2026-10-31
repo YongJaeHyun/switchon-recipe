@@ -8,6 +8,12 @@ export const PASS_FEATURES = [
     inQuotaModal: true,
   },
   {
+    icon: 'edit-note',
+    title: '먹고 싶은 음식으로 만들기',
+    description: '이름만 적으면 스위치온식 레시피로 만들어 드려요',
+    inQuotaModal: false,
+  },
+  {
     icon: 'restaurant-menu',
     title: '맞춤 레시피 추천',
     description: '먹고 싶은 걸 고르면 레시피를 골라 드려요',

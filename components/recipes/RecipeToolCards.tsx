@@ -3,6 +3,7 @@ import { PassBadge } from 'components/common/PassBadge';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import { TrialBadge } from 'components/common/TrialBadge';
+import { RecipeByNameSheet, useRecipeByNameSheet } from 'components/recipeByName/RecipeByNameSheet';
 import { type Href, router } from 'expo-router';
 import { useBillingAvailable } from 'hooks/useBillingAvailable';
 import { usePass } from 'hooks/usePass';
@@ -14,6 +15,12 @@ import { RECOMMEND_LOCKED_MESSAGE } from 'types/recommend';
 import { getWeekAndDay } from 'utils/date';
 import { useUserStore } from 'stores/userStore';
 import { foodCheckEntryState } from 'utils/foodCheckTrial';
+import type { TrialEntryState } from 'utils/passTrial';
+import {
+  RECIPE_BY_NAME_DESCRIPTION,
+  RECIPE_BY_NAME_TITLE,
+  recipeByNameEntryState,
+} from 'utils/recipeByName';
 import { shouldShowPremiumEntry } from 'utils/passScreen';
 import { isRecommendLocked } from 'utils/recommendForm';
 
@@ -80,8 +87,38 @@ function ToolCard({ title, description, icon, badge, onPress }: ToolCardProps) {
   );
 }
 
+// 먹고 싶은 음식으로 만들기: 다른 도구보다 넓게, 안에 입력칸 모양을 넣어 "이름을 적는 기능"임을 바로 보이게 한다
+function RecipeByNameCard({ entry, onPress }: { entry: TrialEntryState; onPress(): void }) {
+  return (
+    <RippleButton
+      outerClassName="border border-green-600 bg-white"
+      className="w-full gap-3 px-4 py-4"
+      rippleColor={colors.green[100]}
+      accessibilityRole="button"
+      accessibilityLabel={RECIPE_BY_NAME_TITLE}
+      onPress={onPress}>
+      <View className="w-full flex-row items-start gap-3">
+        <View className="h-11 w-11 items-center justify-center rounded-full bg-green-600">
+          <MaterialIcons name="edit-note" size={26} color={colors.white} />
+        </View>
+        <View className="flex-1">
+          <Text className="text-base font-bold text-neutral-800">{RECIPE_BY_NAME_TITLE}</Text>
+          <Text className="text-sm text-neutral-500">{RECIPE_BY_NAME_DESCRIPTION}</Text>
+        </View>
+        {entry.kind === 'trial' && <TrialBadge remaining={entry.remaining} />}
+        {entry.kind === 'locked' && <PassBadge locked />}
+      </View>
+      <View className="w-full flex-row items-center gap-2 rounded-full bg-neutral-100 px-4 py-2.5">
+        <MaterialIcons name="restaurant" size={16} color={colors.neutral[400]} />
+        <Text className="flex-1 text-neutral-400">김치찌개</Text>
+        <Text className="text-sm font-bold text-green-700">만들기</Text>
+      </View>
+    </RippleButton>
+  );
+}
+
 // 패스를 팔지 않고 권한도 없으면 숨긴다. 권한이 없으면 누를 때 usePremiumGate가 결제 화면으로 보낸다.
-// 음식 판정은 무료 체험(패스 없이 3번)이 남았으면 판매 여부와 관계없이 보이고 바로 들어간다.
+// 음식 판정(패스 없이 3번)·먹고 싶은 음식으로 만들기(2번)는 무료 체험이 남았으면 판매 여부와 관계없이 보이고 바로 쓴다.
 export function RecipeToolCards() {
   const { status } = usePass();
   const billingAvailable = useBillingAvailable();
@@ -90,6 +127,8 @@ export function RecipeToolCards() {
 
   const premiumEntry = shouldShowPremiumEntry(status, billingAvailable);
   const foodCheck = foodCheckEntryState(status, billingAvailable);
+  const byName = recipeByNameEntryState(status, billingAvailable);
+  const byNameSheet = useRecipeByNameSheet();
   const { week, day } = getWeekAndDay(startDate);
 
   const cards = TOOLS.flatMap((tool) => {
@@ -127,13 +166,26 @@ export function RecipeToolCards() {
     ];
   });
 
-  if (cards.length === 0) return null;
+  if (cards.length === 0 && byName.kind === 'hidden') return null;
 
   return (
     <View className="gap-3">
+      {byName.kind !== 'hidden' && (
+        <RecipeByNameCard
+          entry={byName}
+          // 체험을 다 썼으면 결제 화면으로 (usePremiumGate). 남은 횟수를 모르면 서버 판단에 맡기고 연다
+          onPress={
+            byName.kind === 'locked' ? gate(() => byNameSheet.open()) : () => byNameSheet.open()
+          }
+        />
+      )}
       {cards.map((card) => (
         <ToolCard key={card.title} {...card} />
       ))}
+      <RecipeByNameSheet
+        request={byNameSheet.request}
+        trialRemaining={byName.kind === 'trial' ? byName.remaining : null}
+      />
     </View>
   );
 }

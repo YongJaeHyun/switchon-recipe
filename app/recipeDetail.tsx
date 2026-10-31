@@ -30,6 +30,7 @@ import { RecipeDB } from 'types/database';
 import { IngredientSchema, Recipe, RecipeIngredient } from 'types/recipe';
 import { carbTypeStyle } from 'utils/carbType';
 import { nutritionPerServing } from 'utils/nutritionPerServing';
+import { ADAPT_NOTE_TITLE, adaptNoteLines } from 'utils/recipeByName';
 import { parseRecipeFields } from 'utils/recipeFields';
 import {
   SERVINGS_STEPPER_MIN,
@@ -57,6 +58,8 @@ export default function RecipeDetailScreen() {
     is_zero_carb,
   } = parsedRecipe;
   const carbType = carbTypeStyle(is_zero_carb);
+  // 먹고 싶은 음식으로 만들기에서 원래 음식을 스위치온식으로 바꿔 만든 경우의 안내 (옛 레시피·응답에는 없음)
+  const adaptLines = adaptNoteLines(parsedRecipe.adapt_note);
 
   // 카톡 링크 등 밖에서 온 레시피도 열리므로 칸의 모양이 틀려도 빈 값으로 읽는다 (utils/recipeFields)
   const fields = parseRecipeFields({ ingredients, cooking_steps, nutrition });
@@ -218,6 +221,19 @@ export default function RecipeDetailScreen() {
         scrollEventThrottle={16}
         contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 20 }}>
         <Animated.View style={animatedContentStyle} className="w-full gap-6 px-3">
+          {adaptLines.length > 0 && (
+            <View className="mb-4 flex-row gap-3 rounded-2xl bg-green-50 p-4">
+              <MaterialIcons name="swap-horiz" size={22} color={colors.green[700]} />
+              <View className="flex-1 gap-1.5">
+                <Text className="font-bold text-green-800">{ADAPT_NOTE_TITLE}</Text>
+                {adaptLines.map((line) => (
+                  <Text key={line} className="leading-5 text-neutral-700">
+                    {line}
+                  </Text>
+                ))}
+              </View>
+            </View>
+          )}
           <View>
             <View className="flex-row items-center justify-between">
               <Text className="text-2xl font-bold">재료 요약</Text>
