@@ -479,6 +479,7 @@ export type Database = {
       };
       recipe: {
         Row: {
+          adapt_note: string | null;
           cooking_steps: string | null;
           cooking_time: number | null;
           created_at: string;
@@ -497,6 +498,7 @@ export type Database = {
           week: number | null;
         };
         Insert: {
+          adapt_note?: string | null;
           cooking_steps?: string | null;
           cooking_time?: number | null;
           created_at?: string;
@@ -515,6 +517,7 @@ export type Database = {
           week?: number | null;
         };
         Update: {
+          adapt_note?: string | null;
           cooking_steps?: string | null;
           cooking_time?: number | null;
           created_at?: string;
@@ -1088,6 +1091,7 @@ export type Database = {
       };
       recipe_with_is_saved: {
         Row: {
+          adapt_note: string | null;
           cooking_steps: string | null;
           cooking_time: number | null;
           created_at: string | null;
@@ -1149,6 +1153,7 @@ export type Database = {
           week_input?: number;
         };
         Returns: {
+          adapt_note: string;
           cooking_steps: string;
           cooking_time: number;
           created_at: string;
@@ -1168,6 +1173,7 @@ export type Database = {
       search_saved_recipes: {
         Args: { filter_type?: string; sort_type?: string; week_input?: number };
         Returns: {
+          adapt_note: string;
           cooking_steps: string;
           cooking_time: number;
           created_at: string;

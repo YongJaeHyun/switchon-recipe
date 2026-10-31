@@ -17,6 +17,7 @@ const row = {
   saved_at: '2026-10-02T00:00:00Z',
   saved_count: 3,
   servings: 2,
+  adapt_note: '면 대신 두부면을 써요',
 };
 
 describe('interpretRecommendResponse', () => {
@@ -45,6 +46,7 @@ describe('interpretRecommendResponse', () => {
           is_saved: true,
           saved_count: 3,
           servings: 2,
+          adapt_note: '면 대신 두부면을 써요',
         },
       ],
     });

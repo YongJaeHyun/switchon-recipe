@@ -21,6 +21,8 @@ export interface PassStatus {
   hasAccess: boolean; // 서버 has_premium_access_for 결과 (앱에서는 표시용)
   // 패스 없이 쓸 수 있는 음식 판정 무료 횟수 (표시용). 이 필드를 모르는 옛 서버면 없음
   foodCheckTrialRemaining?: number;
+  // 패스 없이 쓸 수 있는 음식 이름으로 만들기 무료 횟수 (표시용). 이 필드를 모르는 옛 서버면 없음
+  recipeByNameTrialRemaining?: number;
   serverNow: string; // ISO
 }
 
