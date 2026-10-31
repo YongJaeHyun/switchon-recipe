@@ -11,13 +11,17 @@ interface CustomBottomSheetProps {
   // 열려 있다가 닫힐 때마다 (index -1). 작업 중 상태를 저장된 값으로 되돌리는 데 쓴다.
   // 열 때 되돌리면 여는 애니메이션이 끝난 뒤에 불려 지난 편집이 잠깐 보인다
   onClose?: () => void;
-  // 입력칸이 있는 시트의 키보드 처리 (기본값은 @gorhom/bottom-sheet 기본)
+  // 입력칸이 있는 시트의 키보드 처리·높이 (기본값은 @gorhom/bottom-sheet 기본)
   keyboard?: SheetKeyboardProps;
 }
 
 type SheetKeyboardProps = Pick<
   BottomSheetProps,
-  'keyboardBehavior' | 'keyboardBlurBehavior' | 'android_keyboardInputMode'
+  | 'keyboardBehavior'
+  | 'keyboardBlurBehavior'
+  | 'android_keyboardInputMode'
+  | 'snapPoints'
+  | 'enableDynamicSizing'
 >;
 
 export const CustomBottomSheet = forwardRef<BottomSheetMethods, CustomBottomSheetProps>(
