@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { STORE_URL } from 'const/const';
-import { APP_LOGO_URL } from 'const/kakaoTemplates';
+import { shareImageUrl } from 'const/kakaoTemplates';
 import {
   completionMessage,
   completionShareTarget,
@@ -42,7 +42,7 @@ describe('inviteMessage (같이 하자 초대)', () => {
       title: '나 내일부터 스위치온 시작해!',
       description: '같이 할래? 11월 1일부터 1주차',
       buttonTitle: '같이 시작하기',
-      imageUrl: APP_LOGO_URL,
+      imageUrl: shareImageUrl('invite'),
       params: { invite: '2026-11-01' },
     });
   });
@@ -171,9 +171,18 @@ describe('completionMessage (완주 인증)', () => {
       title: '스위치온 2주차 완주! 🔥',
       description: '7일 중 6일 완주',
       buttonTitle: '나도 스위치온 해보기',
-      imageUrl: APP_LOGO_URL,
+      imageUrl: shareImageUrl('completion-2'),
       params: { share: 'completion' },
     });
+  });
+
+  it('이미지는 주차별, 유지기(5주차 이상)는 한 장', () => {
+    expect(completionMessage({ kind: 'day', week: 1, day: 3, fullDays: 3 }).imageUrl).toBe(
+      shareImageUrl('completion-1')
+    );
+    expect(completionMessage({ kind: 'week', week: 6, fullDays: 7 }).imageUrl).toBe(
+      shareImageUrl('completion-5')
+    );
   });
 
   it('완주 축하 시트는 그날 일차', () => {
@@ -301,24 +310,31 @@ describe('foodCheckMessage (편의점 판정 결과 알려주기)', () => {
   const check = {
     productName: '닭가슴살 소시지',
     inputText: null,
+    score: 8,
     verdict: 'ok' as const,
     week: 2,
   };
 
-  it('먹어도 되면 ✅', () => {
+  it('7점 이상은 먹어도 돼요 ✅', () => {
     expect(foodCheckMessage(check)).toEqual({
       title: '닭가슴살 소시지',
       description: '스위치온 2주차에 먹어도 돼요 ✅',
       buttonTitle: '나도 판정해 보기',
-      imageUrl: APP_LOGO_URL,
+      imageUrl: shareImageUrl('foodcheck-ok'),
       params: { foodCheck: '1' },
     });
   });
 
-  it('피하세요면 ⚠️', () => {
-    expect(foodCheckMessage({ ...check, verdict: 'avoid' })?.description).toBe(
-      '스위치온 2주차엔 피하는 게 좋아요 ⚠️'
-    );
+  it('4~6점은 주의가 필요해요 ⚠️', () => {
+    const message = foodCheckMessage({ ...check, score: 5 });
+    expect(message?.description).toBe('스위치온 2주차엔 주의가 필요해요 ⚠️');
+    expect(message?.imageUrl).toBe(shareImageUrl('foodcheck-caution'));
+  });
+
+  it('3점 이하는 피하는 게 좋아요 ⛔', () => {
+    const message = foodCheckMessage({ ...check, score: 2, verdict: 'avoid' });
+    expect(message?.description).toBe('스위치온 2주차엔 피하는 게 좋아요 ⛔');
+    expect(message?.imageUrl).toBe(shareImageUrl('foodcheck-avoid'));
   });
 
   it('제품 이름이 없으면 입력한 이름, 그것도 없으면 "편의점 음식"', () => {
@@ -334,17 +350,12 @@ describe('foodCheckMessage (편의점 판정 결과 알려주기)', () => {
     expect(foodCheckMessage({ ...check, week: null })?.description).toBe(
       '스위치온 중에 먹어도 돼요 ✅'
     );
-    expect(foodCheckMessage({ ...check, week: 6, verdict: 'avoid' })?.description).toBe(
-      '스위치온 유지기엔 피하는 게 좋아요 ⚠️'
+    expect(foodCheckMessage({ ...check, week: 6, score: 1, verdict: 'avoid' })?.description).toBe(
+      '스위치온 유지기엔 피하는 게 좋아요 ⛔'
     );
   });
 
-  it('공개 이미지 주소를 주면 그 이미지, 아니면 앱 아이콘', () => {
-    expect(foodCheckMessage(check, 'https://img/a.jpg')?.imageUrl).toBe('https://img/a.jpg');
-    expect(foodCheckMessage(check, null)?.imageUrl).toBe(APP_LOGO_URL);
-  });
-
   it('판정이 없으면 보낼 것이 없다', () => {
-    expect(foodCheckMessage({ ...check, verdict: null })).toBeNull();
+    expect(foodCheckMessage({ ...check, score: null, verdict: null })).toBeNull();
   });
 });

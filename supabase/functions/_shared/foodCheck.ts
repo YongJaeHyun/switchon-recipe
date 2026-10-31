@@ -19,6 +19,10 @@ export type ParsedFoodCheck =
   | { status: 'unrecognized' }
   | { status: 'invalid' };
 
+// 앱은 점수로 세 단계를 보여 준다: 7~10 먹어도 돼요, 4~6 주의, 1~3 피하세요 (utils/foodCheckDisplay).
+// verdict 칸은 DB 제약(ok/avoid) 때문에 5점 기준 그대로 두고, 대체 추천은 주의 단계부터 준다
+export const ALTERNATIVES_MAX_SCORE = 6;
+
 export function verdictOf(score: number): 'ok' | 'avoid' {
   return score >= 5 ? 'ok' : 'avoid';
 }
@@ -166,7 +170,7 @@ export function buildFoodCheckPrompt(input: FoodCheckInput, week: number, day?: 
     '[판정 대상]',
     source,
     '',
-    '위 규칙에 얼마나 맞는지 1~10점(정수)으로 점수를 매기세요. 5점 이상이면 먹어도 되는 상품이에요.',
+    '위 규칙에 얼마나 맞는지 1~10점(정수)으로 점수를 매기세요. 7점 이상은 먹어도 되는 상품, 4~6점은 주의가 필요한 상품, 3점 이하는 피해야 하는 상품이에요.',
     '프로그램 내내 금지인 식품이 주재료면 낮은 점수를 주세요.',
     '대체 상품은 사용자의 이번 주차와 끼니에 허용되는 식품이어야 해요. 위 [프로그램 내내 금지] 목록에 있는 것(가공육 햄·소시지·베이컨, 단 음료·가당 요거트, 정제 밀가루, 당이 많은 소스 등)이 들어간 상품은 절대 추천하지 마세요.',
     '대체 상품은 편의점에서 파는 가공이 적은 통식품을 우선하세요. 예: 삶은 달걀, 닭가슴살(가공 소시지 X), 무가당 두유, 이번 주차에 허용되면 견과류.',
@@ -179,7 +183,7 @@ export function buildFoodCheckPrompt(input: FoodCheckInput, week: number, day?: 
     '  "productName": "상품 이름",',
     '  "score": 1~10 사이 정수,',
     '  "reasons": ["짧은 한국어 문장 1~2개"],',
-    '  "alternatives": ["점수가 4 이하일 때만, 이번 주차에 먹을 수 있는 흔한 한국 편의점 상품 2~3개. 그 외에는 빈 배열"]',
+    '  "alternatives": ["점수가 6 이하일 때만, 이번 주차에 먹을 수 있는 흔한 한국 편의점 상품 2~3개. 그 외에는 빈 배열"]',
     '}',
   ].join('\n');
 }
@@ -249,7 +253,7 @@ export function parseFoodCheckResponse(
 
   const verdict = verdictOf(score);
   let alternatives: string[] = [];
-  if (verdict === 'avoid') {
+  if (score <= ALTERNATIVES_MAX_SCORE) {
     alternatives = filterAlternatives(cleanStrings(d.alternatives, 3), week);
     if (alternatives.length < 1) alternatives = defaultAlternatives(week);
   }

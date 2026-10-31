@@ -266,9 +266,15 @@ describe('parseFoodCheckResponse 대체 추천 안전망', () => {
     ]);
   });
 
-  it('ok 판정이면 대체 추천은 계속 빈 배열이다', () => {
-    const r = parseFoodCheckResponse(good({ score: 8, alternatives: ['햄'] }), 'text', 1);
+  it('7점 이상이면 대체 추천은 계속 빈 배열이다', () => {
+    const r = parseFoodCheckResponse(good({ score: 7, alternatives: ['햄'] }), 'text', 1);
     expect(r.status === 'ok' && r.result.alternatives).toEqual([]);
+  });
+
+  it('주의(4~6점)도 대체 추천을 준다 (verdict는 5점 기준 그대로)', () => {
+    const r = parseFoodCheckResponse(good({ score: 6, alternatives: ['삶은 달걀'] }), 'text', 1);
+    expect(r.status === 'ok' && r.result.verdict).toBe('ok');
+    expect(r.status === 'ok' && r.result.alternatives).toEqual(['삶은 달걀']);
   });
 });
 

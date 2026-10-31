@@ -18,7 +18,12 @@ import colors from 'tailwindcss/colors';
 import type { FoodCheckInput, FoodCheckPhotoType, FoodCheckRecord } from 'types/foodCheck';
 import type { PassStatus } from 'types/pass';
 import { formatKoreanDate } from 'utils/date';
-import { formatPremiumRemaining, verdictLabel } from 'utils/foodCheckDisplay';
+import {
+  FOOD_CHECK_LEVEL_TEXT,
+  foodCheckLevel,
+  foodCheckLevelLabel,
+  formatPremiumRemaining,
+} from 'utils/foodCheckDisplay';
 import {
   formatFoodCheckTrial,
   getFoodCheckTrialRemaining,
@@ -156,7 +161,8 @@ const TrialNotice = ({ remaining, canBuyPass }: { remaining: number; canBuyPass:
 
 // 기록 한 줄. 썸네일이 없으면(글자 입력, 아직 안 만들어짐) 아이콘으로 대신한다
 const HistoryItem = ({ check, disabled }: { check: FoodCheckRecord; disabled: boolean }) => {
-  const isAvoid = check.verdict === 'avoid';
+  const level = foodCheckLevel(check);
+  const accent = level ? FOOD_CHECK_LEVEL_TEXT[level] : 'text-neutral-500';
   const title = check.productName ?? check.inputText ?? '판정 기록';
 
   return (
@@ -189,12 +195,8 @@ const HistoryItem = ({ check, disabled }: { check: FoodCheckRecord; disabled: bo
         <Text className="text-xs text-neutral-400">{formatKoreanDate(check.createdAt)}</Text>
       </View>
       <View className="items-end">
-        <Text className={`text-xl font-bold ${isAvoid ? 'text-red-500' : 'text-green-600'}`}>
-          {check.score ?? '-'}
-        </Text>
-        <Text className={`text-xs ${isAvoid ? 'text-red-500' : 'text-green-600'}`}>
-          {verdictLabel(check.verdict)}
-        </Text>
+        <Text className={`text-xl font-bold ${accent}`}>{check.score ?? '-'}</Text>
+        <Text className={`text-xs ${accent}`}>{foodCheckLevelLabel(level)}</Text>
       </View>
     </RippleButton>
   );
