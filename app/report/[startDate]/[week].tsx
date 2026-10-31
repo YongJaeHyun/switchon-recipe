@@ -329,7 +329,7 @@ export default function ReportDetailScreen() {
             {isPrevious && (
               <View className="rounded-full bg-neutral-200 px-2 py-0.5">
                 <Text className="text-xs text-neutral-600">
-                  이전 회차 · {formatProgramStart(report.start_date)}
+                  이전 프로그램 · {formatProgramStart(report.start_date)}
                 </Text>
               </View>
             )}
