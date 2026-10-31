@@ -135,10 +135,10 @@ const JourneyHero = ({
       )}
       <View className="gap-2">
         <Text className="text-3xl font-bold leading-10 text-neutral-900">
-          한 회차를 끝까지 함께해요
+          프로그램을 끝까지 함께해요
         </Text>
         <Text className="text-base leading-6 text-neutral-600">
-          1주차 첫 쉐이크부터 유지기까지, 스위치온의 모든 기능을 한 회차 내내 써요.
+          1주차 첫 쉐이크부터 유지기까지, 스위치온의 모든 기능을 프로그램 내내 써요.
         </Text>
       </View>
 
