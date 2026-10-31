@@ -1,10 +1,12 @@
 import { shareCustomTemplate, shareFeedTemplate } from '@react-native-kakao/share';
 import { KAKAO_TEMPLATE_IDS, type KakaoTemplateKey } from 'const/kakaoTemplates';
 import { useUserStore } from 'stores/userStore';
+import type { FoodCheckRecord } from 'types/foodCheck';
 import { getKoreanDateString } from './date';
 import {
   completionMessage,
   feedTemplate,
+  foodCheckMessage,
   inviteMessage,
   type CompletionShare,
   type KakaoShareMessage,
@@ -48,4 +50,10 @@ export function shareInvite() {
 // 완주 인증 (완주 축하 시트·완주 달력). 체중은 사용자가 켠 경우만 넘긴다
 export function shareCompletion(share: CompletionShare, weightLossKg: number | null) {
   return shareKakaoMessage('completion', completionMessage({ ...share, weightLossKg }));
+}
+
+// 편의점 판정 결과 (판정 결과 화면). 판정이 없으면 보내지 않는다
+export function shareFoodCheck(check: FoodCheckRecord) {
+  const message = foodCheckMessage(check);
+  if (message) return shareKakaoMessage('foodCheck', message);
 }

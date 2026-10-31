@@ -2,6 +2,7 @@ import type { KakaoFeedTemplate, KakaoTemplateLink } from '@react-native-kakao/s
 import { STORE_URL } from 'const/const';
 import { APP_LOGO_URL } from 'const/kakaoTemplates';
 import type { Nullable } from 'types/common';
+import type { FoodCheckRecord } from 'types/foodCheck';
 import type { CompletionCalendar } from './completionCalendar';
 import {
   addDaysToDay,
@@ -194,6 +195,30 @@ export function completionShareTarget(
   const fullDays = calendar.weeks[week - 1]?.counts.full ?? 0;
   if (fullDays === 0) return null;
   return finished >= 1 ? { kind: 'week', week, fullDays } : { kind: 'ongoing', week, fullDays };
+}
+
+// ── 편의점 판정 결과 (친구에게 알려주기). 받은 사람은 편의점 판정 화면으로 (foodCheck=1)
+
+// imageUrl = 누구나 볼 수 있는 이미지 주소. 판정 사진은 1시간짜리 signed URL이라 넘기지 않고 앱 아이콘을 쓴다
+export function foodCheckMessage(
+  check: Pick<FoodCheckRecord, 'productName' | 'inputText' | 'verdict' | 'week'>,
+  imageUrl?: string | null
+): KakaoShareMessage | null {
+  if (!check.verdict) return null;
+  const name = check.productName?.trim() || check.inputText?.trim() || '편의점 음식';
+  const when =
+    check.week == null ? '중' : check.week >= MAINTENANCE_WEEK ? '유지기' : `${check.week}주차`;
+  const description =
+    check.verdict === 'ok'
+      ? `스위치온 ${when}에 먹어도 돼요 ✅`
+      : `스위치온 ${when}엔 피하는 게 좋아요 ⚠️`;
+  return {
+    title: name,
+    description,
+    buttonTitle: '나도 판정해 보기',
+    imageUrl: imageUrl || APP_LOGO_URL,
+    params: { foodCheck: '1' },
+  };
 }
 
 // ── 기본 피드 메시지 (콘솔 템플릿이 없을 때)

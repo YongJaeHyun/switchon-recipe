@@ -10,6 +10,8 @@ export const KAKAO_TEMPLATE_IDS = {
   invite: null,
   // 완주 인증 (자랑하기). 실행 파라미터 share=completion (앱만 연다)
   completion: null,
+  // 편의점 판정 결과. 실행 파라미터 foodCheck=1 (받은 사람은 편의점 판정 화면)
+  foodCheck: null,
 } as const satisfies Record<string, number | null>;
 
 export type KakaoTemplateKey = keyof typeof KAKAO_TEMPLATE_IDS;

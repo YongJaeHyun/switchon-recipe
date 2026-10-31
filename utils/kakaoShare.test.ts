@@ -6,6 +6,7 @@ import {
   completionShareTarget,
   dayFullCount,
   feedTemplate,
+  foodCheckMessage,
   inviteMessage,
   inviteNotice,
   inviteStartChoice,
@@ -265,5 +266,57 @@ describe('completionShareTarget (완주 달력에서 무엇을 자랑할지)', (
     expect(
       completionShareTarget(calendarAt(4, 2), { week: 4, day: 2, beforeStart: false })
     ).toBeNull();
+  });
+});
+
+describe('foodCheckMessage (편의점 판정 결과 알려주기)', () => {
+  const check = {
+    productName: '닭가슴살 소시지',
+    inputText: null,
+    verdict: 'ok' as const,
+    week: 2,
+  };
+
+  it('먹어도 되면 ✅', () => {
+    expect(foodCheckMessage(check)).toEqual({
+      title: '닭가슴살 소시지',
+      description: '스위치온 2주차에 먹어도 돼요 ✅',
+      buttonTitle: '나도 판정해 보기',
+      imageUrl: APP_LOGO_URL,
+      params: { foodCheck: '1' },
+    });
+  });
+
+  it('피하세요면 ⚠️', () => {
+    expect(foodCheckMessage({ ...check, verdict: 'avoid' })?.description).toBe(
+      '스위치온 2주차엔 피하는 게 좋아요 ⚠️'
+    );
+  });
+
+  it('제품 이름이 없으면 입력한 이름, 그것도 없으면 "편의점 음식"', () => {
+    expect(foodCheckMessage({ ...check, productName: null, inputText: '바나나우유' })?.title).toBe(
+      '바나나우유'
+    );
+    expect(foodCheckMessage({ ...check, productName: '  ', inputText: null })?.title).toBe(
+      '편의점 음식'
+    );
+  });
+
+  it('주차를 모르면 "스위치온 중", 유지기면 "유지기"', () => {
+    expect(foodCheckMessage({ ...check, week: null })?.description).toBe(
+      '스위치온 중에 먹어도 돼요 ✅'
+    );
+    expect(foodCheckMessage({ ...check, week: 6, verdict: 'avoid' })?.description).toBe(
+      '스위치온 유지기엔 피하는 게 좋아요 ⚠️'
+    );
+  });
+
+  it('공개 이미지 주소를 주면 그 이미지, 아니면 앱 아이콘', () => {
+    expect(foodCheckMessage(check, 'https://img/a.jpg')?.imageUrl).toBe('https://img/a.jpg');
+    expect(foodCheckMessage(check, null)?.imageUrl).toBe(APP_LOGO_URL);
+  });
+
+  it('판정이 없으면 보낼 것이 없다', () => {
+    expect(foodCheckMessage({ ...check, verdict: null })).toBeNull();
   });
 });

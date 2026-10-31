@@ -94,6 +94,24 @@ describe('parseKakaoLink: 앱만 여는 링크 (완주 인증 등)', () => {
   });
 });
 
+describe('parseKakaoLink: 편의점 판정 (foodCheck=1)', () => {
+  it('편의점 판정 화면으로', () => {
+    expect(parseKakaoLink(link('foodCheck=1'))).toEqual({ type: 'foodCheck' });
+  });
+
+  it('로그인·온보딩을 마쳤으면 바로, 아니면 그 뒤에 판정 화면', () => {
+    const target = { type: 'foodCheck' } as const;
+    expect(kakaoLinkRoute({ target, isLoggedIn: true, isOnboarded: true })).toEqual({
+      href: '/foodCheck',
+      afterLoginHref: null,
+    });
+    expect(kakaoLinkRoute({ target, isLoggedIn: false, isOnboarded: null })).toEqual({
+      href: '/',
+      afterLoginHref: '/foodCheck',
+    });
+  });
+});
+
 describe('recipeDetailHref', () => {
   it('레시피 JSON을 주소에 안전하게 넣는다 (&·% 같은 글자가 있어도)', () => {
     const href = recipeDetailHref(recipe);
