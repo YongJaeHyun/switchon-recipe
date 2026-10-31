@@ -26,6 +26,8 @@ export interface PassStatus {
   foodCheckTrialRemaining?: number;
   // 패스 없이 쓸 수 있는 음식 이름으로 만들기 무료 횟수 (표시용). 이 필드를 모르는 옛 서버면 없음
   recipeByNameTrialRemaining?: number;
+  // 무료 1주차 주간 리포트 남은 횟수 (0 또는 1, 평생 1번). 모르면 undefined
+  freeReportRemaining?: number;
   serverNow: string; // ISO
 }
 

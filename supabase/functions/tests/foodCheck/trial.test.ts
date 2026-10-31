@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   FOOD_CHECK_TRIAL_LIMIT,
   foodCheckTrialRemaining,
+  freeReportRemaining,
   parseTrialConsume,
 } from '../../_shared/foodCheckTrial.ts';
 
@@ -35,5 +36,13 @@ describe('foodCheckTrialRemaining', () => {
     expect(foodCheckTrialRemaining(2)).toBe(1);
     expect(foodCheckTrialRemaining(3)).toBe(0);
     expect(foodCheckTrialRemaining(5)).toBe(0);
+  });
+});
+
+describe('freeReportRemaining (무료 1주차 리포트, 평생 1번)', () => {
+  it('행이 없거나 아직 안 받았으면 1, 받았으면 0', () => {
+    expect(freeReportRemaining(undefined)).toBe(1);
+    expect(freeReportRemaining(null)).toBe(1);
+    expect(freeReportRemaining('2026-11-08T00:00:00Z')).toBe(0);
   });
 });
