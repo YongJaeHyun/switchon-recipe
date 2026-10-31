@@ -17,18 +17,12 @@ const toHex = (color: string) =>
   /^#[0-9a-f]{3}$/i.test(color) ? `#${[...color.slice(1)].map((c) => c + c).join('')}` : color;
 
 describe('주차 색 위 글자 대비 (칩 라벨 16px)', () => {
-  it.each([1, 2, 3, 4, 5])('%i주차: 주차 색으로 채운 칩 위 글자는 4.5:1 이상', (week) => {
-    expect(
-      contrast(toHex(getWeekColorHex(week)), toHex(getWeekOnColorHex(week)))
-    ).toBeGreaterThanOrEqual(4.5);
+  // 운영자 결정(2026-11-01): 주차 색으로 채운 칩의 글자는 늘 흰색 (대비보다 앱 전체 통일을 우선, 글자는 굵게)
+  it.each([1, 2, 3, 4, 5])('%i주차: 주차 색으로 채운 칩 위 글자는 흰색', (week) => {
+    expect(toHex(getWeekOnColorHex(week))).toBe('#ffffff');
   });
 
   it.each([1, 2, 3, 4, 5])('%i주차: 흰 칩 위 주차 글자색은 4.5:1 이상', (week) => {
     expect(contrast('#ffffff', toHex(getWeekInkHex(week)))).toBeGreaterThanOrEqual(4.5);
-  });
-
-  it('노란 2주차 위에는 흰 글자를 쓰지 않는다, 검정 유지기 위에는 흰 글자', () => {
-    expect(toHex(getWeekOnColorHex(2))).not.toBe('#ffffff');
-    expect(toHex(getWeekOnColorHex(5))).toBe('#ffffff');
   });
 });
