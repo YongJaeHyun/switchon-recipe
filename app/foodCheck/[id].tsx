@@ -11,7 +11,12 @@ import colors from 'tailwindcss/colors';
 import { formatKoreanDate } from 'utils/date';
 import { shareFoodCheck } from 'utils/shareKakao';
 
-const INPUT_TYPE_LABEL = { front: '제품 앞면', label: '성분표', text: '이름 입력' } as const;
+const INPUT_TYPE_LABEL = {
+  photo: '사진',
+  front: '제품 앞면',
+  label: '성분표',
+  text: '이름 입력',
+} as const;
 
 const Header = () => (
   <View className="flex-row items-center gap-3 px-5 pb-2 pt-4">
@@ -27,9 +32,9 @@ export default function FoodCheckDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: check, isLoading, isError } = useFoodCheck(Number(id));
 
-  // 성분표로 다시 보기: 입력 화면으로 돌아가 성분표 카메라를 연다
+  // 성분표 찍기: 입력 화면으로 돌아가 카메라를 연다 (새 사진 한 장으로 다시 판정)
   const handleCheckLabel = () =>
-    router.navigate({ pathname: '/foodCheck', params: { photoType: 'label' } });
+    router.navigate({ pathname: '/foodCheck', params: { camera: '1' } });
 
   return (
     <SafeAreaView className="flex-1 bg-neutral-50">
@@ -74,7 +79,7 @@ export default function FoodCheckDetailScreen() {
 
           <FoodCheckResultCard check={check} onCheckLabel={handleCheckLabel} />
 
-          {/* 판정이 나온 결과만 카톡으로 (받은 친구는 앱의 편의점 판정으로) */}
+          {/* 판정이 나온 결과만 카톡으로 (받은 친구는 앱의 음식 판정으로) */}
           {check.verdict && (
             <KakaoShareButton label="친구에게 알려주기" onPress={() => shareFoodCheck(check)} />
           )}

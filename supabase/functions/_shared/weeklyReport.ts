@@ -244,7 +244,7 @@ const statsLines = (s: WeeklyStats): string[] => [
   ...todoLines(s.todo),
   ...fastingLines(s.fasting),
   `- 만든 레시피: ${s.recipes.total}개 (저탄수 ${s.recipes.low}개, 무탄수 ${s.recipes.zero}개)`,
-  `- 편의점 판정: ${s.foodChecks.total}회 중 "피하세요" ${s.foodChecks.avoid}회`,
+  `- 음식 판정: ${s.foodChecks.total}회 중 "피하세요" ${s.foodChecks.avoid}회`,
 ];
 
 // ── 프롬프트 ───────────────────────────────────────────────

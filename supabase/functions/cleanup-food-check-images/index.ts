@@ -1,6 +1,6 @@
 /// <reference lib="deno.ns" />
 
-// 편의점 판정 원본 사진 정리 배치: cron 등 service role 호출로만 실행한다.
+// 음식 판정 원본 사진 정리 배치: cron 등 service role 호출로만 실행한다.
 // 30일 지난 원본을 스토리지에서 지우고 food_check.image_path를 null로 만든다 (썸네일은 유지).
 // 스토리지가 실제로 지웠다고 돌려준 원본의 행만 null로 바꾸므로 나머지는 다음 실행에서 다시 시도된다.
 // 또 탈퇴로 public.user 행이 사라진(food_check 행은 cascade로 삭제) uid의 폴더 food-check/{uid}/를

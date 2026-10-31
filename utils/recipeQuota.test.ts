@@ -8,7 +8,7 @@ import {
 } from './recipeQuota';
 
 describe('getQuotaModalView', () => {
-  const features = ['편의점 판정', '맞춤 레시피 추천', 'AI 주간 리포트'];
+  const features = ['음식 판정', '맞춤 레시피 추천', 'AI 주간 리포트'];
   const base = {
     isPass: false,
     canWatchAd: true,

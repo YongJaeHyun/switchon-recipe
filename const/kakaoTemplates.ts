@@ -10,13 +10,20 @@ export const KAKAO_TEMPLATE_IDS = {
   invite: null,
   // 완주 인증 (자랑하기). 실행 파라미터 share=completion (앱만 연다)
   completion: null,
-  // 편의점 판정 결과. 실행 파라미터 foodCheck=1 (받은 사람은 편의점 판정 화면)
+  // 음식 판정 결과. 실행 파라미터 foodCheck=1 (받은 사람은 음식 판정 화면)
   foodCheck: null,
 } as const satisfies Record<string, number | null>;
 
 export type KakaoTemplateKey = keyof typeof KAKAO_TEMPLATE_IDS;
 
-// 메시지 이미지로 쓰는 앱 아이콘 (플레이 스토어에 올라간 아이콘, 512×512).
-// 스토어 아이콘을 바꾸면 이 주소도 바뀔 수 있다
-export const APP_LOGO_URL =
-  'https://play-lh.googleusercontent.com/mZzUyrGbsgVll_FhWIKCm8EM6Ibiwq3e7PgaIYgbwfDDHRSNrBb9h-ebFWQ6_aVnDpb_fj_KMyy5fiOsSfObZA=w512';
+// 카톡 공유 이미지 (800×400 가로형, 2배 해상도). Supabase 공개 버킷 share-images에 올려 둔다.
+// 원본은 docs/share-images/ (HTML로 그려 PNG로 저장). 이미지를 바꾸면 v2/처럼 새 폴더에 올려 카톡 캐시를 피한다
+const SHARE_IMAGE_BASE =
+  'https://hhewuyfclrapnchhltod.supabase.co/storage/v1/object/public/share-images/v1/';
+
+export type ShareImageName =
+  | 'invite'
+  | `completion-${1 | 2 | 3 | 4 | 5}`
+  | `foodcheck-${'ok' | 'caution' | 'avoid'}`;
+
+export const shareImageUrl = (name: ShareImageName) => `${SHARE_IMAGE_BASE}${name}.png`;

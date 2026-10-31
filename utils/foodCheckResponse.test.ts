@@ -18,6 +18,7 @@ const record = {
   score: 3,
   verdict: 'avoid',
   basis: 'estimate',
+  foodKind: 'packaged',
   reasons: ['흰쌀밥 위주예요'],
   alternatives: ['구운 계란'],
   week: 1,
@@ -51,10 +52,22 @@ describe('interpretFoodCheckResponse', () => {
     ).toEqual({ status: 'unrecognized', message: '다시 찍어주세요' });
   });
 
+  it('200 ok의 foodKind를 모르면(옛 서버 포함) null로 맞춘다', () => {
+    const { foodKind: _omit, ...old } = record;
+    void _omit;
+    const r = interpretFoodCheckResponse(200, { status: 'ok', check: old });
+    expect(r.status === 'ok' && r.check.foodKind).toBeNull();
+    const r2 = interpretFoodCheckResponse(200, {
+      status: 'ok',
+      check: { ...record, foodKind: 'weird' },
+    });
+    expect(r2.status === 'ok' && r2.check.foodKind).toBeNull();
+  });
+
   it('200 unrecognized에 문구가 없으면 기본 문구', () => {
     expect(interpretFoodCheckResponse(200, { status: 'unrecognized' })).toEqual({
       status: 'unrecognized',
-      message: '제품명이 잘 보이게 다시 찍어주세요',
+      message: '음식이 잘 보이게 다시 찍어주세요',
     });
   });
 
@@ -114,6 +127,7 @@ describe('toFoodCheckRecord', () => {
           score: 9,
           verdict: 'ok',
           basis: 'estimate',
+          food_kind: 'packaged',
           reasons: ['단백질'],
           alternatives: null,
           week: 2,
@@ -132,6 +146,7 @@ describe('toFoodCheckRecord', () => {
       score: 9,
       verdict: 'ok',
       basis: 'estimate',
+      foodKind: 'packaged',
       reasons: ['단백질'],
       alternatives: null,
       week: 2,
@@ -162,6 +177,32 @@ describe('toFoodCheckRecord', () => {
     );
     expect(r.verdict).toBeNull();
     expect(r.basis).toBeNull();
+    expect(r.foodKind).toBeNull();
+  });
+
+  it('사진 한 장(photo)과 조리된 음식을 그대로 받는다', () => {
+    const r = toFoodCheckRecord(
+      {
+        id: 4,
+        uid: 'u1',
+        input_type: 'photo',
+        input_text: null,
+        image_path: null,
+        thumb_path: null,
+        product_name: '김치찌개',
+        score: 6,
+        verdict: 'ok',
+        basis: 'estimate',
+        food_kind: 'dish',
+        reasons: null,
+        alternatives: null,
+        week: 2,
+        created_at: '2026-10-20T01:00:00Z',
+      },
+      null
+    );
+    expect(r.inputType).toBe('photo');
+    expect(r.foodKind).toBe('dish');
   });
 });
 

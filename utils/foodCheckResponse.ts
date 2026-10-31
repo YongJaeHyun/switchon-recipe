@@ -6,12 +6,13 @@ import type {
   FoodCheckRecord,
   FoodCheckRow,
   FoodCheckVerdict,
+  FoodKind,
   PremiumQuotaStatus,
 } from 'types/foodCheck';
 import { PREMIUM_QUOTA_EXCEEDED_MESSAGE } from './foodCheckDisplay';
 import { IMAGE_TOO_LARGE_MESSAGE } from './foodCheckInput';
 
-const UNRECOGNIZED_FALLBACK = '제품명이 잘 보이게 다시 찍어주세요';
+const UNRECOGNIZED_FALLBACK = '음식이 잘 보이게 다시 찍어주세요';
 const ERROR_MESSAGE = '판정에 실패했어요. 잠시 후 다시 시도해 주세요';
 const INVALID_FALLBACK = '입력을 확인해 주세요';
 
@@ -23,14 +24,19 @@ const isRecord = (value: unknown): value is FoodCheckRecord => {
   return !!v && typeof v.id === 'number' && typeof v.createdAt === 'string';
 };
 
+const toFoodKind = (value: unknown): FoodKind | null =>
+  value === 'packaged' || value === 'dish' ? value : null;
+
 export function interpretFoodCheckResponse(status: number, body: unknown): FoodCheckOutcome {
   const b = asObject(body);
 
   if (status === 200) {
     if (b?.status === 'ok' && isRecord(b.check)) {
+      // 옛 서버는 foodKind를 보내지 않는다
+      const check: FoodCheckRecord = { ...b.check, foodKind: toFoodKind(b.check.foodKind) };
       return typeof b.trialRemaining === 'number'
-        ? { status: 'ok', check: b.check, trialRemaining: b.trialRemaining }
-        : { status: 'ok', check: b.check };
+        ? { status: 'ok', check, trialRemaining: b.trialRemaining }
+        : { status: 'ok', check };
     }
     if (b?.status === 'unrecognized') {
       return {
@@ -52,7 +58,7 @@ export function interpretFoodCheckResponse(status: number, body: unknown): FoodC
   return { status: 'error', message: ERROR_MESSAGE };
 }
 
-const INPUT_TYPES: FoodCheckInputType[] = ['front', 'label', 'text'];
+const INPUT_TYPES: FoodCheckInputType[] = ['photo', 'front', 'label', 'text'];
 
 export function toFoodCheckRecord(row: FoodCheckRow, thumbUrl: string | null): FoodCheckRecord {
   const verdict: FoodCheckVerdict | null =
@@ -74,6 +80,7 @@ export function toFoodCheckRecord(row: FoodCheckRow, thumbUrl: string | null): F
     score: row.score,
     verdict,
     basis,
+    foodKind: toFoodKind(row.food_kind),
     reasons: row.reasons,
     alternatives: row.alternatives,
     week: row.week,

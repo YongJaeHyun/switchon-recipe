@@ -26,7 +26,8 @@ export interface WeeklyInputs {
   fastingSchedule?: FastingSchedule;
   now?: Date;
   recipes: { created_at: string; is_zero_carb: boolean }[];
-  foodChecks: { created_at: string; verdict: 'ok' | 'avoid' }[];
+  // score가 있으면 앱과 같은 세 단계 기준(3점 이하 = 피하세요), 없으면 verdict
+  foodChecks: { created_at: string; verdict: 'ok' | 'avoid'; score?: number | null }[];
 }
 
 export interface TodoDayRate {
@@ -293,7 +294,8 @@ export function computeWeeklyStats(input: WeeklyInputs): WeeklyStats {
     recipes: { total: recipes.length, low: recipes.length - zero, zero },
     foodChecks: {
       total: foodChecks.length,
-      avoid: foodChecks.filter((c) => c.verdict === 'avoid').length,
+      avoid: foodChecks.filter((c) => (c.score != null ? c.score <= 3 : c.verdict === 'avoid'))
+        .length,
     },
     isEmpty: weight.daysLogged === 0 && checkedTodoDays === 0,
   };

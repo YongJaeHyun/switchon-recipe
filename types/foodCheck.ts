@@ -1,14 +1,16 @@
-// 편의점 판정 (food-check 엣지 함수, food_check 테이블) 앱 쪽 타입.
+// 음식 판정 (food-check 엣지 함수, food_check 테이블) 앱 쪽 타입.
 // 서버 supabase/functions/food-check/handler.ts의 FoodCheckRecord와 같은 모양이다
 
-export type FoodCheckInputType = 'front' | 'label' | 'text';
-export type FoodCheckPhotoType = Exclude<FoodCheckInputType, 'text'>;
+// 'photo'가 지금 앱이 보내는 사진 한 장. 'front'·'label'은 옛 빌드가 남긴 기록에만 있다
+export type FoodCheckInputType = 'photo' | 'front' | 'label' | 'text';
+// 포장 상품인지 조리된 음식인지 (모델이 고른다). 옛 기록이거나 모르면 null
+export type FoodKind = 'packaged' | 'dish';
 export type FoodCheckVerdict = 'ok' | 'avoid';
 export type FoodCheckBasis = 'estimate' | 'label';
 export type FoodCheckMimeType = 'image/jpeg' | 'image/png';
 
 export type FoodCheckInput =
-  | { type: FoodCheckPhotoType; imageBase64: string; mimeType: FoodCheckMimeType }
+  | { type: 'photo'; imageBase64: string; mimeType: FoodCheckMimeType }
   | { type: 'text'; text: string };
 
 export interface FoodCheckRecord {
@@ -22,6 +24,7 @@ export interface FoodCheckRecord {
   score: number | null;
   verdict: FoodCheckVerdict | null;
   basis: FoodCheckBasis | null;
+  foodKind: FoodKind | null;
   reasons: string[] | null;
   alternatives: string[] | null;
   week: number | null;
@@ -42,6 +45,8 @@ export interface FoodCheckRow {
   score: number | null;
   verdict: string | null;
   basis: string | null;
+  // 20261101010000_food_check_photo 마이그레이션 전 행에는 없다
+  food_kind?: string | null;
   reasons: string[] | null;
   alternatives: string[] | null;
   week: number | null;

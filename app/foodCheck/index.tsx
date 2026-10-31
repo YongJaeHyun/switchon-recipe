@@ -15,10 +15,15 @@ import { ActivityIndicator, ScrollView, TextInput, TouchableOpacity, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
-import type { FoodCheckInput, FoodCheckPhotoType, FoodCheckRecord } from 'types/foodCheck';
+import type { FoodCheckInput, FoodCheckRecord } from 'types/foodCheck';
 import type { PassStatus } from 'types/pass';
 import { formatKoreanDate } from 'utils/date';
-import { formatPremiumRemaining, verdictLabel } from 'utils/foodCheckDisplay';
+import {
+  FOOD_CHECK_LEVEL_TEXT,
+  foodCheckLevel,
+  foodCheckLevelLabel,
+  formatPremiumRemaining,
+} from 'utils/foodCheckDisplay';
 import {
   formatFoodCheckTrial,
   getFoodCheckTrialRemaining,
@@ -37,11 +42,6 @@ import { showErrorToast, showInfoToast } from 'utils/showToast';
 
 type PhotoSource = 'camera' | 'library';
 
-const PHOTO_TYPES: { type: FoodCheckPhotoType; label: string }[] = [
-  { type: 'front', label: '제품 앞면' },
-  { type: 'label', label: '성분표' },
-];
-
 // expo-image-picker에는 크기 줄이기 옵션이 없고 네이티브 모듈(image-manipulator)은 OTA로 추가할 수 없다.
 // 그래서 품질 0.6으로 용량만 줄이고, 그래도 서버 한도를 넘으면 다시 고를 수 없으므로 '용량이 너무 커요'
 // 안내로 끝낸다. 서버는 JPEG 원본을 그대로 저장하고 PNG만 긴 변 1280px로 줄인다 (food-check/images.ts).
@@ -58,34 +58,7 @@ const Header = () => (
     <TouchableOpacity onPress={router.back} hitSlop={10}>
       <MaterialIcons name="arrow-back" size={28} color="black" />
     </TouchableOpacity>
-    <Text className="text-xl font-bold">편의점 판정</Text>
-  </View>
-);
-
-const PhotoTypeToggle = ({
-  value,
-  onChange,
-  disabled,
-}: {
-  value: FoodCheckPhotoType;
-  onChange(type: FoodCheckPhotoType): void;
-  disabled: boolean;
-}) => (
-  <View className="flex-row rounded-xl bg-neutral-100 p-1">
-    {PHOTO_TYPES.map(({ type, label }) => {
-      const selected = value === type;
-      return (
-        <TouchableOpacity
-          key={type}
-          disabled={disabled}
-          onPress={() => onChange(type)}
-          className={`flex-1 items-center rounded-lg py-2 ${selected ? 'bg-white shadow-sm' : ''}`}>
-          <Text className={selected ? 'font-bold text-green-600' : 'text-neutral-500'}>
-            {label}
-          </Text>
-        </TouchableOpacity>
-      );
-    })}
+    <Text className="text-xl font-bold">음식 판정</Text>
   </View>
 );
 
@@ -156,7 +129,8 @@ const TrialNotice = ({ remaining, canBuyPass }: { remaining: number; canBuyPass:
 
 // 기록 한 줄. 썸네일이 없으면(글자 입력, 아직 안 만들어짐) 아이콘으로 대신한다
 const HistoryItem = ({ check, disabled }: { check: FoodCheckRecord; disabled: boolean }) => {
-  const isAvoid = check.verdict === 'avoid';
+  const level = foodCheckLevel(check);
+  const accent = level ? FOOD_CHECK_LEVEL_TEXT[level] : 'text-neutral-500';
   const title = check.productName ?? check.inputText ?? '판정 기록';
 
   return (
@@ -189,12 +163,8 @@ const HistoryItem = ({ check, disabled }: { check: FoodCheckRecord; disabled: bo
         <Text className="text-xs text-neutral-400">{formatKoreanDate(check.createdAt)}</Text>
       </View>
       <View className="items-end">
-        <Text className={`text-xl font-bold ${isAvoid ? 'text-red-500' : 'text-green-600'}`}>
-          {check.score ?? '-'}
-        </Text>
-        <Text className={`text-xs ${isAvoid ? 'text-red-500' : 'text-green-600'}`}>
-          {verdictLabel(check.verdict)}
-        </Text>
+        <Text className={`text-xl font-bold ${accent}`}>{check.score ?? '-'}</Text>
+        <Text className={`text-xs ${accent}`}>{foodCheckLevelLabel(level)}</Text>
       </View>
     </RippleButton>
   );
@@ -206,10 +176,9 @@ export default function FoodCheckScreen() {
   const billingAvailable = useBillingAvailable();
   const { data: quota } = usePremiumQuota();
   const { data: history, isLoading: isHistoryLoading } = useFoodChecks();
-  // 결과 화면의 [성분표 찍고 더 정확히 보기]가 photoType=label로 돌아온다
-  const { photoType: photoTypeParam } = useLocalSearchParams<{ photoType?: string }>();
+  // 결과 화면의 [성분표 찍고 더 정확히 보기]가 camera=1로 돌아온다
+  const { camera: cameraParam } = useLocalSearchParams<{ camera?: string }>();
 
-  const [photoType, setPhotoType] = useState<FoodCheckPhotoType>('front');
   const [text, setText] = useState('');
   const [checking, setChecking] = useState(false);
   // 피커/요청이 진행 중이면 다시 시작하지 않는다 (상태 반영 전 연타도 ref로 막는다)
@@ -292,7 +261,7 @@ export default function FoodCheckScreen() {
   );
 
   const pickPhoto = useCallback(
-    async (source: PhotoSource, type: FoodCheckPhotoType) => {
+    async (source: PhotoSource) => {
       const permission =
         source === 'camera'
           ? await ImagePicker.requestCameraPermissionsAsync()
@@ -331,8 +300,8 @@ export default function FoodCheckScreen() {
         return;
       }
 
-      // 피커를 여는 동안 연결이 끊겼을 수 있다
-      await requireOnline(runCheck)({ type, imageBase64: asset.base64, mimeType });
+      // 피커를 여는 동안 연결이 끊겼을 수 있다. 포장 상품인지 조리된 음식인지는 서버(모델)가 가린다
+      await requireOnline(runCheck)({ type: 'photo', imageBase64: asset.base64, mimeType });
     },
     [runCheck]
   );
@@ -349,14 +318,13 @@ export default function FoodCheckScreen() {
   // 무료 체험을 다 썼고 패스도 살 수 없으면 입력을 막는다 (보내 봐야 402)
   const blocked = isFoodCheckInputBlocked(passStatus, billingAvailable);
 
-  // 결과 화면에서 성분표로 다시 보기를 누르고 돌아오면 성분표로 바꾸고 바로 카메라를 연다
+  // 결과 화면에서 성분표 찍기를 누르고 돌아오면 바로 카메라를 연다
   useEffect(() => {
-    if (photoTypeParam !== 'label') return;
-    router.setParams({ photoType: undefined });
-    setPhotoType('label');
+    if (cameraParam !== '1') return;
+    router.setParams({ camera: undefined });
     if (blocked) return;
-    void guarded(() => pickPhoto('camera', 'label'))();
-  }, [photoTypeParam, blocked, guarded, pickPhoto]);
+    void guarded(() => pickPhoto('camera'))();
+  }, [cameraParam, blocked, guarded, pickPhoto]);
   const busy = checking;
   const inputDisabled = busy || blocked;
   const hasAccess = passStatus?.hasAccess === true;
@@ -374,7 +342,7 @@ export default function FoodCheckScreen() {
         showsVerticalScrollIndicator={false}>
         <View className="gap-1">
           <Text className="text-base text-neutral-600">
-            편의점 음식, 지금 먹어도 되는지 확인해 보세요.
+            음식 사진을 찍으면 지금 먹어도 되는지 알려 드려요.
           </Text>
           {remainingText && <Text className="text-sm text-green-600">{remainingText}</Text>}
         </View>
@@ -384,21 +352,23 @@ export default function FoodCheckScreen() {
         )}
 
         <View className="gap-3">
-          <PhotoTypeToggle value={photoType} onChange={setPhotoType} disabled={inputDisabled} />
           <View className="flex-row gap-3">
             <PhotoButton
               icon="photo-camera"
               label="사진 찍기"
               disabled={inputDisabled}
-              onPress={guarded(() => pickPhoto('camera', photoType))}
+              onPress={guarded(() => pickPhoto('camera'))}
             />
             <PhotoButton
               icon="photo-library"
               label="앨범에서 고르기"
               disabled={inputDisabled}
-              onPress={guarded(() => pickPhoto('library', photoType))}
+              onPress={guarded(() => pickPhoto('library'))}
             />
           </View>
+          <Text className="text-xs text-neutral-500">
+            차려진 음식도, 포장 상품도 돼요. 포장 상품은 성분표가 보이면 더 정확해요
+          </Text>
         </View>
 
         <View className="gap-2">
@@ -406,7 +376,7 @@ export default function FoodCheckScreen() {
           <View className="flex-row items-center gap-2">
             <TextInput
               className="flex-1 rounded-lg border border-neutral-400 bg-white px-3 py-2.5"
-              placeholder="예: 참치마요 삼각김밥"
+              placeholder="예: 참치마요 삼각김밥, 김치찌개"
               placeholderTextColor={colors.neutral[400]}
               value={text}
               onChangeText={setText}

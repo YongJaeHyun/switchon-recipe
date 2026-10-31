@@ -98,9 +98,9 @@ export function ReportStats({ stats }: { stats: WeeklyStats }) {
         )}
       </StatRow>
 
-      <StatRow icon="storefront" label="편의점 판정">
+      <StatRow icon="fact-check" label="음식 판정">
         <Value>{foodChecks.total}번</Value>
-        {foodChecks.total > 0 && <Sub>피하라고 한 제품 {foodChecks.avoid}개</Sub>}
+        {foodChecks.total > 0 && <Sub>피하라고 한 음식 {foodChecks.avoid}개</Sub>}
       </StatRow>
     </View>
   );

@@ -1,4 +1,4 @@
-// 편의점 판정 무료 체험 (패스 없이 사용자당 평생 3번). 기록은 user_trial.food_check_used,
+// 음식 판정 무료 체험 (패스 없이 사용자당 평생 3번). 기록은 user_trial.food_check_used,
 // 차감·되돌림은 consume_food_check_trial / release_food_check_trial rpc (서버 최종 판단).
 // Deno 엣지 함수와 Vitest(node) 양쪽에서 로드되므로 외부 import를 두지 않는다.
 

@@ -40,9 +40,9 @@ const TOOLS: Tool[] = [
     notice: (week, day) => (isRecommendLocked(week, day) ? RECOMMEND_LOCKED_MESSAGE : null),
   },
   {
-    title: '편의점 판정',
-    description: '먹어도 되는지 바로 확인',
-    icon: 'storefront',
+    title: '음식 판정',
+    description: '사진 한 장으로 먹어도 되는지 확인',
+    icon: 'fact-check',
     href: FOOD_CHECK_HREF,
   },
 ];
@@ -81,7 +81,7 @@ function ToolCard({ title, description, icon, badge, onPress }: ToolCardProps) {
 }
 
 // 패스를 팔지 않고 권한도 없으면 숨긴다. 권한이 없으면 누를 때 usePremiumGate가 결제 화면으로 보낸다.
-// 편의점 판정은 무료 체험(패스 없이 3번)이 남았으면 판매 여부와 관계없이 보이고 바로 들어간다.
+// 음식 판정은 무료 체험(패스 없이 3번)이 남았으면 판매 여부와 관계없이 보이고 바로 들어간다.
 export function RecipeToolCards() {
   const { status } = usePass();
   const billingAvailable = useBillingAvailable();

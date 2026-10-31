@@ -1,9 +1,10 @@
 import type { KakaoFeedTemplate, KakaoTemplateLink } from '@react-native-kakao/share';
 import { STORE_URL } from 'const/const';
-import { APP_LOGO_URL } from 'const/kakaoTemplates';
+import { shareImageUrl } from 'const/kakaoTemplates';
 import type { Nullable } from 'types/common';
 import type { FoodCheckRecord } from 'types/foodCheck';
 import type { CompletionCalendar } from './completionCalendar';
+import { foodCheckLevel, type FoodCheckLevel } from './foodCheckDisplay';
 import {
   addDaysToDay,
   daysUntilStart,
@@ -87,7 +88,7 @@ export function inviteMessage({
       ? `같이 할래? 지금 ${withCopula(progressLabel(start, today), '이야', '야')}`
       : `같이 할래? ${monthDayLabel(start)}부터 1주차`,
     buttonTitle: '같이 시작하기',
-    imageUrl: APP_LOGO_URL,
+    imageUrl: shareImageUrl('invite'),
     params: { invite: start },
   };
 }
@@ -165,6 +166,10 @@ export type CompletionShare =
   | { kind: 'day'; week: number; day: number; fullDays: number }
   | { kind: 'ongoing'; week: number; fullDays: number };
 
+// 완주 이미지는 1~4주차와 유지기(5주차 이상) 한 장
+const completionImageWeek = (week: number) =>
+  Math.min(Math.max(Math.round(week), 1), MAINTENANCE_WEEK) as 1 | 2 | 3 | 4 | 5;
+
 export function completionMessage(
   share: CompletionShare & { weightLossKg?: number | null }
 ): KakaoShareMessage {
@@ -180,7 +185,7 @@ export function completionMessage(
     title,
     description: `7일 중 ${share.fullDays}일 완주${weight}`,
     buttonTitle: '나도 스위치온 해보기',
-    imageUrl: APP_LOGO_URL,
+    imageUrl: shareImageUrl(`completion-${completionImageWeek(share.week)}`),
     params: { share: 'completion' },
   };
 }
@@ -222,26 +227,28 @@ export function completionShareTarget(
   return finished >= 1 ? { kind: 'week', week, fullDays } : { kind: 'ongoing', week, fullDays };
 }
 
-// ── 편의점 판정 결과 (친구에게 알려주기). 받은 사람은 편의점 판정 화면으로 (foodCheck=1)
+// ── 음식 판정 결과 (친구에게 알려주기). 받은 사람은 음식 판정 화면으로 (foodCheck=1)
 
-// imageUrl = 누구나 볼 수 있는 이미지 주소. 판정 사진은 1시간짜리 signed URL이라 넘기지 않고 앱 아이콘을 쓴다
+const FOOD_CHECK_SHARE_TEXT: Record<FoodCheckLevel, (when: string) => string> = {
+  ok: (when) => `스위치온 ${when}에 먹어도 돼요 ✅`,
+  caution: (when) => `스위치온 ${when}엔 주의가 필요해요 ⚠️`,
+  avoid: (when) => `스위치온 ${when}엔 피하는 게 좋아요 ⛔`,
+};
+
+// 판정 사진은 1시간짜리 signed URL이라 넘기지 않고, 판정 단계(점수 기준 세 단계)별 공유 이미지를 쓴다
 export function foodCheckMessage(
-  check: Pick<FoodCheckRecord, 'productName' | 'inputText' | 'verdict' | 'week'>,
-  imageUrl?: string | null
+  check: Pick<FoodCheckRecord, 'productName' | 'inputText' | 'score' | 'verdict' | 'week'>
 ): KakaoShareMessage | null {
-  if (!check.verdict) return null;
-  const name = check.productName?.trim() || check.inputText?.trim() || '편의점 음식';
+  const level = foodCheckLevel(check);
+  if (!level) return null;
+  const name = check.productName?.trim() || check.inputText?.trim() || '음식';
   const when =
     check.week == null ? '중' : check.week >= MAINTENANCE_WEEK ? '유지기' : `${check.week}주차`;
-  const description =
-    check.verdict === 'ok'
-      ? `스위치온 ${when}에 먹어도 돼요 ✅`
-      : `스위치온 ${when}엔 피하는 게 좋아요 ⚠️`;
   return {
     title: name,
-    description,
+    description: FOOD_CHECK_SHARE_TEXT[level](when),
     buttonTitle: '나도 판정해 보기',
-    imageUrl: imageUrl || APP_LOGO_URL,
+    imageUrl: shareImageUrl(`foodcheck-${level}`),
     params: { foodCheck: '1' },
   };
 }

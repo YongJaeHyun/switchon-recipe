@@ -684,8 +684,8 @@ describe('sanitizeContent: 남은 리뷰 지적 (숫자 정밀도·한글 수·�
       recipes: { total: 1, low: 1, zero: 0 },
       foodChecks: { total: 0, avoid: 0 },
     });
-    expect(sanitizeContent(content({ good: '편의점 판정을 네 번 했어요.' }), few).good).toBe(
-      '편의점 판정을 네 번 했어요.'
+    expect(sanitizeContent(content({ good: '음식 판정을 네 번 했어요.' }), few).good).toBe(
+      '음식 판정을 네 번 했어요.'
     );
     expect(sanitizeContent(content({ good: '레시피를 여섯 번 만들었어요.' }), few).good).toBe(
       fallbackContent(few).good

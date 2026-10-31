@@ -79,12 +79,12 @@ export default {
       'expo-build-properties',
       'expo-notifications',
       'expo-iap',
-      // 편의점 판정(구독 기능, 추후 OTA로 배포)의 사진 입력용 네이티브 모듈
+      // 음식 판정(패스 기능)의 사진 입력용 네이티브 모듈
       [
         'expo-image-picker',
         {
-          photosPermission: '편의점 제품 사진으로 먹어도 되는지 확인하기 위해 사진 접근이 필요해요.',
-          cameraPermission: '편의점 제품 사진으로 먹어도 되는지 확인하기 위해 카메라 접근이 필요해요.',
+          photosPermission: '음식 사진으로 먹어도 되는지 확인하기 위해 사진 접근이 필요해요.',
+          cameraPermission: '음식 사진으로 먹어도 되는지 확인하기 위해 카메라 접근이 필요해요.',
           // 사진만 쓰므로 동영상 녹화용 마이크(RECORD_AUDIO) 권한은 막는다
           microphonePermission: false,
         },

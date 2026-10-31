@@ -54,7 +54,7 @@ describe('validateFoodCheckText', () => {
   it('비어 있으면 실패', () => {
     expect(validateFoodCheckText('   ')).toEqual({
       ok: false,
-      message: '상품 이름을 입력해 주세요',
+      message: '음식 이름을 입력해 주세요',
     });
   });
 
@@ -65,7 +65,7 @@ describe('validateFoodCheckText', () => {
   it('50자를 넘으면 실패', () => {
     expect(validateFoodCheckText('가'.repeat(51))).toEqual({
       ok: false,
-      message: '상품 이름은 50자까지 입력할 수 있어요',
+      message: '음식 이름은 50자까지 입력할 수 있어요',
     });
   });
 });

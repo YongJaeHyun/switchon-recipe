@@ -1,6 +1,6 @@
 /// <reference lib="deno.ns" />
 
-// 편의점 판정 엣지 함수: 실제 의존성(Supabase, Gemini, imagescript)을 연결해 handleFoodCheck를 서비스한다.
+// 음식 판정 엣지 함수: 실제 의존성(Supabase, Gemini, imagescript)을 연결해 handleFoodCheck를 서비스한다.
 // 한도 rpc·패스 확인·food_check 기록·이미지 업로드는 모두 유저 헤더가 없는 service role 클라이언트로
 // 한다 (유저 JWT를 실은 클라이언트로 rpc를 부르면 authenticated role로 처리되어 거부되므로).
 

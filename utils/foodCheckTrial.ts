@@ -1,4 +1,4 @@
-// 편의점 판정 무료 체험(패스 없이 평생 3번) 표시용 순수 함수. 서버(food-check)가 최종 판단하고,
+// 음식 판정 무료 체험(패스 없이 평생 3번) 표시용 순수 함수. 서버(food-check)가 최종 판단하고,
 // 남은 횟수는 get-pass-status의 foodCheckTrialRemaining을 참고만 한다
 import type { PassStatus } from 'types/pass';
 import { isPassOnSale } from './passScreen';
@@ -20,7 +20,7 @@ export type FoodCheckEntryState =
   // 무료 체험을 다 썼다: 누르면 패스 안내
   | { kind: 'locked' };
 
-// 편의점 판정 진입점 상태. 무료 체험은 판매가 꺼져 있어도 그대로 쓸 수 있다
+// 음식 판정 진입점 상태. 무료 체험은 판매가 꺼져 있어도 그대로 쓸 수 있다
 export function foodCheckEntryState(
   status: PassStatus | undefined,
   billingAvailable: boolean | undefined

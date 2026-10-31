@@ -3,20 +3,33 @@ import {
   basisLabel,
   formatPremiumRemaining,
   PREMIUM_QUOTA_EXCEEDED_MESSAGE,
-  verdictLabel,
+  foodCheckLevel,
+  foodCheckLevelLabel,
 } from './foodCheckDisplay';
 
-describe('verdictLabel', () => {
-  it('ok는 괜찮아요', () => {
-    expect(verdictLabel('ok')).toBe('괜찮아요');
+describe('foodCheckLevel', () => {
+  it('7~10점은 ok, 4~6점은 caution, 1~3점은 avoid', () => {
+    expect(foodCheckLevel({ score: 10, verdict: 'ok' })).toBe('ok');
+    expect(foodCheckLevel({ score: 7, verdict: 'ok' })).toBe('ok');
+    expect(foodCheckLevel({ score: 6, verdict: 'ok' })).toBe('caution');
+    expect(foodCheckLevel({ score: 4, verdict: 'avoid' })).toBe('caution');
+    expect(foodCheckLevel({ score: 3, verdict: 'avoid' })).toBe('avoid');
+    expect(foodCheckLevel({ score: 1, verdict: 'avoid' })).toBe('avoid');
   });
 
-  it('avoid는 피하세요', () => {
-    expect(verdictLabel('avoid')).toBe('피하세요');
+  it('점수가 없으면 verdict로 (ok/avoid), 둘 다 없으면 null', () => {
+    expect(foodCheckLevel({ score: null, verdict: 'ok' })).toBe('ok');
+    expect(foodCheckLevel({ score: null, verdict: 'avoid' })).toBe('avoid');
+    expect(foodCheckLevel({ score: null, verdict: null })).toBeNull();
   });
+});
 
-  it('판정이 없으면 빈 문자열', () => {
-    expect(verdictLabel(null)).toBe('');
+describe('foodCheckLevelLabel', () => {
+  it('세 단계 문구', () => {
+    expect(foodCheckLevelLabel('ok')).toBe('먹어도 돼요');
+    expect(foodCheckLevelLabel('caution')).toBe('주의가 필요해요');
+    expect(foodCheckLevelLabel('avoid')).toBe('피하는 게 좋아요');
+    expect(foodCheckLevelLabel(null)).toBe('');
   });
 });
 

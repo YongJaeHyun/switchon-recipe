@@ -4,19 +4,25 @@ import { Text } from 'components/common/Text';
 import { View } from 'react-native';
 import colors from 'tailwindcss/colors';
 import type { FoodCheckRecord } from 'types/foodCheck';
-import { basisLabel, verdictLabel } from 'utils/foodCheckDisplay';
+import {
+  basisLabel,
+  FOOD_CHECK_LEVEL_TEXT,
+  foodCheckLevel,
+  foodCheckLevelLabel,
+} from 'utils/foodCheckDisplay';
 
 interface FoodCheckResultCardProps {
   check: FoodCheckRecord;
-  // 추정 판정일 때 [성분표 찍고 더 정확히 보기]
+  // 포장 상품을 추정으로 판정했을 때 [성분표 찍고 더 정확히 보기]
   onCheckLabel?(): void;
   disabled?: boolean;
 }
 
-// 판정 결과: 점수(큰 숫자) + 판정 + 근거 + 이유 + (피하세요) 대체 추천 + (추정) 성분표 다시 보기
+// 판정 결과: 점수(큰 숫자) + 세 단계 판정 + 근거 + 이유 + (주의·피하세요) 대체 추천
+// + (포장 상품 추정) 성분표 찍기. 조리된 음식은 성분표가 없으므로 버튼을 두지 않는다
 export function FoodCheckResultCard({ check, onCheckLabel, disabled }: FoodCheckResultCardProps) {
-  const isAvoid = check.verdict === 'avoid';
-  const accent = isAvoid ? 'text-red-500' : 'text-green-600';
+  const level = foodCheckLevel(check);
+  const accent = level ? FOOD_CHECK_LEVEL_TEXT[level] : 'text-neutral-500';
   const reasons = check.reasons ?? [];
   const alternatives = check.alternatives ?? [];
   const basis = basisLabel(check.basis);
@@ -35,7 +41,7 @@ export function FoodCheckResultCard({ check, onCheckLabel, disabled }: FoodCheck
           <Text className="pb-2 text-lg text-neutral-400">/10</Text>
         </View>
         <View className="gap-1 pb-2">
-          <Text className={`text-2xl font-bold ${accent}`}>{verdictLabel(check.verdict)}</Text>
+          <Text className={`text-2xl font-bold ${accent}`}>{foodCheckLevelLabel(level)}</Text>
           {basis ? (
             <View className="self-start rounded-full bg-neutral-100 px-2 py-0.5">
               <Text className="text-xs text-neutral-500">{basis}</Text>
@@ -55,7 +61,7 @@ export function FoodCheckResultCard({ check, onCheckLabel, disabled }: FoodCheck
         </View>
       )}
 
-      {isAvoid && alternatives.length > 0 && (
+      {level !== 'ok' && alternatives.length > 0 && (
         <View className="gap-2">
           <Text className="font-bold text-neutral-700">대신 이건 어때요?</Text>
           <View className="flex-row flex-wrap gap-2">
@@ -70,7 +76,7 @@ export function FoodCheckResultCard({ check, onCheckLabel, disabled }: FoodCheck
         </View>
       )}
 
-      {check.basis === 'estimate' && onCheckLabel && (
+      {check.basis === 'estimate' && check.foodKind === 'packaged' && onCheckLabel && (
         <RippleButton
           outerClassName="bg-green-600"
           className="w-full flex-row gap-2 py-3"

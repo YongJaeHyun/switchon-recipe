@@ -64,7 +64,7 @@ const req = (body: unknown, headers: Record<string, string> = {}) =>
   });
 
 const textBody = { type: 'text', text: '훈제 닭가슴살' };
-const photoBody = { type: 'front', imageBase64: 'aGVsbG8=', mimeType: 'image/jpeg' };
+const photoBody = { type: 'photo', imageBase64: 'aGVsbG8=', mimeType: 'image/jpeg' };
 
 describe('handleFoodCheck', () => {
   it('로그인 정보가 없으면 401', async () => {
@@ -108,7 +108,7 @@ describe('handleFoodCheck', () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
       status: 'unrecognized',
-      message: '제품명이 잘 보이게 다시 찍어주세요',
+      message: '음식이 잘 보이게 다시 찍어주세요',
     });
     expect(deps.release).toHaveBeenCalledTimes(1);
     expect(deps.release).toHaveBeenCalledWith(UID);
@@ -227,6 +227,7 @@ describe('handleFoodCheck', () => {
       score: 8,
       verdict: 'ok',
       basis: 'estimate',
+      food_kind: null,
       reasons: ['단백질이 많아요'],
       alternatives: [],
       week: 3,
@@ -254,6 +255,7 @@ describe('handleFoodCheck', () => {
         score: 8,
         verdict: 'ok',
         basis: 'estimate',
+        foodKind: null,
         reasons: ['단백질이 많아요'],
         alternatives: [],
         week: 3,
@@ -299,6 +301,52 @@ describe('handleFoodCheck', () => {
     expect(body.check.thumbPath).toBe(`${UID}/100_thumb.jpg`);
     expect(body.check.thumbUrl).toBe(`https://signed/${UID}/100_thumb.jpg`);
     expect(deps.release).not.toHaveBeenCalled();
+  });
+
+  it('사진 한 장(photo) → input_type photo 그대로, 모델이 고른 foodKind·근거 저장', async () => {
+    const deps = makeDeps({
+      askGemini: vi.fn(async () =>
+        geminiOk({ productName: '돈가스 정식', score: 3, foodKind: 'dish', labelVisible: false })
+      ),
+    });
+    const res = await handleFoodCheck(req(photoBody), deps);
+    expect(res.status).toBe(200);
+    expect(deps.insertCheck).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input_type: 'photo',
+        input_text: null,
+        basis: 'estimate',
+        food_kind: 'dish',
+      })
+    );
+    const [, input] = (deps.askGemini as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(input).toEqual({ type: 'photo', imageBase64: 'aGVsbG8=', mimeType: 'image/jpeg' });
+    const body = await res.json();
+    expect(body.check.inputType).toBe('photo');
+    expect(body.check.foodKind).toBe('dish');
+  });
+
+  it('포장 상품 성분표가 보이면 label 근거', async () => {
+    const deps = makeDeps({
+      askGemini: vi.fn(async () => geminiOk({ foodKind: 'packaged', labelVisible: true })),
+    });
+    await handleFoodCheck(req(photoBody), deps);
+    expect(deps.insertCheck).toHaveBeenCalledWith(
+      expect.objectContaining({ basis: 'label', food_kind: 'packaged' })
+    );
+  });
+
+  it('옛 빌드의 front도 사진으로 받고 input_type은 보낸 그대로', async () => {
+    const deps = makeDeps();
+    const res = await handleFoodCheck(
+      req({ type: 'front', imageBase64: 'aGVsbG8=', mimeType: 'image/jpeg' }),
+      deps
+    );
+    expect(res.status).toBe(200);
+    expect(deps.prepareImages).toHaveBeenCalled();
+    expect(deps.insertCheck).toHaveBeenCalledWith(
+      expect.objectContaining({ input_type: 'front', basis: 'estimate' })
+    );
   });
 
   it('signed URL 생성이 실패해도 판정은 200 (thumbUrl null), release 안 함', async () => {
