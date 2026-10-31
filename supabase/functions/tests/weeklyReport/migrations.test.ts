@@ -28,7 +28,11 @@ describe('weekly_report_candidates (리뷰 M1: 주차 일차 필터를 SQL로)',
   it('엣지 함수는 user 테이블 전체 대신 rpc로 후보만 읽는다', () => {
     const src = read('../../generate-weekly-reports/index.ts');
     expect(src).toContain(".rpc('weekly_report_candidates', { p_today: today })");
-    expect(src).not.toContain(".from('user')");
+    // user는 리포트를 만들 유저 한 명의 program_start만 읽는다 (누적 체중 기준)
+    const perUser =
+      /\.from\('user'\)\s*\.select\('program_start'\)\s*\.eq\('id', uid\)\s*\.maybeSingle\(\)/g;
+    expect(src).toMatch(perUser);
+    expect(src.replace(perUser, '')).not.toContain(".from('user')");
   });
 });
 

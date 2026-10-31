@@ -5,6 +5,8 @@
 // 2·3일차 실행이 보충한다).
 // 여러 번 실행해도 안전하다: 이미 있는 리포트는 AI 호출 전에 건너뛰고, 저장은 키
 // (uid, start_date, week_index) 충돌 시 무시하며, 실제로 새로 들어간 경우에만 푸시한다.
+// 한 주 더 하기·주차 맞추기로 start_date가 바뀌면 같은 기간이 다른 키가 되므로, "이미 있는 리포트"는
+// 키가 아니라 실제 기간으로 본다 (isCoveredByExisting).
 
 import { isServiceRoleRequest } from '../_shared/serviceRole.ts';
 import { scheduleFrom } from '../_shared/fastingSchedule.ts';
@@ -18,7 +20,9 @@ import {
   type ReportContent,
 } from '../_shared/weeklyReport.ts';
 import {
+  baselineStartOf,
   computeWeeklyStats,
+  overlapDays,
   plannedFastingDays,
   weekRange,
   type WeeklyStats,
@@ -37,6 +41,7 @@ export interface WeekQuery {
   uid: string;
   startDate: string; // yyyy-MM-dd
   weekIndex: number;
+  baselineStart: string; // 누적 체중 기준 = 회차 시작일 (baselineStartOf). 체중은 이날부터 읽는다
   range: { from: string; to: string }; // KST 날짜
   fromIso: string; // range.from 00:00 KST (UTC ISO)
   toIso: string; // range.to 다음 날 00:00 KST (UTC ISO, 미포함)
@@ -44,7 +49,7 @@ export interface WeekQuery {
 
 // DB에서 읽은 그대로의 값 (검증은 handler에서)
 export interface WeekData {
-  weights: { day: string; weight_kg: number | string }[]; // start_date ~ range.to
+  weights: { day: string; weight_kg: number | string }[]; // baselineStart ~ range.to
   todoDays: { day: string; items: string[]; checked: number[] }[]; // range 안
   fastingPlanDays: number[] | null; // fasting_plan(uid, start_date, week_index).days
   fastingPlanStartTime: string | null; // 같은 행의 start_time ('아침 식후' 등, 옛 라벨)
@@ -72,13 +77,21 @@ export interface NotificationRow {
   type: 'WEEKLY_REPORT';
 }
 
+export interface ReportPeriod {
+  start_date: string;
+  week_index: number;
+}
+
 export interface GenerateReportsDeps {
   now(): Date;
   // 오늘이 새 주차 1~3일차인 유저 (전부, 페이지 처리는 구현이). 구현은 SQL 함수
   // weekly_report_candidates(p_today)로 걸러 읽는다. handler도 reportWeekOf로 한 번 더 거른다
   fetchUsers(today: string): Promise<ReportUserRow[]>;
   hasPremiumAccess(uid: string): Promise<boolean>;
-  reportExists(uid: string, startDate: string, weekIndex: number): Promise<boolean>;
+  // 유저의 리포트 키 전부 (리포트는 주 1개라 적다). 실제 기간이 겹치는지 handler가 본다
+  fetchReportPeriods(uid: string): Promise<ReportPeriod[]>;
+  // user.program_start (회차 시작일, yyyy-MM-dd). 없으면 null (구버전 앱·마이그레이션 전)
+  fetchProgramStart(uid: string): Promise<string | null>;
   fetchWeekData(query: WeekQuery): Promise<WeekData>;
   // Gemini 응답 텍스트. 실패하면 던진다
   askGemini(prompt: string): Promise<string>;
@@ -97,6 +110,22 @@ export interface GenerateResult {
   skipped: number; // 그 주 기록이 하나도 없어 만들지 않음
   notified: number;
   failed: number;
+}
+
+// 이미 있는 리포트와 이만큼(일) 이상 겹치는 기간이면 그 주 리포트가 이미 있는 것으로 본다.
+// 7일 중 과반(4일): 같은 기간(7일)은 물론, 주차 맞추기로 며칠 어긋난 기간도 다시 만들지 않는다.
+// 3일 이하만 겹치면 대부분 새 날짜라 새 리포트를 만든다 (겹친 날은 두 리포트에 함께 들어간다)
+export const OVERLAP_MIN_DAYS = 4;
+
+// range가 이미 있는 리포트의 실제 기간(start_date + 7×(week_index−1) ~ +6일)과 OVERLAP_MIN_DAYS 이상 겹치는지
+export function isCoveredByExisting(
+  range: { from: string; to: string },
+  reports: ReportPeriod[]
+): boolean {
+  return reports.some(
+    (r) =>
+      overlapDays(range, weekRange(r.start_date.slice(0, 10), r.week_index)) >= OVERLAP_MIN_DAYS
+  );
 }
 
 const dayMs = (day: string) => Date.parse(`${day.slice(0, 10)}T00:00:00Z`);
@@ -175,19 +204,22 @@ const processUser = async (
   startDate: string,
   weekIndex: number
 ): Promise<{ outcome: Outcome; notified: boolean; failed: boolean }> => {
+  const range = weekRange(startDate, weekIndex);
   // 리포트가 있는지 먼저 본다 (리포트는 권한이 있던 유저에게만 만들어지므로 결과는 같고,
-  // 재시도 실행에서 이미 만든 유저의 권한 rpc를 아낀다)
-  if (await deps.reportExists(uid, startDate, weekIndex)) {
+  // 재시도 실행에서 이미 만든 유저의 권한 rpc를 아낀다). 키가 아니라 기간으로 본다:
+  // 한 주 더 하기 뒤 (새 시작일, 1주차)는 이미 만든 (옛 시작일, 2주차)와 같은 기간이다
+  if (isCoveredByExisting(range, await deps.fetchReportPeriods(uid))) {
     return { outcome: 'existing', notified: false, failed: false };
   }
   if (!(await deps.hasPremiumAccess(uid)))
     return { outcome: 'noAccess', notified: false, failed: false };
 
-  const range = weekRange(startDate, weekIndex);
+  const baselineStart = baselineStartOf(await deps.fetchProgramStart(uid), startDate);
   const data = await deps.fetchWeekData({
     uid,
     startDate,
     weekIndex,
+    baselineStart,
     range,
     fromIso: kstMidnightIso(range.from),
     toIso: kstMidnightIso(range.to, 1),
@@ -196,6 +228,7 @@ const processUser = async (
   const stats = computeWeeklyStats({
     startDate,
     weekIndex,
+    baselineStart,
     ...known,
     fastingPlannedDays: plannedFastingDays(range, data.fastingPlanDays, weekIndex),
     // 아직 결과를 답할 수 있는 단식은 실패가 아니라 응답 대기로 센다

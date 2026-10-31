@@ -57,26 +57,42 @@ const deps: GenerateReportsDeps = {
     return data === true;
   },
 
-  async reportExists(uid, startDate, weekIndex) {
-    const { data, error } = await supabase
-      .from('weekly_report')
-      .select('uid')
-      .eq('uid', uid)
-      .eq('start_date', startDate)
-      .eq('week_index', weekIndex)
-      .maybeSingle();
-    if (error) throw error;
-    return data !== null;
+  fetchReportPeriods(uid) {
+    return fetchAllPages(async (from, to) => {
+      const { data, error } = await supabase
+        .from('weekly_report')
+        .select('start_date, week_index')
+        .eq('uid', uid)
+        .order('start_date')
+        .order('week_index')
+        .range(from, to);
+      if (error) throw error;
+      return (data ?? []).map((r: { start_date: string; week_index: number }) => ({
+        start_date: String(r.start_date),
+        week_index: Number(r.week_index),
+      }));
+    });
   },
 
-  async fetchWeekData({ uid, startDate, weekIndex, range, fromIso, toIso }) {
+  async fetchProgramStart(uid) {
+    const { data, error } = await supabase
+      .from('user')
+      .select('program_start')
+      .eq('id', uid)
+      .maybeSingle();
+    if (error) throw error;
+    const value = (data as { program_start?: unknown } | null)?.program_start;
+    return typeof value === 'string' ? value : null;
+  },
+
+  async fetchWeekData({ uid, startDate, weekIndex, baselineStart, range, fromIso, toIso }) {
     const [weights, todoDays, plan, fastingResults, recipes, foodChecks] = await Promise.all([
       fetchAllPages(async (from, to) => {
         const { data, error } = await supabase
           .from('weight_log')
           .select('day, weight_kg')
           .eq('uid', uid)
-          .gte('day', startDate)
+          .gte('day', baselineStart)
           .lte('day', range.to)
           .order('day')
           .range(from, to);

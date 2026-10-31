@@ -97,6 +97,19 @@ describe('computeWeeklyStats: 체중', () => {
     expect(stats.weight).toMatchObject({ start: 69.4, end: 60, daysLogged: 4 });
     expect(stats.weight.totalDiff).toBe(-9.4);
   });
+
+  it('누적 기준 시작일(baselineStart, 회차 시작일)을 주면 그날 이후 첫 기록이 기준', () => {
+    // 회차 09-30, 한 주 더 하기 등으로 시작일 10-09
+    const stats = computeWeeklyStats(
+      base({
+        startDate: '2026-10-09',
+        weekIndex: 1,
+        baselineStart: '2026-09-30',
+        weights,
+      })
+    );
+    expect(stats.weight.totalDiff).toBe(-12); // 60 - 72 (09-30 기록)
+  });
 });
 
 describe('computeWeeklyStats: 할 일', () => {
