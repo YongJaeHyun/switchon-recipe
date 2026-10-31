@@ -2,6 +2,7 @@ import { weekRepeatCopy, weekRepeatToast } from 'const/weekRepeat';
 import { describe, expect, it } from 'vitest';
 import {
   addWeekRepeatAskedKey,
+  declaredWeekRepeatKey,
   shouldAskWeekRepeat,
   weekRepeatAdvice,
   weekRepeatKey,
@@ -255,6 +256,31 @@ describe('같은 전환에서 한 번만 묻기', () => {
     expect(keys).toHaveLength(20);
     expect(keys[0]).toBe('k5');
     expect(keys[19]).toBe('k24');
+  });
+});
+
+// 주차 맞추기·온보딩으로 "지금 3·4주차"라고 정한 사람에게는 그 전환에서 한 주 더 하기를 묻지 않는다
+describe('declaredWeekRepeatKey (사용자가 정한 주차)', () => {
+  it('3·4주차로 정하면 그 전환의 키', () => {
+    expect(declaredWeekRepeatKey(START, '2026-10-16')).toBe('2026-10-01:3');
+    expect(declaredWeekRepeatKey(START, '2026-10-22')).toBe('2026-10-01:4');
+    expect(declaredWeekRepeatKey(START, '2026-10-28')).toBe('2026-10-01:4');
+  });
+
+  it('정한 키를 더하면 그 전환에서는 묻지 않는다', () => {
+    const key = declaredWeekRepeatKey(START, '2026-10-16');
+    const asked = addWeekRepeatAskedKey([], key!);
+    expect(shouldAskWeekRepeat({ startDate: START, week: 3, askedKeys: asked })).toBe(false);
+    // 다음 전환(4주차 진입)은 그대로 묻는다
+    expect(shouldAskWeekRepeat({ startDate: START, week: 4, askedKeys: asked })).toBe(true);
+  });
+
+  it('1·2주차, 유지기, 시작 전, 시작일 없음이면 null', () => {
+    expect(declaredWeekRepeatKey(START, '2026-10-01')).toBeNull();
+    expect(declaredWeekRepeatKey(START, '2026-10-14')).toBeNull();
+    expect(declaredWeekRepeatKey(START, '2026-10-29')).toBeNull();
+    expect(declaredWeekRepeatKey(START, '2026-09-30')).toBeNull();
+    expect(declaredWeekRepeatKey('', '2026-10-16')).toBeNull();
   });
 });
 

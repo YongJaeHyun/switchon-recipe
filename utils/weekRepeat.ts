@@ -1,4 +1,4 @@
-import { addDaysToDay } from './programStart';
+import { addDaysToDay, programWeekAndDay } from './programStart';
 import { round1 } from './weight';
 
 // 2·3주차가 끝나 다음 주차로 넘어갈 때 "한 주 더 하기"를 제안할지 (근거·문구는 const/weekRepeat.ts).
@@ -71,6 +71,18 @@ export function weekRepeatAdvice({
 // 같은 전환(시작일 + 진입 주차)에서는 한 번만 묻는다. 한 주 더 해서 시작일이 바뀌면 새 전환이다
 export function weekRepeatKey(startDate: string, enteringWeek: number): string {
   return `${startDate.slice(0, 10)}:${enteringWeek}`;
+}
+
+// 주차 맞추기·온보딩으로 오늘이 3·4주차가 되게 시작일을 정했다면, 지금 들어선 전환은 사용자가 스스로 정한 것이라
+// 한 주 더 하기를 묻지 않도록 미리 '물어봄'으로 남길 키. 그 외(1·2주차, 유지기, 시작 전)는 null
+export function declaredWeekRepeatKey(
+  startDate: string | null | undefined,
+  todayKst: string
+): string | null {
+  if (!startDate) return null;
+  const { week, beforeStart } = programWeekAndDay(startDate, todayKst);
+  if (beforeStart || (week !== 3 && week !== 4)) return null;
+  return weekRepeatKey(startDate, week);
 }
 
 export function shouldAskWeekRepeat({

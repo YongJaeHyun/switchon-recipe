@@ -4,7 +4,6 @@ import { useEffect } from 'react';
 import { useMealAlarmStore } from 'stores/mealAlarmStore';
 import { useUserStore } from 'stores/userStore';
 import { cancelAccountAlarms } from 'utils/notifications';
-import { clearCachedUser } from 'utils/userCache';
 
 export const useAuthStateObserver = () => {
   const resetUser = useUserStore((state) => state.resetUser);
@@ -16,8 +15,8 @@ export const useAuthStateObserver = () => {
         // (시작일을 모르는 동안 알림 맞추기는 건너뛰므로 여기서 지우지 않으면 남는다)
         await cancelAccountAlarms();
         useMealAlarmStore.getState().reset();
+        // 오프라인 시작용 사용자 캐시도 함께 지운다 (userStore.resetUser)
         await resetUser();
-        await clearCachedUser();
 
         if (router.canDismiss()) router.dismissAll();
         router.replace('/(auth)');

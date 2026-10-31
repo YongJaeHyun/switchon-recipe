@@ -19,6 +19,7 @@ import { getKoreanDateString, getKoreanDateWeeksAgo } from 'utils/date';
 import { getWeekColor } from 'utils/getWeekColor';
 import { formatMinutes } from 'utils/fastingSchedule';
 import { MEAL_KEYS, MEAL_LABELS } from 'utils/mealTimes';
+import { declaredWeekRepeatKey } from 'utils/weekRepeat';
 import {
   addDaysToDay,
   MAINTENANCE_WEEK,
@@ -36,7 +37,7 @@ const MEAL_ALARM_STEP = 6;
 
 export default function OnboardingScreen() {
   const { step, goNextStep, goToStep } = useSteps(totalSteps);
-  const { setWeek } = useWeekCompletePopupStore();
+  const { setWeek, markRepeatAsked } = useWeekCompletePopupStore();
   const mealTimes = useMealAlarmStore((state) => state.times);
   const setMealAlarmOn = useMealAlarmStore((state) => state.setOn);
   const [isAsking, setIsAsking] = useState(false);
@@ -61,6 +62,9 @@ export default function OnboardingScreen() {
 
   const completeOnboarding = async () => {
     setWeek(week);
+    // 3·4주차라고 고르고 들어오면 그 전환에서 "한 주 더 하기"를 묻지 않는다 (홈에서 바로 열리는 주차 팝업보다 먼저)
+    const declaredKey = declaredWeekRepeatKey(selectedDate, today);
+    if (declaredKey) markRepeatAsked(declaredKey);
     await UserAPI.updateOnboarding(selectedDate);
     router.replace('/(tabs)/home');
   };

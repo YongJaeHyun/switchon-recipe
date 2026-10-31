@@ -10,6 +10,7 @@ import useKoreanToday from 'hooks/useKoreanToday';
 import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
+import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
 import colors from 'tailwindcss/colors';
 import {
   adjustTarget,
@@ -19,6 +20,7 @@ import {
   restartStartDate,
   weekDaySelection,
 } from 'utils/programStart';
+import { declaredWeekRepeatKey } from 'utils/weekRepeat';
 import { Nullable } from '../../types/common';
 
 interface StartDateBottomSheetProps {
@@ -52,6 +54,7 @@ export function StartDateBottomSheet({ bottomSheetRef }: StartDateBottomSheetPro
   const startDate = useUserStore((state) => state.start_date);
   const programStart = useUserStore((state) => state.program_start);
   const { changeStartDate } = useChangeStartDate();
+  const markRepeatAsked = useWeekCompletePopupStore((state) => state.markRepeatAsked);
 
   const [confirming, setConfirming] = useState<RestartWhen | null>(null);
   const [selection, setSelection] = useState(() => weekDaySelection(startDate, today));
@@ -77,6 +80,12 @@ export function StartDateBottomSheet({ bottomSheetRef }: StartDateBottomSheetPro
   ) => {
     if (saving) return;
     setSaving(true);
+    // 주차 맞추기로 3·4주차라고 정했으면 그 전환에서 "한 주 더 하기"를 묻지 않는다.
+    // 저장 직후 열리는 주차 팝업보다 먼저 남기려고 저장 전에 표시한다 (실패해도 키는 이 새 시작일에만 해당)
+    if (kind === 'align') {
+      const key = declaredWeekRepeatKey(newStart, today);
+      if (key) markRepeatAsked(key);
+    }
     const ok = await changeStartDate(newStart, { kind, toast });
     setSaving(false);
     if (ok) bottomSheetRef.current?.close();

@@ -49,7 +49,7 @@ const selectOne = async (userId: string) =>
     return data;
   });
 
-// 온보딩은 새 회차: 회차 시작일(program_start)도 시작일로
+// 온보딩은 새 회차: 회차 시작일(program_start)도 시작일로. 성공하면 true, 실패하면 undefined
 const updateOnboarding = async (start_date: string) =>
   sendError(async () => {
     const setUser = useUserStore.getState().setUser;
@@ -64,7 +64,8 @@ const updateOnboarding = async (start_date: string) =>
 
     if (error) throw error;
 
-    setUser(data);
+    await setUser(data);
+    return true;
   });
 
 // program_start: 바뀐 뒤의 회차 시작일 (nextProgramStart). 시작일과 한 번에 저장한다.
@@ -86,7 +87,7 @@ const updateStartDate = async (
 
     if (error) throw error;
 
-    setUser(data);
+    await setUser(data);
     showSuccessToast({
       textType: 'CUSTOM',
       title: options?.toast?.title ?? '시작날짜 재설정 성공',
@@ -109,7 +110,7 @@ const updatePushToken = async (pushToken: string) =>
 
     if (error) throw error;
 
-    setUser(data);
+    await setUser(data);
   });
 
 const deleteOne = async () =>
