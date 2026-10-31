@@ -88,35 +88,6 @@ export function hasUsedFirstPurchaseDiscount(
   return purchases.some((p) => p.status === 'granted' && isFiveWeekProduct(p.productId));
 }
 
-type OrderedPurchase = Pick<PurchaseForExpiry, 'purchaseToken' | 'purchasedAt'>;
-
-// 구매 순서: 구매 시각, 같으면 토큰 순 (어느 요청에서 봐도 같은 순서가 되게)
-const comparePurchases = (a: OrderedPurchase, b: OrderedPurchase) =>
-  a.purchasedAt.getTime() - b.purchasedAt.getTime() ||
-  (a.purchaseToken < b.purchaseToken ? -1 : a.purchaseToken > b.purchaseToken ? 1 : 0);
-
-// purchase보다 먼저 산 구매들 (자기 자신 제외)
-export function purchasesBefore<T extends OrderedPurchase>(
-  purchases: T[],
-  purchase: OrderedPurchase
-): T[] {
-  return purchases.filter(
-    (p) => p.purchaseToken !== purchase.purchaseToken && comparePurchases(p, purchase) < 0
-  );
-}
-
-// 첫 구매 할인을 받을 수 없는 granted 할인 구매의 토큰: 먼저 산 granted 5주 패스가 있는 할인 구매.
-// 동시에 검증된 두 할인 구매 중 늦게 산 쪽을 찾을 때 쓴다 (verify-pass-purchase가 환불·refunded_ineligible로 바꾼다)
-export function firstPurchaseDiscountViolations(purchases: PurchaseForExpiry[]): string[] {
-  const fiveWeek = purchases
-    .filter((p) => p.status === 'granted' && isFiveWeekProduct(p.productId))
-    .sort(comparePurchases);
-  return fiveWeek
-    .slice(1)
-    .filter((p) => tierOfProduct(p.productId) === FIRST_PURCHASE_DISCOUNT_TIER)
-    .map((p) => p.purchaseToken);
-}
-
 export interface PurchaseForExpiry {
   purchaseToken: string;
   productId: string;
@@ -259,13 +230,15 @@ export function tierOfProduct(productId: string): Tier | null {
   return entry ? entry[0] : null;
 }
 
-// earlierPurchases: 이 구매보다 먼저 산 이 유저의 구매 (purchasesBefore). 할인가 구매는 출시 할인 기간
-// (+ 유예) 안에 샀고 먼저 산 granted 5주 패스가 없을 때만 유효하다
+// userPurchases: 이 유저의 이미 기록된 구매. 할인가 구매는 출시 할인 기간(+ 유예) 안에 샀고 이미 지급된
+// granted 5주 패스가 없을 때만 유효하다. 구매 시각이 아니라 검증 순서로 정한다: 먼저 검증돼 지급된 구매가 할인을
+// 갖고, 이미 지급한 구매는 나중에 되돌리지 않는다 (운영자 결정 2026-11-01).
+// 동시 검증은 DB 함수 grant_pass_purchase가 유저별 lock 안에서 같은 확인을 다시 해 막는다
 export function isPurchaseEligible(
   productId: string,
   purchasedAt: Date,
   setting: PremiumSetting,
-  earlierPurchases: Pick<PurchaseForExpiry, 'productId' | 'status'>[] = []
+  userPurchases: Pick<PurchaseForExpiry, 'productId' | 'status'>[] = []
 ): boolean {
   // 1주 패스는 가격이 하나뿐이라 언제 사도 유효하다
   if (productId === WEEK_PASS_PRODUCT.productId) return true;
@@ -277,7 +250,7 @@ export function isPurchaseEligible(
 
   const launch = launchWindow(setting);
   if (!launch) return false;
-  if (hasUsedFirstPurchaseDiscount(earlierPurchases)) return false;
+  if (hasUsedFirstPurchaseDiscount(userPurchases)) return false;
 
   const t = purchasedAt.getTime();
   return t >= launch.start.getTime() && t < launch.end.getTime() + GRACE_MS;

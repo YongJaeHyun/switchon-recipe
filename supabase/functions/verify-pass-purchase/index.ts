@@ -131,32 +131,22 @@ const deps = (): VerifyDeps => ({
     return new Date(data as string);
   },
 
-  async markPurchaseIneligible(token: string) {
-    // granted일 때만 바꿔서, 동시 요청 중 실제로 바꾼 쪽만 환불하게 한다
-    const { data, error } = await supabase
-      .from('pass_purchase')
-      .update({ status: 'refunded_ineligible', granted_from: null, granted_until: null })
-      .eq('purchase_token', token)
-      .eq('status', 'granted')
-      .select('order_id');
-    if (error) throw error;
-    const row = (data as { order_id: string | null }[])[0];
-    return row ? { orderId: row.order_id } : undefined;
-  },
-
-  // sync-voided-purchases setPassExpiry와 같은 방식
-  async setPassExpiry(uid: string, expiresAt: Date | null) {
-    if (expiresAt === null) {
-      const { error } = await supabase.from('user_pass').delete().eq('uid', uid);
-      if (error) throw error;
-      return;
-    }
-    const { error } = await supabase.from('user_pass').upsert({
-      uid,
-      pass_expires_at: expiresAt.toISOString(),
-      updated_at: new Date().toISOString(),
+  async grantPurchase(row: PurchaseRow, checkFirstPurchaseDiscount: boolean) {
+    const { data, error } = await supabase.rpc('grant_pass_purchase', {
+      p_uid: row.uid,
+      p_product_id: row.productId,
+      p_purchase_token: row.purchaseToken,
+      p_order_id: row.orderId,
+      p_price_krw: row.priceKrw,
+      p_purchased_at: row.purchasedAt.toISOString(),
+      p_granted_from: row.grantedFrom?.toISOString() ?? null,
+      p_granted_until: row.grantedUntil?.toISOString() ?? null,
+      p_raw: row.raw,
+      p_check_first_purchase_discount: checkFirstPurchaseDiscount,
     });
     if (error) throw error;
+    if (data === 'inserted' || data === 'duplicate' || data === 'discount_used') return data;
+    throw new Error(`grant_pass_purchase 결과를 알 수 없음: ${String(data)}`);
   },
 
   play: getPlayClient(),

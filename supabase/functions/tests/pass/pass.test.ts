@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   computeExpiry,
-  firstPurchaseDiscountViolations,
   GRACE_MS,
   hasUsedFirstPurchaseDiscount,
-  purchasesBefore,
   getSalesState,
   isFreeActive,
   isPurchaseEligible,
@@ -196,77 +194,6 @@ describe('hasUsedFirstPurchaseDiscount', () => {
   });
 });
 
-describe('purchasesBefore', () => {
-  const p = (token: string, at: string) => ({ purchaseToken: token, purchasedAt: new Date(at) });
-
-  it('먼저 산 구매만, 같은 시각이면 토큰 순, 자기 자신은 빼고', () => {
-    const list = [
-      p('a', '2026-11-01T00:00:00Z'),
-      p('b', '2026-11-02T00:00:00Z'),
-      p('c', '2026-11-02T00:00:00Z'),
-      p('d', '2026-11-03T00:00:00Z'),
-    ];
-    expect(
-      purchasesBefore(list, p('c', '2026-11-02T00:00:00Z')).map((x) => x.purchaseToken)
-    ).toEqual(['a', 'b']);
-  });
-});
-
-describe('firstPurchaseDiscountViolations', () => {
-  const purchase = (
-    token: string,
-    productId: string,
-    at: string,
-    status: PurchaseForExpiry['status'] = 'granted'
-  ): PurchaseForExpiry => ({ purchaseToken: token, productId, purchasedAt: new Date(at), status });
-
-  it('할인 구매 하나뿐이면 없음', () => {
-    expect(
-      firstPurchaseDiscountViolations([
-        purchase('a', 'switchon_pass_5w_2900', '2026-11-02T00:00:00Z'),
-        purchase('w', 'switchon_pass_1w_1500', '2026-11-01T00:00:00Z'),
-      ])
-    ).toEqual([]);
-  });
-
-  it('동시에 산 할인 구매 둘: 늦게 산 쪽만', () => {
-    expect(
-      firstPurchaseDiscountViolations([
-        purchase('late', 'switchon_pass_5w_2900', '2026-11-02T00:00:01Z'),
-        purchase('early', 'switchon_pass_5w_2900', '2026-11-02T00:00:00Z'),
-      ])
-    ).toEqual(['late']);
-  });
-
-  it('같은 시각이면 토큰 순으로 정한다', () => {
-    expect(
-      firstPurchaseDiscountViolations([
-        purchase('b', 'switchon_pass_5w_2900', '2026-11-02T00:00:00Z'),
-        purchase('a', 'switchon_pass_5w_2900', '2026-11-02T00:00:00Z'),
-      ])
-    ).toEqual(['b']);
-  });
-
-  it('먼저 산 4,900원 뒤의 할인 구매도 해당, 4,900원 구매 자체는 해당 없음', () => {
-    expect(
-      firstPurchaseDiscountViolations([
-        purchase('regular', 'switchon_pass_5w_4900', '2026-11-01T00:00:00Z'),
-        purchase('disc', 'switchon_pass_5w_2900', '2026-11-02T00:00:00Z'),
-        purchase('regular2', 'switchon_pass_5w_4900', '2026-11-03T00:00:00Z'),
-      ])
-    ).toEqual(['disc']);
-  });
-
-  it('먼저 산 구매가 환불(voided)됐으면 다음 할인 구매는 괜찮다', () => {
-    expect(
-      firstPurchaseDiscountViolations([
-        purchase('old', 'switchon_pass_5w_2900', '2026-11-01T00:00:00Z', 'voided'),
-        purchase('new', 'switchon_pass_5w_2900', '2026-11-02T00:00:00Z'),
-      ])
-    ).toEqual([]);
-  });
-});
-
 describe('isFreeActive', () => {
   it('matches getSalesState.freeActive across boundaries', () => {
     expect(isFreeActive(new Date('2026-10-31T14:59:59Z'), setting)).toBe(false);
@@ -336,7 +263,7 @@ describe('isPurchaseEligible', () => {
     ).toBe(false);
   });
 
-  it('2,900원: 먼저 산 granted 5주 패스가 있으면 무효 (2,900·4,900 모두)', () => {
+  it('2,900원: 이미 지급된 granted 5주 패스가 있으면 무효 (2,900·4,900 모두, 구매 시각과 무관)', () => {
     const at = new Date('2026-11-03T00:00:00Z');
     expect(
       isPurchaseEligible('switchon_pass_5w_2900', at, setting, [granted('switchon_pass_5w_2900')])
@@ -346,7 +273,7 @@ describe('isPurchaseEligible', () => {
     ).toBe(false);
   });
 
-  it('2,900원: 먼저 산 것이 1주 패스이거나 환불된 5주 패스뿐이면 유효', () => {
+  it('2,900원: 기록된 것이 1주 패스이거나 환불된 5주 패스뿐이면 유효', () => {
     expect(
       isPurchaseEligible('switchon_pass_5w_2900', new Date('2026-11-03T00:00:00Z'), setting, [
         granted('switchon_pass_1w_1500'),
