@@ -59,6 +59,7 @@ export default function ZeroRecipeCreationScreen() {
 
   // 어느 주차 규칙으로 만들지 (처음은 지금 주차). 바꾸면 재료 칸과 선택 재료가 그 주차에 맞춰진다
   const weekChoice = useRecipeWeekChoice({
+    type: 'zero',
     selectedIngredients,
     upsertIngredients,
     isReady: !isIngredientsLoading && !isIngredientListLoading && ingredients.length > 0,

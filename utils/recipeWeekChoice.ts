@@ -25,3 +25,29 @@ export const pruneSelectionForWeek = <T extends { week: number }>(selected: T[],
 
 export const weekPrunedMessage = (week: number) =>
   `${weekChoiceLabel(week)}에 못 쓰는 재료는 뺐어요`;
+
+// 재료 화면(low/zero)에서 고른 주차 기억 (앱을 켜 둔 동안). 그때의 지금 주차도 같이 둬서 주가 바뀌면 버린다
+export interface RememberedWeekChoice {
+  week: number;
+  currentWeek: number;
+}
+
+// 재료 화면에 다시 들어왔을 때 고른 주차: 기억한 주차(없거나 지금 주차가 바뀌었으면 지금 주차).
+// 저장돼 있는 선택 재료 중 더 높은 주차 재료가 있으면 그 주차까지 올려 아무것도 빼지 않는다
+// (재료는 사용자가 주차를 직접 바꿀 때만 뺀다)
+export const restoreChosenWeek = ({
+  remembered,
+  currentWeek,
+  selected,
+}: {
+  remembered: RememberedWeekChoice | undefined;
+  currentWeek: number;
+  selected: { week: number }[];
+}) => {
+  const base = remembered && remembered.currentWeek === currentWeek ? remembered.week : currentWeek;
+  const needed = selected.reduce(
+    (max, i) => (Number.isFinite(i.week) && i.week > max ? i.week : max),
+    0
+  );
+  return defaultChosenWeek(Math.max(base, needed));
+};
