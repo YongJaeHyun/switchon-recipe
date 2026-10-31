@@ -20,6 +20,7 @@ import {
   restartStartDate,
   weekDaySelection,
 } from 'utils/programStart';
+import { getKoreanDateString } from 'utils/date';
 import { declaredWeekRepeatKey } from 'utils/weekRepeat';
 import { Nullable } from '../../types/common';
 
@@ -73,17 +74,22 @@ export function StartDateBottomSheet({ bottomSheetRef }: StartDateBottomSheetPro
   // 지금과 같으면 null (이미 유지기인 사람이 유지기를 골라도 같음) → 저장 버튼을 끈다
   const adjustedStart = adjustTarget(startDate, today, selection);
 
+  // 저장 순간의 오늘(KST). 시트를 연 채 자정을 넘기면 화면의 today는 어제라서, 고른 동작을 지금 날짜로 계산한다
+  // (자정 직후 저장해도 "오늘부터"가 1주차 1일, 주차 맞추기가 고른 일차가 되게)
+  const todayNow = () => getKoreanDateString({ formatType: 'date' });
+
   const save = async (
     newStart: string,
     kind: 'restart' | 'align',
-    toast: { title: string; subtitle: string }
+    toast: { title: string; subtitle: string },
+    now: string
   ) => {
     if (saving) return;
     setSaving(true);
     // 주차 맞추기로 3·4주차라고 정했으면 그 전환에서 "한 주 더 하기"를 묻지 않는다.
     // 저장 직후 열리는 주차 팝업보다 먼저 남기려고 저장 전에 표시한다 (실패해도 키는 이 새 시작일에만 해당)
     if (kind === 'align') {
-      const key = declaredWeekRepeatKey(newStart, today);
+      const key = declaredWeekRepeatKey(newStart, now);
       if (key) markRepeatAsked(key);
     }
     const ok = await changeStartDate(newStart, { kind, toast });
@@ -92,19 +98,32 @@ export function StartDateBottomSheet({ bottomSheetRef }: StartDateBottomSheetPro
   };
 
   const restart = (when: RestartWhen) => {
-    const newStart = restartStartDate(today, when);
-    void save(newStart, 'restart', {
-      title: `${WHEN_LABEL[when]}부터 1주차를 시작해요`,
-      subtitle: `시작일을 ${monthDay(newStart)}로 정했어요`,
-    });
+    const now = todayNow();
+    const newStart = restartStartDate(now, when);
+    void save(
+      newStart,
+      'restart',
+      {
+        title: `${WHEN_LABEL[when]}부터 1주차를 시작해요`,
+        subtitle: `시작일을 ${monthDay(newStart)}로 정했어요`,
+      },
+      now
+    );
   };
 
   const adjust = () => {
-    if (!adjustedStart) return;
-    void save(adjustedStart, 'align', {
-      title: `${weekDayLabel(selection)}로 맞췄어요`,
-      subtitle: `시작일을 ${monthDay(adjustedStart)}로 옮겼어요`,
-    });
+    const now = todayNow();
+    const target = adjustTarget(startDate, now, selection);
+    if (!target) return;
+    void save(
+      target,
+      'align',
+      {
+        title: `${weekDayLabel(selection)}로 맞췄어요`,
+        subtitle: `시작일을 ${monthDay(target)}로 옮겼어요`,
+      },
+      now
+    );
   };
 
   return (
