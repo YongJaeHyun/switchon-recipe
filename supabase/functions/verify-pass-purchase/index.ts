@@ -5,6 +5,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getUid, requireEnv } from '../_shared/auth.ts';
 import { createGooglePlayClient, parseServiceAccount } from '../_shared/googlePlay.ts';
 import type { ExtensionForExpiry, PurchaseForExpiry } from '../_shared/pass.ts';
+import { createWeeklyReportDeps } from '../_shared/weeklyReportDb.ts';
+import { startReportBackfill } from './backfillReports.ts';
 import { type PurchaseRow, type VerifyDeps, verifyPurchase } from './handler.ts';
 
 const UNIQUE_VIOLATION = '23505';
@@ -16,6 +18,9 @@ const json = (body: unknown, status: number) =>
   });
 
 const supabase = createClient(requireEnv('SUPABASE_URL'), requireEnv('SUPABASE_SERVICE_ROLE_KEY'));
+
+// 패스를 사면 지금 회차의 끝난 주 리포트를 보충한다 (cron과 같은 DB·Gemini 구현, backfillReports.ts)
+const reportDeps = createWeeklyReportDeps(supabase, 'verify-pass-purchase');
 
 // 액세스 토큰 캐시를 재사용하도록 처음 쓸 때 한 번만 만든다
 let playClient: ReturnType<typeof createGooglePlayClient> | null = null;
@@ -112,6 +117,9 @@ const deps = (): VerifyDeps => ({
   },
 
   play: getPlayClient(),
+
+  // 응답 뒤 백그라운드(EdgeRuntime.waitUntil)로 돈다. 검증 응답을 기다리게 하거나 실패시키지 않는다
+  backfillReports: (uid: string) => startReportBackfill(reportDeps, uid),
 });
 
 const parseBody = async (

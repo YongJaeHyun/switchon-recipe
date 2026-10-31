@@ -6,20 +6,17 @@ const read = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf
 const flat = (s: string) => s.replace(/\s+/g, ' ');
 
 describe('Gemini/Pixabay 호출부가 모두 장애 알림을 거친다', () => {
-  it.each([
-    'food-check',
-    'generate-weekly-reports',
-    'tag-recipes',
-    'estimate-recipe-servings',
-    'read-inbody',
-  ])('%s: 함수 이름으로 알림 fetch를 만들어 Gemini 호출에 쓴다', (fn) => {
-    const src = read(`../../${fn}/index.ts`);
-    expect(flat(src)).toContain(
-      `createProviderAlertFetch({ functionName: '${fn}', client: supabase, webhookUrl: Deno.env.get('SLACK_WEBHOOK_URL'), })`
-    );
-    expect(flat(src)).toMatch(/await providerFetch\( `https:\/\/generativelanguage/);
-    expect(src).not.toMatch(/await fetch\(\s*`https:\/\/generativelanguage/);
-  });
+  it.each(['food-check', 'tag-recipes', 'estimate-recipe-servings', 'read-inbody'])(
+    '%s: 함수 이름으로 알림 fetch를 만들어 Gemini 호출에 쓴다',
+    (fn) => {
+      const src = read(`../../${fn}/index.ts`);
+      expect(flat(src)).toContain(
+        `createProviderAlertFetch({ functionName: '${fn}', client: supabase, webhookUrl: Deno.env.get('SLACK_WEBHOOK_URL'), })`
+      );
+      expect(flat(src)).toMatch(/await providerFetch\( `https:\/\/generativelanguage/);
+      expect(src).not.toMatch(/await fetch\(\s*`https:\/\/generativelanguage/);
+    }
+  );
 
   it('레시피 생성: 텍스트·이미지 요청 모두 알림 fetch를 쓴다', () => {
     const src = read('../../_shared/createRecipe.ts');
@@ -46,6 +43,18 @@ describe('Gemini/Pixabay 호출부가 모두 장애 알림을 거친다', () => 
     );
   });
 
+  it('주간 리포트(cron·패스 구매 뒤 보충): 공용 구현이 함수 이름으로 알림 fetch를 만들어 Gemini 호출에 쓴다', () => {
+    const src = read('../../_shared/weeklyReportDb.ts');
+    expect(flat(src)).toContain(
+      "createProviderAlertFetch({ functionName, client: supabase, webhookUrl: Deno.env.get('SLACK_WEBHOOK_URL'), })"
+    );
+    expect(flat(src)).toMatch(/await providerFetch\( `https:\/\/generativelanguage/);
+    expect(src).not.toMatch(/await fetch\(\s*`https:\/\/generativelanguage/);
+    for (const fn of ['generate-weekly-reports', 'verify-pass-purchase']) {
+      expect(read(`../../${fn}/index.ts`)).toContain(`createWeeklyReportDeps(supabase, '${fn}')`);
+    }
+  });
+
   it('Gemini·Pixabay를 부르는 파일은 위에서 확인한 곳뿐이다', () => {
     // 새 호출부가 생기면 알림을 연결하고 이 목록에 더한다
     const root = new URL('../../', import.meta.url);
@@ -59,9 +68,9 @@ describe('Gemini/Pixabay 호출부가 모두 장애 알림을 거친다', () => 
     expect(callers).toEqual([
       '_shared/recipeImage.ts',
       '_shared/recipeText.ts',
+      '_shared/weeklyReportDb.ts',
       'estimate-recipe-servings/index.ts',
       'food-check/index.ts',
-      'generate-weekly-reports/index.ts',
       'process-ingredient-request/image.ts',
       'process-ingredient-request/judge.ts',
       'read-inbody/index.ts',

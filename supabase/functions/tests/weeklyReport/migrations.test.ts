@@ -6,6 +6,8 @@ import { describe, expect, it } from 'vitest';
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf-8');
 const schema = () => read('../../../migrations/20261021020000_weight_report.sql');
 const cron = () => read('../../../migrations/20261021020100_cron_weekly_report.sql');
+// 주간 리포트 DB 읽기·쓰기 구현 (cron·패스 구매 뒤 보충이 함께 씀)
+const reportDb = () => read('../../_shared/weeklyReportDb.ts');
 const flat = (sql: string) => sql.replace(/\s+/g, ' ');
 
 describe('weekly_report_candidates (리뷰 M1: 주차 일차 필터를 SQL로)', () => {
@@ -26,11 +28,12 @@ describe('weekly_report_candidates (리뷰 M1: 주차 일차 필터를 SQL로)',
   });
 
   it('엣지 함수는 user 테이블 전체 대신 rpc로 후보만 읽는다', () => {
-    const src = read('../../generate-weekly-reports/index.ts');
+    // 한 주 만들기의 DB 구현은 _shared/weeklyReportDb.ts (패스 구매 뒤 보충과 함께 씀)
+    const src = read('../../generate-weekly-reports/index.ts') + reportDb();
     expect(src).toContain(".rpc('weekly_report_candidates', { p_today: today })");
-    // user는 리포트를 만들 유저 한 명의 program_start만 읽는다 (누적 체중 기준)
+    // user는 리포트를 만들 유저 한 명의 program_start(누적 체중 기준)·start_date(패스 구매 뒤 보충)만 읽는다
     const perUser =
-      /\.from\('user'\)\s*\.select\('program_start'\)\s*\.eq\('id', uid\)\s*\.maybeSingle\(\)/g;
+      /\.from\('user'\)\s*\.select\('(program_start|start_date)'\)\s*\.eq\('id', uid\)\s*\.maybeSingle\(\)/g;
     expect(src).toMatch(perUser);
     expect(src.replace(perUser, '')).not.toContain(".from('user')");
   });
@@ -75,7 +78,7 @@ describe('fasting_result.fasted_minutes (일찍 끝낸 단식의 단식 시간)'
   });
 
   it('엣지 함수가 fasted_minutes를 읽는다', () => {
-    const src = read('../../generate-weekly-reports/index.ts');
+    const src = reportDb();
     expect(src).toContain(".select('day, result, fasted_minutes')");
   });
 });
@@ -128,7 +131,7 @@ describe('weekly_report.display_week (리포트 제목 = 실제로 지낸 주차
   });
 
   it('엣지 함수가 표시 주차를 읽는다', () => {
-    const src = read('../../generate-weekly-reports/index.ts');
+    const src = reportDb();
     expect(src).toContain(".select('start_date, week_index, display_week')");
   });
 

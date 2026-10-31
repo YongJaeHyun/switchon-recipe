@@ -524,3 +524,58 @@ describe('verifyPurchase', () => {
     expect(expiries.get(UID)).toEqual(longer);
   });
 });
+
+describe('verifyPurchase: 지난 주 리포트 보충 (운영자 결정 2026-10-31)', () => {
+  it('패스를 주면(1주 패스 포함) 그 유저의 보충을 시작한다', async () => {
+    for (const productId of [P1900, P1W]) {
+      const { deps } = createFakeDeps({ playPurchase: purchase({ productId }) });
+      const backfillReports = vi.fn();
+      const result = await verifyPurchase({ ...deps, backfillReports }, { ...input, productId });
+
+      expect(result.status).toBe('granted');
+      expect(backfillReports).toHaveBeenCalledTimes(1);
+      expect(backfillReports).toHaveBeenCalledWith(UID);
+    }
+  });
+
+  it('같은 유저의 재시도(already_processed, granted)도 보충을 다시 시작한다 (보충은 멱등)', async () => {
+    const { deps } = createFakeDeps({ existing: [existingRow({ purchaseToken: TOKEN })] });
+    const backfillReports = vi.fn();
+    const result = await verifyPurchase({ ...deps, backfillReports }, input);
+
+    expect(result.status).toBe('already_processed');
+    expect(backfillReports).toHaveBeenCalledWith(UID);
+  });
+
+  it('invalid·price_changed·다른 유저 토큰·환불된 토큰이면 보충하지 않는다', async () => {
+    const cases = [
+      createFakeDeps({ playPurchase: purchase({ purchaseState: 1 }) }),
+      createFakeDeps({
+        playPurchase: purchase({ purchaseTimeMillis: String(AFTER_GRACE.getTime()) }),
+        now: AFTER_GRACE,
+      }),
+      createFakeDeps({ existing: [existingRow({ purchaseToken: TOKEN, uid: 'other' })] }),
+      createFakeDeps({
+        existing: [existingRow({ purchaseToken: TOKEN, status: 'refunded_ineligible' })],
+      }),
+    ];
+    for (const { deps } of cases) {
+      const backfillReports = vi.fn();
+      await verifyPurchase({ ...deps, backfillReports }, input);
+      expect(backfillReports).not.toHaveBeenCalled();
+    }
+  });
+
+  it('보충 시작이 실패해도 검증 결과는 그대로다', async () => {
+    const { deps } = createFakeDeps();
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const backfillReports = vi.fn(() => {
+      throw new Error('schedule failed');
+    });
+    const result = await verifyPurchase({ ...deps, backfillReports }, input);
+    error.mockRestore();
+
+    expect(result.status).toBe('granted');
+    expect(backfillReports).toHaveBeenCalled();
+  });
+});

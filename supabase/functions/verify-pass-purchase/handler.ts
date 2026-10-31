@@ -50,6 +50,9 @@ export interface VerifyDeps {
     ReturnType<typeof createGooglePlayClient>,
     'getProductPurchase' | 'consumeProductPurchase' | 'refundOrder'
   >;
+  // 지금 회차의 끝난 주 중 리포트가 없는 주를 백그라운드로 만든다 (backfillReports.ts startReportBackfill).
+  // 응답을 기다리게 하지 않도록 시작만 하고 바로 돌아온다. 같은 주를 다시 만들지 않으므로 재시도에도 불러도 된다
+  backfillReports?(uid: string): void;
 }
 
 export interface VerifyInput {
@@ -66,6 +69,15 @@ const syncPassExpiry = async (deps: VerifyDeps, uid: string): Promise<Date | nul
   ]);
   const expiry = computeExpiry(purchases, extensions);
   return expiry ? deps.raisePassExpiry(uid, expiry) : null;
+};
+
+// 지난 주 리포트 보충 시작 (운영자 결정 2026-10-31). 실패해도 검증 결과는 바꾸지 않는다
+const startBackfill = (deps: VerifyDeps, uid: string) => {
+  try {
+    deps.backfillReports?.(uid);
+  } catch (error) {
+    console.error('지난 주 리포트 보충 시작 실패:', error);
+  }
 };
 
 // 소비 실패는 결과를 바꾸지 않는다. 다음 복구 요청의 already_processed 경로에서 다시 시도한다
@@ -88,6 +100,8 @@ const alreadyProcessed = async (
 
   // 이전 요청이 insert 후 만료일 기록 전에 끊겼어도 여기서 복구된다
   const expiry = await syncPassExpiry(deps, input.uid);
+  // 첫 요청의 보충이 끊겼어도 재시도에서 마저 만든다 (이미 있는 주는 건너뜀)
+  if (processed.status === 'granted') startBackfill(deps, input.uid);
   return { status: 'already_processed', passExpiresAt: expiry ? expiry.toISOString() : null };
 };
 
@@ -182,6 +196,7 @@ export async function verifyPurchase(deps: VerifyDeps, input: VerifyInput): Prom
   const expiry = (await syncPassExpiry(deps, input.uid)) as Date;
 
   await tryConsume(deps, input.productId, input.purchaseToken);
+  startBackfill(deps, input.uid);
 
   return { status: 'granted', passExpiresAt: expiry.toISOString() };
 }
