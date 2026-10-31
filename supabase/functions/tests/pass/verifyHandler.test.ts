@@ -12,6 +12,7 @@ const UID = 'user-1';
 const TOKEN = 'token-1';
 const P1900 = 'switchon_pass_5w_1900';
 const P4900 = 'switchon_pass_5w_4900';
+const P1W = 'switchon_pass_1w_1500';
 
 // 무료 기간 2026-11-01 ~ 2026-11-14 (KST). 1주차 구간: 2026-10-31T15:00Z ~ 2026-11-07T15:00Z
 const SETTING: PremiumSetting = { freeStart: '2026-11-01', freeEnd: '2026-11-14' };
@@ -64,7 +65,7 @@ const createFakeDeps = (
     listUserPurchases: vi.fn(async (uid: string) =>
       rows
         .filter((r) => r.uid === uid)
-        .map((r) => ({ purchasedAt: r.purchasedAt, status: r.status }))
+        .map((r) => ({ productId: r.productId, purchasedAt: r.purchasedAt, status: r.status }))
     ),
     insertPurchase: vi.fn(async (row: PurchaseRow) => {
       if (options.insertResult === 'duplicate') return 'duplicate' as const;
@@ -105,6 +106,67 @@ const existingRow = (overrides: Partial<PurchaseRow> = {}): PurchaseRow => ({
 
 const input = { uid: UID, productId: P1900, purchaseToken: TOKEN };
 
+describe('verifyPurchase: 1주 패스', () => {
+  const weekInput = { uid: UID, productId: P1W, purchaseToken: TOKEN };
+
+  it('1주 패스는 7일, 1,500원으로 기록하고 소비한다', async () => {
+    const { deps, play, rows } = createFakeDeps({ playPurchase: purchase({ productId: P1W }) });
+
+    const result = await verifyPurchase(deps, weekInput);
+
+    const expectedExpiry = new Date(IN_EARLY1.getTime() + 7 * DAY_MS);
+    expect(result).toEqual({ status: 'granted', passExpiresAt: expectedExpiry.toISOString() });
+    expect(rows[0]).toMatchObject({
+      productId: P1W,
+      priceKrw: 1500,
+      grantedFrom: IN_EARLY1,
+      grantedUntil: expectedExpiry,
+      status: 'granted',
+    });
+    expect(play.consumeProductPurchase).toHaveBeenCalledWith(P1W, TOKEN);
+    expect(play.refundOrder).not.toHaveBeenCalled();
+  });
+
+  it('5주 패스가 남아 있으면 그 만료일 뒤에 7일을 이어 붙인다', async () => {
+    const old = existingRow(); // 11/1 + 35일
+    const { deps, rows } = createFakeDeps({
+      existing: [old],
+      playPurchase: purchase({ productId: P1W }),
+    });
+
+    const result = await verifyPurchase(deps, weekInput);
+
+    const oldUntil = old.grantedUntil as Date;
+    const expectedExpiry = new Date(oldUntil.getTime() + 7 * DAY_MS);
+    expect(result).toEqual({ status: 'granted', passExpiresAt: expectedExpiry.toISOString() });
+    expect(rows[1]).toMatchObject({ grantedFrom: oldUntil, grantedUntil: expectedExpiry });
+  });
+
+  it('1주 패스가 남아 있을 때 5주 패스를 사면 7일 뒤에 35일', async () => {
+    const weekRow = existingRow({
+      productId: P1W,
+      priceKrw: 1500,
+      grantedUntil: new Date(new Date('2026-11-01T00:00:00.000Z').getTime() + 7 * DAY_MS),
+    });
+    const { deps } = createFakeDeps({ existing: [weekRow] });
+
+    const result = await verifyPurchase(deps, input);
+
+    const expectedExpiry = new Date(new Date('2026-11-01T00:00:00.000Z').getTime() + 42 * DAY_MS);
+    expect(result).toEqual({ status: 'granted', passExpiresAt: expectedExpiry.toISOString() });
+  });
+
+  it('1주 패스는 가격 구간이 없어 무료 기간이 지나도 환불하지 않는다', async () => {
+    const { deps, play } = createFakeDeps({
+      playPurchase: purchase({ productId: P1W, purchaseTimeMillis: String(AFTER_GRACE.getTime()) }),
+      now: AFTER_GRACE,
+    });
+
+    expect((await verifyPurchase(deps, weekInput)).status).toBe('granted');
+    expect(play.refundOrder).not.toHaveBeenCalled();
+  });
+});
+
 describe('verifyPurchase', () => {
   it('정상 구매면 패스를 주고 기록, 만료일 갱신, 소비한다', async () => {
     const { deps, play, rows, expiries } = createFakeDeps();
@@ -129,7 +191,7 @@ describe('verifyPurchase', () => {
     });
 
     expect(expiries.get(UID)).toEqual(
-      computeExpiry([{ purchasedAt: IN_EARLY1, status: 'granted' }])
+      computeExpiry([{ productId: P1900, purchasedAt: IN_EARLY1, status: 'granted' }])
     );
     expect(play.consumeProductPurchase).toHaveBeenCalledTimes(1);
     expect(play.consumeProductPurchase).toHaveBeenCalledWith(P1900, TOKEN);

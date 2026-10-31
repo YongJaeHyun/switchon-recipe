@@ -5,11 +5,9 @@ import type { createGooglePlayClient, ProductPurchase } from '../_shared/googleP
 import {
   computeExpiry,
   isPurchaseEligible,
-  PASS_DAYS,
-  PASS_PRODUCTS,
+  passProductOf,
   type PremiumSetting,
   type PurchaseForExpiry,
-  tierOfProduct,
 } from '../_shared/pass.ts';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -91,17 +89,25 @@ const isValidPurchase = (purchase: ProductPurchase, input: VerifyInput) =>
   purchase.obfuscatedExternalAccountId === input.uid &&
   (purchase.productId === undefined || purchase.productId === input.productId);
 
-// 이 구매가 더해 주는 구간: 이 구매 이전의 granted 구매로 만든 만료일 뒤에 이어 붙인다
-const grantedInterval = (existing: PurchaseForExpiry[], purchasedAt: Date) => {
+// 이 구매가 더해 주는 구간: 이 구매 이전의 granted 구매로 만든 만료일 뒤에 상품 일수만큼 이어 붙인다
+const grantedInterval = (
+  existing: PurchaseForExpiry[],
+  productId: string,
+  days: number,
+  purchasedAt: Date
+) => {
   const before = existing.filter((p) => p.purchasedAt.getTime() <= purchasedAt.getTime());
-  const grantedUntil = computeExpiry([...before, { purchasedAt, status: 'granted' }]) as Date;
-  const grantedFrom = new Date(grantedUntil.getTime() - PASS_DAYS * DAY_MS);
+  const grantedUntil = computeExpiry([
+    ...before,
+    { productId, purchasedAt, status: 'granted' },
+  ]) as Date;
+  const grantedFrom = new Date(grantedUntil.getTime() - days * DAY_MS);
   return { grantedFrom, grantedUntil };
 };
 
 export async function verifyPurchase(deps: VerifyDeps, input: VerifyInput): Promise<VerifyResult> {
-  const tier = tierOfProduct(input.productId);
-  if (!tier) return { status: 'invalid' };
+  const product = passProductOf(input.productId);
+  if (!product) return { status: 'invalid' };
 
   const processed = await deps.findPurchase(input.purchaseToken);
   if (processed) return alreadyProcessed(deps, input, processed);
@@ -115,7 +121,7 @@ export async function verifyPurchase(deps: VerifyDeps, input: VerifyInput): Prom
     productId: input.productId,
     purchaseToken: input.purchaseToken,
     orderId: purchase.orderId ?? null,
-    priceKrw: PASS_PRODUCTS[tier].priceKrw,
+    priceKrw: product.priceKrw,
     purchasedAt,
     raw: purchase,
   };
@@ -142,6 +148,8 @@ export async function verifyPurchase(deps: VerifyDeps, input: VerifyInput): Prom
 
   const { grantedFrom, grantedUntil } = grantedInterval(
     await deps.listUserPurchases(input.uid),
+    input.productId,
+    product.days,
     purchasedAt
   );
   const inserted = await deps.insertPurchase({

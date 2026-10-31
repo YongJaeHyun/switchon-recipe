@@ -1,4 +1,4 @@
-// 스위치온 패스 가격 구간(early1/early2/regular) 및 만료일 계산 순수 로직.
+// 스위치온 패스 상품(5주 가격 구간 early1/early2/regular, 1주 고정 가격) 및 만료일 계산 순수 로직.
 // Deno 엣지 함수와 Vitest(node) 양쪽에서 로드되므로 외부 import를 두지 않는다.
 
 export const PASS_DAYS = 35;
@@ -11,6 +11,22 @@ export const PASS_PRODUCTS: Record<Tier, { productId: string; priceKrw: number }
   early2: { productId: 'switchon_pass_5w_2900', priceKrw: 2900 },
   regular: { productId: 'switchon_pass_5w_4900', priceKrw: 4900 },
 };
+
+// 1주 패스: 가격 구간 없이 1,500원 고정 (운영자 결정 2026-10-31)
+export const WEEK_PASS_PRODUCT = {
+  productId: 'switchon_pass_1w_1500',
+  priceKrw: 1500,
+  days: 7,
+} as const;
+
+// 상품별 가격·부여 일수. 모르는 상품이면 null
+export function passProductOf(productId: string): { priceKrw: number; days: number } | null {
+  if (productId === WEEK_PASS_PRODUCT.productId) {
+    return { priceKrw: WEEK_PASS_PRODUCT.priceKrw, days: WEEK_PASS_PRODUCT.days };
+  }
+  const tier = tierOfProduct(productId);
+  return tier ? { priceKrw: PASS_PRODUCTS[tier].priceKrw, days: PASS_DAYS } : null;
+}
 
 export interface PremiumSetting {
   freeStart: string | null; // 'YYYY-MM-DD' KST
@@ -25,9 +41,12 @@ export interface SalesState {
   priceKrw: number | null;
   freeDaysLeft: number; // 오늘 포함, 무료 기간 아니면 0
   nextTier: { tier: Tier; priceKrw: number; startsAt: string } | null; // ISO, 다음 가격 변경 시각
+  // 1주 패스: 판매 중이면 늘 같은 가격. 5주 패스(productId/priceKrw)와 함께 고를 수 있게 내려준다
+  weekPass: typeof WEEK_PASS_PRODUCT | null;
 }
 
 export interface PurchaseForExpiry {
+  productId: string;
   purchasedAt: Date;
   status: 'granted' | 'voided' | 'refunded_ineligible';
 }
@@ -92,6 +111,7 @@ export function getSalesState(now: Date, setting: PremiumSetting): SalesState {
       priceKrw: null,
       freeDaysLeft: 0,
       nextTier: null,
+      weekPass: null,
     };
   }
 
@@ -112,6 +132,7 @@ export function getSalesState(now: Date, setting: PremiumSetting): SalesState {
         priceKrw: PASS_PRODUCTS.early1.priceKrw,
         startsAt: early1Start.toISOString(),
       },
+      weekPass: null,
     };
   }
 
@@ -146,7 +167,16 @@ export function getSalesState(now: Date, setting: PremiumSetting): SalesState {
     };
   }
 
-  return { onSale: true, freeActive, tier, productId, priceKrw, freeDaysLeft, nextTier };
+  return {
+    onSale: true,
+    freeActive,
+    tier,
+    productId,
+    priceKrw,
+    freeDaysLeft,
+    nextTier,
+    weekPass: WEEK_PASS_PRODUCT,
+  };
 }
 
 export function tierOfProduct(productId: string): Tier | null {
@@ -161,6 +191,8 @@ export function isPurchaseEligible(
   purchasedAt: Date,
   setting: PremiumSetting
 ): boolean {
+  // 1주 패스는 가격이 하나뿐이라 언제 사도 유효하다
+  if (productId === WEEK_PASS_PRODUCT.productId) return true;
   const tier = tierOfProduct(productId);
   if (!tier) return false;
   if (tier === 'regular') return true;
@@ -176,6 +208,7 @@ export function isPurchaseEligible(
   return t >= start.getTime() && t < end.getTime() + GRACE_MS;
 }
 
+// granted 구매를 시간 순으로 쌓아 만료일을 만든다: 그때 만료일이 남아 있으면 그 뒤에, 아니면 구매 시각부터 상품 일수만큼
 export function computeExpiry(purchases: PurchaseForExpiry[]): Date | null {
   const granted = purchases
     .filter((p) => p.status === 'granted')
@@ -187,7 +220,9 @@ export function computeExpiry(purchases: PurchaseForExpiry[]): Date | null {
   for (const purchase of granted) {
     const base: Date =
       expiry && expiry.getTime() > purchase.purchasedAt.getTime() ? expiry : purchase.purchasedAt;
-    expiry = new Date(base.getTime() + PASS_DAYS * DAY_MS);
+    // granted 행은 검증된 상품뿐이다. 혹시 모르는 상품이면 예전처럼 5주로 본다
+    const days = passProductOf(purchase.productId)?.days ?? PASS_DAYS;
+    expiry = new Date(base.getTime() + days * DAY_MS);
   }
 
   return expiry;

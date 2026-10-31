@@ -7,10 +7,14 @@ import {
   isPurchaseEligible,
   PASS_DAYS,
   PASS_PRODUCTS,
+  passProductOf,
   tierOfProduct,
+  WEEK_PASS_PRODUCT,
   type PremiumSetting,
   type PurchaseForExpiry,
 } from '../../_shared/pass.ts';
+
+const DAY = 24 * 60 * 60 * 1000;
 
 const setting: PremiumSetting = { freeStart: '2026-11-01', freeEnd: '2026-11-14' };
 const noSetting: PremiumSetting = { freeStart: null, freeEnd: null };
@@ -22,6 +26,48 @@ describe('PASS_PRODUCTS', () => {
       early2: { productId: 'switchon_pass_5w_2900', priceKrw: 2900 },
       regular: { productId: 'switchon_pass_5w_4900', priceKrw: 4900 },
     });
+  });
+});
+
+describe('1주 패스 상품', () => {
+  it('switchon_pass_1w_1500: 7일, 1,500원 고정', () => {
+    expect(WEEK_PASS_PRODUCT).toEqual({
+      productId: 'switchon_pass_1w_1500',
+      priceKrw: 1500,
+      days: 7,
+    });
+  });
+
+  it('passProductOf: 상품별 가격·일수 (5주 35일, 1주 7일), 모르는 상품은 null', () => {
+    expect(passProductOf('switchon_pass_5w_1900')).toEqual({ priceKrw: 1900, days: 35 });
+    expect(passProductOf('switchon_pass_5w_2900')).toEqual({ priceKrw: 2900, days: 35 });
+    expect(passProductOf('switchon_pass_5w_4900')).toEqual({ priceKrw: 4900, days: 35 });
+    expect(passProductOf('switchon_pass_1w_1500')).toEqual({ priceKrw: 1500, days: 7 });
+    expect(passProductOf('x')).toBeNull();
+  });
+
+  it('1주 패스는 가격 구간이 없다 (tierOfProduct null)', () => {
+    expect(tierOfProduct('switchon_pass_1w_1500')).toBeNull();
+  });
+
+  it('판매 중이면 sales.weekPass로 함께 내려주고, 가격은 구간과 무관하게 1,500원', () => {
+    for (const at of ['2026-10-31T15:00:00Z', '2026-11-07T15:00:00Z', '2026-11-14T15:00:00Z']) {
+      expect(getSalesState(new Date(at), setting).weekPass).toEqual(WEEK_PASS_PRODUCT);
+    }
+  });
+
+  it('판매 전(설정 없음, 무료 기간 시작 전)에는 weekPass도 null', () => {
+    expect(getSalesState(new Date('2026-11-01T00:00:00Z'), noSetting).weekPass).toBeNull();
+    expect(getSalesState(new Date('2026-10-31T14:59:59Z'), setting).weekPass).toBeNull();
+  });
+
+  it('isPurchaseEligible: 1주 패스는 언제 사도 유효 (고정 가격, 설정 null 포함)', () => {
+    expect(
+      isPurchaseEligible('switchon_pass_1w_1500', new Date('2026-01-01T00:00:00Z'), setting)
+    ).toBe(true);
+    expect(
+      isPurchaseEligible('switchon_pass_1w_1500', new Date('2026-11-03T00:00:00Z'), noSetting)
+    ).toBe(true);
   });
 });
 
@@ -158,8 +204,9 @@ describe('isPurchaseEligible', () => {
 describe('computeExpiry', () => {
   const purchase = (
     purchasedAt: string,
-    status: PurchaseForExpiry['status'] = 'granted'
-  ): PurchaseForExpiry => ({ purchasedAt: new Date(purchasedAt), status });
+    status: PurchaseForExpiry['status'] = 'granted',
+    productId = 'switchon_pass_5w_4900'
+  ): PurchaseForExpiry => ({ productId, purchasedAt: new Date(purchasedAt), status });
 
   it('없음: 빈 배열', () => {
     expect(computeExpiry([])).toBeNull();
@@ -216,6 +263,48 @@ describe('computeExpiry', () => {
       purchase('2026-11-10T10:00:00Z'),
     ]);
     expect(shuffled?.getTime()).toBe(ordered?.getTime());
+  });
+});
+
+describe('computeExpiry: 상품별 일수', () => {
+  const purchase = (
+    purchasedAt: string,
+    productId: string,
+    status: PurchaseForExpiry['status'] = 'granted'
+  ): PurchaseForExpiry => ({ productId, purchasedAt: new Date(purchasedAt), status });
+  const at = (iso: string) => new Date(iso).getTime();
+
+  it('1주 패스 단독: +7일', () => {
+    expect(
+      computeExpiry([purchase('2026-11-01T10:00:00Z', 'switchon_pass_1w_1500')])?.getTime()
+    ).toBe(at('2026-11-01T10:00:00Z') + 7 * DAY);
+  });
+
+  it('5주 패스 중 1주 패스: 만료일 뒤에 7일을 이어 붙인다', () => {
+    expect(
+      computeExpiry([
+        purchase('2026-11-01T10:00:00Z', 'switchon_pass_5w_4900'),
+        purchase('2026-11-10T10:00:00Z', 'switchon_pass_1w_1500'),
+      ])?.getTime()
+    ).toBe(at('2026-11-01T10:00:00Z') + 42 * DAY);
+  });
+
+  it('1주 패스 중 5주 패스: 7일 뒤에 35일', () => {
+    expect(
+      computeExpiry([
+        purchase('2026-11-01T10:00:00Z', 'switchon_pass_1w_1500'),
+        purchase('2026-11-03T10:00:00Z', 'switchon_pass_5w_1900'),
+      ])?.getTime()
+    ).toBe(at('2026-11-01T10:00:00Z') + 42 * DAY);
+  });
+
+  it('1주 패스 환불: 그 7일만 빠진다', () => {
+    expect(
+      computeExpiry([
+        purchase('2026-11-01T10:00:00Z', 'switchon_pass_5w_4900'),
+        purchase('2026-11-10T10:00:00Z', 'switchon_pass_1w_1500', 'voided'),
+      ])?.getTime()
+    ).toBe(at('2026-11-01T10:00:00Z') + 35 * DAY);
   });
 });
 

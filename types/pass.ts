@@ -11,6 +11,8 @@ export interface SalesState {
   priceKrw: number | null;
   freeDaysLeft: number; // 오늘 포함, 무료 기간 아니면 0
   nextTier: { tier: PassTier; priceKrw: number; startsAt: string } | null; // ISO, 다음 가격 변경 시각
+  // 1주 패스 (가격 고정). 판매 중이 아니면 null, 이 필드를 모르는 구버전 서버면 없음
+  weekPass?: { productId: string; priceKrw: number; days: number } | null;
 }
 
 export interface PassStatus {
@@ -35,6 +37,11 @@ export const PASS_PRODUCT_IDS = [
   'switchon_pass_5w_1900',
   'switchon_pass_5w_2900',
   'switchon_pass_5w_4900',
+  'switchon_pass_1w_1500',
 ] as const;
+
+// 상품별 패스 일수 (서버 _shared/pass.ts passProductOf와 같은 값)
+export const WEEK_PASS_PRODUCT_ID = 'switchon_pass_1w_1500';
+export const passDaysOf = (productId: string) => (productId === WEEK_PASS_PRODUCT_ID ? 7 : 35);
 
 export const REGULAR_PRICE_KRW = 4900;

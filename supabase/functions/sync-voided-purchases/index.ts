@@ -65,13 +65,16 @@ const deps = (): VoidedDeps => ({
   async listUserPurchases(uid: string): Promise<PurchaseForExpiry[]> {
     const { data, error } = await supabase
       .from('pass_purchase')
-      .select('purchased_at, status')
+      .select('product_id, purchased_at, status')
       .eq('uid', uid);
     if (error) throw error;
-    return data.map((row: { purchased_at: string; status: PurchaseForExpiry['status'] }) => ({
-      purchasedAt: new Date(row.purchased_at),
-      status: row.status,
-    }));
+    return data.map(
+      (row: { product_id: string; purchased_at: string; status: PurchaseForExpiry['status'] }) => ({
+        productId: row.product_id,
+        purchasedAt: new Date(row.purchased_at),
+        status: row.status,
+      })
+    );
   },
 
   // raise_pass_expiry와 달리 정확한 값으로 쓴다: 환불로 만료일이 줄거나 패스 자체가 없어질 수 있다
