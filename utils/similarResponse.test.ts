@@ -17,6 +17,7 @@ const row = {
   saved_at: '2026-10-02T00:00:00Z',
   saved_count: 3,
   servings: 2,
+  adapt_note: '면 대신 두부면을 써요',
 };
 
 describe('parseSimilarResponse', () => {
@@ -52,6 +53,7 @@ describe('parseSimilarResponse', () => {
         saved_at: null,
         saved_count: 0,
         servings: null,
+        adapt_note: null,
       },
       expect.objectContaining({ id: 9, servings: null }),
     ]);

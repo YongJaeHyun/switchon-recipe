@@ -4,12 +4,14 @@
 // has_premium_access_for(uid) RPC 결과를 합쳐서 돌려준다. hasAccess는 여기서 다시 계산하지 않고
 // DB 함수 결과를 그대로 전달한다 (서버 최종 판단은 단일 소스여야 하므로).
 // foodCheckTrialRemaining: 패스 없이 쓸 수 있는 음식 판정 무료 횟수 (앱 표시용, food-check가 최종 판단)
+// recipeByNameTrialRemaining: 패스 없이 쓸 수 있는 음식 이름으로 만들기 무료 횟수 (앱 표시용, create-recipe-by-name이 최종 판단)
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getUid, requireEnv } from '../_shared/auth.ts';
 import { foodCheckTrialRemaining } from '../_shared/foodCheckTrial.ts';
 import { getSalesState, type PremiumSetting } from '../_shared/pass.ts';
+import { recipeByNameTrialRemaining } from '../_shared/recipeNameCheck.ts';
 
 const json = (body: unknown, status: number) =>
   new Response(JSON.stringify(body), {
@@ -45,18 +47,29 @@ const getHasAccess = async (uid: string): Promise<boolean> => {
   return data === true;
 };
 
-// 표시용이라 조회가 실패하면(마이그레이션 적용 전 등) 상태 전체를 실패시키지 않고 빈 값(undefined)으로 둔다. 앱은 모르는 값으로 보고 서버 판단에 맡긴다
-const getFoodCheckTrialRemaining = async (uid: string): Promise<number | undefined> => {
+// 표시용이라 조회가 실패하면(마이그레이션 적용 전 등) 상태 전체를 실패시키지 않고 빈 값(undefined)으로 둔다. 앱은 모르는 값으로 보고 서버 판단에 맡긴다.
+// select('*')라 recipe_by_name_used 열이 아직 없어도(마이그레이션 전) 음식 판정 횟수는 그대로 준다
+const getTrialRemaining = async (
+  uid: string
+): Promise<{ foodCheck: number | undefined; recipeByName: number | undefined }> => {
   const { data, error } = await supabase
     .from('user_trial')
-    .select('food_check_used')
+    .select('*')
     .eq('uid', uid)
     .maybeSingle();
   if (error) {
     console.error('무료 체험 조회 실패:', error);
-    return undefined;
+    return { foodCheck: undefined, recipeByName: undefined };
   }
-  return foodCheckTrialRemaining(data?.food_check_used);
+  const row = (data ?? {}) as { food_check_used?: number; recipe_by_name_used?: number };
+  return {
+    foodCheck: foodCheckTrialRemaining(row.food_check_used),
+    // 행은 있는데 열이 없으면(마이그레이션 전) 모르는 값
+    recipeByName:
+      data && row.recipe_by_name_used === undefined
+        ? undefined
+        : recipeByNameTrialRemaining(row.recipe_by_name_used),
+  };
 };
 
 serve(async (req: Request) => {
@@ -65,11 +78,11 @@ serve(async (req: Request) => {
     if (!uid) return json({ error: 'unauthorized' }, 401);
 
     const now = new Date();
-    const [setting, passExpiresAt, hasAccess, foodCheckTrialRemaining] = await Promise.all([
+    const [setting, passExpiresAt, hasAccess, trial] = await Promise.all([
       getSetting(),
       getPassExpiresAt(uid),
       getHasAccess(uid),
-      getFoodCheckTrialRemaining(uid),
+      getTrialRemaining(uid),
     ]);
 
     return json(
@@ -77,7 +90,8 @@ serve(async (req: Request) => {
         sales: getSalesState(now, setting),
         passExpiresAt,
         hasAccess,
-        foodCheckTrialRemaining,
+        foodCheckTrialRemaining: trial.foodCheck,
+        recipeByNameTrialRemaining: trial.recipeByName,
         serverNow: now.toISOString(),
       },
       200

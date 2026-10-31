@@ -1,6 +1,7 @@
 /// <reference lib="deno.ns" />
 
 // 레시피 생성 처리 본체: create-recipe-by-gemini(실서비스), create-recipe-by-gemini-test가 공유한다.
+// 생성·이미지·저장(generateAndSaveRecipe)은 create-recipe-by-name도 같이 쓴다.
 // 흐름: 유저 인증(auth.getUser) -> 하루 한도 차감(consume_recipe_quota) -> 생성(텍스트/이미지/업로드/DB 저장)
 // -> 생성 실패 시 한도 복구(release_recipe_quota). 한도 초과면 생성 없이 429를 돌려준다.
 // HTTP·한도 흐름은 createRecipeHandler.ts(Vitest 대상), 여기는 supabase·Gemini·이미지 연결만 둔다.
@@ -65,8 +66,13 @@ export function createRecipeHandler(functionName: string) {
   return (req: Request) => handleCreateRecipe(req, providerFetch);
 }
 
-async function handleCreateRecipe(req: Request, providerFetch: typeof fetch): Promise<Response> {
-  const supabaseClient = createClient(
+// 요청마다 만드는 두 클라이언트.
+// - userClient: service role 키 + 유저 JWT 헤더. auth.getUser·스토리지 업로드·recipe insert에 쓴다 (기존 그대로)
+// - adminClient: 유저 헤더가 없는 service role 전용. consume/release 같은 service role 전용 rpc와 등록 재료 조회에 쓴다.
+//   supabase-js는 global.headers.Authorization(유저 JWT)이 있으면 그걸 service role 키보다 우선해서 Bearer로
+//   보내므로, userClient로 service role 전용 rpc를 부르면 PostgREST가 authenticated role로 처리해 항상 거부된다.
+export function createRecipeClients(req: Request) {
+  const userClient = createClient(
     requireEnv('SUPABASE_URL'),
     requireEnv('SUPABASE_SERVICE_ROLE_KEY'),
     {
@@ -77,17 +83,121 @@ async function handleCreateRecipe(req: Request, providerFetch: typeof fetch): Pr
       },
     }
   );
-
-  // consume_recipe_quota/release_recipe_quota는 service role 전용으로 revoke되어 있다.
-  // supabase-js는 global.headers.Authorization(위 유저 JWT)이 있으면 그걸 service role 키보다
-  // 우선해서 Bearer로 보내므로, 위 supabaseClient로 이 두 rpc를 호출하면 PostgREST가 요청을
-  // authenticated role로 처리해 항상 거부된다. 그래서 유저 헤더를 전혀 싣지 않는 별도의
-  // service role 전용 클라이언트를 만들어 이 두 rpc에만 쓴다 (auth.getUser/insert/upload는
-  // 기존 supabaseClient 그대로 사용).
   const adminClient = createClient(
     requireEnv('SUPABASE_URL'),
     requireEnv('SUPABASE_SERVICE_ROLE_KEY')
   );
+  return { userClient, adminClient };
+}
+
+export type RecipeClients = ReturnType<typeof createRecipeClients>;
+
+export interface GenerateRecipeInput {
+  command: string;
+  week: unknown;
+  is_zero_carb: unknown;
+  // create-recipe-by-name: 이름 판정이 정한 레시피 이름 (AI가 만든 이름 대신, 이미지 생성 전에 바꾼다)
+  recipeName?: string;
+  // create-recipe-by-name: 바꿔 만든 안내 (recipe.adapt_note). 없으면 insert에 넣지 않는다 (기존 생성 그대로)
+  adaptNote?: string | null;
+}
+
+// 레시피 텍스트 생성 → 이미지 생성·업로드 → recipe 저장. 저장된 행을 돌려준다.
+// create-recipe-by-gemini(-test)와 create-recipe-by-name이 같이 쓴다
+export async function generateAndSaveRecipe(
+  { userClient: supabaseClient, adminClient }: RecipeClients,
+  providerFetch: typeof fetch,
+  { command, week, is_zero_carb, recipeName, adaptNote }: GenerateRecipeInput
+): Promise<unknown> {
+  const geminiKey = Deno.env.get('GEMINI_API_KEY');
+  if (!geminiKey) throw new Error('GEMINI_API_KEY not set');
+
+  // 🔹 1. 텍스트 기반 레시피 생성
+  const recipeJson = await requestRecipeText(command, geminiKey, providerFetch);
+  const validated = validateRecipe(recipeJson);
+  if (recipeName) validated.recipeName = recipeName;
+  // 태그는 RecipeSchema 밖에서 따로 검증한다. 잘못된 태그가 레시피 생성을 막지 않도록 null로 저장한다.
+  const tags = parseRecipeTags(recipeJson);
+
+  // 🔹 2. 이미지 생성
+  const imageBase64 = await requestRecipeImage(validated.recipeName, geminiKey, providerFetch);
+
+  // base64 → binary
+  const pngBuffer = Uint8Array.from(atob(imageBase64), (c) => c.charCodeAt(0));
+
+  // PNG decode
+  const image = await Image.decode(pngBuffer);
+
+  // JPEG encode (quality 80)
+  const jpegBuffer = await image.encodeJPEG(80);
+
+  const mimeType = 'image/jpeg';
+  const fileExt = 'jpg';
+  const fileName = `recipe-${Date.now()}.${fileExt}`;
+  const bucket = 'recipe-images';
+
+  // 🔹 3. 이미지 업로드
+  const { error: uploadError } = await supabaseClient.storage
+    .from(bucket)
+    .upload(fileName, jpegBuffer, {
+      contentType: mimeType,
+      upsert: false,
+    });
+
+  if (uploadError) throw new Error(`이미지 업로드 실패: ${uploadError.message}`);
+
+  // getPublicUrl()은 error를 반환하지 않는다 (supabase-js 타입에도 없음)
+  const { data: imageUrlData } = supabaseClient.storage.from(bucket).getPublicUrl(fileName);
+
+  validated.imageUri = imageUrlData.publicUrl;
+
+  const ingredientsJson = JSON.stringify(validated.ingredients);
+  // 검색용 재료 태그 (등록 재료 이름). 등록 재료를 못 읽어도 생성은 계속하고 빈 태그로 저장한다
+  const ingredientTags = await loadIngredientTags(
+    () =>
+      fetchAllPages(async (from, to) => {
+        const { data, error } = await adminClient
+          .from('ingredient')
+          .select('name, sub_keywords')
+          .eq('is_active', true)
+          .order('id')
+          .range(from, to);
+        if (error) throw error;
+        return (data ?? []) as RegisteredIngredient[];
+      }),
+    ingredientsJson
+  );
+
+  // 🔹 4. DB 저장
+  const { data, error } = await supabaseClient
+    .from('recipe')
+    .insert({
+      cooking_steps: JSON.stringify(validated.cookingSteps),
+      ingredients: ingredientsJson,
+      ingredient_tags: ingredientTags,
+      nutrition: JSON.stringify(validated.nutrition),
+      cooking_time: validated.cookingTime,
+      recipe_name: validated.recipeName,
+      image_uri: validated.imageUri,
+      is_zero_carb,
+      week,
+      spicy: tags?.spicy ?? null,
+      cuisine: tags?.cuisine ?? null,
+      method: tags?.method ?? null,
+      servings: validated.servings,
+      ...(adaptNote ? { adapt_note: adaptNote } : {}),
+    })
+    .select()
+    .single();
+
+  if (error) throw new Error(`DB 저장 실패: ${error.message}`);
+
+  return data;
+}
+
+async function handleCreateRecipe(req: Request, providerFetch: typeof fetch): Promise<Response> {
+  const clients = createRecipeClients(req);
+  const { userClient: supabaseClient, adminClient } = clients;
 
   return handleCreateRecipeRequest(req, {
     getUserId: async () => {
@@ -109,89 +219,7 @@ async function handleCreateRecipe(req: Request, providerFetch: typeof fetch): Pr
       if (error) throw new Error(`레시피 한도 복구 실패: ${error.message}`);
     },
 
-    generate: async ({ command, week, is_zero_carb }) => {
-      const geminiKey = Deno.env.get('GEMINI_API_KEY');
-      if (!geminiKey) throw new Error('GEMINI_API_KEY not set');
-
-      // 🔹 1. 텍스트 기반 레시피 생성
-      const recipeJson = await requestRecipeText(command, geminiKey, providerFetch);
-      const validated = validateRecipe(recipeJson);
-      // 태그는 RecipeSchema 밖에서 따로 검증한다. 잘못된 태그가 레시피 생성을 막지 않도록 null로 저장한다.
-      const tags = parseRecipeTags(recipeJson);
-
-      // 🔹 2. 이미지 생성
-      const imageBase64 = await requestRecipeImage(validated.recipeName, geminiKey, providerFetch);
-
-      // base64 → binary
-      const pngBuffer = Uint8Array.from(atob(imageBase64), (c) => c.charCodeAt(0));
-
-      // PNG decode
-      const image = await Image.decode(pngBuffer);
-
-      // JPEG encode (quality 80)
-      const jpegBuffer = await image.encodeJPEG(80);
-
-      const mimeType = 'image/jpeg';
-      const fileExt = 'jpg';
-      const fileName = `recipe-${Date.now()}.${fileExt}`;
-      const bucket = 'recipe-images';
-
-      // 🔹 3. 이미지 업로드
-      const { error: uploadError } = await supabaseClient.storage
-        .from(bucket)
-        .upload(fileName, jpegBuffer, {
-          contentType: mimeType,
-          upsert: false,
-        });
-
-      if (uploadError) throw new Error(`이미지 업로드 실패: ${uploadError.message}`);
-
-      // getPublicUrl()은 error를 반환하지 않는다 (supabase-js 타입에도 없음)
-      const { data: imageUrlData } = supabaseClient.storage.from(bucket).getPublicUrl(fileName);
-
-      validated.imageUri = imageUrlData.publicUrl;
-
-      const ingredientsJson = JSON.stringify(validated.ingredients);
-      // 검색용 재료 태그 (등록 재료 이름). 등록 재료를 못 읽어도 생성은 계속하고 빈 태그로 저장한다
-      const ingredientTags = await loadIngredientTags(
-        () =>
-          fetchAllPages(async (from, to) => {
-            const { data, error } = await adminClient
-              .from('ingredient')
-              .select('name, sub_keywords')
-              .eq('is_active', true)
-              .order('id')
-              .range(from, to);
-            if (error) throw error;
-            return (data ?? []) as RegisteredIngredient[];
-          }),
-        ingredientsJson
-      );
-
-      // 🔹 4. DB 저장
-      const { data, error } = await supabaseClient
-        .from('recipe')
-        .insert({
-          cooking_steps: JSON.stringify(validated.cookingSteps),
-          ingredients: ingredientsJson,
-          ingredient_tags: ingredientTags,
-          nutrition: JSON.stringify(validated.nutrition),
-          cooking_time: validated.cookingTime,
-          recipe_name: validated.recipeName,
-          image_uri: validated.imageUri,
-          is_zero_carb,
-          week,
-          spicy: tags?.spicy ?? null,
-          cuisine: tags?.cuisine ?? null,
-          method: tags?.method ?? null,
-          servings: validated.servings,
-        })
-        .select()
-        .single();
-
-      if (error) throw new Error(`DB 저장 실패: ${error.message}`);
-
-      return data;
-    },
+    generate: ({ command, week, is_zero_carb }) =>
+      generateAndSaveRecipe(clients, providerFetch, { command, week, is_zero_carb }),
   });
 }

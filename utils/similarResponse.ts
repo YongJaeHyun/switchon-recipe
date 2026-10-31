@@ -32,6 +32,7 @@ const toRecipe = (value: unknown): RecipeWithIsSavedDB | null => {
     saved_at: str(r.saved_at),
     saved_count: num(r.saved_count) ?? 0,
     servings: baseServingsOf(r),
+    adapt_note: str(r.adapt_note),
   };
 };
 
