@@ -38,16 +38,19 @@ export function RecipeCard({ push, ...recipe }: RecipeCardProps) {
           elevation: 2,
         }}>
         <View className="relative h-full w-full flex-[5]">
-          {/* 좁은 카드(비슷한 레시피 등)에선 저장 수와 겹치지 않게 오른쪽을 비워 두고, 모자라면 다음 줄로 넘긴다 */}
-          <View className="absolute left-2 right-16 top-2 z-50 flex-row flex-wrap gap-1.5">
+          {/* 좁은 카드(192dp)라 저장 수 자리를 빼면 배지 두 개를 한 줄에 겨우 담는다 → 작은 배지로 한 줄 고정 */}
+          <View className="absolute left-2 right-16 top-2 z-50 flex-row gap-1">
             {recipe.week && (
-              <View className={`rounded-full bg-white px-2 py-1`}>
-                <Text className={`text-sm ${getWeekColor(recipe.week)}`}>
+              <View className="rounded-full bg-white px-1.5 py-0.5">
+                <Text
+                  numberOfLines={1}
+                  maxFontSizeMultiplier={1.2}
+                  className={`text-xs font-medium ${getWeekColor(recipe.week)}`}>
                   {recipe.week}주차{recipe.week === 3 && '+'}
                 </Text>
               </View>
             )}
-            <CarbBadge isZeroCarb={recipe.is_zero_carb} />
+            <CarbBadge isZeroCarb={recipe.is_zero_carb} variant="compact" />
           </View>
 
           <ImageSkeleton />
