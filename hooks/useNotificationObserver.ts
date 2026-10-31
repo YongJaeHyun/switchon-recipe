@@ -3,7 +3,7 @@ import { Href, router } from 'expo-router';
 import { useEffect } from 'react';
 import { useNotificationGateStore } from 'stores/notificationGateStore';
 import { useUserStore } from 'stores/userStore';
-import { notificationTapAction } from 'utils/notificationGate';
+import { afterLoginLinkAction, notificationTapAction } from 'utils/notificationGate';
 import { captureError } from 'utils/sendError';
 import { Maybe } from '../types/common';
 import { resolveNotificationHref } from '../utils/notificationHref';
@@ -27,6 +27,21 @@ const flushPendingHref = () => {
   if (action === 'wait') return;
   setPendingHref(null);
   if (action === 'open') openHref(pendingHref);
+};
+
+// 로그인·온보딩 뒤로 미룬 이동 (카톡으로 받은 레시피, app/kakaolink): 탭 밖이면 버리지 않고 탭이 뜰 때까지 기다린다
+const flushAfterLoginHref = () => {
+  const { phase, afterLoginHref, setAfterLoginHref } = useNotificationGateStore.getState();
+  if (!afterLoginHref) return;
+  const { id, is_onboarded } = useUserStore.getState();
+  if (afterLoginLinkAction({ phase, userId: id, isOnboarded: is_onboarded }) !== 'open') return;
+  setAfterLoginHref(null);
+  openHref(afterLoginHref);
+};
+
+const flushDeferredHrefs = () => {
+  flushPendingHref();
+  flushAfterLoginHref();
 };
 
 // 누른 알림 처리: 이동은 미뤄 두고, 같은 알림을 다시 처리하지 않게(개발 중 다시 불러오기·안드로이드 재실행) 지운다
@@ -66,9 +81,9 @@ export function useNotificationObserver() {
     const received = Notifications.addNotificationReceivedListener((notification) =>
       invalidateWeeklyReportsFor(notification.request.content.data?.href)
     );
-    // 탭 화면이 뜨거나(phase) 사용자 정보가 바뀌면 미뤄 둔 이동을 다시 본다
-    const unsubscribeGate = useNotificationGateStore.subscribe(flushPendingHref);
-    const unsubscribeUser = useUserStore.subscribe(flushPendingHref);
+    // 탭 화면이 뜨거나(phase) 사용자 정보가 바뀌면 미뤄 둔 이동(알림·카톡 링크)을 다시 본다
+    const unsubscribeGate = useNotificationGateStore.subscribe(flushDeferredHrefs);
+    const unsubscribeUser = useUserStore.subscribe(flushDeferredHrefs);
 
     terminatedObserver();
 

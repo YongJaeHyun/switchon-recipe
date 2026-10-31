@@ -7,13 +7,18 @@ import { create } from 'zustand';
 interface NotificationGateState {
   phase: AppRoutePhase;
   pendingHref: Href | null;
+  // 로그인·온보딩 뒤에 열 곳 (카톡으로 받은 레시피 등, app/kakaolink). 탭 밖에서도 버리지 않는다
+  afterLoginHref: Href | null;
   setPhase: (phase: AppRoutePhase) => void;
   setPendingHref: (href: Href | null) => void;
+  setAfterLoginHref: (href: Href | null) => void;
 }
 
 export const useNotificationGateStore = create<NotificationGateState>()((set) => ({
   phase: 'starting',
   pendingHref: null,
+  afterLoginHref: null,
   setPhase: (phase) => set({ phase }),
   setPendingHref: (pendingHref) => set({ pendingHref }),
+  setAfterLoginHref: (afterLoginHref) => set({ afterLoginHref }),
 }));

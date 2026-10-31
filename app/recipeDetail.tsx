@@ -10,6 +10,7 @@ import { CarbBadge } from 'components/recipes/CarbBadge';
 import { ServingsStepper } from 'components/recipes/ServingsStepper';
 import { SimilarRecipes } from 'components/recipes/SimilarRecipes';
 import { logo } from 'const/assets';
+import { KAKAO_TEMPLATE_IDS } from 'const/kakaoTemplates';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -131,7 +132,7 @@ export default function RecipeDetailScreen() {
 
   const shareRecipeWithKakao = async () => {
     await shareCustomTemplate({
-      templateId: 122968,
+      templateId: KAKAO_TEMPLATE_IDS.recipe,
       templateArgs: {
         title: recipe_name ?? '',
         image_uri: image_uri ?? '',

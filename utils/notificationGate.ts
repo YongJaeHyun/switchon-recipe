@@ -34,3 +34,17 @@ export function startupPhase({
 }): AppRoutePhase {
   return !isFirstLaunch && isLoggedIn && isOnboarded ? 'starting' : 'outside';
 }
+
+// 로그인·온보딩 뒤로 미룬 이동 (카톡으로 받은 레시피 등, app/kakaolink). 알림과 달리 탭 밖에서도 버리지 않고
+// 로그인·온보딩을 마쳐 탭 화면이 뜰 때까지 기다린다
+export function afterLoginLinkAction({
+  phase,
+  userId,
+  isOnboarded,
+}: {
+  phase: AppRoutePhase;
+  userId: string | null | undefined;
+  isOnboarded: boolean | null | undefined;
+}): 'open' | 'wait' {
+  return phase === 'tabs' && userId && isOnboarded ? 'open' : 'wait';
+}
