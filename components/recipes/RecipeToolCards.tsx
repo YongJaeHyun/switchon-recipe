@@ -2,7 +2,6 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { PassBadge } from 'components/common/PassBadge';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
-import { TrialBadge } from 'components/common/TrialBadge';
 import { PassOnlyModal } from 'components/common/PassOnlyModal';
 import { RecipeByNameSheet } from 'components/recipeByName/RecipeByNameSheet';
 import { useRecipeByNameEntry } from 'hooks/useRecipeByNameEntry';
@@ -10,14 +9,14 @@ import { type Href, router } from 'expo-router';
 import { useBillingAvailable } from 'hooks/useBillingAvailable';
 import { usePass } from 'hooks/usePass';
 import { usePremiumGate } from 'hooks/usePremiumGate';
-import { type ComponentProps, type ReactNode } from 'react';
+import { type ComponentProps } from 'react';
 import { View } from 'react-native';
 import colors from 'tailwindcss/colors';
 import { RECOMMEND_LOCKED_MESSAGE } from 'types/recommend';
 import { getWeekAndDay } from 'utils/date';
 import { useUserStore } from 'stores/userStore';
 import { foodCheckEntryState } from 'utils/foodCheckTrial';
-import type { TrialEntryState } from 'utils/passTrial';
+import { type PassBadgeState, passBadgeState } from 'utils/passFeatureLabel';
 import { RECIPE_BY_NAME_DESCRIPTION, RECIPE_BY_NAME_TITLE } from 'utils/recipeByName';
 import { shouldShowPremiumEntry } from 'utils/passScreen';
 import { isRecommendLocked } from 'utils/recommendForm';
@@ -56,9 +55,19 @@ interface ToolCardProps {
   title: string;
   description: string;
   icon: IconName;
-  // 오른쪽 표시 (패스 잠금, 무료 체험 남은 횟수). 없으면 화살표만
-  badge: ReactNode;
+  // 제목 옆 패스 배지 (패스 사용 중 / 무료 체험 N번 남음 / 잠김)
+  badge: PassBadgeState;
   onPress(): void;
+}
+
+// 제목 옆에 배지. 배지가 길면(무료 체험 N번 남음) 제목 아래 줄로 내려간다
+function TitleWithBadge({ title, badge }: { title: string; badge: PassBadgeState }) {
+  return (
+    <View className="flex-row flex-wrap items-center gap-x-1.5 gap-y-0.5">
+      <Text className="text-base font-bold text-neutral-800">{title}</Text>
+      <PassBadge state={badge} />
+    </View>
+  );
 }
 
 function ToolCard({ title, description, icon, badge, onPress }: ToolCardProps) {
@@ -73,28 +82,17 @@ function ToolCard({ title, description, icon, badge, onPress }: ToolCardProps) {
           <MaterialIcons name={icon} size={24} color={colors.green[600]} />
         </View>
         <View className="flex-1">
-          <Text className="text-base font-bold text-neutral-800">{title}</Text>
+          <TitleWithBadge title={title} badge={badge} />
           <Text className="text-sm text-neutral-500">{description}</Text>
         </View>
       </View>
-      <View className="flex-row items-center gap-1">
-        {badge}
-        <MaterialIcons name="navigate-next" size={24} color={colors.neutral[400]} />
-      </View>
+      <MaterialIcons name="navigate-next" size={24} color={colors.neutral[400]} />
     </RippleButton>
   );
 }
 
 // 먹고 싶은 음식으로 만들기: 다른 도구보다 넓게, 안에 입력칸 모양을 넣어 "이름을 적는 기능"임을 바로 보이게 한다
-function RecipeByNameCard({
-  entry,
-  locked,
-  onPress,
-}: {
-  entry: TrialEntryState;
-  locked: boolean;
-  onPress(): void;
-}) {
+function RecipeByNameCard({ badge, onPress }: { badge: PassBadgeState; onPress(): void }) {
   return (
     <RippleButton
       outerClassName="border border-green-600 bg-white"
@@ -108,11 +106,9 @@ function RecipeByNameCard({
           <MaterialIcons name="edit-note" size={26} color={colors.white} />
         </View>
         <View className="flex-1">
-          <Text className="text-base font-bold text-neutral-800">{RECIPE_BY_NAME_TITLE}</Text>
+          <TitleWithBadge title={RECIPE_BY_NAME_TITLE} badge={badge} />
           <Text className="text-sm text-neutral-500">{RECIPE_BY_NAME_DESCRIPTION}</Text>
         </View>
-        {entry.kind === 'trial' && <TrialBadge remaining={entry.remaining} />}
-        {locked && <PassBadge locked />}
       </View>
       <View className="w-full flex-row items-center gap-2 rounded-full bg-neutral-100 px-4 py-2.5">
         <MaterialIcons name="restaurant" size={16} color={colors.neutral[400]} />
@@ -136,6 +132,7 @@ export function RecipeToolCards() {
   const foodCheck = foodCheckEntryState(status, billingAvailable);
   const byName = useRecipeByNameEntry();
   const { week, day } = getWeekAndDay(startDate);
+  const hasAccess = status?.hasAccess === true;
 
   const cards = TOOLS.flatMap((tool) => {
     const base = {
@@ -145,28 +142,17 @@ export function RecipeToolCards() {
     };
     if (tool.href === FOOD_CHECK_HREF) {
       if (foodCheck.kind === 'hidden') return [];
+      const badge = passBadgeState(hasAccess, foodCheck);
       if (foodCheck.kind === 'trial') {
-        return [
-          {
-            ...base,
-            badge: <TrialBadge remaining={foodCheck.remaining} />,
-            onPress: () => router.push(tool.href),
-          },
-        ];
+        return [{ ...base, badge, onPress: () => router.push(tool.href) }];
       }
-      return [
-        {
-          ...base,
-          badge: foodCheck.kind === 'locked' ? <PassBadge locked /> : null,
-          onPress: gate(() => router.push(tool.href)),
-        },
-      ];
+      return [{ ...base, badge, onPress: gate(() => router.push(tool.href)) }];
     }
     if (!premiumEntry) return [];
     return [
       {
         ...base,
-        badge: status?.hasAccess !== true ? <PassBadge locked /> : null,
+        badge: passBadgeState(hasAccess),
         onPress: gate(() => router.push(tool.href)),
       },
     ];
@@ -176,13 +162,7 @@ export function RecipeToolCards() {
 
   return (
     <View className="gap-3">
-      {byName.visible && (
-        <RecipeByNameCard
-          entry={byName.entry}
-          locked={byName.locked}
-          onPress={() => byName.press()}
-        />
-      )}
+      {byName.visible && <RecipeByNameCard badge={byName.badge} onPress={() => byName.press()} />}
       {cards.map((card) => (
         <ToolCard key={card.title} {...card} />
       ))}

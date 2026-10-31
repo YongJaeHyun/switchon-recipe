@@ -1,6 +1,7 @@
 import type { PassOnlyModalView } from 'components/common/PassOnlyModal';
 import { useRecipeByNameSheet } from 'components/recipeByName/RecipeByNameSheet';
 import { useState } from 'react';
+import { passBadgeState } from 'utils/passFeatureLabel';
 import { isPassOnSale } from 'utils/passScreen';
 import {
   RECIPE_BY_NAME_DESCRIPTION,
@@ -40,7 +41,8 @@ export const useRecipeByNameEntry = () => {
     // 패스 상태를 모르면(로딩·오프라인) 아직 보이지 않는다
     visible: status !== undefined,
     entry,
-    locked: status !== undefined && !canUse,
+    // 입구 배지 (패스 사용 중 / 무료 체험 N번 남음 / 잠김)
+    badge: passBadgeState(status?.hasAccess === true, entry),
     press,
     sheetRequest: sheet.request,
     trialRemaining: entry.kind === 'trial' ? entry.remaining : null,

@@ -3,6 +3,7 @@ import { BottomSheetTextInput, BottomSheetView } from '@gorhom/bottom-sheet';
 import { BottomSheetMethods } from '@gorhom/bottom-sheet/lib/typescript/types';
 import { Portal } from '@gorhom/portal';
 import { CustomBottomSheet } from 'components/common/CustomBottomSheet';
+import { PassTrialBanner } from 'components/common/PassTrialBanner';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import CreationLoadingOverlay from 'components/recipeCreation/CreationLoadingOverlay';
@@ -42,6 +43,14 @@ interface RecipeByNameSheetProps {
 }
 
 const CARB_OPTIONS = [false, true] as const;
+
+// 이름 칸을 누르면 시트가 키보드 위로 올라오게. 앱 창은 adjustResize(Expo 기본)라 시트도 같은 모드로 맞춘다.
+// 라이브러리 기본(adjustPan)이면 시트가 올라오지 않고 키보드가 이름 칸을 가리는 때가 있었다 (에뮬레이터 확인)
+const SHEET_KEYBOARD = {
+  keyboardBehavior: 'interactive',
+  keyboardBlurBehavior: 'restore',
+  android_keyboardInputMode: 'adjustResize',
+} as const;
 
 // 먹고 싶은 음식 이름 + 저탄수/무탄수 → [레시피 만들기]. 거절·확인 한도 안내는 입력 아래에 보여 주고
 // 시트를 닫지 않는다 (이름만 고쳐 다시 만들 수 있게). 만드는 동안은 화면 전체를 기존 생성 로딩으로 덮는다
@@ -89,13 +98,21 @@ export function RecipeByNameSheet({ request, trialRemaining }: RecipeByNameSheet
 
   const footnote =
     trialRemaining !== null
-      ? `무료 체험 ${trialRemaining}번 남았어요 · 만들 수 없는 이름이면 횟수가 줄지 않아요`
+      ? '만들 수 없는 이름이면 무료 체험 횟수가 줄지 않아요'
       : creation.remainingText;
 
   return (
     <>
-      <CustomBottomSheet ref={sheetRef}>
+      <CustomBottomSheet ref={sheetRef} keyboard={SHEET_KEYBOARD}>
         <BottomSheetView className="px-5">
+          {trialRemaining !== null && (
+            <PassTrialBanner
+              className="mb-4"
+              variant="trial"
+              remaining={trialRemaining}
+              onBeforeOpenPass={() => sheetRef.current?.close()}
+            />
+          )}
           <Text className="mb-1 text-2xl font-bold">{RECIPE_BY_NAME_TITLE}</Text>
           <Text className="mb-5 text-neutral-500">
             스위치온 규칙에 맞게 재료를 골라 레시피로 만들어 드려요
@@ -192,7 +209,12 @@ export function RecipeByNameSheet({ request, trialRemaining }: RecipeByNameSheet
             <Text className="text-lg font-semibold text-white">레시피 만들기</Text>
           </RippleButton>
           {footnote && (
-            <Text className="mb-8 text-center text-sm text-neutral-500">{footnote}</Text>
+            <Text
+              className={`mb-8 text-center ${
+                trialRemaining !== null ? 'text-xs text-neutral-400' : 'text-sm text-neutral-500'
+              }`}>
+              {footnote}
+            </Text>
           )}
         </BottomSheetView>
       </CustomBottomSheet>

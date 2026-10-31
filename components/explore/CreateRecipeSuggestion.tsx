@@ -2,7 +2,6 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { PassBadge } from 'components/common/PassBadge';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
-import { TrialBadge } from 'components/common/TrialBadge';
 import { PassOnlyModal } from 'components/common/PassOnlyModal';
 import { RecipeByNameSheet } from 'components/recipeByName/RecipeByNameSheet';
 import type { RecipeFilterType } from 'const/filter';
@@ -36,15 +35,14 @@ export function CreateRecipeSuggestion({ keyword, filter }: CreateRecipeSuggesti
       </Text>
       <RippleButton
         outerClassName="border-2 border-green-600 bg-white"
-        className="flex-row items-center gap-2 px-5 py-3"
+        className="flex-row flex-wrap items-center justify-center gap-2 px-5 py-3"
         rounded="full"
         rippleColor={colors.green[100]}
         accessibilityRole="button"
         onPress={() => byName.press(word, filter === '무탄수')}>
         <MaterialIcons name="edit-note" size={20} color={colors.green[600]} />
         <Text className="font-bold text-green-700">{suggestionLabel(word)}</Text>
-        {byName.entry.kind === 'trial' && <TrialBadge remaining={byName.entry.remaining} />}
-        {byName.locked && <PassBadge locked />}
+        <PassBadge state={byName.badge} />
       </RippleButton>
       <RecipeByNameSheet request={byName.sheetRequest} trialRemaining={byName.trialRemaining} />
       <PassOnlyModal {...byName.passModalProps} />

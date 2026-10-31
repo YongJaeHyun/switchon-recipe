@@ -1,4 +1,4 @@
-import BottomSheet from '@gorhom/bottom-sheet';
+import BottomSheet, { type BottomSheetProps } from '@gorhom/bottom-sheet';
 import { BottomSheetMethods } from '@gorhom/bottom-sheet/lib/typescript/types';
 import { Portal } from '@gorhom/portal';
 import { forwardRef, useEffect, useId, useImperativeHandle, useRef, useState } from 'react';
@@ -11,10 +11,17 @@ interface CustomBottomSheetProps {
   // 열려 있다가 닫힐 때마다 (index -1). 작업 중 상태를 저장된 값으로 되돌리는 데 쓴다.
   // 열 때 되돌리면 여는 애니메이션이 끝난 뒤에 불려 지난 편집이 잠깐 보인다
   onClose?: () => void;
+  // 입력칸이 있는 시트의 키보드 처리 (기본값은 @gorhom/bottom-sheet 기본)
+  keyboard?: SheetKeyboardProps;
 }
 
+type SheetKeyboardProps = Pick<
+  BottomSheetProps,
+  'keyboardBehavior' | 'keyboardBlurBehavior' | 'android_keyboardInputMode'
+>;
+
 export const CustomBottomSheet = forwardRef<BottomSheetMethods, CustomBottomSheetProps>(
-  ({ children, onClose }, ref) => {
+  ({ children, onClose, keyboard }, ref) => {
     const sheetRef = useRef<BottomSheet>(null);
     // PortalHost는 key 없이 순서대로 그려서, 다른 시트가 붙거나 떨어지면 내용이 다른 시트 자리로 옮겨 붙는다.
     // 시트마다 고정 key를 줘서 자기 자리를 지키게 한다
@@ -37,7 +44,7 @@ export const CustomBottomSheet = forwardRef<BottomSheetMethods, CustomBottomShee
 
     return (
       <Portal>
-        <SheetInPortal key={key} sheetRef={sheetRef} onClose={onClose}>
+        <SheetInPortal key={key} sheetRef={sheetRef} onClose={onClose} keyboard={keyboard}>
           {children}
         </SheetInPortal>
       </Portal>
@@ -51,10 +58,12 @@ export const CustomBottomSheet = forwardRef<BottomSheetMethods, CustomBottomShee
 const SheetInPortal = ({
   sheetRef,
   onClose,
+  keyboard,
   children,
 }: {
   sheetRef: React.RefObject<BottomSheet | null>;
   onClose?: () => void;
+  keyboard?: SheetKeyboardProps;
   children: React.ReactNode;
 }) => {
   const inset = useSafeAreaInsets();
@@ -93,7 +102,8 @@ const SheetInPortal = ({
         if (index === -1 && isOpen) onClose?.();
         setIsOpen(index >= 0);
       }}
-      enablePanDownToClose>
+      enablePanDownToClose
+      {...keyboard}>
       {children}
     </BottomSheet>
   );

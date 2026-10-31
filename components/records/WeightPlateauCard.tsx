@@ -11,6 +11,7 @@ import { Pressable, View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import { useWeightPlateauStore } from 'stores/weightPlateauStore';
 import colors from 'tailwindcss/colors';
+import { passBadgeA11yLabel, passBadgeState } from 'utils/passFeatureLabel';
 import { programStartOf } from 'utils/programStart';
 import { groupReportsByProgram } from 'utils/reportDisplay';
 import { PLATEAU_TIP, plateauCta, plateauTitle, type WeightPlateau } from 'utils/weightPlateau';
@@ -64,13 +65,11 @@ export function WeightPlateauCard({ plateau, today }: { plateau: WeightPlateau; 
         <Pressable
           onPress={openCta}
           accessibilityRole="button"
-          accessibilityLabel={
-            cta.kind === 'pass' ? '주간 리포트로 원인 보기, 패스 전용' : '주간 리포트로 원인 보기'
-          }
+          accessibilityLabel={`주간 리포트로 원인 보기, ${passBadgeA11yLabel(passBadgeState(cta.kind !== 'pass'))}`}
           className="mr-2 flex-row items-center justify-between rounded-lg border border-green-200 bg-white px-3 py-2.5 active:bg-green-100">
           <Text className="text-sm font-bold text-green-700">주간 리포트로 원인 보기</Text>
           <View className="flex-row items-center gap-1">
-            {cta.kind === 'pass' && <PassBadge locked />}
+            <PassBadge state={passBadgeState(cta.kind !== 'pass')} />
             <MaterialIcons name="navigate-next" size={20} color={colors.green[600]} />
           </View>
         </Pressable>

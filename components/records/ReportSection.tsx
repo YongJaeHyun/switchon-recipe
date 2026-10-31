@@ -22,6 +22,7 @@ import colors from 'tailwindcss/colors';
 import type { WeeklyReport } from 'types/report';
 import { getWeekColorHex } from 'utils/getWeekColor';
 import { registerChannelIfPermitted } from 'utils/notifications';
+import { passBadgeState } from 'utils/passFeatureLabel';
 import { shouldShowPremiumEntry } from 'utils/passScreen';
 import { programStartOf } from 'utils/programStart';
 import {
@@ -258,7 +259,7 @@ export function ReportSection() {
 
       <View className="flex-row items-center gap-2">
         <Text className="text-lg font-bold">주간 리포트</Text>
-        {showPassBadge && <PassBadge locked={!hasAccess} label="패스 전용" />}
+        {showPassBadge && <PassBadge state={passBadgeState(hasAccess)} />}
       </View>
       <ReportPreviewCard />
 

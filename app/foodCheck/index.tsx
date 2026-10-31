@@ -1,5 +1,6 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { FoodCheckAPI } from 'api/FoodCheckAPI';
+import { PassTrialBanner } from 'components/common/PassTrialBanner';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import { QueryKey } from 'const/queryKey';
@@ -86,46 +87,30 @@ const PhotoButton = ({
   </View>
 );
 
-// 패스 없이 쓰는 무료 체험 안내. 남았으면 횟수, 다 썼으면 (살 수 있을 때) 패스로 이어 준다
-const TrialNotice = ({ remaining, canBuyPass }: { remaining: number; canBuyPass: boolean }) => {
-  const exhausted = remaining <= 0;
-  return (
-    <View className="flex-row items-center gap-3 rounded-xl border border-green-600 bg-white px-4 py-3">
-      <MaterialIcons
-        name={exhausted ? 'lock' : 'redeem'}
-        size={22}
-        color={exhausted ? colors.neutral[500] : colors.green[600]}
-      />
-      <View className="flex-1 gap-0.5">
-        <Text className={`font-bold ${exhausted ? 'text-neutral-700' : 'text-green-700'}`}>
-          {formatFoodCheckTrial(remaining)}
-        </Text>
-        {canBuyPass ? (
-          <Text className="text-xs text-neutral-500">
-            {exhausted
-              ? '스위치온 패스로 계속 판정할 수 있어요'
-              : '다 쓰면 스위치온 패스로 계속 판정할 수 있어요'}
-          </Text>
-        ) : (
-          exhausted && (
-            <Text className="text-xs text-neutral-500">
-              지금은 더 판정할 수 없어요. 지난 판정은 아래 기록에서 볼 수 있어요
-            </Text>
-          )
-        )}
-      </View>
-      {exhausted && canBuyPass && (
-        <RippleButton
-          outerClassName="bg-green-600"
-          rounded="lg"
-          className="px-3 py-2"
-          onPress={() => router.push('/pass')}>
-          <Text className="text-sm font-bold text-white">패스 보기</Text>
-        </RippleButton>
-      )}
+// 패스 없이 무료 체험을 다 썼을 때. 살 수 있으면 패스로 이어 준다
+// (남아 있는 동안은 맨 위 PassTrialBanner가 안내한다)
+const TrialExhaustedNotice = ({ canBuyPass }: { canBuyPass: boolean }) => (
+  <View className="flex-row items-center gap-3 rounded-xl border border-green-600 bg-white px-4 py-3">
+    <MaterialIcons name="lock" size={22} color={colors.neutral[500]} />
+    <View className="flex-1 gap-0.5">
+      <Text className="font-bold text-neutral-700">{formatFoodCheckTrial(0)}</Text>
+      <Text className="text-xs text-neutral-500">
+        {canBuyPass
+          ? '스위치온 패스로 계속 판정할 수 있어요'
+          : '지금은 더 판정할 수 없어요. 지난 판정은 아래 기록에서 볼 수 있어요'}
+      </Text>
     </View>
-  );
-};
+    {canBuyPass && (
+      <RippleButton
+        outerClassName="bg-green-600"
+        rounded="lg"
+        className="px-3 py-2"
+        onPress={() => router.push('/pass')}>
+        <Text className="text-sm font-bold text-white">패스 보기</Text>
+      </RippleButton>
+    )}
+  </View>
+);
 
 // 기록 한 줄. 썸네일이 없으면(글자 입력, 아직 안 만들어짐) 아이콘으로 대신한다
 const HistoryItem = ({ check, disabled }: { check: FoodCheckRecord; disabled: boolean }) => {
@@ -332,6 +317,7 @@ export default function FoodCheckScreen() {
   const remainingText = hasAccess && quota ? formatPremiumRemaining(quota) : null;
   const showTrial = !!passStatus && !hasAccess && passStatus.foodCheckTrialRemaining !== undefined;
   const canBuyPass = isPassOnSale(passStatus?.sales, billingAvailable);
+  const trialRemaining = getFoodCheckTrialRemaining(passStatus);
 
   return (
     <SafeAreaView className="flex-1 bg-neutral-50">
@@ -340,6 +326,10 @@ export default function FoodCheckScreen() {
         contentContainerClassName="gap-6 px-5 pb-10 pt-2"
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
+        {showTrial && trialRemaining > 0 && (
+          <PassTrialBanner variant="trial" remaining={trialRemaining} />
+        )}
+
         <View className="gap-1">
           <Text className="text-base text-neutral-600">
             음식 사진을 찍으면 지금 먹어도 되는지 알려 드려요.
@@ -347,9 +337,7 @@ export default function FoodCheckScreen() {
           {remainingText && <Text className="text-sm text-green-600">{remainingText}</Text>}
         </View>
 
-        {showTrial && (
-          <TrialNotice remaining={getFoodCheckTrialRemaining(passStatus)} canBuyPass={canBuyPass} />
-        )}
+        {showTrial && trialRemaining <= 0 && <TrialExhaustedNotice canBuyPass={canBuyPass} />}
 
         <View className="gap-3">
           <View className="flex-row gap-3">
