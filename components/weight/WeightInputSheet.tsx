@@ -62,6 +62,7 @@ import {
   type WeightInputTarget,
   weightDateChips,
   weightDateRange,
+  carryEditedTexts,
   weightSheetSubtitle,
   weightTargetForDay,
 } from 'utils/weightDateStrip';
@@ -79,6 +80,13 @@ const NO_BODY_COMP_ERROR: Record<BodyCompKind, boolean> = { muscle: false, fat: 
 const NO_FLASH: Record<InbodyFieldKind, number> = { weight: 0, muscle: 0, fat: 0 };
 
 const toText = (value: number | null) => (value != null ? value.toFixed(1) : '');
+
+// 그날 기존 값으로 채운 칸 (resetFor가 채우는 값과 같다)
+const dayTexts = (target: Nullable<WeightInputTarget>): InbodyFieldTexts => ({
+  weight: toText(target?.initial ?? null),
+  muscle: toText(target?.initialBodyComp.muscle_kg ?? null),
+  fat: toText(target?.initialBodyComp.fat_kg ?? null),
+});
 
 // 편의점 판정(app/foodCheck)과 같은 피커 설정: 크기 줄이기는 네이티브 모듈이 필요해 품질만 낮춘다
 const PICKER_OPTIONS: ImagePicker.ImagePickerOptions = {
@@ -252,8 +260,15 @@ export function WeightInputSheet({ bottomSheetRef, target: openedTarget }: Weigh
     if (reading || isSaving || day === saveDay) return;
     const next = weightTargetForDay(logs, day, todayKst);
     if (!readResult) {
+      // 적던 칸은 가져가고, 손대지 않은 칸만 고른 날 값으로
+      const texts = carryEditedTexts({
+        current: { weight: text, muscle: bodyText.muscle, fat: bodyText.fat },
+        base: dayTexts(target),
+        next: dayTexts(next),
+      });
       setTarget(next);
       resetFor(next);
+      setFieldTexts(texts);
       return;
     }
     setTarget(next);

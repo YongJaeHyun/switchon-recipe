@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  carryEditedTexts,
   kstDayOf,
   weightDateChips,
   weightDateRange,
@@ -185,5 +186,26 @@ describe('weightStripScrollX', () => {
     expect(weightStripScrollX({ index: -1, itemWidth: 60, viewportWidth: 300, count: 10 })).toBe(
       300
     );
+  });
+});
+
+describe('carryEditedTexts', () => {
+  const base = { weight: '65.0', muscle: '27.1', fat: '' };
+  const next = { weight: '66.2', muscle: '', fat: '19.8' };
+
+  it('아무것도 안 고쳤으면 고른 날 값으로 채운다', () => {
+    expect(carryEditedTexts({ current: base, base, next })).toEqual(next);
+  });
+
+  it('적던 칸은 그대로 가져가고, 안 고친 칸만 고른 날 값으로', () => {
+    expect(
+      carryEditedTexts({ current: { weight: '64.5', muscle: '27.1', fat: '' }, base, next })
+    ).toEqual({ weight: '64.5', muscle: '', fat: '19.8' });
+  });
+
+  it('지운 칸도 고친 것으로 본다', () => {
+    expect(
+      carryEditedTexts({ current: { weight: '65.0', muscle: '', fat: '' }, base, next })
+    ).toEqual({ weight: '66.2', muscle: '', fat: '19.8' });
   });
 });
