@@ -1,4 +1,3 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { ImageSkeleton } from 'components/common/ImageSkeleton';
 import { Text } from 'components/common/Text';
@@ -8,8 +7,9 @@ import { Pressable, View } from 'react-native';
 import { useRecipeStore } from 'stores/recipeStore';
 import colors from 'tailwindcss/colors';
 import { RecipeWithIsSavedDB } from 'types/database';
+import { carbTypeStyle } from 'utils/carbType';
 import { getWeekColor } from 'utils/getWeekColor';
-import { CarbBadge } from './CarbBadge';
+import { CarbInfo } from './CarbInfo';
 
 interface RecipeCardProps extends RecipeWithIsSavedDB {
   // 상세 화면에서 다른 레시피 상세로 갈 때: 같은 화면이면 Link 기본 동작(navigate)이 새 화면을 쌓지 않고
@@ -24,33 +24,33 @@ export function RecipeCard({ push, ...recipe }: RecipeCardProps) {
   const id = recipe.id;
   const savedCount = recipe.saved_count ?? 0;
   const isSaved = !!isSavedMap[recipe.id];
+  const carbType = carbTypeStyle(recipe.is_zero_carb);
   return (
     <Link
       href={`/recipeDetail?recipe=${JSON.stringify({ ...recipe, isSaved })}`}
       push={push}
       className="h-48 w-48">
+      {/* 카드 전체를 저탄수·무탄수 색 테두리와 같은 색 그림자로 감싼다 (상세 화면 제목 상자와 같은 방식).
+          iOS는 overflow-hidden이면 그림자가 잘리므로 바깥은 테두리·그림자만, 사진은 안쪽에서 둥글게 자른다 */}
       <View
-        className="w-full flex-1 overflow-hidden rounded-xl"
+        className={`w-full flex-1 rounded-xl border-2 bg-white ${carbType.border}`}
         style={{
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.5,
-          shadowRadius: 2,
-          elevation: 2,
+          shadowColor: carbType.hex,
+          shadowOffset: { width: 0, height: 3 },
+          shadowOpacity: 0.3,
+          shadowRadius: 6,
+          elevation: 4,
         }}>
-        <View className="relative h-full w-full flex-[5]">
-          {/* 좁은 카드(192dp)라 저장 수 자리를 빼면 배지 두 개를 한 줄에 겨우 담는다 → 작은 배지로 한 줄 고정 */}
-          <View className="absolute left-2 right-16 top-2 z-50 flex-row gap-1">
+        {/* 테두리(2dp) 안쪽 모서리에 맞춰 사진을 rounded-xl(12)보다 2 작은 반지름으로 자른다 */}
+        <View className="relative h-full w-full flex-[5] overflow-hidden rounded-t-[10px]">
+          <View className="absolute left-2 top-2 z-50">
             {recipe.week && (
-              <View className="rounded-full bg-white px-1.5 py-0.5">
-                <Text
-                  numberOfLines={1}
-                  maxFontSizeMultiplier={1.2}
-                  className={`text-xs font-medium ${getWeekColor(recipe.week)}`}>
+              <View className="rounded-full bg-white px-2 py-1">
+                <Text className={`text-sm ${getWeekColor(recipe.week)}`}>
                   {recipe.week}주차{recipe.week === 3 && '+'}
                 </Text>
               </View>
             )}
-            <CarbBadge isZeroCarb={recipe.is_zero_carb} variant="compact" />
           </View>
 
           <ImageSkeleton />
@@ -77,12 +77,9 @@ export function RecipeCard({ push, ...recipe }: RecipeCardProps) {
             </View>
           </Pressable>
         </View>
-        <View className="flex-[3] justify-evenly bg-white px-3">
+        <View className="flex-[3] justify-evenly rounded-b-[10px] bg-white px-3">
           <Text className="line-clamp-1 text-lg font-bold">{recipe.recipe_name}</Text>
-          <View className="flex-row items-center gap-1.5">
-            <Ionicons name="time-outline" size={16} color="black" />
-            <Text className="text-sm">약 {recipe.cooking_time}분</Text>
-          </View>
+          <CarbInfo isZeroCarb={recipe.is_zero_carb} cookingTime={recipe.cooking_time} />
         </View>
       </View>
     </Link>
