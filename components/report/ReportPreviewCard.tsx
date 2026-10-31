@@ -6,15 +6,23 @@ import { useBillingAvailable } from 'hooks/useBillingAvailable';
 import { usePass } from 'hooks/usePass';
 import { View } from 'react-native';
 import colors from 'tailwindcss/colors';
-import { reportPreviewCopy, shouldShowReportPreview } from 'utils/reportDisplay';
+import { useUserStore } from 'stores/userStore';
+import { getWeekAndDay } from 'utils/date';
+import {
+  freeReportAvailable,
+  reportPreviewCopy,
+  shouldShowReportPreview,
+} from 'utils/reportDisplay';
 
 // 무료 유저용 주간 리포트 미리보기 (홈·프로필·리포트 목록). 패스를 팔 때만 보이고 누르면 결제 화면으로
 export function ReportPreviewCard() {
   const { status } = usePass();
+  const startDate = useUserStore((state) => state.start_date);
   const billingAvailable = useBillingAvailable();
   if (!shouldShowReportPreview(status, billingAvailable)) return null;
 
-  const copy = reportPreviewCopy(status?.freeReportRemaining);
+  const free = freeReportAvailable(status?.freeReportRemaining, getWeekAndDay(startDate).week);
+  const copy = reportPreviewCopy(free ? 1 : 0);
   return <ReportPassCard title={copy.title} description={copy.description} />;
 }
 

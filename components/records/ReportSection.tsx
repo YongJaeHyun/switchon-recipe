@@ -20,6 +20,7 @@ import { WeeklyReportAPI } from 'api/WeeklyReportAPI';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, TouchableOpacity, View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
+import { getWeekAndDay } from 'utils/date';
 import colors from 'tailwindcss/colors';
 import type { WeeklyReport, WeeklyStats } from 'types/report';
 import { getWeekColorHex, getWeekInkHex } from 'utils/getWeekColor';
@@ -34,6 +35,7 @@ import {
   isEmptyReport,
   reportDisplayWeek,
   reportWeekLabel,
+  freeReportAvailable,
 } from 'utils/reportDisplay';
 import {
   isOnDemandLimitedToday,
@@ -347,8 +349,8 @@ export function ReportSection() {
           <PassBadge
             state={passBadgeState(
               hasAccess,
-              status?.freeReportRemaining
-                ? { kind: 'trial', remaining: status.freeReportRemaining }
+              freeReportAvailable(status?.freeReportRemaining, getWeekAndDay(startDate).week)
+                ? { kind: 'trial', remaining: 1 }
                 : undefined
             )}
           />

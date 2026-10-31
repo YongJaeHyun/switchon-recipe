@@ -16,6 +16,7 @@ import {
   shouldShowTrialPassCard,
   toWeeklyReport,
   trialReportForWeekEntry,
+  freeReportAvailable,
   reportPreviewCopy,
 } from './reportDisplay';
 
@@ -499,5 +500,14 @@ describe('reportPreviewCopy (패스 없을 때 주간 리포트 안내)', () => 
     };
     expect(reportPreviewCopy(0)).toEqual(paid);
     expect(reportPreviewCopy(undefined)).toEqual(paid);
+  });
+});
+
+describe('freeReportAvailable (무료 1주차 리포트를 아직 받을 수 있는지)', () => {
+  it('남은 횟수가 있고 지금이 1주차(시작 전 포함)일 때만', () => {
+    expect(freeReportAvailable(1, 1)).toBe(true);
+    expect(freeReportAvailable(1, 2)).toBe(false);
+    expect(freeReportAvailable(0, 1)).toBe(false);
+    expect(freeReportAvailable(undefined, 1)).toBe(false);
   });
 });
