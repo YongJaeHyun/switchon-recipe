@@ -9,6 +9,7 @@ import { Tabs } from 'components/explore/Tabs';
 import { RECIPE_FILTERS, RecipeFilterType } from 'const/filter';
 import { RECIPE_SORTS, RecipeSortType } from 'const/sort';
 import { Link } from 'expo-router';
+import { RecommendEntryCard } from 'components/explore/RecommendEntryCard';
 import { useInfiniteRecipeCards } from 'hooks/useInfiniteRecipes';
 import { flattenRecipePages } from 'utils/recipePages';
 import { useMemo, useState } from 'react';
@@ -63,6 +64,10 @@ export default function ExploreScreen() {
           />
         </View>
       </Link>
+
+      <View className="mb-2 px-5">
+        <RecommendEntryCard />
+      </View>
 
       <View className="h-14 px-5">
         <Tabs tabItems={TABS} onSelect={setTabIndex} selectedIndex={tabIndex} />
