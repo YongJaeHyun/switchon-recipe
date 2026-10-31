@@ -4,6 +4,7 @@ import {
   fastingDots,
   itemProgress,
   rangeDays,
+  reportMiniStats,
   liveWeekWeight,
   weekWeightPoints,
   weightHintState,
@@ -303,5 +304,35 @@ describe('weightHintState', () => {
         allowedRange: { from: '2026-10-28', to: '2026-11-01' },
       })
     ).toBeNull();
+  });
+});
+
+describe('reportMiniStats', () => {
+  const stats = {
+    todo: { avgRate: 25 },
+    fasting: { planned: 2, success: 0 },
+    weight: { diff: null as number | null },
+  };
+
+  it('할 일 %, 단식 성공/계획, 체중 변화(부호)', () => {
+    expect(reportMiniStats(stats, { diff: -0.8 })).toEqual({
+      todoPercent: 25,
+      todo: '25%',
+      fasting: '0/2',
+      weight: '-0.8kg',
+    });
+  });
+
+  it('기록이 없으면 -', () => {
+    expect(
+      reportMiniStats(
+        { todo: { avgRate: null }, fasting: { planned: 0, success: 0 }, weight: { diff: null } },
+        null
+      )
+    ).toEqual({ todoPercent: null, todo: '-', fasting: '-', weight: '-' });
+  });
+
+  it('지금 기록이 없으면(null) 리포트에 저장된 체중 변화', () => {
+    expect(reportMiniStats({ ...stats, weight: { diff: 0.4 } }, null).weight).toBe('+0.4kg');
   });
 });

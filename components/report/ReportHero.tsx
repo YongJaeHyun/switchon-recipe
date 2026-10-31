@@ -1,51 +1,25 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Text } from 'components/common/Text';
+import { ProgressRing } from 'components/report/ProgressRing';
 import { type ComponentProps, type ReactNode } from 'react';
 import { View } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
 import type { WeeklyStats } from 'types/report';
 import { getWeekColorHex, getWeekOnColorHex } from 'utils/getWeekColor';
-import { formatWeightDiff } from 'utils/weight';
+import { reportMiniStats } from 'utils/reportVisual';
 
 type IconName = ComponentProps<typeof MaterialIcons>['name'];
 
 const RING = 56;
 const STROKE = 6;
-const RADIUS = (RING - STROKE) / 2;
-const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 // 주차 색 위 흐린 흰색 (트랙·보조 글자)
 const FAINT = 'rgba(255,255,255,0.3)';
 const SOFT = 'rgba(255,255,255,0.85)';
 
 // 할 일 평균 완료율 고리 (숫자는 아래 칸). 기록이 없으면 빈 고리
 const Ring = ({ percent, color }: { percent: number | null; color: string }) => (
-  <View style={{ width: RING, height: RING }} className="items-center justify-center">
-    <Svg width={RING} height={RING} style={{ position: 'absolute' }}>
-      <Circle
-        cx={RING / 2}
-        cy={RING / 2}
-        r={RADIUS}
-        stroke={FAINT}
-        strokeWidth={STROKE}
-        fill="none"
-      />
-      {percent !== null && percent > 0 && (
-        <Circle
-          cx={RING / 2}
-          cy={RING / 2}
-          r={RADIUS}
-          stroke={color}
-          strokeWidth={STROKE}
-          fill="none"
-          strokeLinecap="round"
-          strokeDasharray={`${CIRCUMFERENCE} ${CIRCUMFERENCE}`}
-          strokeDashoffset={CIRCUMFERENCE * (1 - Math.min(100, percent) / 100)}
-          transform={`rotate(-90 ${RING / 2} ${RING / 2})`}
-        />
-      )}
-    </Svg>
+  <ProgressRing percent={percent} size={RING} stroke={STROKE} color={color} track={FAINT}>
     <MaterialIcons name="check" size={22} color={color} />
-  </View>
+  </ProgressRing>
 );
 
 const IconBadge = ({ icon, color }: { icon: IconName; color: string }) => (
@@ -99,8 +73,7 @@ export function ReportHero({
 }) {
   const bg = getWeekColorHex(week) || getWeekColorHex(1);
   const on = getWeekOnColorHex(week);
-  const fasting = stats?.fasting;
-  const diff = weight?.diff ?? null;
+  const mini = stats ? reportMiniStats(stats, weight) : null;
 
   return (
     <View className="gap-4 rounded-2xl px-5 pb-5 pt-4" style={{ backgroundColor: bg }}>
@@ -108,12 +81,12 @@ export function ReportHero({
         {week}주차 리포트{rangeLabel ? ` · ${rangeLabel}` : ''}
       </Text>
 
-      {stats && (
+      {stats && mini && (
         <View className="flex-row">
           <Stat
             color={on}
             visual={<Ring percent={stats.todo.avgRate} color={on} />}
-            value={stats.todo.avgRate !== null ? `${stats.todo.avgRate}%` : '-'}
+            value={mini.todo}
             label="할 일 완료"
             accessibilityLabel={
               stats.todo.avgRate !== null
@@ -124,21 +97,21 @@ export function ReportHero({
           <Stat
             color={on}
             visual={<IconBadge icon="timer" color={on} />}
-            value={fasting && fasting.planned > 0 ? `${fasting.success}/${fasting.planned}` : '-'}
+            value={mini.fasting}
             label="단식 성공"
             accessibilityLabel={
-              fasting && fasting.planned > 0
-                ? `단식 ${fasting.planned}번 중 ${fasting.success}번 성공`
+              stats.fasting.planned > 0
+                ? `단식 ${stats.fasting.planned}번 중 ${stats.fasting.success}번 성공`
                 : '이번 주 단식 없음'
             }
           />
           <Stat
             color={on}
             visual={<IconBadge icon="monitor-weight" color={on} />}
-            value={diff !== null ? formatWeightDiff(diff) : '-'}
+            value={mini.weight}
             label="체중 변화"
             accessibilityLabel={
-              diff !== null ? `체중 변화 ${formatWeightDiff(diff)}` : '체중 변화 기록 부족'
+              mini.weight !== '-' ? `체중 변화 ${mini.weight}` : '체중 변화 기록 부족'
             }
           />
         </View>

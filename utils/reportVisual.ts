@@ -1,6 +1,7 @@
 // 주간 리포트 화면의 그래프·점·막대용 순수 함수. 앱에서 받은 그 주 기록(할 일·체중·단식)으로 그린다.
 // 기록을 못 받았거나 지난 프로그램이라 없으면 리포트에 저장된 숫자(stats)로 물러선다
 import type { WeeklyStats } from 'types/report';
+import { formatWeightDiff } from './weight';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -235,4 +236,23 @@ export function weightHintState({
   if (count >= days.length) return null;
   const target = days.find((d) => !logged.has(d.day) && inRange(d.day, allowedRange));
   return target ? { kind: 'missing', daysLogged: count, targetDay: target.day } : null;
+}
+
+// 리포트 큰 숫자 셋 (상세 맨 위 카드·목록 줄): 할 일 평균 %, 단식 성공/계획, 그 주 체중 변화.
+// liveWeight = 지금 기록으로 다시 계산한 체중 (없으면 리포트에 저장된 값). 값이 없으면 "-"
+export function reportMiniStats(
+  stats: {
+    todo: { avgRate: number | null };
+    fasting: { planned: number; success: number };
+    weight: { diff: number | null };
+  },
+  liveWeight: { diff: number | null } | null
+): { todoPercent: number | null; todo: string; fasting: string; weight: string } {
+  const diff = (liveWeight ?? stats.weight).diff;
+  return {
+    todoPercent: stats.todo.avgRate,
+    todo: stats.todo.avgRate !== null ? `${stats.todo.avgRate}%` : '-',
+    fasting: stats.fasting.planned > 0 ? `${stats.fasting.success}/${stats.fasting.planned}` : '-',
+    weight: diff !== null ? formatWeightDiff(diff) : '-',
+  };
 }

@@ -3,11 +3,13 @@ import { PassBadge } from 'components/common/PassBadge';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import { FourWeekReport } from 'components/records/FourWeekReport';
+import { ProgressRing } from 'components/report/ProgressRing';
 import { ReportPreviewCard } from 'components/report/ReportPreviewCard';
 import { CHANNELS } from 'const/channels';
 import { router } from 'expo-router';
 import { useBillingAvailable } from 'hooks/useBillingAvailable';
 import { usePass } from 'hooks/usePass';
+import { useWeights } from 'hooks/useWeights';
 import {
   cacheGeneratedReport,
   useOnDemandLimitStore,
@@ -15,12 +17,12 @@ import {
   useWeeklyReports,
 } from 'hooks/useWeeklyReports';
 import { WeeklyReportAPI } from 'api/WeeklyReportAPI';
-import { useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, TouchableOpacity, View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
-import type { WeeklyReport } from 'types/report';
-import { getWeekColorHex } from 'utils/getWeekColor';
+import type { WeeklyReport, WeeklyStats } from 'types/report';
+import { getWeekColorHex, getWeekInkHex } from 'utils/getWeekColor';
 import { registerChannelIfPermitted } from 'utils/notifications';
 import { passBadgeState } from 'utils/passFeatureLabel';
 import { shouldShowPremiumEntry } from 'utils/passScreen';
@@ -43,50 +45,115 @@ import {
   type WeekRange,
 } from 'utils/reportOnDemand';
 import { showNetworkErrorToast } from 'utils/network';
+import { liveWeekWeight, reportMiniStats } from 'utils/reportVisual';
 
-// programReports = 같은 회차의 리포트 (한 주 더 하기로 다시 지낸 주면 "N주차 · 한 번 더")
+const MINI_RING = 18;
+
+// 목록 줄의 작은 숫자 하나 (아이콘 또는 고리 + 값)
+const MiniStat = ({
+  visual,
+  value,
+  label,
+}: {
+  visual: ReactNode;
+  value: string;
+  label: string;
+}) => (
+  <View
+    className="flex-row items-center gap-1.5"
+    accessible
+    accessibilityLabel={`${label} ${value}`}>
+    {visual}
+    <Text className="text-sm font-bold text-neutral-800">{value}</Text>
+    <Text className="text-xs text-neutral-400">{label}</Text>
+  </View>
+);
+
+// programReports = 같은 회차의 리포트 (한 주 더 하기로 다시 지낸 주면 "N주차 · 한 번 더").
+// 왼쪽 주차 색 띠, 주차·기간, 작은 숫자 셋(상세 맨 위 카드와 같은 값), 한 줄 요약.
+// liveWeight = 지금 기록으로 다시 계산한 그 주 체중 (지금 프로그램이고 기록을 받았을 때만, 아니면 리포트 값)
 const ReportRow = ({
   report,
   programReports,
   muted,
+  liveWeight,
 }: {
   report: WeeklyReport;
   programReports: WeeklyReport[];
   muted?: boolean;
+  liveWeight: WeeklyStats['weight'] | null;
 }) => {
   const empty = isEmptyReport(report);
   const preview = empty ? '이번 주는 기록이 없어요' : report.content?.summary;
+  const weekColor = getWeekColorHex(reportDisplayWeek(report)) || colors.green[600];
+  const mini = !empty && report.stats ? reportMiniStats(report.stats, liveWeight) : null;
 
   return (
     <RippleButton
       outerClassName="border border-neutral-200 bg-white"
-      className="w-full flex-row !justify-between gap-3 px-4 py-3"
+      className="w-full flex-row !items-stretch !justify-start"
       rippleColor={colors.neutral[300]}
       onPress={() => router.push(`/report/${report.start_date}/${report.week_index}`)}>
-      <View className="flex-1 gap-0.5">
+      <View style={{ width: 6, backgroundColor: muted ? colors.neutral[300] : weekColor }} />
+      <View className="flex-1 gap-2 py-3 pl-4 pr-2">
         <View className="flex-row items-center gap-2">
           <Text
             className="font-bold"
             style={{
-              color: muted ? colors.neutral[500] : getWeekColorHex(reportDisplayWeek(report)),
+              color: muted ? colors.neutral[500] : getWeekInkHex(reportDisplayWeek(report)),
             }}>
             {reportWeekLabel(report, programReports)}
           </Text>
+          {report.is_trial && (
+            <View className="rounded-full bg-green-50 px-1.5 py-0.5">
+              <Text className="text-[11px] font-semibold text-green-700">무료</Text>
+            </View>
+          )}
+          <View className="flex-1" />
           {report.stats && (
             <Text className="text-xs text-neutral-400">
               {formatReportRange(report.stats.range)}
             </Text>
           )}
         </View>
+        {mini && (
+          <View className="flex-row flex-wrap items-center gap-x-4 gap-y-1">
+            <MiniStat
+              label="할 일"
+              value={mini.todo}
+              visual={
+                <ProgressRing
+                  percent={mini.todoPercent}
+                  size={MINI_RING}
+                  stroke={3}
+                  color={muted ? colors.neutral[400] : colors.green[600]}
+                  track={colors.neutral[200]}
+                />
+              }
+            />
+            <MiniStat
+              label="단식"
+              value={mini.fasting}
+              visual={<MaterialIcons name="timer" size={16} color={colors.neutral[500]} />}
+            />
+            <MiniStat
+              label="체중"
+              value={mini.weight}
+              visual={<MaterialIcons name="monitor-weight" size={16} color={colors.neutral[500]} />}
+            />
+          </View>
+        )}
         {!!preview && (
           <Text
-            className={`text-sm ${empty ? 'text-neutral-400' : 'text-neutral-700'}`}
-            numberOfLines={2}>
+            className={`text-sm ${empty ? 'text-neutral-400' : 'text-neutral-600'}`}
+            numberOfLines={1}>
             {preview}
           </Text>
         )}
       </View>
-      <MaterialIcons name="navigate-next" size={24} color={colors.neutral[400]} />
+      <View className="justify-center pr-2">
+        <MaterialIcons name="navigate-next" size={24} color={colors.neutral[400]} />
+      </View>
     </RippleButton>
   );
 };
@@ -115,7 +182,7 @@ const MissingReportRow = ({
 }) => {
   const blocked = noRecords || limited || disabled;
   return (
-    <View className="gap-2 rounded-xl border border-dashed border-neutral-300 px-4 py-3">
+    <View className="gap-2 rounded-xl border border-dashed border-neutral-300 bg-neutral-50 px-4 py-3">
       <View className="flex-row items-center gap-3">
         <View className="flex-1 gap-0.5">
           <View className="flex-row items-center gap-2">
@@ -125,6 +192,9 @@ const MissingReportRow = ({
           <Text className="text-sm text-neutral-500">
             {pending ? '한 주 기록을 정리하고 있어요' : missingReportTitle(noRecords)}
           </Text>
+          {!pending && !noRecords && (
+            <Text className="text-xs text-neutral-400">기록이 있으면 지금 만들 수 있어요</Text>
+          )}
         </View>
         {pending ? (
           <View className="flex-row items-center gap-1.5 px-1 py-2">
@@ -175,6 +245,20 @@ export function ReportSection() {
 
   // 시작일을 아직 모르면(사용자 정보 불러오는 중) 이번/이전을 나누지 않고 시작일만 보여준다
   const programKnown = !!startDate;
+  // 지난 프로그램 묶음은 접어 둔다. 펼친 묶음(시작일)만 기억 (이 화면에 있는 동안)
+  const [expanded, setExpanded] = useState<string[]>([]);
+  const toggleGroup = (start: string) =>
+    setExpanded((prev) =>
+      prev.includes(start) ? prev.filter((s) => s !== start) : [...prev, start]
+    );
+
+  // 이번 프로그램 리포트의 체중 숫자는 지금 기록으로 (상세 화면과 같은 값). 못 받으면 리포트 값
+  const { logs: weightLogs, isLogsFetched } = useWeights();
+  const program = programStartOf(programStart, startDate);
+  const liveWeightOf = (report: WeeklyReport) =>
+    isLogsFetched && program && report.stats
+      ? liveWeekWeight({ range: report.stats.range, logs: weightLogs, baselineStart: program })
+      : null;
 
   // 패스 유저가 목록을 열면 리포트 알림 채널을 등록한다. 권한이 이미 있을 때만 (요청 창을 띄우지 않는다)
   const hasAccess = status?.hasAccess === true;
@@ -304,6 +388,7 @@ export function ReportSection() {
                       key={keyOf(item.report.start_date, item.report.week_index)}
                       report={item.report}
                       programReports={current}
+                      liveWeight={liveWeightOf(item.report)}
                     />
                   );
                 }
@@ -327,30 +412,47 @@ export function ReportSection() {
               })}
             </View>
           )}
-          {previous.map((group) => (
-            <View key={group.startDate} className="gap-3">
-              {programKnown ? (
-                <View className="gap-0.5">
-                  <Text className="text-lg font-bold text-neutral-800">이전 프로그램</Text>
-                  <Text className="text-sm text-neutral-500">
+          {previous.map((group) => {
+            // 시작일을 모를 때는 이번/지난을 나누지 못해 접지 않는다
+            const open = !programKnown || expanded.includes(group.startDate);
+            return (
+              <View key={group.startDate} className="gap-3">
+                {programKnown ? (
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded: open }}
+                    onPress={() => toggleGroup(group.startDate)}
+                    className="flex-row items-center gap-1 py-1">
+                    <Text className="flex-1 text-base font-bold text-neutral-700">
+                      지난 프로그램{' '}
+                      <Text className="text-sm font-normal text-neutral-500">
+                        ({formatProgramStart(group.startDate)} · {group.reports.length}개)
+                      </Text>
+                    </Text>
+                    <MaterialIcons
+                      name={open ? 'expand-less' : 'expand-more'}
+                      size={24}
+                      color={colors.neutral[500]}
+                    />
+                  </TouchableOpacity>
+                ) : (
+                  <Text className="text-lg font-bold text-neutral-800">
                     {formatProgramStart(group.startDate)}
                   </Text>
-                </View>
-              ) : (
-                <Text className="text-lg font-bold text-neutral-800">
-                  {formatProgramStart(group.startDate)}
-                </Text>
-              )}
-              {group.reports.map((report) => (
-                <ReportRow
-                  key={`${report.start_date}-${report.week_index}`}
-                  report={report}
-                  programReports={group.reports}
-                  muted={programKnown}
-                />
-              ))}
-            </View>
-          ))}
+                )}
+                {open &&
+                  group.reports.map((report) => (
+                    <ReportRow
+                      key={`${report.start_date}-${report.week_index}`}
+                      report={report}
+                      programReports={group.reports}
+                      muted={programKnown}
+                      liveWeight={null}
+                    />
+                  ))}
+              </View>
+            );
+          })}
         </>
       )}
     </ScrollView>
