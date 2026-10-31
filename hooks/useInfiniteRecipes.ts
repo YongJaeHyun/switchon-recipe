@@ -21,6 +21,9 @@ export function useInfiniteRecipeCards({
 }: useInfiniteRecipeCardsProps) {
   return useInfiniteQuery({
     queryKey: [QueryKey.recipeCards, week, sortType, filterType, keyword],
+    // 기본(0)이면 탭을 오갈 때마다 받아 둔 페이지를 전부 다시 받는다 (10페이지 스크롤 → 요청 10번).
+    // 저장 별표는 recipeStore가 따로 들고 있어 목록을 다시 받지 않아도 맞다. 새 레시피는 당겨서 새로고침
+    staleTime: 5 * 60 * 1000,
     initialPageParam: 0,
     queryFn: async ({ pageParam: currentPage }) =>
       (await RecipeAPI.selectAllByWeekWithPagination({

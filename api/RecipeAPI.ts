@@ -123,7 +123,9 @@ const insertSaved = async (recipeId: number) =>
 
       if (error) throw error;
 
-      queryClient.removeQueries({ queryKey: [QueryKey.savedRecipes, QueryKey.recipeCards] });
+      // 저장한 레시피 목록(레시피 탭·저장 탭)을 다시 받게 한다. 예전 키 [savedRecipes, recipeCards]는
+      // 어떤 쿼리와도 맞지 않아 저장 탭이 갱신되지 않았다
+      void queryClient.invalidateQueries({ queryKey: [QueryKey.savedRecipes] });
     }
   });
 
@@ -136,7 +138,9 @@ const deleteSaved = async (recipeId: number) =>
 
       if (error) throw error;
 
-      queryClient.removeQueries({ queryKey: [QueryKey.savedRecipes, QueryKey.recipeCards] });
+      // 저장한 레시피 목록(레시피 탭·저장 탭)을 다시 받게 한다. 예전 키 [savedRecipes, recipeCards]는
+      // 어떤 쿼리와도 맞지 않아 저장 탭이 갱신되지 않았다
+      void queryClient.invalidateQueries({ queryKey: [QueryKey.savedRecipes] });
     }
   });
 

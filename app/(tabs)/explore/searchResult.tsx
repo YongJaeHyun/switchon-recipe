@@ -12,6 +12,7 @@ import { RECIPE_FILTERS, RecipeFilterType } from 'const/filter';
 import { RECIPE_SORTS, RecipeSortType } from 'const/sort';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useInfiniteRecipeCards } from 'hooks/useInfiniteRecipes';
+import { flattenRecipePages } from 'utils/recipePages';
 import { useRecentKeywords } from 'hooks/useRecentKeywords';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, TouchableOpacity, View } from 'react-native';
@@ -43,7 +44,7 @@ export default function SearchScreen() {
   } = useInfiniteRecipeCards({ week, keyword: keywordProp, sortType: sort, filterType: filter });
   const { insertKeyword } = useRecentKeywords();
 
-  const flattenedRecipes = useMemo(() => recipes?.pages.flatMap((page) => page) ?? [], [recipes]);
+  const flattenedRecipes = useMemo(() => flattenRecipePages(recipes?.pages), [recipes]);
 
   const onSubmitEditing = () => {
     const trimmedKeyword = keyword.trim();
@@ -80,7 +81,8 @@ export default function SearchScreen() {
       </View>
 
       {isLoading ? (
-        <View className="absolute inset-0 z-50 items-center justify-center">
+        // 화면 전체를 덮는 로딩 표시라 터치를 막지 않게 한다 (로딩 중에도 검색창·탭·필터를 누를 수 있게)
+        <View pointerEvents="none" className="absolute inset-0 z-50 items-center justify-center">
           <ActivityIndicator size={56} color={colors.emerald[300]} />
         </View>
       ) : flattenedRecipes.length === 0 ? (
