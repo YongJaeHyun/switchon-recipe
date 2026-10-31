@@ -9,6 +9,7 @@ import { useWeights } from './useWeights';
 // 주차 진입 팝업의 '지난 주 돌아보기': 판정과 "한 주 더 하기"(시작일 +7일)
 export function useWeekRepeat(enteringWeek: number) {
   const startDate = useUserStore((state) => state.start_date);
+  const programStart = useUserStore((state) => state.program_start);
   const markRepeatAsked = useWeekCompletePopupStore((state) => state.markRepeatAsked);
   const { logs, isLoading, isLogsFetched } = useWeights();
   const { changeStartDate } = useChangeStartDate();
@@ -18,6 +19,7 @@ export function useWeekRepeat(enteringWeek: number) {
   const advice = weekRepeatAdvice({
     logs: isLogsFetched ? logs : [],
     startDate,
+    programStart,
     enteringWeek,
   });
 

@@ -1,5 +1,6 @@
 import colors from 'tailwindcss/colors';
 import { getWeekColorHex } from './getWeekColor';
+import { programStartOf } from './programStart';
 
 export const MIN_WEIGHT_KG = 20;
 export const MAX_WEIGHT_KG = 300;
@@ -10,11 +11,14 @@ export interface WeightPoint {
 }
 
 interface PeriodOptions {
-  // true면 start_date 이전 기록도 포함한다 ([전체 기간 보기])
+  // true면 회차 시작일 이전 기록도 포함한다 ([전체 기간 보기])
   allPeriod?: boolean;
+  // user.program_start. 기간은 회차 시작일(programStartOf)부터 본다: 한 주 더 하기·주차 맞추기로
+  // start_date가 미뤄져도 같은 회차의 앞 주차 기록을 빼지 않는다. 없으면 start_date부터
+  programStart?: string | null;
 }
 
-// 시작일 이전 기록(이전 차수) 점 색
+// 회차 시작일 이전 기록(이전 차수) 점 색
 const BEFORE_START_COLOR = colors.neutral[400];
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -49,13 +53,26 @@ export function weekOfDay(day: string, startDate: string): number {
   return Math.floor(diffDays / 7) + 1;
 }
 
-// 기간 필터 + 날짜순 정렬
+// 기록 날짜의 주차. 지금 시작일 뒤는 시작일 기준, 회차 시작일 ~ 시작일 전(한 주 더 하기·주차 맞추기 전)은
+// 회차 시작일 기준. 회차 시작일 전은 0 이하 (시작 전)
+export function weekOfLog(
+  day: string,
+  startDate: string,
+  programStart: string | null | undefined
+): number {
+  const start = startDate.slice(0, 10);
+  if (day.slice(0, 10) >= start) return weekOfDay(day, start);
+  const program = programStartOf(programStart, start);
+  return program && program < start ? weekOfDay(day, program) : weekOfDay(day, start);
+}
+
+// 기간 필터 + 날짜순 정렬. 기간 = 회차 시작일부터 (allPeriod면 전체)
 export function weightsInPeriod<T extends WeightPoint>(
   logs: T[],
   startDate: string | null,
   opts?: PeriodOptions
 ): T[] {
-  const start = startDate ? startDate.slice(0, 10) : null;
+  const start = programStartOf(opts?.programStart, startDate);
   return logs
     .filter((log) => opts?.allPeriod || !start || log.day >= start)
     .sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0));
@@ -74,16 +91,15 @@ export function weightChange(
   return { first, last, diff: round1(last - first) };
 }
 
-// 그래프 점. 색은 현재 start_date 기준 주차 색, 시작일 이전은 회색
+// 그래프 점. 색은 주차 색(weekOfLog), 회차 시작일 이전은 회색
 export function chartPoints(
   logs: WeightPoint[],
   startDate: string | null,
   opts?: PeriodOptions
 ): { value: number; label: string; dataPointColor: string }[] {
-  const start = startDate ? startDate.slice(0, 10) : null;
   return weightsInPeriod(logs, startDate, opts).map((log) => {
     const [, m, d] = log.day.slice(0, 10).split('-').map(Number);
-    const week = start ? weekOfDay(log.day, start) : 1;
+    const week = startDate ? weekOfLog(log.day, startDate, opts?.programStart) : 1;
     return {
       value: Number(log.weight_kg),
       label: `${m}/${d}`,

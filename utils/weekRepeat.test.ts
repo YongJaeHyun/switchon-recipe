@@ -371,3 +371,38 @@ describe('weekRepeatCopy 기록을 못 불러왔을 때', () => {
     );
   });
 });
+
+// 한 주 더 하기로 시작일이 미뤄져도 기준값은 회차 시작 무렵 인바디다
+describe('weekRepeatAdvice — 기준값은 회차 시작일(program_start) 무렵', () => {
+  // 회차 시작 10-01. 3주차 진입(10-15)에 2주차를 한 번 더 해 시작일 10-08. 다시 3주차 진입은 10-22
+  const PROGRAM = '2026-10-01';
+  const SHIFTED = '2026-10-08';
+  const logs = [
+    log('2026-10-01', 27.0, 20.0), // 회차 시작 무렵
+    log('2026-10-09', 26.0, 20.5), // 2주차 (옛 시작일 기준 2주차 2일)
+    log('2026-10-20', 26.5, 19.0),
+  ];
+
+  it('program_start를 주면 회차 시작 무렵 기록이 기준값', () => {
+    expect(
+      weekRepeatAdvice({ logs, startDate: SHIFTED, programStart: PROGRAM, enteringWeek: 3 })
+    ).toEqual({ kind: 'suggestRepeat', repeatWeek: 2, muscleDiff: -0.5, fatDiff: -1 });
+  });
+
+  it('program_start가 없으면 지금 시작일 무렵 (구버전 앱)', () => {
+    expect(weekRepeatAdvice({ logs, startDate: SHIFTED, enteringWeek: 3 })).toEqual({
+      kind: 'onTrack',
+      repeatWeek: 2,
+      muscleDiff: 0.5,
+      fatDiff: -1.5,
+    });
+  });
+
+  it('지난 주 끝은 지금 시작일 기준 (회차 시작일 기준이 아님)', () => {
+    // 지금 시작일 10-08 기준 2주차 끝 = 10-21. 10-22 기록은 보지 않는다
+    const more = [...logs, log('2026-10-22', 28.0, 18.0)];
+    expect(
+      weekRepeatAdvice({ logs: more, startDate: SHIFTED, programStart: PROGRAM, enteringWeek: 3 })
+    ).toMatchObject({ muscleDiff: -0.5 });
+  });
+});

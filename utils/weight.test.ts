@@ -9,7 +9,9 @@ import {
   pointerWeight,
   shouldAskWeightReminder,
   weekOfDay,
+  weekOfLog,
   weightChange,
+  weightsInPeriod,
 } from './weight';
 
 describe('parseWeightInput', () => {
@@ -234,5 +236,54 @@ describe('pointerWeight', () => {
     expect(pointerWeight(points, 2)).toBeNull();
     expect(pointerWeight(points, -1)).toBeNull();
     expect(pointerWeight(points, undefined)).toBeNull();
+  });
+});
+
+// 한 주 더 하기·주차 맞추기로 시작일(start_date)이 미뤄져도 회차 시작일(program_start)부터 본다
+describe('회차 시작일 기준 기간 (program_start)', () => {
+  // 회차 시작 10-01, 한 주 더 하기로 시작일 10-08
+  const PROGRAM = '2026-10-01';
+  const START = '2026-10-08';
+  const programLogs = [
+    { day: '2026-09-28', weight_kg: 72.0 }, // 회차 전
+    { day: '2026-10-01', weight_kg: 71.0 }, // 회차 1주차
+    { day: '2026-10-05', weight_kg: 70.0 },
+    { day: '2026-10-08', weight_kg: 69.5 }, // 지금 시작일
+    { day: '2026-10-16', weight_kg: 69.0 },
+  ];
+
+  it('기간·변화는 회차 시작일부터 (1주차 감량을 빼지 않는다)', () => {
+    const opts = { programStart: PROGRAM };
+    expect(weightsInPeriod(programLogs, START, opts).map((l) => l.day)).toEqual([
+      '2026-10-01',
+      '2026-10-05',
+      '2026-10-08',
+      '2026-10-16',
+    ]);
+    expect(weightChange(programLogs, START, opts)).toEqual({ first: 71.0, last: 69.0, diff: -2 });
+  });
+
+  it('program_start가 없거나 시작일보다 뒤면 시작일부터 (구버전 앱)', () => {
+    expect(weightChange(programLogs, START, { programStart: null })?.first).toBe(69.5);
+    expect(weightChange(programLogs, START, { programStart: '2026-10-10' })?.first).toBe(69.5);
+  });
+
+  it('회차 시작일~시작일 전 점은 회색이 아니라 회차 기준 주차 색, 회차 전은 회색', () => {
+    const points = chartPoints(programLogs, START, { programStart: PROGRAM, allPeriod: true });
+    expect(points.map((p) => p.dataPointColor)).toEqual([
+      expect.not.stringMatching(getWeekColorHex(1)),
+      getWeekColorHex(1),
+      getWeekColorHex(1),
+      getWeekColorHex(1), // 지금 시작일 기준 1주차
+      getWeekColorHex(2),
+    ]);
+    expect(points[0].dataPointColor).not.toBe(getWeekColorHex(1));
+  });
+
+  it('weekOfLog: 시작일 뒤는 시작일 기준, 회차 시작일~시작일 전은 회차 기준, 그 전은 0 이하', () => {
+    expect(weekOfLog('2026-10-16', START, PROGRAM)).toBe(2);
+    expect(weekOfLog('2026-10-05', START, PROGRAM)).toBe(1);
+    expect(weekOfLog('2026-09-28', START, PROGRAM)).toBeLessThanOrEqual(0);
+    expect(weekOfLog('2026-10-05', START, null)).toBeLessThanOrEqual(0);
   });
 });

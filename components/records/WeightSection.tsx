@@ -15,11 +15,12 @@ import { formatBodyComp, prefillBodyComp } from 'utils/bodyComp';
 import { getKoreanDateString } from 'utils/date';
 import { getWeekColorHex } from 'utils/getWeekColor';
 import { requireOnline } from 'utils/network';
+import { programStartOf } from 'utils/programStart';
 import {
   chartPoints,
   formatWeightDiff,
   prefillWeight,
-  weekOfDay,
+  weekOfLog,
   weightChange,
   weightsInPeriod,
 } from 'utils/weight';
@@ -32,9 +33,17 @@ const formatDay = (day: string) => {
   return `${m}월 ${d}일 (${weekday})`;
 };
 
-const WeekBadge = ({ day, startDate }: { day: string; startDate: string | null }) => {
+const WeekBadge = ({
+  day,
+  startDate,
+  programStart,
+}: {
+  day: string;
+  startDate: string | null;
+  programStart: string | null;
+}) => {
   if (!startDate) return null;
-  const week = weekOfDay(day, startDate);
+  const week = weekOfLog(day, startDate, programStart);
   if (week < 1) {
     return <Text className="text-xs text-neutral-400">시작 전</Text>;
   }
@@ -48,11 +57,13 @@ const WeekBadge = ({ day, startDate }: { day: string; startDate: string | null }
 const LogRow = ({
   log,
   startDate,
+  programStart,
   onEdit,
   onDelete,
 }: {
   log: WeightLogDB;
   startDate: string | null;
+  programStart: string | null;
   onEdit(): void;
   onDelete(): void;
 }) => {
@@ -61,7 +72,7 @@ const LogRow = ({
     <View className="flex-row items-center gap-3 rounded-xl border border-neutral-200 bg-white px-4 py-3">
       <View className="flex-1 gap-0.5">
         <Text className="font-bold text-neutral-800">{formatDay(log.day)}</Text>
-        <WeekBadge day={log.day} startDate={startDate} />
+        <WeekBadge day={log.day} startDate={startDate} programStart={programStart} />
       </View>
       {/* 인바디 값이 있으면 체중 아래 작은 글씨 */}
       <View className="items-end">
@@ -81,6 +92,7 @@ const LogRow = ({
 // 기록 탭 > 체중 칸: 그래프·오늘 기록 버튼·날짜별 기록 목록
 export function WeightSection() {
   const startDate = useUserStore((state) => state.start_date) || null;
+  const programStart = useUserStore((state) => state.program_start) || null;
   const { logs, isLoading, deleteWeight, isDeleting } = useWeights();
   const sheetRef = useRef<BottomSheetMethods>(null);
 
@@ -88,17 +100,18 @@ export function WeightSection() {
   const [target, setTarget] = useState<WeightInputTarget | null>(null);
   const [deleting, setDeleting] = useState<WeightLogDB | null>(null);
 
-  const opts = useMemo(() => ({ allPeriod }), [allPeriod]);
+  // 기간은 회차 시작일부터 (한 주 더 하기·주차 맞추기로 시작일이 미뤄져도 같은 회차 기록을 빼지 않는다)
+  const opts = useMemo(() => ({ allPeriod, programStart }), [allPeriod, programStart]);
   const points = useMemo(() => chartPoints(logs, startDate, opts), [logs, startDate, opts]);
   const change = useMemo(() => weightChange(logs, startDate, opts), [logs, startDate, opts]);
   const listed = useMemo(
     () => weightsInPeriod(logs, startDate, opts).reverse(),
     [logs, startDate, opts]
   );
-  const hasEarlier = useMemo(
-    () => !!startDate && logs.some((log) => log.day < startDate.slice(0, 10)),
-    [logs, startDate]
-  );
+  const hasEarlier = useMemo(() => {
+    const periodStart = programStartOf(programStart, startDate);
+    return !!periodStart && logs.some((log) => log.day < periodStart);
+  }, [logs, startDate, programStart]);
 
   const openInput = (day: string) => {
     const today = getKoreanDateString({ formatType: 'date' });
@@ -187,6 +200,7 @@ export function WeightSection() {
                   key={log.day}
                   log={log}
                   startDate={startDate}
+                  programStart={programStart}
                   onEdit={() => openInput(log.day)}
                   onDelete={() => setDeleting(log)}
                 />
