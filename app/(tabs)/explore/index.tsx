@@ -1,3 +1,4 @@
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { FlashList } from '@shopify/flash-list';
 import { Filter } from 'components/common/Filter';
 import { SafeAreaViewWithNav } from 'components/common/SafeAreaViewWithNav';
@@ -110,7 +111,21 @@ export default function ExploreScreen() {
       </Link>
 
       <View className="h-14 px-5">
-        <Tabs tabItems={tabItems} onSelect={selectTab} selectedIndex={tabIndex} />
+        <Tabs
+          tabItems={tabItems}
+          onSelect={selectTab}
+          selectedIndex={tabIndex}
+          // 추천 탭은 패스 기능: 패스가 있으면 다이아, 없으면 자물쇠
+          accessory={(index) =>
+            showRecommend && index === 0 ? (
+              <MaterialIcons
+                name={hasAccess ? 'diamond' : 'lock'}
+                size={14}
+                color={colors.green[600]}
+              />
+            ) : null
+          }
+        />
       </View>
 
       {isRecommend ? (
