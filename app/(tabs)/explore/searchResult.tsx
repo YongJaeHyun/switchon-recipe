@@ -4,6 +4,7 @@ import { Filter } from 'components/common/Filter';
 import ListEmptyText from 'components/common/ListEmptyText';
 import { SafeAreaViewWithNav } from 'components/common/SafeAreaViewWithNav';
 import { Sort } from 'components/common/Sort';
+import { FoodCheckSuggestion } from 'components/explore/FoodCheckSuggestion';
 import { RecipeCard } from 'components/explore/RecipeCard';
 import { SearchInputWithoutBorder } from 'components/explore/SearchInputWithoutBorder';
 import { Tabs } from 'components/explore/Tabs';
@@ -83,8 +84,9 @@ export default function SearchScreen() {
           <ActivityIndicator size={56} color={colors.emerald[300]} />
         </View>
       ) : flattenedRecipes.length === 0 ? (
-        <View className="flex-1 items-center justify-center">
+        <View className="flex-1 items-center justify-center gap-8">
           <ListEmptyText emptyListName="searchResults" />
+          <FoodCheckSuggestion />
         </View>
       ) : (
         <FlashList

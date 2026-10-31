@@ -3,6 +3,7 @@ import { BottomSheetMethods } from '@gorhom/bottom-sheet/lib/typescript/types';
 import ConfirmModal from 'components/common/ConfirmModal';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
+import { WeightPlateauCard } from 'components/records/WeightPlateauCard';
 import { WeightChart } from 'components/weight/WeightChart';
 import { WeightInputSheet, type WeightInputTarget } from 'components/weight/WeightInputSheet';
 import { useLivedWeeks } from 'hooks/useLivedWeeks';
@@ -10,6 +11,7 @@ import { useWeights } from 'hooks/useWeights';
 import { useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, TouchableOpacity, View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
+import { useWeightPlateauStore } from 'stores/weightPlateauStore';
 import colors from 'tailwindcss/colors';
 import type { WeightLogDB } from 'types/database';
 import { formatBodyComp, prefillBodyComp } from 'utils/bodyComp';
@@ -26,6 +28,7 @@ import {
   weightsInPeriod,
   type LivedWeeks,
 } from 'utils/weight';
+import { findWeightPlateau, isPlateauDismissed } from 'utils/weightPlateau';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -119,6 +122,14 @@ export function WeightSection() {
     () => weightsInPeriod(logs, startDate, opts).reverse(),
     [logs, startDate, opts]
   );
+  // 정체기 안내: 지금 회차의 최근 연속 기록이 3일 이상 0.2kg 이내. 닫은 날은 숨김
+  const today = getKoreanDateString({ formatType: 'date' });
+  const plateauDismissedDay = useWeightPlateauStore((state) => state.dismissedDay);
+  const plateau = useMemo(
+    () => findWeightPlateau(logs, { startDate, programStart, today }),
+    [logs, startDate, programStart, today]
+  );
+  const showPlateau = !!plateau && !isPlateauDismissed(plateauDismissedDay, today);
   const hasEarlier = useMemo(() => {
     const periodStart = programStartOf(programStart, startDate);
     return !!periodStart && logs.some((log) => log.day < periodStart);
@@ -195,6 +206,8 @@ export function WeightSection() {
             </TouchableOpacity>
           )}
         </View>
+
+        {showPlateau && plateau && <WeightPlateauCard plateau={plateau} today={today} />}
 
         <RippleButton
           className="w-full flex-row gap-2 bg-green-600 py-4"

@@ -2,6 +2,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { PassBadge } from 'components/common/PassBadge';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
+import { TrialBadge } from 'components/common/TrialBadge';
 import { type Href, router } from 'expo-router';
 import { useBillingAvailable } from 'hooks/useBillingAvailable';
 import { usePass } from 'hooks/usePass';
@@ -53,15 +54,6 @@ interface ToolCardProps {
   // 오른쪽 표시 (패스 잠금, 무료 체험 남은 횟수). 없으면 화살표만
   badge: ReactNode;
   onPress(): void;
-}
-
-// 패스 없이 써 볼 수 있는 횟수. 잠금 배지(진한 초록 채움)와 구분되게 테두리만 쓴다
-function TrialBadge({ remaining }: { remaining: number }) {
-  return (
-    <View className="rounded-full border border-green-600 bg-white px-2 py-0.5">
-      <Text className="text-xs font-bold text-green-700">무료 {remaining}번</Text>
-    </View>
-  );
 }
 
 function ToolCard({ title, description, icon, badge, onPress }: ToolCardProps) {
