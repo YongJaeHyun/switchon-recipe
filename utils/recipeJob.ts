@@ -8,7 +8,15 @@ import type { QuotaExceeded } from 'types/recipeQuota';
 // input: 같은 요청을 다시 보내거나(광고 보상 뒤) 시트를 다시 여는 데 쓰는 원래 요청 (모양은 러너가 정한다)
 export type RecipeJob =
   | { phase: 'idle' }
-  | { phase: 'running'; id: number; label: string; origin: string; input: unknown }
+  | {
+      phase: 'running';
+      id: number;
+      label: string;
+      origin: string;
+      input: unknown;
+      // 시작 시각(ms): 진행 막대·남은 시간
+      startedAt: number;
+    }
   | { phase: 'done'; id: number; recipe: RecipeDB; origin: string }
   | { phase: 'error'; id: number }
   | { phase: 'quota'; id: number; quota: QuotaExceeded; origin: string; input: unknown }
@@ -36,11 +44,19 @@ export const isRecipeJobBusy = (state: RecipeJobState) => state.job.phase === 'r
 // 도는 중이면 null (두 번 누르기 막기). 끝난 띠가 남아 있으면 새 작업이 덮는다
 export const startRecipeJob = (
   state: RecipeJobState,
-  { label, origin, input }: { label: string; origin: string; input: unknown }
+  {
+    label,
+    origin,
+    input,
+    startedAt = Date.now(),
+  }: { label: string; origin: string; input: unknown; startedAt?: number }
 ): { state: RecipeJobState; id: number } | null => {
   if (isRecipeJobBusy(state)) return null;
   const id = state.lastId + 1;
-  return { id, state: { lastId: id, job: { phase: 'running', id, label, origin, input } } };
+  return {
+    id,
+    state: { lastId: id, job: { phase: 'running', id, label, origin, input, startedAt } },
+  };
 };
 
 export const finishRecipeJob = (
@@ -161,4 +177,23 @@ export const recipeJobLabel = (input: RecipeJobLabelInput): string => {
   const rest = names.length - NAMES_SHOWN;
   const phrase = rest > 0 ? `${shown} 외 ${rest}개` : shown;
   return `🍳 ${josa(phrase, '으로/로')} ${carb} 레시피 만드는 중…`;
+};
+
+// 레시피 하나 만드는 데 걸리는 예상 시간 (보통 20~40초)
+export const RECIPE_JOB_EXPECTED_MS = 30 * 1000;
+const PROGRESS_CAP = 0.9;
+
+// 만드는 중 막대: 예상 시간까지 처음은 빠르고 끝은 느리게 90%까지 차고, 끝날 때까지 90%에 머문다
+// (다 되면 띠가 100%로 채운 뒤 완성으로 바뀐다)
+export const recipeJobProgress = (elapsedMs: number, expectedMs = RECIPE_JOB_EXPECTED_MS) => {
+  if (!Number.isFinite(elapsedMs) || elapsedMs <= 0) return 0;
+  const t = Math.min(elapsedMs / expectedMs, 1);
+  return PROGRESS_CAP * (1 - (1 - t) ** 3);
+};
+
+// "약 N초 남음" (5초 단위로 올림). 예상 시간을 넘기면 "거의 다 됐어요"
+export const recipeJobRemainingText = (elapsedMs: number, expectedMs = RECIPE_JOB_EXPECTED_MS) => {
+  const left = expectedMs - Math.max(elapsedMs, 0);
+  if (left <= 0) return '거의 다 됐어요';
+  return `약 ${Math.ceil(left / 5000) * 5}초 남음`;
 };

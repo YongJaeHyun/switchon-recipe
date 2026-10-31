@@ -17,3 +17,8 @@ export function parseTrialConsume(data: unknown): number {
 export function foodCheckTrialRemaining(used: number | null | undefined): number {
   return Math.max(FOOD_CHECK_TRIAL_LIMIT - (used ?? 0), 0);
 }
+
+// 무료 1주차 주간 리포트(패스 없이 사용자당 평생 1번, user_trial.free_report_at) 남은 횟수. 앱 표시용
+export function freeReportRemaining(freeReportAt: string | null | undefined): number {
+  return freeReportAt ? 0 : 1;
+}

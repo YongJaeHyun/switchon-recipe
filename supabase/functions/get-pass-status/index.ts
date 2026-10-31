@@ -10,7 +10,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getUid, requireEnv } from '../_shared/auth.ts';
-import { foodCheckTrialRemaining } from '../_shared/foodCheckTrial.ts';
+import { foodCheckTrialRemaining, freeReportRemaining } from '../_shared/foodCheckTrial.ts';
 import {
   getSalesState,
   hasUsedFirstPurchaseDiscount,
@@ -72,7 +72,11 @@ const getHasAccess = async (uid: string): Promise<boolean> => {
 // select('*')라 recipe_by_name_used 열이 아직 없어도(마이그레이션 전) 음식 판정 횟수는 그대로 준다
 const getTrialRemaining = async (
   uid: string
-): Promise<{ foodCheck: number | undefined; recipeByName: number | undefined }> => {
+): Promise<{
+  foodCheck: number | undefined;
+  recipeByName: number | undefined;
+  freeReport: number | undefined;
+}> => {
   const { data, error } = await supabase
     .from('user_trial')
     .select('*')
@@ -80,9 +84,13 @@ const getTrialRemaining = async (
     .maybeSingle();
   if (error) {
     console.error('무료 체험 조회 실패:', error);
-    return { foodCheck: undefined, recipeByName: undefined };
+    return { foodCheck: undefined, recipeByName: undefined, freeReport: undefined };
   }
-  const row = (data ?? {}) as { food_check_used?: number; recipe_by_name_used?: number };
+  const row = (data ?? {}) as {
+    food_check_used?: number;
+    recipe_by_name_used?: number;
+    free_report_at?: string | null;
+  };
   return {
     foodCheck: foodCheckTrialRemaining(row.food_check_used),
     // 행은 있는데 열이 없으면(마이그레이션 전) 모르는 값
@@ -90,6 +98,7 @@ const getTrialRemaining = async (
       data && row.recipe_by_name_used === undefined
         ? undefined
         : recipeByNameTrialRemaining(row.recipe_by_name_used),
+    freeReport: freeReportRemaining(row.free_report_at),
   };
 };
 
@@ -114,6 +123,7 @@ serve(async (req: Request) => {
         hasAccess,
         foodCheckTrialRemaining: trial.foodCheck,
         recipeByNameTrialRemaining: trial.recipeByName,
+        freeReportRemaining: trial.freeReport,
         serverNow: now.toISOString(),
       },
       200

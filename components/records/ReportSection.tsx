@@ -259,7 +259,16 @@ export function ReportSection() {
 
       <View className="flex-row items-center gap-2">
         <Text className="text-lg font-bold">주간 리포트</Text>
-        {showPassBadge && <PassBadge state={passBadgeState(hasAccess)} />}
+        {showPassBadge && (
+          <PassBadge
+            state={passBadgeState(
+              hasAccess,
+              status?.freeReportRemaining
+                ? { kind: 'trial', remaining: status.freeReportRemaining }
+                : undefined
+            )}
+          />
+        )}
       </View>
       <ReportPreviewCard />
 

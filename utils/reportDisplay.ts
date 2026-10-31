@@ -267,6 +267,23 @@ export function shouldShowReportPreview(
   return !!status && !status.hasAccess && isPassOnSale(status.sales, billingAvailable);
 }
 
+// 패스 없을 때 리포트 안내 카드 문구. 무료 1주차 리포트가 남았으면(get-pass-status freeReportRemaining) 무료라고 알린다
+export function reportPreviewCopy(freeReportRemaining: number | undefined): {
+  title: string;
+  description: string;
+} {
+  if (freeReportRemaining && freeReportRemaining > 0) {
+    return {
+      title: '첫 주간 리포트는 무료예요',
+      description: '1주차가 끝나면 그 주 기록을 정리해 한 번 무료로 보내드려요',
+    };
+  }
+  return {
+    title: '이번 주 리포트를 받아보세요',
+    description: '한 주 기록을 정리해 잘한 점과 다음 주 할 일을 알려드려요',
+  };
+}
+
 // 무료 1주차 리포트(패스 없이 사용자당 평생 한 번, 서버 generate-weekly-reports)를 알리는 주차 진입 팝업:
 // 2주차에 들어설 때 이번 회차(programStart = programStartOf, 모르면 null)의 표시 주차 1 무료 리포트.
 // 없으면(08:00 cron 전·패스 유저·이미 다른 회차에서 받음) null → 팝업은 기존대로

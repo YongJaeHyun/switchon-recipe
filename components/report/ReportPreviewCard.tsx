@@ -6,7 +6,7 @@ import { useBillingAvailable } from 'hooks/useBillingAvailable';
 import { usePass } from 'hooks/usePass';
 import { View } from 'react-native';
 import colors from 'tailwindcss/colors';
-import { shouldShowReportPreview } from 'utils/reportDisplay';
+import { reportPreviewCopy, shouldShowReportPreview } from 'utils/reportDisplay';
 
 // 무료 유저용 주간 리포트 미리보기 (홈·프로필·리포트 목록). 패스를 팔 때만 보이고 누르면 결제 화면으로
 export function ReportPreviewCard() {
@@ -14,12 +14,8 @@ export function ReportPreviewCard() {
   const billingAvailable = useBillingAvailable();
   if (!shouldShowReportPreview(status, billingAvailable)) return null;
 
-  return (
-    <ReportPassCard
-      title="이번 주 리포트를 받아보세요"
-      description="한 주 기록을 정리해 잘한 점과 다음 주 할 일을 알려드려요"
-    />
-  );
+  const copy = reportPreviewCopy(status?.freeReportRemaining);
+  return <ReportPassCard title={copy.title} description={copy.description} />;
 }
 
 // 리포트 패스 안내 카드 모양 (누르면 결제 화면). 보일지는 부르는 쪽이 정한다

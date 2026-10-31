@@ -16,6 +16,7 @@ import {
   shouldShowTrialPassCard,
   toWeeklyReport,
   trialReportForWeekEntry,
+  reportPreviewCopy,
 } from './reportDisplay';
 
 describe('formatWeightDiff', () => {
@@ -480,5 +481,23 @@ describe('무료 1주차 리포트 (is_trial)', () => {
       expect(shouldShowTrialPassCard({ is_trial: true }, undefined, true)).toBe(false);
       expect(shouldShowTrialPassCard(null, status(false, true), true)).toBe(false);
     });
+  });
+});
+
+describe('reportPreviewCopy (패스 없을 때 주간 리포트 안내)', () => {
+  it('무료 1주차 리포트가 남았으면 무료라고 알린다', () => {
+    expect(reportPreviewCopy(1)).toEqual({
+      title: '첫 주간 리포트는 무료예요',
+      description: '1주차가 끝나면 그 주 기록을 정리해 한 번 무료로 보내드려요',
+    });
+  });
+
+  it('이미 받았거나 모르면 패스 안내', () => {
+    const paid = {
+      title: '이번 주 리포트를 받아보세요',
+      description: '한 주 기록을 정리해 잘한 점과 다음 주 할 일을 알려드려요',
+    };
+    expect(reportPreviewCopy(0)).toEqual(paid);
+    expect(reportPreviewCopy(undefined)).toEqual(paid);
   });
 });

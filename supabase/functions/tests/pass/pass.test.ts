@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  endOfKstDay,
   computeExpiry,
   GRACE_MS,
   hasUsedFirstPurchaseDiscount,
@@ -324,6 +325,27 @@ describe('computeExpiry', () => {
     expect(computeExpiry([])).toBeNull();
   });
 
+  // 운영자 결정(2026-11-01): 화면이 날짜만 보여 주므로 마지막 날 23:59:59(KST)까지 쓰게 한다
+  it('마지막 날 밤 23:59:59.999(KST)까지: 10/31 18:34 KST 결제 → 12/5 23:59:59.999 KST', () => {
+    expect(computeExpiry([purchase('2026-10-31T09:34:00Z')])?.toISOString()).toBe(
+      '2026-12-05T14:59:59.999Z'
+    );
+  });
+
+  it('endOfKstDay: KST 날짜의 마지막 순간', () => {
+    expect(new Date(endOfKstDay(Date.parse('2026-12-05T09:34:00Z'))).toISOString()).toBe(
+      '2026-12-05T14:59:59.999Z'
+    );
+    // UTC 15시 이후는 KST 다음 날
+    expect(new Date(endOfKstDay(Date.parse('2026-12-05T15:30:00Z'))).toISOString()).toBe(
+      '2026-12-06T14:59:59.999Z'
+    );
+    // 이미 마지막 순간이면 그대로
+    expect(endOfKstDay(Date.parse('2026-12-05T14:59:59.999Z'))).toBe(
+      Date.parse('2026-12-05T14:59:59.999Z')
+    );
+  });
+
   it('없음: 전부 voided', () => {
     expect(
       computeExpiry([
@@ -334,27 +356,34 @@ describe('computeExpiry', () => {
   });
 
   it('단일: 11/1 10:00Z + 35일', () => {
-    const expected = new Date('2026-11-01T10:00:00Z').getTime() + PASS_DAYS * 24 * 60 * 60 * 1000;
+    const expected = endOfKstDay(
+      new Date('2026-11-01T10:00:00Z').getTime() + PASS_DAYS * 24 * 60 * 60 * 1000
+    );
     expect(computeExpiry([purchase('2026-11-01T10:00:00Z')])?.getTime()).toBe(expected);
   });
 
   it('겹침: 11/1, 11/10 → 11/1 + 70일', () => {
-    const expected =
-      new Date('2026-11-01T10:00:00Z').getTime() + 2 * PASS_DAYS * 24 * 60 * 60 * 1000;
+    const expected = endOfKstDay(
+      new Date('2026-11-01T10:00:00Z').getTime() + 2 * PASS_DAYS * 24 * 60 * 60 * 1000
+    );
     expect(
       computeExpiry([purchase('2026-11-01T10:00:00Z'), purchase('2026-11-10T10:00:00Z')])?.getTime()
     ).toBe(expected);
   });
 
   it('만료 후 재구매: 11/1, 12/20 → 12/20 + 35일', () => {
-    const expected = new Date('2026-12-20T10:00:00Z').getTime() + PASS_DAYS * 24 * 60 * 60 * 1000;
+    const expected = endOfKstDay(
+      new Date('2026-12-20T10:00:00Z').getTime() + PASS_DAYS * 24 * 60 * 60 * 1000
+    );
     expect(
       computeExpiry([purchase('2026-11-01T10:00:00Z'), purchase('2026-12-20T10:00:00Z')])?.getTime()
     ).toBe(expected);
   });
 
   it('겹친 것 중 앞 것 환불: 11/1 voided, 11/10 granted → 11/10 + 35일', () => {
-    const expected = new Date('2026-11-10T10:00:00Z').getTime() + PASS_DAYS * 24 * 60 * 60 * 1000;
+    const expected = endOfKstDay(
+      new Date('2026-11-10T10:00:00Z').getTime() + PASS_DAYS * 24 * 60 * 60 * 1000
+    );
     expect(
       computeExpiry([
         purchase('2026-11-01T10:00:00Z', 'voided'),
@@ -394,7 +423,7 @@ describe('computeExpiry: 상품별 일수', () => {
   it('1주 패스 단독: +7일', () => {
     expect(
       computeExpiry([purchase('2026-11-01T10:00:00Z', 'switchon_pass_1w_1500')])?.getTime()
-    ).toBe(at('2026-11-01T10:00:00Z') + 7 * DAY);
+    ).toBe(endOfKstDay(at('2026-11-01T10:00:00Z') + 7 * DAY));
   });
 
   it('5주 패스 중 1주 패스: 만료일 뒤에 7일을 이어 붙인다', () => {
@@ -403,7 +432,7 @@ describe('computeExpiry: 상품별 일수', () => {
         purchase('2026-11-01T10:00:00Z', 'switchon_pass_5w_4900'),
         purchase('2026-11-10T10:00:00Z', 'switchon_pass_1w_1500'),
       ])?.getTime()
-    ).toBe(at('2026-11-01T10:00:00Z') + 42 * DAY);
+    ).toBe(endOfKstDay(at('2026-11-01T10:00:00Z') + 42 * DAY));
   });
 
   it('1주 패스 중 5주 패스: 7일 뒤에 35일', () => {
@@ -412,7 +441,7 @@ describe('computeExpiry: 상품별 일수', () => {
         purchase('2026-11-01T10:00:00Z', 'switchon_pass_1w_1500'),
         purchase('2026-11-03T10:00:00Z', 'switchon_pass_5w_1900'),
       ])?.getTime()
-    ).toBe(at('2026-11-01T10:00:00Z') + 42 * DAY);
+    ).toBe(endOfKstDay(at('2026-11-01T10:00:00Z') + 42 * DAY));
   });
 
   it('1주 패스 환불: 그 7일만 빠진다', () => {
@@ -421,7 +450,7 @@ describe('computeExpiry: 상품별 일수', () => {
         purchase('2026-11-01T10:00:00Z', 'switchon_pass_5w_4900'),
         purchase('2026-11-10T10:00:00Z', 'switchon_pass_1w_1500', 'voided'),
       ])?.getTime()
-    ).toBe(at('2026-11-01T10:00:00Z') + 35 * DAY);
+    ).toBe(endOfKstDay(at('2026-11-01T10:00:00Z') + 35 * DAY));
   });
 });
 
@@ -453,7 +482,7 @@ describe('computeExpiry: 한 주 더 하기 연장 (구매에 묶인 연장, 구
 
   it('패스 기간 중 연장: 만료일 +7일', () => {
     expect(computeExpiry([p('a', A)], [ext('a', '2026-11-20T00:00:00Z')])?.getTime()).toBe(
-      at(A) + 42 * DAY
+      endOfKstDay(at(A) + 42 * DAY)
     );
   });
 
@@ -468,7 +497,7 @@ describe('computeExpiry: 한 주 더 하기 연장 (구매에 묶인 연장, 구
           ext('a', '2026-12-01T00:00:00Z'),
         ]
       )?.getTime()
-    ).toBe(at(A) + 49 * DAY);
+    ).toBe(endOfKstDay(at(A) + 49 * DAY));
   });
 
   it('1주 패스에 묶인 연장은 반영하지 않는다', () => {
@@ -477,7 +506,7 @@ describe('computeExpiry: 한 주 더 하기 연장 (구매에 묶인 연장, 구
         [p('w', A, 'granted', 'switchon_pass_1w_1500')],
         [ext('w', '2026-11-03T00:00:00Z')]
       )?.getTime()
-    ).toBe(at(A) + 7 * DAY);
+    ).toBe(endOfKstDay(at(A) + 7 * DAY));
   });
 
   it('구매마다 따로 센다: 5주 두 번이면 연장 4번까지', () => {
@@ -493,31 +522,31 @@ describe('computeExpiry: 한 주 더 하기 연장 (구매에 묶인 연장, 구
           ext('b', '2026-12-08T00:00:00Z'),
         ]
       )?.getTime()
-    ).toBe(at(A) + (70 + 28) * DAY);
+    ).toBe(endOfKstDay(at(A) + (70 + 28) * DAY));
   });
 
   it('묶인 구매가 없거나(모르는 토큰) 환불됐으면 반영하지 않는다', () => {
     expect(computeExpiry([p('a', A)], [ext('zzz', '2026-11-20T00:00:00Z')])?.getTime()).toBe(
-      at(A) + 35 * DAY
+      endOfKstDay(at(A) + 35 * DAY)
     );
     expect(
       computeExpiry(
         [p('a', A), p('b', '2026-11-10T10:00:00Z', 'voided')],
         [ext('b', '2026-11-20T00:00:00Z')]
       )?.getTime()
-    ).toBe(at(A) + 35 * DAY);
+    ).toBe(endOfKstDay(at(A) + 35 * DAY));
     expect(computeExpiry([p('a', A, 'voided')], [ext('a', '2026-11-20T00:00:00Z')])).toBeNull();
   });
 
   it('묶인 구매보다 앞선 연장(구매 전 시각)은 반영하지 않는다', () => {
     expect(computeExpiry([p('a', A)], [ext('a', '2026-10-20T00:00:00Z')])?.getTime()).toBe(
-      at(A) + 35 * DAY
+      endOfKstDay(at(A) + 35 * DAY)
     );
   });
 
   it('연장 시각에 패스가 끝나 있었으면 반영하지 않는다', () => {
-    expect(computeExpiry([p('a', A)], [ext('a', '2026-12-20T00:00:00Z')])?.getTime()).toBe(
-      at(A) + 35 * DAY
+    expect(computeExpiry([p('a', A)], [ext('a', '2026-12-06T15:00:00Z')])?.getTime()).toBe(
+      endOfKstDay(at(A) + 35 * DAY)
     );
   });
 
@@ -527,7 +556,7 @@ describe('computeExpiry: 한 주 더 하기 연장 (구매에 묶인 연장, 구
         [p('a', A), p('b', '2026-11-25T10:00:00Z')],
         [ext('a', '2026-11-20T00:00:00Z')]
       )?.getTime()
-    ).toBe(at(A) + 77 * DAY);
+    ).toBe(endOfKstDay(at(A) + 77 * DAY));
   });
 
   it('연장만 있고 구매가 없으면 null', () => {
