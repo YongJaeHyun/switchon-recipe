@@ -5,6 +5,7 @@
 // DB 함수 결과를 그대로 전달한다 (서버 최종 판단은 단일 소스여야 하므로).
 // foodCheckTrialRemaining: 패스 없이 쓸 수 있는 음식 판정 무료 횟수 (앱 표시용, food-check가 최종 판단)
 // sales: 5주 패스 첫 구매 할인(2,900원)은 granted 5주 패스 구매가 없는 유저에게만 (운영자 결정 2026-11-01)
+// limits: 패스로 쓸 수 있는 양 (결제 화면 안내용, _shared/passLimits.ts). 조회 실패면 빼고 보낸다 → 앱은 안내를 숨긴다
 // recipeByNameTrialRemaining: 패스 없이 쓸 수 있는 음식 이름으로 만들기 무료 횟수 (앱 표시용, create-recipe-by-name이 최종 판단)
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
@@ -17,6 +18,7 @@ import {
   type PremiumSetting,
   type PurchaseForExpiry,
 } from '../_shared/pass.ts';
+import { buildPassLimits, type PassLimits } from '../_shared/passLimits.ts';
 import { recipeByNameTrialRemaining } from '../_shared/recipeNameCheck.ts';
 
 const json = (body: unknown, status: number) =>
@@ -102,18 +104,42 @@ const getTrialRemaining = async (
   };
 };
 
+// 표시용이라 조회가 실패하거나 값이 빠지면 상태 전체를 실패시키지 않고 undefined (앱은 안내를 숨긴다)
+const getLimits = async (): Promise<PassLimits | undefined> => {
+  const [quota, premium] = await Promise.all([
+    supabase
+      .from('quota_setting')
+      .select('pass_daily, pass_recipe_total, pass_recipe_per_week')
+      .eq('id', 1)
+      .maybeSingle(),
+    supabase
+      .from('premium_quota_setting')
+      .select('feature, daily')
+      .in('feature', ['food_check', 'recipe_name_check']),
+  ]);
+  if (quota.error || premium.error) {
+    console.error('패스 한도 조회 실패:', quota.error ?? premium.error);
+    return undefined;
+  }
+  return buildPassLimits(quota.data, premium.data) ?? undefined;
+};
+
 serve(async (req: Request) => {
   try {
     const uid = await getUid(req);
     if (!uid) return json({ error: 'unauthorized' }, 401);
 
     const now = new Date();
-    const [setting, discountUsed, passExpiresAt, hasAccess, trial] = await Promise.all([
+    const [setting, discountUsed, passExpiresAt, hasAccess, trial, limits] = await Promise.all([
       getSetting(),
       getDiscountUsed(uid),
       getPassExpiresAt(uid),
       getHasAccess(uid),
       getTrialRemaining(uid),
+      getLimits().catch((error) => {
+        console.error('패스 한도 조회 실패:', error);
+        return undefined;
+      }),
     ]);
 
     return json(
@@ -124,6 +150,7 @@ serve(async (req: Request) => {
         foodCheckTrialRemaining: trial.foodCheck,
         recipeByNameTrialRemaining: trial.recipeByName,
         freeReportRemaining: trial.freeReport,
+        limits,
         serverNow: now.toISOString(),
       },
       200

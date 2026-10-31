@@ -1,10 +1,16 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { BottomSheetMethods } from '@gorhom/bottom-sheet/lib/typescript/types';
 import { PassTrialBanner } from 'components/common/PassTrialBanner';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import { ReportPassCard } from 'components/report/ReportPreviewCard';
+import { ReportHero } from 'components/report/ReportHero';
 import { ReportStats } from 'components/report/ReportStats';
-import { router, useLocalSearchParams } from 'expo-router';
+import { WeightHintCard } from 'components/report/WeightHintCard';
+import { WeightInputSheet, type WeightInputTarget } from 'components/weight/WeightInputSheet';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useFastingHistory } from 'hooks/useFastingHistory';
+import { useWeights } from 'hooks/useWeights';
 import { useBillingAvailable } from 'hooks/useBillingAvailable';
 import { usePass } from 'hooks/usePass';
 import { WeeklyReportAPI } from 'api/WeeklyReportAPI';
@@ -12,10 +18,19 @@ import {
   cacheGeneratedReport,
   useCanRegenerateReport,
   useOnDemandLimitStore,
+  useReportTodoDays,
   useWeeklyReport,
   useWeeklyReports,
 } from 'hooks/useWeeklyReports';
-import { type ComponentProps, type ReactNode, useMemo, useState } from 'react';
+import {
+  type ComponentProps,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { ActivityIndicator, ScrollView, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUserStore } from 'stores/userStore';
@@ -35,7 +50,17 @@ import {
 } from 'utils/reportDisplay';
 import { showNetworkErrorToast } from 'utils/network';
 import { isOnDemandLimitedToday, kstDayOf, ON_DEMAND_MESSAGES } from 'utils/reportOnDemand';
+import {
+  dailyTodoBars,
+  fastingDots,
+  liveWeekWeight,
+  weekWeightPoints,
+  weightHintState,
+} from 'utils/reportVisual';
+import { getKoreanDateString } from 'utils/date';
+import { getWeekColorHex } from 'utils/getWeekColor';
 import { showSuccessToast } from 'utils/showToast';
+import { weightDateRange, weightTargetForDay } from 'utils/weightDateStrip';
 
 type IconName = ComponentProps<typeof MaterialIcons>['name'];
 
@@ -58,21 +83,35 @@ const Header = ({ title }: { title: string }) => (
   </View>
 );
 
+// plain: 흰 카드 / good: 연한 초록(잘한 점) / improve: 연한 호박색(아쉬운 점)
+const SECTION_TONE = {
+  plain: { box: 'border-neutral-200 bg-white', icon: colors.green[600] },
+  good: { box: 'border-green-100 bg-green-50', icon: colors.green[600] },
+  improve: { box: 'border-amber-100 bg-amber-50', icon: colors.amber[600] },
+} as const;
+
 const Section = ({
   icon,
   title,
   children,
+  tone = 'plain',
+  stripe,
 }: {
   icon: IconName;
   title: string;
   children: ReactNode;
+  tone?: keyof typeof SECTION_TONE;
+  stripe?: string; // 왼쪽 세로 띠 색 (다음 주 주차 색)
 }) => (
-  <View className="gap-3 rounded-xl border border-neutral-200 bg-white p-4">
-    <View className="flex-row items-center gap-2">
-      <MaterialIcons name={icon} size={20} color={colors.green[600]} />
-      <Text className="text-base font-bold text-neutral-800">{title}</Text>
+  <View className={`flex-row overflow-hidden rounded-xl border ${SECTION_TONE[tone].box}`}>
+    {!!stripe && <View style={{ width: 6, backgroundColor: stripe }} />}
+    <View className="flex-1 gap-3 p-4">
+      <View className="flex-row items-center gap-2">
+        <MaterialIcons name={icon} size={20} color={SECTION_TONE[tone].icon} />
+        <Text className="text-base font-bold text-neutral-800">{title}</Text>
+      </View>
+      {children}
     </View>
-    {children}
   </View>
 );
 
@@ -172,11 +211,99 @@ export default function ReportDetailScreen() {
   const billingAvailable = useBillingAvailable();
   const showTrialPass = shouldShowTrialPassCard(report, status, billingAvailable);
   // [다시 만들기]: 패스 유저의 지금 회차 리포트일 때만 서버에 묻는다 (생성 뒤 기록 변경, 오늘 다시 만든 적 없음)
-  const canRegenerate = useCanRegenerateReport(
+  const isCurrentProgram = !!report && !!currentProgram && !isPrevious;
+  const { canRegenerate, refetch: refetchCanRegenerate } = useCanRegenerateReport(
     startDate,
     weekIndex,
-    status?.hasAccess === true && !!report && !!currentProgram && !isPrevious
+    status?.hasAccess === true && isCurrentProgram
   );
+  // 체중을 적고 돌아오면 [글 다시 받기]가 바로 보이게 화면에 올 때마다 다시 묻는다
+  useFocusEffect(
+    useCallback(() => {
+      if (status?.hasAccess === true && isCurrentProgram) void refetchCanRegenerate();
+    }, [status?.hasAccess, isCurrentProgram, refetchCanRegenerate])
+  );
+
+  // 그 주 실제 기록 (그래프·점·체중 숫자). 못 받으면 리포트에 저장된 숫자로
+  const range = report?.stats?.range ?? null;
+  const { logs: weightLogs, isLogsFetched } = useWeights();
+  const todoDays = useReportTodoDays(range);
+  const { items: fastingCurrent, previous: fastingPrevious } = useFastingHistory();
+  const displayWeek = report ? reportDisplayWeek(report) : 1;
+  const visual = useMemo(() => {
+    if (!report?.stats || !range) return null;
+    const stats = report.stats;
+    // 체중 숫자: 지금 프로그램이고 기록을 받았으면 지금 기록으로 (빠진 날을 적으면 바로 바뀐다)
+    const weight =
+      isLogsFetched && isCurrentProgram && currentProgram
+        ? liveWeekWeight({ range, logs: weightLogs, baselineStart: currentProgram })
+        : stats.weight;
+    const fastingItems =
+      fastingCurrent.length + fastingPrevious.length > 0
+        ? [...fastingCurrent, ...fastingPrevious.flatMap((group) => group.items)]
+        : null;
+    return {
+      weight,
+      bars: todoDays ? dailyTodoBars(range, todoDays) : null,
+      weightPoints: isLogsFetched ? weekWeightPoints(range, weightLogs) : [],
+      fastingDots: fastingDots({
+        range,
+        items: fastingItems,
+        fasting: stats.fasting,
+        now: new Date(),
+      }),
+    };
+  }, [
+    report?.stats,
+    range,
+    isLogsFetched,
+    isCurrentProgram,
+    currentProgram,
+    weightLogs,
+    todoDays,
+    fastingCurrent,
+    fastingPrevious,
+  ]);
+
+  // 체중 안내 카드: 빠진 날 적으러 가기 → 기록이 늘면 같은 자리에서 글 다시 받기
+  const today = getKoreanDateString({ formatType: 'date' });
+  const hintState =
+    report?.stats && range && isLogsFetched
+      ? weightHintState({
+          range,
+          logs: weightLogs,
+          storedDaysLogged: report.stats.weight.daysLogged,
+          canRegenerate,
+          hasAccess: status?.hasAccess === true,
+          isCurrentProgram,
+          allowedRange: weightDateRange({
+            today,
+            programStart,
+            startDate: currentStartDate,
+            targetDay: null,
+          }),
+        })
+      : null;
+  // 체중을 저장하면(시트) 다시 만들기 가능 여부를 새로 묻는다
+  const rangeWeightKey = range
+    ? weightLogs
+        .filter((log) => log.day >= range.from && log.day <= range.to)
+        .map((log) => `${log.day}:${log.weight_kg}`)
+        .join(',')
+    : '';
+  const lastWeightKey = useRef(rangeWeightKey);
+  useEffect(() => {
+    if (lastWeightKey.current === rangeWeightKey) return;
+    lastWeightKey.current = rangeWeightKey;
+    if (status?.hasAccess === true && isCurrentProgram) void refetchCanRegenerate();
+  }, [rangeWeightKey, status?.hasAccess, isCurrentProgram, refetchCanRegenerate]);
+
+  const sheetRef = useRef<BottomSheetMethods>(null);
+  const [sheetTarget, setSheetTarget] = useState<WeightInputTarget | null>(null);
+  const openWeightSheet = (day: string) => {
+    setSheetTarget(weightTargetForDay(weightLogs, day, today));
+    sheetRef.current?.expand();
+  };
   const [regenerating, setRegenerating] = useState(false);
   const [regenerateError, setRegenerateError] = useState<{
     message: string;
@@ -208,7 +335,9 @@ export default function ReportDetailScreen() {
       retryable: outcome.status === 'error',
     });
   };
-  const showRegenerate = !!report && (canRegenerate || regenerating || !!regenerateError);
+  // 체중이 늘어 카드에서 [글 다시 받기]를 보이면 위 [다시 만들기]는 숨긴다 (다른 기록 때문일 때만 위 버튼)
+  const showRegenerate =
+    !!report && hintState?.kind !== 'added' && (canRegenerate || regenerating || !!regenerateError);
 
   // 문장이 없거나 깨진 행이어도 숫자는 보여준다 (빈 칸은 숨김)
   const content = report?.content ?? EMPTY_CONTENT;
@@ -240,31 +369,61 @@ export default function ReportDetailScreen() {
 
     return (
       <>
-        {!!content.summary && (
-          <View className="rounded-xl bg-green-600 p-4">
-            <Text className="text-lg font-bold leading-7 text-white">{content.summary}</Text>
-          </View>
+        {(!!report.stats || !!content.summary) && (
+          <ReportHero
+            week={displayWeek}
+            rangeLabel={report.stats ? formatReportRange(report.stats.range) : null}
+            stats={report.stats}
+            weight={visual?.weight ?? report.stats?.weight ?? null}
+            summary={content.summary}
+          />
         )}
 
-        {report.stats && (
+        {report.stats && visual && (
           <Section icon="bar-chart" title="숫자로 본 이번 주">
-            <ReportStats stats={report.stats} />
+            <ReportStats
+              stats={report.stats}
+              weight={visual.weight}
+              week={displayWeek}
+              bars={visual.bars}
+              weightPoints={visual.weightPoints}
+              fastingDots={visual.fastingDots}
+              weightExtra={
+                hintState && (
+                  <WeightHintCard
+                    state={hintState}
+                    onWrite={() =>
+                      hintState.kind === 'missing' && openWeightSheet(hintState.targetDay)
+                    }
+                    onRegenerate={() => void regenerate()}
+                    pending={regenerating}
+                    limited={limited}
+                    error={regenerateError}
+                  />
+                )
+              }
+            />
           </Section>
         )}
 
         {!!content.good && (
-          <Section icon="thumb-up-off-alt" title="잘한 점">
+          <Section icon="thumb-up-off-alt" title="잘한 점" tone="good">
             <Body>{content.good}</Body>
           </Section>
         )}
 
-        {(!!content.improve || !!content.action) && (
-          <Section icon="lightbulb-outline" title="아쉬운 점과 다음 주 행동">
-            {!!content.improve && <Body>{content.improve}</Body>}
+        {!!content.improve && (
+          <Section icon="lightbulb-outline" title="아쉬운 점" tone="improve">
+            <Body>{content.improve}</Body>
+          </Section>
+        )}
+
+        {(!!content.action || !!content.actionLink) && (
+          <Section icon="checklist" title="다음 주에 해 볼 것">
             {!!content.action && (
-              <View className="flex-row gap-2 rounded-lg bg-green-50 p-3">
-                <MaterialIcons name="arrow-forward" size={18} color={colors.green[700]} />
-                <Text className="flex-1 font-semibold leading-6 text-green-800">
+              <View className="flex-row gap-3">
+                <View className="mt-0.5 h-5 w-5 rounded-md border-2 border-green-600" />
+                <Text className="flex-1 text-base font-semibold leading-6 text-neutral-800">
                   {content.action}
                 </Text>
               </View>
@@ -291,7 +450,10 @@ export default function ReportDetailScreen() {
         )}
 
         {!!content.nextWeek && (
-          <Section icon="event" title="다음 주 달라지는 점">
+          <Section
+            icon="event"
+            title="다음 주 달라지는 점"
+            stripe={getWeekColorHex(displayWeek + 1) || colors.green[600]}>
             {/* 줄바꿈(\n)이 들어 있으면 그대로 줄을 나눠 보여준다 */}
             <Body>{content.nextWeek}</Body>
           </Section>
@@ -315,9 +477,10 @@ export default function ReportDetailScreen() {
         showsVerticalScrollIndicator={false}>
         {/* 패스 없이 받은 무료 1주차 리포트 (패스 사용자에게는 보이지 않는다) */}
         {report?.is_trial && <PassTrialBanner variant="gift" />}
-        {report && (report.stats || isPrevious || isRepeat) && (
+        {report && ((report.stats && isEmptyReport(report)) || isPrevious || isRepeat) && (
           <View className="flex-row flex-wrap items-center gap-2">
-            {report.stats && (
+            {/* 기간은 위 주차 색 카드에 있다. 빈 주(카드 없음)만 여기 */}
+            {report.stats && isEmptyReport(report) && (
               <Text className="text-sm text-neutral-500">
                 {formatReportRange(report.stats.range)}
               </Text>
@@ -348,6 +511,7 @@ export default function ReportDetailScreen() {
         )}
         {renderBody()}
       </ScrollView>
+      <WeightInputSheet bottomSheetRef={sheetRef} target={sheetTarget} />
     </SafeAreaView>
   );
 }

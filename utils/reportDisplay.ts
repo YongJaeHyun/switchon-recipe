@@ -267,6 +267,12 @@ export function shouldShowReportPreview(
   return !!status && !status.hasAccess && isPassOnSale(status.sales, billingAvailable);
 }
 
+// 무료 1주차 리포트를 아직 받을 수 있는지: 서버 남은 횟수가 있고 지금 1주차일 때만 (cron이 1주차 리포트만 무료로
+// 만들므로 2주차부터는 다시 시작하지 않는 한 받을 수 없다)
+export function freeReportAvailable(remaining: number | undefined, currentWeek: number): boolean {
+  return !!remaining && remaining > 0 && currentWeek <= 1;
+}
+
 // 패스 없을 때 리포트 안내 카드 문구. 무료 1주차 리포트가 남았으면(get-pass-status freeReportRemaining) 무료라고 알린다
 export function reportPreviewCopy(freeReportRemaining: number | undefined): {
   title: string;

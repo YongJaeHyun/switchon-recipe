@@ -57,4 +57,27 @@ const insertIfAbsent = async ({
   }
 };
 
-export const TodoDailyAPI = { upsert, insertIfAbsent };
+// from~to(yyyy-MM-dd, 포함) 날짜의 할 일 기록 (주간 리포트 요일별 막대). 실패 시 throw: 호출부는 그래프를 숨긴다
+const selectRange = async (
+  from: string,
+  to: string
+): Promise<{ day: string; items: string[]; checked: number[] }[]> => {
+  const uid = useUserStore.getState().id;
+  if (!uid) return [];
+
+  const { data, error } = await supabase
+    .from('todo_daily')
+    .select('day, items, checked')
+    .eq('uid', uid)
+    .gte('day', from)
+    .lte('day', to);
+
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    day: String(row.day),
+    items: row.items ?? [],
+    checked: row.checked ?? [],
+  }));
+};
+
+export const TodoDailyAPI = { upsert, insertIfAbsent, selectRange };

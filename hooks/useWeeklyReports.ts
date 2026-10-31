@@ -1,3 +1,4 @@
+import { TodoDailyAPI } from 'api/TodoDailyAPI';
 import { WeeklyReportAPI } from 'api/WeeklyReportAPI';
 import { QueryKey } from 'const/queryKey';
 import { queryClient } from 'lib/queryClient';
@@ -82,7 +83,18 @@ export const useCanRegenerateReport = (startDate: string, weekIndex: number, ena
     enabled: !!uid && enabled,
     refetchOnMount: 'always',
   });
-  return query.data === true;
+  return { canRegenerate: query.data === true, refetch: query.refetch };
+};
+
+// 리포트 기간의 날짜별 할 일 기록 (상세 화면 요일별 막대). 못 받으면 data 없음 → 그래프를 숨긴다
+export const useReportTodoDays = (range: { from: string; to: string } | null) => {
+  const uid = useUserStore((state) => state.id);
+  const query = useQueryWith402Retry({
+    queryKey: [QueryKey.weeklyReports, uid, 'todoDays', range?.from, range?.to],
+    queryFn: failFastWhenOffline(() => TodoDailyAPI.selectRange(range!.from, range!.to)),
+    enabled: !!uid && !!range,
+  });
+  return query.data ?? null;
 };
 
 // 직접 만들기·다시 만들기로 받은 리포트를 캐시에 넣고(상세는 바로, 목록은 다시 받기) 다시 만들기 표시를 끈다
