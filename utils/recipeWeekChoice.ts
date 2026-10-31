@@ -51,3 +51,15 @@ export const restoreChosenWeek = ({
   );
   return defaultChosenWeek(Math.max(base, needed));
 };
+
+// 먹고 싶은 음식으로 만들기의 주차 칸: 레시피 주차와 같은 1주차 / 2주차 / 3주차+ (탐색 탭과 같은 묶음)
+export const NAME_WEEK_CHOICES = [1, 2, 3] as const;
+
+export const nameWeekLabel = (choice: number) => (choice >= 3 ? '3주차+' : `${choice}주차`);
+
+export const defaultNameWeekChoice = (currentWeek: number) =>
+  Math.min(defaultChosenWeek(currentWeek), 3);
+
+// 서버에 보낼 주차: 3주차+를 골랐고 지금이 3주차 이후면 지금 주차 규칙(4주차·유지기에 열린 음식 포함), 아니면 고른 칸
+export const nameRequestWeek = (choice: number, currentWeek: number) =>
+  choice >= 3 ? Math.max(3, defaultChosenWeek(currentWeek)) : choice;

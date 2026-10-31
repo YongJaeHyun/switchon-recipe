@@ -8,6 +8,10 @@ import {
   restoreChosenWeek,
   weekChoiceLabel,
   weekPrunedMessage,
+  NAME_WEEK_CHOICES,
+  nameWeekLabel,
+  defaultNameWeekChoice,
+  nameRequestWeek,
 } from './recipeWeekChoice';
 
 describe('RECIPE_WEEK_CHOICES / weekChoiceLabel', () => {
@@ -118,5 +122,29 @@ describe('restoreChosenWeek', () => {
 
   it('유지기(5)를 넘지 않는다', () => {
     expect(restoreChosenWeek({ remembered: undefined, currentWeek: 5, selected: [w(9)] })).toBe(5);
+  });
+});
+
+describe('이름으로 만들기 주차 (1주차 / 2주차 / 3주차+)', () => {
+  it('칸은 1·2·3이고 3은 "3주차+"', () => {
+    expect(NAME_WEEK_CHOICES).toEqual([1, 2, 3]);
+    expect(nameWeekLabel(1)).toBe('1주차');
+    expect(nameWeekLabel(3)).toBe('3주차+');
+  });
+
+  it('처음 고른 칸은 지금 주차, 3주차 이후(유지기 포함)는 3주차+', () => {
+    expect(defaultNameWeekChoice(1)).toBe(1);
+    expect(defaultNameWeekChoice(2)).toBe(2);
+    expect(defaultNameWeekChoice(4)).toBe(3);
+    expect(defaultNameWeekChoice(6)).toBe(3);
+    expect(defaultNameWeekChoice(0)).toBe(1);
+  });
+
+  it('3주차+를 고르면 지금이 3주차 이후일 때 지금 주차 규칙으로, 아니면 3주차 규칙으로 보낸다', () => {
+    expect(nameRequestWeek(3, 4)).toBe(4);
+    expect(nameRequestWeek(3, 5)).toBe(5);
+    expect(nameRequestWeek(3, 7)).toBe(5);
+    expect(nameRequestWeek(3, 1)).toBe(3);
+    expect(nameRequestWeek(2, 4)).toBe(2);
   });
 });
