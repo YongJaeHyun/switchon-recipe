@@ -19,7 +19,7 @@ interface FirstWeekStore {
   prep: PrepState;
   // 1주차 일별 안내 카드를 닫은 날 (yyyy-MM-dd, KST). 그날만 숨김
   guideDismissedDay: string | null;
-  // 완주 축하 시트를 이미 보여준 날들 (yyyy-MM-dd, KST)
+  // 완주 축하 시트를 이미 보여준 날들 (celebrationKey: "yyyy-MM-dd@시작일", 예전 기록은 yyyy-MM-dd만, KST)
   celebratedDays: string[];
 
   togglePrep: (startDate: string | null, id: PrepItemId) => void;
