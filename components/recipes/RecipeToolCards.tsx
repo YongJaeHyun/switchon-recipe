@@ -3,7 +3,9 @@ import { PassBadge } from 'components/common/PassBadge';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import { TrialBadge } from 'components/common/TrialBadge';
-import { RecipeByNameSheet, useRecipeByNameSheet } from 'components/recipeByName/RecipeByNameSheet';
+import { PassOnlyModal } from 'components/common/PassOnlyModal';
+import { RecipeByNameSheet } from 'components/recipeByName/RecipeByNameSheet';
+import { useRecipeByNameEntry } from 'hooks/useRecipeByNameEntry';
 import { type Href, router } from 'expo-router';
 import { useBillingAvailable } from 'hooks/useBillingAvailable';
 import { usePass } from 'hooks/usePass';
@@ -16,11 +18,7 @@ import { getWeekAndDay } from 'utils/date';
 import { useUserStore } from 'stores/userStore';
 import { foodCheckEntryState } from 'utils/foodCheckTrial';
 import type { TrialEntryState } from 'utils/passTrial';
-import {
-  RECIPE_BY_NAME_DESCRIPTION,
-  RECIPE_BY_NAME_TITLE,
-  recipeByNameEntryState,
-} from 'utils/recipeByName';
+import { RECIPE_BY_NAME_DESCRIPTION, RECIPE_BY_NAME_TITLE } from 'utils/recipeByName';
 import { shouldShowPremiumEntry } from 'utils/passScreen';
 import { isRecommendLocked } from 'utils/recommendForm';
 
@@ -88,7 +86,15 @@ function ToolCard({ title, description, icon, badge, onPress }: ToolCardProps) {
 }
 
 // 먹고 싶은 음식으로 만들기: 다른 도구보다 넓게, 안에 입력칸 모양을 넣어 "이름을 적는 기능"임을 바로 보이게 한다
-function RecipeByNameCard({ entry, onPress }: { entry: TrialEntryState; onPress(): void }) {
+function RecipeByNameCard({
+  entry,
+  locked,
+  onPress,
+}: {
+  entry: TrialEntryState;
+  locked: boolean;
+  onPress(): void;
+}) {
   return (
     <RippleButton
       outerClassName="border border-green-600 bg-white"
@@ -106,7 +112,7 @@ function RecipeByNameCard({ entry, onPress }: { entry: TrialEntryState; onPress(
           <Text className="text-sm text-neutral-500">{RECIPE_BY_NAME_DESCRIPTION}</Text>
         </View>
         {entry.kind === 'trial' && <TrialBadge remaining={entry.remaining} />}
-        {entry.kind === 'locked' && <PassBadge locked />}
+        {locked && <PassBadge locked />}
       </View>
       <View className="w-full flex-row items-center gap-2 rounded-full bg-neutral-100 px-4 py-2.5">
         <MaterialIcons name="restaurant" size={16} color={colors.neutral[400]} />
@@ -118,7 +124,8 @@ function RecipeByNameCard({ entry, onPress }: { entry: TrialEntryState; onPress(
 }
 
 // 패스를 팔지 않고 권한도 없으면 숨긴다. 권한이 없으면 누를 때 usePremiumGate가 결제 화면으로 보낸다.
-// 음식 판정(패스 없이 3번)·먹고 싶은 음식으로 만들기(2번)는 무료 체험이 남았으면 판매 여부와 관계없이 보이고 바로 쓴다.
+// 음식 판정(패스 없이 3번)은 무료 체험이 남았으면 판매 여부와 관계없이 보이고 바로 쓴다.
+// 먹고 싶은 음식으로 만들기는 늘 보이고, 패스·체험이 없으면 누를 때 "패스 기능이에요" 창으로 묻는다 (useRecipeByNameEntry)
 export function RecipeToolCards() {
   const { status } = usePass();
   const billingAvailable = useBillingAvailable();
@@ -127,8 +134,7 @@ export function RecipeToolCards() {
 
   const premiumEntry = shouldShowPremiumEntry(status, billingAvailable);
   const foodCheck = foodCheckEntryState(status, billingAvailable);
-  const byName = recipeByNameEntryState(status, billingAvailable);
-  const byNameSheet = useRecipeByNameSheet();
+  const byName = useRecipeByNameEntry();
   const { week, day } = getWeekAndDay(startDate);
 
   const cards = TOOLS.flatMap((tool) => {
@@ -166,26 +172,22 @@ export function RecipeToolCards() {
     ];
   });
 
-  if (cards.length === 0 && byName.kind === 'hidden') return null;
+  if (cards.length === 0 && !byName.visible) return null;
 
   return (
     <View className="gap-3">
-      {byName.kind !== 'hidden' && (
+      {byName.visible && (
         <RecipeByNameCard
-          entry={byName}
-          // 체험을 다 썼으면 결제 화면으로 (usePremiumGate). 남은 횟수를 모르면 서버 판단에 맡기고 연다
-          onPress={
-            byName.kind === 'locked' ? gate(() => byNameSheet.open()) : () => byNameSheet.open()
-          }
+          entry={byName.entry}
+          locked={byName.locked}
+          onPress={() => byName.press()}
         />
       )}
       {cards.map((card) => (
         <ToolCard key={card.title} {...card} />
       ))}
-      <RecipeByNameSheet
-        request={byNameSheet.request}
-        trialRemaining={byName.kind === 'trial' ? byName.remaining : null}
-      />
+      <RecipeByNameSheet request={byName.sheetRequest} trialRemaining={byName.trialRemaining} />
+      <PassOnlyModal {...byName.passModalProps} />
     </View>
   );
 }
