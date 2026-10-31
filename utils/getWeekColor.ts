@@ -36,9 +36,9 @@ const getWeekColorHex = (week: number) => {
   else return '';
 };
 
-// 주차 색으로 채운 칩·배지 위 글자색. 밝은 주차 색(분홍·노랑·연두·보라)에는 흰 글자 대비가 3:1도 안 돼서
-// 어두운 글자를 쓰고, 검정(유지기)에만 흰 글자 (모두 4.5:1 이상)
-const getWeekOnColorHex = (week: number) => (week >= 5 ? colors.white : colors.neutral[900]);
+// 주차 색으로 채운 칩·배지 위 글자색: 늘 흰색 (운영자 결정 2026-11-01, 레시피 주차 칩과 통일).
+// 밝은 주차 색(노랑 등)은 대비가 낮으니 쓰는 곳에서 글자를 굵게 둔다
+const getWeekOnColorHex = (_week: number) => colors.white;
 
 // 흰 바탕 위 주차 글자색. 주차 색 그대로는 글자로 읽기 어려워 같은 계열의 진한 색 (4.5:1 이상)
 const getWeekInkHex = (week: number) => {

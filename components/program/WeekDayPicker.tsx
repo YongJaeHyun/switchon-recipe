@@ -25,7 +25,7 @@ const LABEL_FONT_SCALE_MAX = 1.2;
 const weekLabel = (week: number) => (week >= MAINTENANCE_WEEK ? '유지기' : `${week}주차`);
 
 // "지금 몇 주차 며칠인가요?" — 주차 칩(1~4주차·유지기)과 일차 칩(1~7일). 주차마다 그 주차 색을 쓴다
-// (테두리·채움은 주차 색, 글자는 대비 4.5:1 이상인 getWeekOnColorHex·getWeekInkHex).
+// (테두리·채움은 주차 색, 채운 칸 글자는 흰색 getWeekOnColorHex, 빈 칸 글자는 getWeekInkHex).
 // 유지기는 일차를 따지지 않아 일차 칩 대신 안내 한 줄을 보여 준다 (5주차 1일로 계산)
 export function WeekDayPicker({ week, day, onChange, disabled }: WeekDayPickerProps) {
   const isMaintenance = week >= MAINTENANCE_WEEK;
@@ -87,7 +87,7 @@ export function WeekDayPicker({ week, day, onChange, disabled }: WeekDayPickerPr
                 <Text
                   numberOfLines={1}
                   maxFontSizeMultiplier={LABEL_FONT_SCALE_MAX}
-                  className="font-semibold"
+                  className={selected ? 'font-bold' : 'font-semibold'}
                   style={{
                     color: selected
                       ? getWeekOnColorHex(week)
