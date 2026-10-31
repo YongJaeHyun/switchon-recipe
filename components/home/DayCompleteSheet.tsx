@@ -2,11 +2,13 @@ import { BottomSheetView } from '@gorhom/bottom-sheet';
 import { BottomSheetMethods } from '@gorhom/bottom-sheet/lib/typescript/types';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
+import { KakaoShareButton } from 'components/share/KakaoShareButton';
 import { weekCompleteLottie } from 'const/assets';
 import LottieView from 'lottie-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import colors from 'tailwindcss/colors';
+import { shareInvite } from 'utils/shareKakao';
 import { week1GuideFor } from 'utils/week1Guide';
 import { CustomBottomSheet } from '../common/CustomBottomSheet';
 
@@ -48,6 +50,12 @@ export function DayCompleteSheet({ day, onClose }: { day: number | null; onClose
                 <Text className="text-neutral-700">{guide.tomorrow}</Text>
               </View>
             )}
+
+            <KakaoShareButton
+              label="👥 같이 할 사람 초대하기"
+              onPress={shareInvite}
+              className="mb-3 w-full"
+            />
 
             <RippleButton
               onPress={() => sheetRef.current?.close()}

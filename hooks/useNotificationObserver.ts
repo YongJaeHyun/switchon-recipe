@@ -1,8 +1,11 @@
 import * as Notifications from 'expo-notifications';
 import { Href, router } from 'expo-router';
 import { useEffect } from 'react';
+import { Alert } from 'react-native';
 import { useNotificationGateStore } from 'stores/notificationGateStore';
 import { useUserStore } from 'stores/userStore';
+import { getKoreanDateString } from 'utils/date';
+import { inviteNotice } from 'utils/kakaoShare';
 import { afterLoginLinkAction, notificationTapAction } from 'utils/notificationGate';
 import { captureError } from 'utils/sendError';
 import { Maybe } from '../types/common';
@@ -39,9 +42,23 @@ const flushAfterLoginHref = () => {
   openHref(afterLoginHref);
 };
 
+// 카톡으로 받은 같이 하자 초대가 남았는데 탭이 떴으면 이미 시작일이 있는 사람이다 (새 사용자는 온보딩이 쓰고 지운다).
+// 시작일은 그대로 두고 친구 시작일만 알려 준다
+const flushPendingInvite = () => {
+  const { phase, pendingInvite, setPendingInvite } = useNotificationGateStore.getState();
+  if (!pendingInvite) return;
+  const { id, is_onboarded } = useUserStore.getState();
+  if (afterLoginLinkAction({ phase, userId: id, isOnboarded: is_onboarded }) !== 'open') return;
+  setPendingInvite(null);
+  const notice = inviteNotice(pendingInvite, getKoreanDateString({ formatType: 'date' }));
+  // 토스트는 링크로 화면이 다시 그려질 때 사라질 수 있어 닫을 때까지 남는 알림창으로
+  if (notice) Alert.alert(notice.title, notice.subtitle, [{ text: '확인' }]);
+};
+
 const flushDeferredHrefs = () => {
   flushPendingHref();
   flushAfterLoginHref();
+  flushPendingInvite();
 };
 
 // 누른 알림 처리: 이동은 미뤄 두고, 같은 알림을 다시 처리하지 않게(개발 중 다시 불러오기·안드로이드 재실행) 지운다

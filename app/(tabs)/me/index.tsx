@@ -28,6 +28,7 @@ import { requireOnline } from 'utils/network';
 import { cancelAccountAlarms } from 'utils/notifications';
 import { formatPassRemaining } from 'utils/passDisplay';
 import { getDeleteAccountMessage, getPassRemainingDays, isPassOnSale } from 'utils/passScreen';
+import { shareInvite } from 'utils/shareKakao';
 import { clearCachedUser } from 'utils/userCache';
 
 interface MenuButtonProps {
@@ -141,6 +142,11 @@ export default function MeScreen() {
             <StartDateRow onPress={() => startDateSheetRef.current?.expand()} />
             <WeightReminderToggle />
             <MealAlarmSetting />
+            <MenuButton
+              title="같이 할 사람 초대하기"
+              icon={<MaterialIcons name="group-add" size={24} color={colors.neutral[600]} />}
+              onPress={shareInvite}
+            />
             <MenuButton
               title="공지사항"
               icon={<MaterialIcons name="campaign" size={24} color={colors.neutral[600]} />}

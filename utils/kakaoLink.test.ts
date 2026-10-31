@@ -59,6 +59,29 @@ describe('parseKakaoLink (카톡 메시지 버튼으로 연 주소 해석)', () 
   });
 });
 
+describe('parseKakaoLink: 같이 하자 초대 (invite=시작일)', () => {
+  it('시작일을 꺼낸다', () => {
+    expect(parseKakaoLink(link('invite=2026-11-02'))).toEqual({
+      type: 'invite',
+      startDate: '2026-11-02',
+    });
+    expect(parseKakaoLink(link('invite=2026-11-02', 'kakao1234abcd://kakaolink'))).toEqual({
+      type: 'invite',
+      startDate: '2026-11-02',
+    });
+  });
+
+  it('날짜가 깨졌으면 null', () => {
+    expect(parseKakaoLink(link('invite='))).toBeNull();
+    expect(parseKakaoLink(link('invite=2026-13-01'))).toBeNull();
+    expect(parseKakaoLink(link('invite=tomorrow'))).toBeNull();
+  });
+
+  it('레시피가 같이 있으면 레시피가 먼저', () => {
+    expect(parseKakaoLink(`${recipeLink}&invite=2026-11-02`)?.type).toBe('recipe');
+  });
+});
+
 describe('recipeDetailHref', () => {
   it('레시피 JSON을 주소에 안전하게 넣는다 (&·% 같은 글자가 있어도)', () => {
     const href = recipeDetailHref(recipe);
@@ -92,6 +115,25 @@ describe('kakaoLinkRoute (받은 사람을 어디로 보낼지)', () => {
     expect(kakaoLinkRoute({ target, isLoggedIn: true, isOnboarded: undefined })).toEqual({
       href: '/',
       afterLoginHref: recipeDetailHref(recipe),
+    });
+  });
+
+  it('초대: 이미 시작한 사람은 홈으로 (안내만), 아니면 시작 화면 → 온보딩에서 친구 시작일을 고른다', () => {
+    const invite = { type: 'invite', startDate: '2026-11-02' } as const;
+    expect(kakaoLinkRoute({ target: invite, isLoggedIn: true, isOnboarded: true })).toEqual({
+      href: '/(tabs)/home',
+      afterLoginHref: null,
+      invite: '2026-11-02',
+    });
+    expect(kakaoLinkRoute({ target: invite, isLoggedIn: false, isOnboarded: null })).toEqual({
+      href: '/',
+      afterLoginHref: null,
+      invite: '2026-11-02',
+    });
+    expect(kakaoLinkRoute({ target: invite, isLoggedIn: true, isOnboarded: false })).toEqual({
+      href: '/',
+      afterLoginHref: null,
+      invite: '2026-11-02',
     });
   });
 
