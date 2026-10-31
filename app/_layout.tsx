@@ -18,7 +18,6 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import 'react-native-url-polyfill/auto';
-import '../config/CalendarConfig';
 import '../global.css';
 import '../utils/polyfills';
 
