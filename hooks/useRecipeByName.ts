@@ -5,7 +5,7 @@ import { queryClient } from 'lib/queryClient';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { requireOnline } from 'utils/network';
 import { isPassOnSale } from 'utils/passScreen';
-import { showInfoToast } from 'utils/showToast';
+import { showInfoToast, showRecipeReadyToast } from 'utils/showToast';
 import { useBillingAvailable } from './useBillingAvailable';
 import { usePass } from './usePass';
 import { useQuotaGate } from './useQuotaGate';
@@ -26,11 +26,16 @@ export const useRecipeByName = ({ onSuccess }: { onSuccess(): void }) => {
   const billingAvailable = useBillingAvailable();
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const controller = useRef<AbortController>(null);
   const lastRequest = useRef<RecipeByNameRequest | null>(null);
+  // 만드는 중에 화면이 사라져도(탐색 결과가 바뀌는 등) 요청은 끊지 않고, 끝나면 "완성됐어요" 알림으로 건넨다
+  // (재료로 만들기 useRecipeCreation과 같다: 서버는 어차피 끝까지 만들고 횟수·비용을 쓴다)
+  const mounted = useRef(true);
 
   useEffect(() => {
-    return () => controller.current?.abort();
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
   }, []);
 
   const run = async () => {
@@ -38,18 +43,27 @@ export const useRecipeByName = ({ onSuccess }: { onSuccess(): void }) => {
     if (!request) return;
     setIsLoading(true);
     setMessage(null);
-    controller.current = new AbortController();
 
     try {
-      const outcome = await RecipeByNameAPI.create(request, controller.current.signal);
+      const outcome = await RecipeByNameAPI.create(request);
       if (!outcome) return;
 
       switch (outcome.status) {
-        case 'ok':
+        case 'ok': {
           queryClient.removeQueries({ queryKey: [QueryKey.recentRecipes] });
+          const openRecipe = () =>
+            router.push(`/recipeDetail?recipe=${JSON.stringify(outcome.recipe)}`);
+          if (!mounted.current) {
+            showRecipeReadyToast({
+              recipeName: outcome.recipe.recipe_name ?? '',
+              onPress: openRecipe,
+            });
+            return;
+          }
           onSuccess();
-          router.push(`/recipeDetail?recipe=${JSON.stringify(outcome.recipe)}`);
+          openRecipe();
           return;
+        }
         case 'rejected':
         case 'nameCheckLimit':
         case 'invalid':
@@ -71,7 +85,7 @@ export const useRecipeByName = ({ onSuccess }: { onSuccess(): void }) => {
           return;
       }
     } finally {
-      setIsLoading(false);
+      if (mounted.current) setIsLoading(false);
       // 무료 횟수·하루 한도 표시를 서버 값으로 다시 받는다
       void quotaGate.invalidateQuota();
       void queryClient.invalidateQueries({ queryKey: [QueryKey.pass] });
