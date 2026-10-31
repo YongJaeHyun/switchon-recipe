@@ -4,6 +4,7 @@ import {
   buildAllWeekLists,
   buildLowIngredientLists,
   buildZeroIngredientLists,
+  ingredientListsForWeek,
   ingredientsForWeek,
 } from './ingredientLists';
 
@@ -56,5 +57,24 @@ describe('ingredientsForWeek', () => {
   it('지금 주차보다 높은 주차 재료는 뺀다 (한 주 더 하기로 주차가 내려갔는데 정리를 못 한 경우)', () => {
     expect(ingredientsForWeek(list, 2).map((i) => i.name)).toEqual(['계란', '두부']);
     expect(ingredientsForWeek(list, 3)).toEqual(list);
+  });
+});
+
+describe('ingredientListsForWeek', () => {
+  it('고른 주차에 쓸 수 있는 재료만 남기고 빈 칸은 뺀다', () => {
+    const lists = ingredientListsForWeek(buildLowIngredientLists(list), 2);
+    expect(lists.map((l) => l.title)).toEqual(['1주차', '2주차']);
+    expect(names(lists[1].ingredientList)).toEqual(['두부']);
+  });
+
+  it('3주차부터는 전부 (탄수화물 칸 포함)', () => {
+    const lows = buildLowIngredientLists(list);
+    expect(ingredientListsForWeek(lows, 3)).toEqual(lows.filter((l) => l.ingredientList.length));
+    expect(ingredientListsForWeek(lows, 5).map((l) => l.title)).toEqual([
+      '탄수화물',
+      '1주차',
+      '2주차',
+      '3주차 +',
+    ]);
   });
 });

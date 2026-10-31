@@ -28,3 +28,12 @@ export const buildLowIngredientLists = (list: Ingredient[]): IngredientsProps[] 
 // 시작일을 바꿨을 때 선택 목록을 못 불러와 정리를 못 했어도, 잠긴 재료를 레시피 명령에 보내지 않는다
 export const ingredientsForWeek = <T extends { week: number }>(list: T[], userWeek: number): T[] =>
   list.filter((ingredient) => ingredient.week <= userWeek);
+
+// 레시피 만들기 화면의 재료 칸: 고른 주차에 쓸 수 있는 재료만, 남는 게 없는 칸은 숨긴다
+export const ingredientListsForWeek = (
+  lists: IngredientsProps[],
+  week: number
+): IngredientsProps[] =>
+  lists
+    .map((l) => ({ ...l, ingredientList: ingredientsForWeek(l.ingredientList, week) }))
+    .filter((l) => l.ingredientList.length > 0);

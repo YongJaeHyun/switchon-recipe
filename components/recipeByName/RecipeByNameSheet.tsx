@@ -7,12 +7,16 @@ import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import CreationLoadingOverlay from 'components/recipeCreation/CreationLoadingOverlay';
 import QuotaExceededModal from 'components/recipeCreation/QuotaExceededModal';
+import { WeekChips } from 'components/recipeCreation/WeekChips';
 import { useRecipeByName } from 'hooks/useRecipeByName';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, Keyboard, TouchableOpacity, View } from 'react-native';
+import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { carbTypeStyle } from 'utils/carbType';
+import { getWeekAndDay } from 'utils/date';
 import { cleanDishNameInput, DISH_NAME_MAX, RECIPE_BY_NAME_TITLE } from 'utils/recipeByName';
+import { defaultChosenWeek } from 'utils/recipeWeekChoice';
 
 export interface RecipeByNameOpenRequest {
   name: string;
@@ -45,6 +49,11 @@ export function RecipeByNameSheet({ request, trialRemaining }: RecipeByNameSheet
   const sheetRef = useRef<BottomSheetMethods>(null);
   const [name, setName] = useState('');
   const [isZeroCarb, setIsZeroCarb] = useState(false);
+  const startDate = useUserStore((state) => state.start_date);
+  const currentWeek = defaultChosenWeek(getWeekAndDay(startDate).week);
+  const [week, setWeek] = useState(currentWeek);
+  const currentWeekRef = useRef(currentWeek);
+  currentWeekRef.current = currentWeek;
 
   const creation = useRecipeByName({ onSuccess: () => sheetRef.current?.close() });
   const { clearMessage } = creation;
@@ -56,6 +65,8 @@ export function RecipeByNameSheet({ request, trialRemaining }: RecipeByNameSheet
     if (!request) return;
     setName(cleanDishNameInput(request.name));
     setIsZeroCarb(request.isZeroCarb);
+    // 열 때마다 지금 주차로 시작한다
+    setWeek(currentWeekRef.current);
     clearMessageRef.current();
     sheetRef.current?.expand();
   }, [request]);
@@ -73,7 +84,7 @@ export function RecipeByNameSheet({ request, trialRemaining }: RecipeByNameSheet
   const submit = () => {
     if (!canSubmit) return;
     Keyboard.dismiss();
-    void creation.create({ name: trimmed, isZeroCarb });
+    void creation.create({ name: trimmed, isZeroCarb, week });
   };
 
   const footnote =
@@ -137,6 +148,17 @@ export function RecipeByNameSheet({ request, trialRemaining }: RecipeByNameSheet
               원래 피해야 하는 음식이면 스위치온식으로 바꿔 만들어요
             </Text>
           )}
+
+          <WeekChips
+            className="mb-3"
+            value={week}
+            currentWeek={currentWeek}
+            onChange={(next) => {
+              setWeek(next);
+              if (creation.message) clearMessage();
+            }}
+            disabled={creation.isCreating}
+          />
 
           <View className="mb-6 flex-row gap-3">
             {CARB_OPTIONS.map((zero) => {

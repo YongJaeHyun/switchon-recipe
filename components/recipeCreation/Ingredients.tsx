@@ -2,11 +2,9 @@ import { Text } from 'components/common/Text';
 import { useLastPathname } from 'hooks/useLastPathname';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { FlatList, View } from 'react-native';
-import { useUserStore } from 'stores/userStore';
 import { RecipeType } from 'types/database';
 import { Ingredient as IngredientType } from 'types/recipe';
 import { chunkArray } from 'utils/chunkArray';
-import { getWeekAndDay } from 'utils/date';
 import { getWeekColor } from 'utils/getWeekColor';
 import Ingredient from './Ingredient';
 
@@ -16,10 +14,18 @@ export interface IngredientsProps {
   ingredientList: IngredientType[];
 }
 
-export default function Ingredients({ title, week, ingredientList }: IngredientsProps) {
+interface IngredientsSectionProps extends IngredientsProps {
+  // 화면에서 고른 주차. 이보다 높은 주차 재료는 잠근다
+  selectableWeek: number;
+}
+
+export default function Ingredients({
+  title,
+  week,
+  ingredientList,
+  selectableWeek,
+}: IngredientsSectionProps) {
   const type = useLastPathname() as RecipeType;
-  const startDate = useUserStore((state) => state.start_date);
-  const { week: userWeek } = getWeekAndDay(startDate);
 
   const { selectedIngredients } = useSelectedIngredients({ type });
   const chunkedList = chunkArray(ingredientList, week === 1 ? 3 : 2);
@@ -41,7 +47,7 @@ export default function Ingredients({ title, week, ingredientList }: Ingredients
                 week={ingredient.week}
                 isCarbohydrate={ingredient.isCarbohydrate}
                 isSelected={selectedIngredients.some((i) => i.name === ingredient.name)}
-                disabled={ingredient.week > userWeek}
+                disabled={ingredient.week > selectableWeek}
               />
             ))}
           </View>
