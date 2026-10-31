@@ -6,7 +6,9 @@ import {
   parseNameCheckResponse,
   RECIPE_BY_NAME_TRIAL_LIMIT,
   recipeByNameTrialRemaining,
+  parseChosenWeek,
   recipeWeekOf,
+  resolveRuleWeek,
   sanitizeDishName,
 } from '../../_shared/recipeNameCheck.ts';
 
@@ -168,5 +170,53 @@ describe('buildRecipeByNameCommand', () => {
     expect(command).toContain('week 2.');
     expect(command).toContain('normally avoided');
     expect(command).toContain('면 대신 두부면; 저당 소스');
+  });
+});
+
+describe('parseChosenWeek', () => {
+  it('없으면 null (예전 앱: 시작일로 구함)', () => {
+    expect(parseChosenWeek(undefined)).toBeNull();
+  });
+
+  it.each([1, 2, 3, 4, 5])('%i주차는 그대로', (w) => {
+    expect(parseChosenWeek(w)).toBe(w);
+  });
+
+  it.each([0, 6, -1, 1.5, '2', null, true, Number.NaN, Number.POSITIVE_INFINITY])(
+    '%s → invalid',
+    (w) => {
+      expect(parseChosenWeek(w)).toBe('invalid');
+    }
+  );
+});
+
+describe('resolveRuleWeek', () => {
+  // 2026-10-20 시작, 2026-11-01(KST) → 2주차 6일차
+  const START = '2026-10-20';
+  const NOW = new Date('2026-11-01T03:00:00Z');
+
+  it('고른 주차가 없으면 시작일로 구한 주차·일차', () => {
+    expect(resolveRuleWeek(null, START, NOW)).toEqual({ week: 2, day: 6 });
+  });
+
+  it('고른 주차가 이번 주차면 실제 일차까지', () => {
+    expect(resolveRuleWeek(2, START, NOW)).toEqual({ week: 2, day: 6 });
+  });
+
+  it('다른 주차를 고르면 그 주차, 일차 규칙 없음', () => {
+    expect(resolveRuleWeek(1, START, NOW)).toEqual({ week: 1 });
+    expect(resolveRuleWeek(3, START, NOW)).toEqual({ week: 3 });
+    expect(resolveRuleWeek(5, START, NOW)).toEqual({ week: 5 });
+  });
+
+  it('시작 전(시작일 없음)은 1주차 1일차로 본다', () => {
+    expect(resolveRuleWeek(1, null, NOW)).toEqual({ week: 1, day: 1 });
+    expect(resolveRuleWeek(2, null, NOW)).toEqual({ week: 2 });
+  });
+
+  it('유지기(6주차 이상)에 유지기를 고르면 실제 주차·일차', () => {
+    // 2026-09-01 시작 → 61일 경과 → 9주차
+    expect(resolveRuleWeek(5, '2026-09-01', NOW)).toEqual({ week: 9, day: 6 });
+    expect(resolveRuleWeek(4, '2026-09-01', NOW)).toEqual({ week: 4 });
   });
 });

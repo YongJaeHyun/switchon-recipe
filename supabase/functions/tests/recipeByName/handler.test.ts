@@ -78,6 +78,10 @@ describe('입력·인증', () => {
     ['31자', { name: '가'.repeat(31), isZeroCarb: false }],
     ['탄수 선택 없음', { name: '김치찌개' }],
     ['JSON 아님', 'not json'],
+    ['주차 0', { name: '김치찌개', isZeroCarb: false, week: 0 }],
+    ['주차 6', { name: '김치찌개', isZeroCarb: false, week: 6 }],
+    ['주차 소수', { name: '김치찌개', isZeroCarb: false, week: 2.5 }],
+    ['주차 문자열', { name: '김치찌개', isZeroCarb: false, week: '2' }],
   ])('%s → 400, 차감 없음', async (_, body) => {
     const { deps, calls } = makeDeps();
     const res = await handleRecipeByName(request(body), deps);
@@ -212,6 +216,41 @@ describe('이름 판정', () => {
     // 2026-10-20 시작, 2026-11-01(KST) → 12일 경과 → 2주차 6일차
     expect(prompt).toContain('2주차예요.');
     expect(prompt).toContain('무탄수');
+  });
+
+  it('고른 주차가 이번 주차와 다르면 그 주차 규칙으로 판정·생성·저장 (일차 규칙 없음)', async () => {
+    const { deps } = makeDeps();
+    await handleRecipeByName(request({ ...VALID, week: 3 }), deps);
+    const prompt = vi.mocked(deps.checkName).mock.calls[0][0];
+    expect(prompt).toContain('3주차예요.');
+    const input = vi.mocked(deps.generate).mock.calls[0][0];
+    expect(input.week).toBe(3);
+    expect(input.command).toContain('week 3.');
+  });
+
+  it('1주차를 미리(다른 주차에) 고르면 일차 없이 1주차 규칙', async () => {
+    const { deps } = makeDeps();
+    await handleRecipeByName(request({ ...VALID, week: 1 }), deps);
+    const prompt = vi.mocked(deps.checkName).mock.calls[0][0];
+    expect(prompt).toContain('1주차예요.');
+    expect(prompt).not.toContain('일차예요');
+    expect(vi.mocked(deps.generate).mock.calls[0][0].week).toBe(1);
+  });
+
+  it('유지기(5)를 고르면 유지기 규칙, 저장 주차는 3', async () => {
+    const { deps } = makeDeps();
+    await handleRecipeByName(request({ ...VALID, week: 5 }), deps);
+    expect(vi.mocked(deps.checkName).mock.calls[0][0]).toContain('유지기');
+    const input = vi.mocked(deps.generate).mock.calls[0][0];
+    expect(input.week).toBe(3);
+    expect(input.command).toContain('week 4.');
+  });
+
+  it('고른 주차가 이번 주차면 지금과 같다', async () => {
+    const { deps } = makeDeps();
+    await handleRecipeByName(request({ ...VALID, week: 2 }), deps);
+    expect(vi.mocked(deps.checkName).mock.calls[0][0]).toContain('2주차예요.');
+    expect(vi.mocked(deps.generate).mock.calls[0][0].week).toBe(2);
   });
 
   it('adapt: 바뀐 이름·안내로 생성하고 adapt_note를 넘긴다', async () => {
