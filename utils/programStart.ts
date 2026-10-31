@@ -257,3 +257,15 @@ export function startDateChange(input: {
   if (!startChanged && programStart === current) return null;
   return { programStart, startChanged };
 }
+
+// 시작일을 바꾼 뒤 updated_at을 새로 찍을 단식 계획 행: 새 시작일의 오늘 주차 (단식이 있는 2주차부터, 시작 전이면 없음).
+// 기록 탭은 계획 행의 생성·수정 시각으로 "언제부터 이 시작일이 쓰였나"를 어림하는데, 같은 날 주차 맞추기를 되돌리면
+// 이미 있는 행이라 백필(insert-if-absent)이 아무것도 쓰지 않아 중간 시작일이 계속 이긴다. 이 행을 표시해 막는다
+export function planToTouch(
+  newStart: string,
+  todayKst: string
+): { start_date: string; week_index: number } | null {
+  const { week, beforeStart } = programWeekAndDay(newStart, todayKst);
+  if (beforeStart || week < 2) return null;
+  return { start_date: newStart.slice(0, 10), week_index: week };
+}

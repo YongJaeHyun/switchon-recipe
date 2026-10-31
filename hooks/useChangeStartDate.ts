@@ -1,10 +1,16 @@
+import { FastingPlanAPI } from 'api/FastingPlanAPI';
 import { StatisticsAPI } from 'api/StatisticsAPI';
 import { UserAPI } from 'api/UserAPI';
 import { QueryKey } from 'const/queryKey';
 import { queryClient } from 'lib/queryClient';
 import { getKoreanDateString } from 'utils/date';
 import { useUserStore } from 'stores/userStore';
-import { startDateChange, startDateCleanup, type StartDateChangeKind } from 'utils/programStart';
+import {
+  planToTouch,
+  startDateChange,
+  startDateCleanup,
+  type StartDateChangeKind,
+} from 'utils/programStart';
 import { useSelectedIngredients } from './useSelectedIngredients';
 
 interface ChangeStartDateOptions {
@@ -46,9 +52,14 @@ export function useChangeStartDate() {
     // 같은 시작일(회차 시작일만 바뀜)이면 정리하지 않는다 (오늘 기록한 할 일 완료율이 지워져 체크리스트와 어긋나지 않게)
     if (!change.startChanged) return true;
 
+    const today = getKoreanDateString({ formatType: 'date' });
+    // 이번 주차 단식 계획이 이미 있으면(같은 날 주차 맞추기를 되돌림 등) 표시해, 기록 탭이 오늘부터 새 시작일 계획을 쓰게 한다
+    const touch = planToTouch(newStart, today);
+    if (touch) void FastingPlanAPI.touch(touch);
+
     const plan = startDateCleanup({
       newStart,
-      today: getKoreanDateString({ formatType: 'date' }),
+      today,
       low: lowIngredients,
       zero: zeroIngredients,
     });

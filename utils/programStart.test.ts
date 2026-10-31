@@ -8,6 +8,7 @@ import {
   daysUntilStart,
   groupPastStarts,
   nextProgramStart,
+  planToTouch,
   startDateChange,
   PROGRAM_CHAIN_DAYS,
   programStartOf,
@@ -746,5 +747,26 @@ describe('revalidateTodayPlan (시작일을 모르면 아무것도 하지 않는
       })
     );
     expect(plan?.resetTodos).toBe(true);
+  });
+});
+
+describe('planToTouch (시작일을 바꾼 뒤 표시할 이번 주차 단식 계획)', () => {
+  it('새 시작일의 오늘 주차 계획', () => {
+    expect(planToTouch('2026-10-01', '2026-10-16')).toEqual({
+      start_date: '2026-10-01',
+      week_index: 3,
+    });
+  });
+
+  it('1주차(단식 없음)나 시작 전이면 없다', () => {
+    expect(planToTouch('2026-10-12', '2026-10-16')).toBeNull();
+    expect(planToTouch('2026-10-17', '2026-10-16')).toBeNull();
+  });
+
+  it('시각이 붙은 시작일도 날짜로', () => {
+    expect(planToTouch('2026-10-01T00:00:00+09:00', '2026-10-16')).toEqual({
+      start_date: '2026-10-01',
+      week_index: 3,
+    });
   });
 });
