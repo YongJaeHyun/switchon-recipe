@@ -2,7 +2,7 @@ import { RecipeByNameAPI } from 'api/RecipeByNameAPI';
 import { QueryKey } from 'const/queryKey';
 import { router } from 'expo-router';
 import { queryClient } from 'lib/queryClient';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { requireOnline } from 'utils/network';
 import { isPassOnSale } from 'utils/passScreen';
 import { showInfoToast } from 'utils/showToast';
@@ -81,12 +81,16 @@ export const useRecipeByName = ({ onSuccess }: { onSuccess(): void }) => {
     return requireOnline(run)();
   };
 
+  // 시트가 이 함수를 여는 effect의 의존성으로 쓴다. 렌더마다 새로 만들면 effect가 매번 다시 돌아
+  // 입력한 이름이 처음 값으로 되돌아간다 (입력이 안 되는 것처럼 보임)
+  const clearMessage = useCallback(() => setMessage(null), []);
+
   return {
     isLoading,
     // 생성 중이거나 광고 보상을 기다리는 중
     isCreating: isLoading || quotaGate.isWaitingBonus,
     message,
-    clearMessage: () => setMessage(null),
+    clearMessage,
     create,
     remainingText: quotaGate.remainingText,
     // QuotaExceededModal에 펼쳐 넘긴다 (광고 보상 뒤 같은 이름으로 다시 만든다)

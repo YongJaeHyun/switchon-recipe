@@ -48,14 +48,17 @@ export function RecipeByNameSheet({ request, trialRemaining }: RecipeByNameSheet
 
   const creation = useRecipeByName({ onSuccess: () => sheetRef.current?.close() });
   const { clearMessage } = creation;
+  // 여는 요청이 바뀔 때만 이름을 채운다. 다른 값(clearMessage 등)이 바뀔 때 다시 돌면 입력 중인 이름이 지워진다
+  const clearMessageRef = useRef(clearMessage);
+  clearMessageRef.current = clearMessage;
 
   useEffect(() => {
     if (!request) return;
     setName(cleanDishNameInput(request.name));
     setIsZeroCarb(request.isZeroCarb);
-    clearMessage();
+    clearMessageRef.current();
     sheetRef.current?.expand();
-  }, [request, clearMessage]);
+  }, [request]);
 
   // 만드는 중에는 뒤로 가기로 빠져나가지 않는다 (탭 화면이라 나가면 완성된 레시피로 넘어가지 못함)
   useEffect(() => {
