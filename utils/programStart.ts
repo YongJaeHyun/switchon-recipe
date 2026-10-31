@@ -80,6 +80,35 @@ export function todayRevalidation(input: {
   };
 }
 
+// 시작일 상태. loading = 유저를 아직 불러오지 않음(앱을 막 켜 store가 기본값, 로그아웃 직후) — 이때 비어 있는
+// 시작일은 "없음"이 아니라 "모름"이다. none = 불러온 유저에게 시작일이 없음. set = 시작일 있음
+export type StartDateStatus = 'loading' | 'none' | 'set';
+
+export function startDateStatus(input: {
+  userId: string | null | undefined;
+  startDate: string | null | undefined;
+}): StartDateStatus {
+  if (!input.userId) return 'loading';
+  return input.startDate ? 'set' : 'none';
+}
+
+// useKoreanToday 재검증 계획. 시작일이 없으면(모름·없음) null = 아무것도 하지 않는다:
+// 빈 시작일을 1주차로 계산하면 저장 주차가 1로 내려가고(할 일·단식 서버 초기화), 진짜 시작일을 불러오면
+// 다시 "주차가 올라갔다"로 보여 할 일·단식을 또 지우고 이미 본 주차 팝업을 다시 연다
+export function revalidateTodayPlan(input: {
+  userId: string | null | undefined;
+  startDate: string | null | undefined;
+  today: string;
+  prevWeek: number;
+  prevDay: number;
+  isChecked: boolean;
+}): ReturnType<typeof todayRevalidation> | null {
+  const { userId, startDate, today, prevWeek, prevDay, isChecked } = input;
+  if (startDateStatus({ userId, startDate }) !== 'set') return null;
+  const { week, day, beforeStart } = programWeekAndDay(startDate, today);
+  return todayRevalidation({ week, day, beforeStart, prevWeek, prevDay, isChecked });
+}
+
 // 시작 전 카드 제목 (daysUntilStart ≥ 1)
 export function startCountdownLabel(daysUntil: number): string {
   return daysUntil === 1 ? '내일부터 1주차가 시작돼요' : `${daysUntil}일 뒤 1주차가 시작돼요`;

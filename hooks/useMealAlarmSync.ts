@@ -9,7 +9,7 @@ import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
 import { getKoreanDateString } from 'utils/date';
 import { checksForSettingSync } from 'utils/mealAlarms';
 import { prepareLocalNotifications, syncMealAlarms } from 'utils/notifications';
-import { programWeekAndDay } from 'utils/programStart';
+import { programWeekAndDay, startDateStatus } from 'utils/programStart';
 
 // 내 정보에서 켜기·시각 바꾸기 뒤 바로 맞춘다 (오늘 탭이 아직 안 떠 있어도). 휠을 돌리는 동안
 // 매번 28개를 다시 걸지 않게 멈춘 뒤 한 번만
@@ -20,6 +20,8 @@ export function syncMealAlarmsSoon() {
   settingSyncTimer = setTimeout(() => {
     const { on, times } = useMealAlarmStore.getState();
     const { start_date: startDate, id: userId } = useUserStore.getState();
+    // 유저를 불러오기 전에는 시작일을 모른다: 빈 시작일로 맞추면 걸어 둔 알림을 지운다
+    if (startDateStatus({ userId, startDate }) === 'loading') return;
     const { week: storeWeek, day: storeDay } = useWeekCompletePopupStore.getState();
     const today = getKoreanDateString({ formatType: 'date' });
     const { week, day, beforeStart } = programWeekAndDay(startDate, today);
@@ -48,6 +50,9 @@ export async function turnOnMealAlarm(): Promise<boolean> {
 // 화면에 하나뿐인 곳에서만 쓴다 (오늘 탭: 시작 전 카드 또는 할 일 목록)
 export function useMealAlarmSync(checkedToday: number[] | null, enabled = true) {
   const startDate = useUserStore((state) => state.start_date);
+  const userId = useUserStore((state) => state.id);
+  // 유저를 불러오기 전(시작일 모름)에는 맞추지 않는다 (빈 시작일 = 알림 없음으로 보고 지우지 않게)
+  const startKnown = startDateStatus({ userId, startDate }) !== 'loading';
   const on = useMealAlarmStore((state) => state.on);
   const times = useMealAlarmStore((state) => state.times);
   const [foregroundAt, setForegroundAt] = useState(0);
@@ -71,8 +76,8 @@ export function useMealAlarmSync(checkedToday: number[] | null, enabled = true) 
 
   const checkedKey = checkedToday ? [...checkedToday].sort((a, b) => a - b).join(',') : null;
   useEffect(() => {
-    if (!enabled || !hydrated || checkedKey === null) return;
+    if (!enabled || !hydrated || !startKnown || checkedKey === null) return;
     const checked = checkedKey === '' ? [] : checkedKey.split(',').map(Number);
     void syncMealAlarms({ on, times, startDate, checkedToday: checked });
-  }, [enabled, hydrated, on, times, startDate, checkedKey, foregroundAt]);
+  }, [enabled, hydrated, startKnown, on, times, startDate, checkedKey, foregroundAt]);
 }

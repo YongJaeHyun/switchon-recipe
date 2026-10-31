@@ -4,6 +4,7 @@ import { AppState } from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import { weightReminderOnFrom } from 'utils/dailyReminder';
 import { syncDailyReminder } from 'utils/notifications';
+import { startDateStatus } from 'utils/programStart';
 
 // 다음 날 아침 리마인드를 앱을 열 때·돌아올 때·시작일이 바뀔 때 맞춘다 (오늘 것 취소, 내일 09:00 KST 것 예약).
 // 체중 기록 알림(09:00 서버 푸시)이 켜져 있거나 그 설정을 아직 모르면 걸지 않고 지우기만 한다
@@ -11,6 +12,9 @@ import { syncDailyReminder } from 'utils/notifications';
 // 로그인 뒤 탭 화면에 하나만 둔다 (app/(tabs)/_layout)
 export function useDailyReminderSync() {
   const startDate = useUserStore((state) => state.start_date);
+  const userId = useUserStore((state) => state.id);
+  // 유저를 불러오기 전(시작일 모름)에는 맞추지 않는다 (빈 시작일로 내일 리마인드를 지우지 않게)
+  const startKnown = startDateStatus({ userId, startDate }) !== 'loading';
   const { setting } = useUserSetting();
   const weightReminderOn = weightReminderOnFrom(setting);
   const [foregroundAt, setForegroundAt] = useState(0);
@@ -23,6 +27,7 @@ export function useDailyReminderSync() {
   }, []);
 
   useEffect(() => {
+    if (!startKnown) return;
     void syncDailyReminder({ startDate, weightReminderOn });
-  }, [startDate, weightReminderOn, foregroundAt]);
+  }, [startKnown, startDate, weightReminderOn, foregroundAt]);
 }

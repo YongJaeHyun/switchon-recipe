@@ -18,6 +18,8 @@ import {
   startDateCleanup,
   startDateForWeekDay,
   todayRevalidation,
+  startDateStatus,
+  revalidateTodayPlan,
   weekDaySelection,
 } from './programStart';
 
@@ -680,5 +682,69 @@ describe('startDateChange (저장할 것)', () => {
         newStart: '2026-10-31',
       })
     ).toEqual({ programStart: '2026-10-31', startChanged: false });
+  });
+});
+
+describe('startDateStatus (시작일을 아직 모르는지)', () => {
+  it('유저를 아직 불러오지 않았으면(id 없음) 시작일이 비어 있어도 loading', () => {
+    expect(startDateStatus({ userId: '', startDate: '' })).toBe('loading');
+    expect(startDateStatus({ userId: '', startDate: null })).toBe('loading');
+    expect(startDateStatus({ userId: undefined, startDate: undefined })).toBe('loading');
+  });
+
+  it('유저를 불러왔는데 시작일이 없으면 none', () => {
+    expect(startDateStatus({ userId: 'u1', startDate: null })).toBe('none');
+    expect(startDateStatus({ userId: 'u1', startDate: '' })).toBe('none');
+  });
+
+  it('시작일이 있으면 set', () => {
+    expect(startDateStatus({ userId: 'u1', startDate: '2026-10-07' })).toBe('set');
+  });
+});
+
+describe('revalidateTodayPlan (시작일을 모르면 아무것도 하지 않는다)', () => {
+  // 운영자 계정: 시작일 2026-10-07, 오늘 2026-10-31 → 4주차 4일. 4주차 팝업은 이미 봤다
+  const seen = { prevWeek: 4, prevDay: 4, isChecked: true, today: '2026-10-31' };
+
+  it('유저를 불러오기 전(시작일 빈 값)에는 null: 주차를 1로 내리거나 할 일·단식을 초기화하지 않는다', () => {
+    expect(revalidateTodayPlan({ ...seen, userId: '', startDate: '' })).toBeNull();
+    expect(revalidateTodayPlan({ ...seen, userId: '', startDate: null })).toBeNull();
+  });
+
+  it('시작일이 없는 유저도 null (맞출 주차가 없다)', () => {
+    expect(revalidateTodayPlan({ ...seen, userId: 'u1', startDate: null })).toBeNull();
+  });
+
+  it('시작일을 불러온 뒤 같은 주차·일차면 바꾸는 것 없음 (이미 본 팝업을 다시 열지 않음)', () => {
+    const plan = revalidateTodayPlan({ ...seen, userId: 'u1', startDate: '2026-10-07' });
+    expect(plan).toMatchObject({
+      week: 4,
+      day: 4,
+      weekChanged: false,
+      dayChanged: false,
+      resetFasting: false,
+      resetTodos: false,
+      openPopup: false,
+    });
+  });
+
+  it('시작일이 있으면 todayRevalidation과 같다 (날이 바뀌면 할 일 초기화)', () => {
+    const plan = revalidateTodayPlan({
+      ...seen,
+      prevDay: 3,
+      userId: 'u1',
+      startDate: '2026-10-07',
+    });
+    expect(plan).toEqual(
+      todayRevalidation({
+        week: 4,
+        day: 4,
+        beforeStart: false,
+        prevWeek: 4,
+        prevDay: 3,
+        isChecked: true,
+      })
+    );
+    expect(plan?.resetTodos).toBe(true);
   });
 });
