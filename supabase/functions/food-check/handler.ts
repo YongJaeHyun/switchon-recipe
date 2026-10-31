@@ -4,7 +4,7 @@
 // (평생 3번, 다 썼으면 402) -> 하루 한도 차감
 // -> (사진이면) 디코드·썸네일 생성 -> Gemini 판정·해석 -> 행 저장 -> (사진이면) 원본·썸네일 업로드
 // -> 행에 경로 기록. 사진 디코드를 Gemini보다 먼저 해서 깨진 사진은 AI 비용 없이 실패한다.
-// 한도 차감 뒤 실패(인식 실패 포함)는 모두 차감을 되돌린다(release). 무료 체험도 판정이 성공해
+// 한도 차감 뒤 실패(인식 실패 포함)는 모두 차감을 되돌린다(release, 패스 사용자만). 무료 체험도 판정이 성공해
 // 저장될 때만 쓴 것으로 남기고, 그 밖의 결과(인식 실패, 하루 한도 초과, 오류)는 되돌린다(releaseTrial).
 
 import {
@@ -282,7 +282,12 @@ async function checkWithQuota(
   let outcome;
   try {
     outcome = await runWithQuota(
-      { consume: () => deps.consume(uid), release: () => deps.release(uid) },
+      {
+        consume: () => deps.consume(uid),
+        // 무료 체험 사용자는 실패해도 하루 한도를 되돌리지 않는다 (체험 횟수만 되돌린다). 인식 실패를
+        // 되풀이해 Gemini를 끝없이 부르지 못하게 패스 없는 계정의 호출을 하루 한도로 묶는다
+        release: trialRemaining === null ? () => deps.release(uid) : async () => {},
+      },
       async () => {
         // 깨진 사진은 Gemini 호출 전에 실패시킨다 (차감은 runWithQuota가 되돌림)
         const images =

@@ -19,7 +19,11 @@ import type { FoodCheckInput, FoodCheckPhotoType, FoodCheckRecord } from 'types/
 import type { PassStatus } from 'types/pass';
 import { formatKoreanDate } from 'utils/date';
 import { formatPremiumRemaining, verdictLabel } from 'utils/foodCheckDisplay';
-import { formatFoodCheckTrial, getFoodCheckTrialRemaining } from 'utils/foodCheckTrial';
+import {
+  formatFoodCheckTrial,
+  getFoodCheckTrialRemaining,
+  isFoodCheckInputBlocked,
+} from 'utils/foodCheckTrial';
 import {
   IMAGE_TOO_LARGE_MESSAGE,
   isImageBase64TooLarge,
@@ -123,12 +127,18 @@ const TrialNotice = ({ remaining, canBuyPass }: { remaining: number; canBuyPass:
         <Text className={`font-bold ${exhausted ? 'text-neutral-700' : 'text-green-700'}`}>
           {formatFoodCheckTrial(remaining)}
         </Text>
-        {canBuyPass && (
+        {canBuyPass ? (
           <Text className="text-xs text-neutral-500">
             {exhausted
               ? '스위치온 패스로 계속 판정할 수 있어요'
               : '다 쓰면 스위치온 패스로 계속 판정할 수 있어요'}
           </Text>
+        ) : (
+          exhausted && (
+            <Text className="text-xs text-neutral-500">
+              지금은 더 판정할 수 없어요. 지난 판정은 아래 기록에서 볼 수 있어요
+            </Text>
+          )
         )}
       </View>
       {exhausted && canBuyPass && (
@@ -336,15 +346,19 @@ export default function FoodCheckScreen() {
     await runCheck({ type: 'text', text: validation.text });
   });
 
+  // 무료 체험을 다 썼고 패스도 살 수 없으면 입력을 막는다 (보내 봐야 402)
+  const blocked = isFoodCheckInputBlocked(passStatus, billingAvailable);
+
   // 결과 화면에서 성분표로 다시 보기를 누르고 돌아오면 성분표로 바꾸고 바로 카메라를 연다
   useEffect(() => {
     if (photoTypeParam !== 'label') return;
     router.setParams({ photoType: undefined });
     setPhotoType('label');
+    if (blocked) return;
     void guarded(() => pickPhoto('camera', 'label'))();
-  }, [photoTypeParam, guarded, pickPhoto]);
-
+  }, [photoTypeParam, blocked, guarded, pickPhoto]);
   const busy = checking;
+  const inputDisabled = busy || blocked;
   const hasAccess = passStatus?.hasAccess === true;
   // 하루 한도는 패스 사용자에게만 보이고, 패스가 없으면 무료 체험 안내를 보인다
   const remainingText = hasAccess && quota ? formatPremiumRemaining(quota) : null;
@@ -370,18 +384,18 @@ export default function FoodCheckScreen() {
         )}
 
         <View className="gap-3">
-          <PhotoTypeToggle value={photoType} onChange={setPhotoType} disabled={busy} />
+          <PhotoTypeToggle value={photoType} onChange={setPhotoType} disabled={inputDisabled} />
           <View className="flex-row gap-3">
             <PhotoButton
               icon="photo-camera"
               label="사진 찍기"
-              disabled={busy}
+              disabled={inputDisabled}
               onPress={guarded(() => pickPhoto('camera', photoType))}
             />
             <PhotoButton
               icon="photo-library"
               label="앨범에서 고르기"
-              disabled={busy}
+              disabled={inputDisabled}
               onPress={guarded(() => pickPhoto('library', photoType))}
             />
           </View>
@@ -397,15 +411,15 @@ export default function FoodCheckScreen() {
               value={text}
               onChangeText={setText}
               maxLength={MAX_FOOD_CHECK_TEXT_LENGTH}
-              editable={!busy}
+              editable={!inputDisabled}
               returnKeyType="search"
               onSubmitEditing={handleSubmitText}
             />
             <RippleButton
-              outerClassName={`bg-green-600 ${busy || !text.trim() ? 'opacity-50' : ''}`}
+              outerClassName={`bg-green-600 ${inputDisabled || !text.trim() ? 'opacity-50' : ''}`}
               rounded="lg"
               className="px-4 py-3"
-              disabled={busy || !text.trim()}
+              disabled={inputDisabled || !text.trim()}
               onPress={handleSubmitText}>
               <Text className="font-bold text-white">판정</Text>
             </RippleButton>

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { PassStatus } from 'types/pass';
 import {
   foodCheckEntryState,
+  isFoodCheckInputBlocked,
   formatFoodCheckTrial,
   getFoodCheckTrialRemaining,
 } from './foodCheckTrial';
@@ -91,5 +92,30 @@ describe('formatFoodCheckTrial', () => {
 
   it('다 쓰면 다 썼다는 문구', () => {
     expect(formatFoodCheckTrial(0)).toBe('무료 체험 3번을 모두 썼어요');
+  });
+});
+
+describe('isFoodCheckInputBlocked', () => {
+  it('무료 체험을 다 썼고 패스를 살 수 없으면 입력을 막는다', () => {
+    expect(isFoodCheckInputBlocked(status({ foodCheckTrialRemaining: 0 }, false), true)).toBe(true);
+    expect(isFoodCheckInputBlocked(status({ foodCheckTrialRemaining: 0 }), false)).toBe(true);
+  });
+
+  it('패스를 살 수 있으면 막지 않는다 (보내면 패스 안내)', () => {
+    expect(isFoodCheckInputBlocked(status({ foodCheckTrialRemaining: 0 }), true)).toBe(false);
+  });
+
+  it('무료 체험이 남았거나 패스가 있으면 막지 않는다', () => {
+    expect(isFoodCheckInputBlocked(status({ foodCheckTrialRemaining: 1 }, false), false)).toBe(
+      false
+    );
+    expect(
+      isFoodCheckInputBlocked(status({ hasAccess: true, foodCheckTrialRemaining: 0 }, false), false)
+    ).toBe(false);
+  });
+
+  it('상태를 모르거나 옛 서버(필드 없음)면 막지 않는다 (서버가 최종 판단)', () => {
+    expect(isFoodCheckInputBlocked(undefined, false)).toBe(false);
+    expect(isFoodCheckInputBlocked(status({}, false), false)).toBe(false);
   });
 });

@@ -36,3 +36,13 @@ export function formatFoodCheckTrial(remaining: number): string {
   if (remaining <= 0) return `무료 체험 ${FOOD_CHECK_TRIAL_LIMIT}번을 모두 썼어요`;
   return `무료 체험 ${remaining}번 남았어요`;
 }
+
+// 무료 체험을 다 썼는데 패스를 살 수도 없으면 보내 봐야 402뿐이라 입력을 막는다.
+// 상태를 모르거나 옛 서버(필드 없음)면 막지 않고 서버 판단에 맡긴다
+export function isFoodCheckInputBlocked(
+  status: PassStatus | undefined,
+  billingAvailable: boolean | undefined
+): boolean {
+  if (!status || status.hasAccess || status.foodCheckTrialRemaining === undefined) return false;
+  return getFoodCheckTrialRemaining(status) <= 0 && !isPassOnSale(status.sales, billingAvailable);
+}

@@ -16,7 +16,7 @@ create table if not exists public.user_trial (
 alter table public.user_trial enable row level security;
 revoke all on table public.user_trial from public, anon, authenticated;
 
--- 무료 판정 1번을 원자적으로 쓴다. 쓴 뒤 남은 횟수를 돌려주고, 이미 p_limit번을 다 썼으면 -1.
+-- 무료 판정 1번을 원자적으로 쓴다. 쓴 뒤 남은 횟수를 돌려주고, 이미 p_limit번을 다 썼거나 public.user 행이 없으면 -1.
 -- 행이 없으면 만든 뒤 조건부 update 한 번으로 늘리므로 동시 요청에도 p_limit을 넘지 않는다. service role 전용
 create or replace function public.consume_food_check_trial(p_uid uuid, p_limit int)
 returns int
@@ -28,9 +28,14 @@ as $$
 declare
   v_used int;
 begin
-  insert into public.user_trial (uid)
-  values (p_uid)
-  on conflict (uid) do nothing;
+  -- public.user 행이 없는 사용자(온보딩 전)는 FK 위반 → 500 대신 다 쓴 것처럼 -1 (food-check가 402)
+  begin
+    insert into public.user_trial (uid)
+    values (p_uid)
+    on conflict (uid) do nothing;
+  exception when foreign_key_violation then
+    return -1;
+  end;
 
   update public.user_trial
     set food_check_used = food_check_used + 1,
