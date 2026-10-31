@@ -55,7 +55,8 @@ export type ReportStatus = 'ready' | 'empty';
 // 화면에서 쓰는 리포트 한 건. stats/content는 parse*로 걸러서 깨진 행도 화면이 죽지 않게 한다
 export interface WeeklyReport {
   start_date: string;
-  week_index: number;
+  week_index: number; // 키 (상세 경로 /report/{start_date}/{week_index})
+  display_week: number | null; // 실제로 지낸 주차 (제목). null이면 week_index (reportDisplayWeek)
   status: ReportStatus;
   stats: WeeklyStats | null;
   content: ReportContent | null;

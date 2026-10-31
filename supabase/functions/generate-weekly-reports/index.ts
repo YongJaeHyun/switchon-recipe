@@ -35,7 +35,8 @@ const deps: GenerateReportsDeps = {
   now: () => new Date(),
 
   fetchUsers(today) {
-    // 오늘이 새 주차 1~3일차인 유저만 SQL에서 거른다 (service role 전용 함수)
+    // 오늘이 새 주차 1~3일차인 유저만 SQL에서 거른다 (service role 전용 함수).
+    // 다시 시작 직전 회차의 마지막 완료 주는 옛 시작일 행으로 함께 온다 (20261031000000 마이그레이션)
     return fetchAllPages(async (from, to) => {
       const { data, error } = await supabase
         .rpc('weekly_report_candidates', { p_today: today })
@@ -61,16 +62,20 @@ const deps: GenerateReportsDeps = {
     return fetchAllPages(async (from, to) => {
       const { data, error } = await supabase
         .from('weekly_report')
-        .select('start_date, week_index')
+        .select('start_date, week_index, display_week')
         .eq('uid', uid)
         .order('start_date')
         .order('week_index')
         .range(from, to);
       if (error) throw error;
-      return (data ?? []).map((r: { start_date: string; week_index: number }) => ({
-        start_date: String(r.start_date),
-        week_index: Number(r.week_index),
-      }));
+      return (data ?? []).map(
+        (r: { start_date: string; week_index: number; display_week: number | null }) => ({
+          start_date: String(r.start_date),
+          week_index: Number(r.week_index),
+          // 마이그레이션 전 행은 null → handler가 week_index로 본다
+          display_week: typeof r.display_week === 'number' ? r.display_week : null,
+        })
+      );
     });
   },
 

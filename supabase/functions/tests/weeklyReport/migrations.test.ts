@@ -114,3 +114,41 @@ describe('fasting/fasting_plan.start_minutes (요일별 단식 시작 시각)', 
     }
   });
 });
+
+describe('weekly_report.display_week (리포트 제목 = 실제로 지낸 주차)', () => {
+  const sql = () => flat(read('../../../migrations/20261031000000_weekly_report_display_week.sql'));
+
+  it('null 허용 열을 더하고 있던 행은 week_index로 채운다 (구버전 앱은 week_index만 읽는다)', () => {
+    expect(sql()).toContain(
+      'alter table public.weekly_report add column if not exists display_week integer null;'
+    );
+    expect(sql()).toContain(
+      'update public.weekly_report set display_week = week_index where display_week is null;'
+    );
+  });
+
+  it('엣지 함수가 표시 주차를 읽는다', () => {
+    const src = read('../../generate-weekly-reports/index.ts');
+    expect(src).toContain(".select('start_date, week_index, display_week')");
+  });
+
+  it('후보 함수가 다시 시작 직전 회차의 마지막 완료 주도 돌려준다 (감사 #3)', () => {
+    const s = sql();
+    expect(s).toMatch(
+      /create or replace function public\.weekly_report_candidates\(p_today date\) returns table \(uid uuid, start_date date\)/
+    );
+    expect(s).toMatch(/weekly_report_candidates[\s\S]*security definer/);
+    // 지난 시작일 = weekly_report·fasting_plan에 남은 시작일 중 회차 시작일 전 가장 최근
+    expect(s).toContain('from public.weekly_report');
+    expect(s).toContain('from public.fasting_plan');
+    expect(s).toMatch(/s\.start_date < e\.program/);
+    // 그 주가 끝난 뒤에 새 회차가 시작됐을 때만 (그 시작일로 지낸 마지막 주)
+    expect(s).toContain('p.program > p_today - (p_today - p.start_date) % 7 - 1');
+    expect(s).toContain(
+      'revoke all on function public.weekly_report_candidates(date) from public, anon, authenticated;'
+    );
+    expect(s).toContain(
+      'grant execute on function public.weekly_report_candidates(date) to service_role;'
+    );
+  });
+});

@@ -23,9 +23,20 @@ import {
   formatReportRange,
   groupReportsByProgram,
   isEmptyReport,
+  reportDisplayWeek,
+  reportWeekLabel,
 } from 'utils/reportDisplay';
 
-const ReportRow = ({ report, muted }: { report: WeeklyReport; muted?: boolean }) => {
+// programReports = 같은 회차의 리포트 (한 주 더 하기로 다시 지낸 주면 "N주차 · 한 번 더")
+const ReportRow = ({
+  report,
+  programReports,
+  muted,
+}: {
+  report: WeeklyReport;
+  programReports: WeeklyReport[];
+  muted?: boolean;
+}) => {
   const empty = isEmptyReport(report);
   const preview = empty ? '이번 주는 기록이 없어요' : report.content?.summary;
 
@@ -39,8 +50,10 @@ const ReportRow = ({ report, muted }: { report: WeeklyReport; muted?: boolean })
         <View className="flex-row items-center gap-2">
           <Text
             className="font-bold"
-            style={{ color: muted ? colors.neutral[500] : getWeekColorHex(report.week_index) }}>
-            {report.week_index}주차
+            style={{
+              color: muted ? colors.neutral[500] : getWeekColorHex(reportDisplayWeek(report)),
+            }}>
+            {reportWeekLabel(report, programReports)}
           </Text>
           {report.stats && (
             <Text className="text-xs text-neutral-400">
@@ -124,7 +137,11 @@ export function ReportSection() {
             <View className="gap-3">
               <Text className="text-lg font-bold text-neutral-800">이번 회차</Text>
               {current.map((report) => (
-                <ReportRow key={`${report.start_date}-${report.week_index}`} report={report} />
+                <ReportRow
+                  key={`${report.start_date}-${report.week_index}`}
+                  report={report}
+                  programReports={current}
+                />
               ))}
             </View>
           )}
@@ -146,6 +163,7 @@ export function ReportSection() {
                 <ReportRow
                   key={`${report.start_date}-${report.week_index}`}
                   report={report}
+                  programReports={group.reports}
                   muted={programKnown}
                 />
               ))}

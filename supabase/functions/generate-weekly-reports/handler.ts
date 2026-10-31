@@ -3,10 +3,11 @@
 // 매일 08:00 KST cron이 service role로 호출한다. 오늘(KST)이 start_date 기준 새 주차 1~3일차인 유저 중
 // 이용 권한이 있는 유저의 지난 주차 리포트를 만든다 (1일차 실행이 실패·시간 초과로 놓친 리포트를
 // 2·3일차 실행이 보충한다).
-// 여러 번 실행해도 안전하다: 이미 있는 리포트는 AI 호출 전에 건너뛰고, 저장은 키
-// (uid, start_date, week_index) 충돌 시 무시하며, 실제로 새로 들어간 경우에만 푸시한다.
-// 한 주 더 하기·주차 맞추기로 start_date가 바뀌면 같은 기간이 다른 키가 되므로, "이미 있는 리포트"는
-// 키가 아니라 실제 기간으로 본다 (isCoveredByExisting).
+// 여러 번 실행해도 안전하다: 같은 키(uid, start_date, week_index)의 리포트가 있으면 AI 호출 전에 건너뛰고,
+// 저장은 키 충돌 시 무시하며, 실제로 새로 들어간 경우에만 푸시한다.
+// 한 주 더 하기·주차 맞추기로 start_date가 바뀌면 같은 기간이 다른 키가 된다. 그래도 리포트는 만든다
+// (운영자 결정 2026-10-31: 한 주 더 하면 같은 7일 리포트가 하나 더 생기는 게 맞다). 대신 제목·푸시·
+// AI 문맥의 주차는 week_index가 아니라 실제로 지낸 주차(display_week, displayWeekFor)를 쓴다.
 
 import { isServiceRoleRequest } from '../_shared/serviceRole.ts';
 import { scheduleFrom } from '../_shared/fastingSchedule.ts';
@@ -62,7 +63,8 @@ export interface WeekData {
 export interface WeeklyReportRow {
   uid: string;
   start_date: string;
-  week_index: number;
+  week_index: number; // 키: start_date 기준 주차 (상세 경로 /report/{start_date}/{week_index})
+  display_week: number; // 제목: 실제로 지낸 주차 (displayWeekFor)
   stats: WeeklyStats;
   content: ReportContent | null;
   status: 'ready' | 'empty';
@@ -80,15 +82,17 @@ export interface NotificationRow {
 export interface ReportPeriod {
   start_date: string;
   week_index: number;
+  display_week: number | null; // 마이그레이션 전 행은 null → week_index
 }
 
 export interface GenerateReportsDeps {
   now(): Date;
   // 오늘이 새 주차 1~3일차인 유저 (전부, 페이지 처리는 구현이). 구현은 SQL 함수
-  // weekly_report_candidates(p_today)로 걸러 읽는다. handler도 reportWeekOf로 한 번 더 거른다
+  // weekly_report_candidates(p_today)로 걸러 읽는다. handler도 reportWeekOf로 한 번 더 거른다.
+  // 다시 시작 직전 회차의 마지막 완료 주는 같은 유저가 옛 시작일로 한 번 더 온다 (start_date < program_start)
   fetchUsers(today: string): Promise<ReportUserRow[]>;
   hasPremiumAccess(uid: string): Promise<boolean>;
-  // 유저의 리포트 키 전부 (리포트는 주 1개라 적다). 실제 기간이 겹치는지 handler가 본다
+  // 유저의 리포트 키·표시 주차 전부 (리포트는 주 1개라 적다). 같은 키 여부와 표시 주차를 handler가 본다
   fetchReportPeriods(uid: string): Promise<ReportPeriod[]>;
   // user.program_start (회차 시작일, yyyy-MM-dd). 없으면 null (구버전 앱·마이그레이션 전)
   fetchProgramStart(uid: string): Promise<string | null>;
@@ -112,23 +116,75 @@ export interface GenerateResult {
   failed: number;
 }
 
-// 이미 있는 리포트와 이만큼(일) 이상 겹치는 기간이면 그 주 리포트가 이미 있는 것으로 본다.
-// 7일 중 과반(4일): 같은 기간(7일)은 물론, 주차 맞추기로 며칠 어긋난 기간도 다시 만들지 않는다.
-// 3일 이하만 겹치면 대부분 새 날짜라 새 리포트를 만든다 (겹친 날은 두 리포트에 함께 들어간다)
+const dayMs = (day: string) => Date.parse(`${day.slice(0, 10)}T00:00:00Z`);
+
+// 새 리포트 기간이 이미 있는 리포트의 실제 기간(start_date + 7×(week_index−1) ~ +6일)과 이만큼(일) 이상
+// 겹치면 같은 주로 보고 그 리포트의 표시 주차를 이어받는다. 7일 중 과반(4일): 같은 기간(한 주 더 하기 직후)은
+// 물론, 주차 맞추기로 며칠 어긋난 기간도 같은 주. 3일 이하만 겹치면 대부분 새 날짜라 새 주로 본다
 export const OVERLAP_MIN_DAYS = 4;
 
-// range가 이미 있는 리포트의 실제 기간(start_date + 7×(week_index−1) ~ +6일)과 OVERLAP_MIN_DAYS 이상 겹치는지
-export function isCoveredByExisting(
-  range: { from: string; to: string },
-  reports: ReportPeriod[]
-): boolean {
-  return reports.some(
-    (r) =>
-      overlapDays(range, weekRange(r.start_date.slice(0, 10), r.week_index)) >= OVERLAP_MIN_DAYS
-  );
+const displayOf = (r: ReportPeriod) => r.display_week ?? r.week_index;
+const periodOf = (r: ReportPeriod) => weekRange(r.start_date.slice(0, 10), r.week_index);
+
+// 리포트를 만들 기간과 같은 회차의 리포트들. programStart = user.program_start (없으면 null).
+// 앱 groupReportsByProgram과 같은 경계(리포트 start_date 기준):
+// - 지금 회차: 시작일이 회차 시작일(baselineStartOf: program_start, 없거나 시작일보다 뒤면 start_date) 이후
+// - 지난 회차(다시 시작 직전 주 보충, weekly_report_candidates): startDate가 회차 시작일보다 앞이면 회차 시작일 전 리포트
+export function sameProgramReports<T extends ReportPeriod>(
+  reports: T[],
+  startDate: string,
+  programStart: string | null
+): T[] {
+  const start = startDate.slice(0, 10);
+  const program = programStart?.slice(0, 10);
+  if (program && /^\d{4}-\d{2}-\d{2}$/.test(program) && start < program) {
+    return reports.filter((r) => r.start_date.slice(0, 10) < program);
+  }
+  const from = baselineStartOf(programStart, start);
+  return reports.filter((r) => r.start_date.slice(0, 10) >= from);
 }
 
-const dayMs = (day: string) => Date.parse(`${day.slice(0, 10)}T00:00:00Z`);
+// 새 리포트의 표시 주차 = 실제로 지낸 주차. reports = 같은 회차의 리포트 (sameProgramReports)
+// 1. 기간이 OVERLAP_MIN_DAYS 이상 겹치는 리포트가 있으면 그 리포트의 표시 주차 (가장 많이 겹치는 것, 같으면 최근)
+//    예) 한 주 더 하기 뒤 (새 시작일, 1주차) = (옛 시작일, 2주차)와 같은 기간 → 2주차
+// 2. 가장 최근 리포트 바로 다음 기간이고, 그 사이 시작일이 바뀌었고(다른 start_date), week_index로는 주차가
+//    올라가지 않으면(한 주 더 하기·주차 미루기 전에 지낸 주) → 그 리포트 표시 주차 + 1
+//    예) 감사 #3: 3주차 1일차 08:00 전에 한 주 더 → (옛, 2주차)가 없고 (새, 1주차)가 그 기간 → 2주차
+// 3. 그 외 week_index. 한 주 더로 다시 지낸 주는 새 시작일 기준 주차라 같은 숫자가 다시 나온다
+//    (앱이 "N주차 · 한 번 더"로 구분). 주차 맞추기로 앞당겨 주차가 올라가면 사용자가 정한 주차를 따른다
+export function displayWeekFor(
+  target: { startDate: string; weekIndex: number },
+  reports: ReportPeriod[]
+): number {
+  const start = target.startDate.slice(0, 10);
+  const range = weekRange(start, target.weekIndex);
+  // 기간 최신 먼저, 같은 기간이면 시작일 최신 먼저
+  const byRecent = reports
+    .map((report) => ({ report, period: periodOf(report) }))
+    .sort(
+      (a, b) =>
+        dayMs(b.period.from) - dayMs(a.period.from) ||
+        (a.report.start_date < b.report.start_date ? 1 : -1)
+    );
+
+  let best: { report: ReportPeriod; days: number } | null = null;
+  for (const { report, period } of byRecent) {
+    const days = overlapDays(range, period);
+    if (days >= OVERLAP_MIN_DAYS && (!best || days > best.days)) best = { report, days };
+  }
+  if (best) return displayOf(best.report);
+
+  const latest = byRecent[0];
+  if (
+    latest &&
+    latest.report.start_date.slice(0, 10) !== start &&
+    dayMs(latest.period.to) + DAY_MS === dayMs(range.from) &&
+    displayOf(latest.report) + 1 > target.weekIndex
+  ) {
+    return displayOf(latest.report) + 1;
+  }
+  return target.weekIndex;
+}
 
 // 새 주차 몇 일차까지 지난 주차 리포트를 만들지 (1일차 + 보충 2일).
 // SQL 함수 weekly_report_candidates도 같은 값(% 7 < 3)을 쓴다. 바꾸면 함께 바꾼다
@@ -204,17 +260,22 @@ const processUser = async (
   startDate: string,
   weekIndex: number
 ): Promise<{ outcome: Outcome; notified: boolean; failed: boolean }> => {
-  const range = weekRange(startDate, weekIndex);
-  // 리포트가 있는지 먼저 본다 (리포트는 권한이 있던 유저에게만 만들어지므로 결과는 같고,
-  // 재시도 실행에서 이미 만든 유저의 권한 rpc를 아낀다). 키가 아니라 기간으로 본다:
-  // 한 주 더 하기 뒤 (새 시작일, 1주차)는 이미 만든 (옛 시작일, 2주차)와 같은 기간이다
-  if (isCoveredByExisting(range, await deps.fetchReportPeriods(uid))) {
+  // 같은 키의 리포트가 있는지 먼저 본다 (리포트는 권한이 있던 유저에게만 만들어지므로 결과는 같고,
+  // 재시도 실행에서 이미 만든 유저의 권한 rpc를 아낀다). 기간만 겹치는 다른 키는 건너뛰지 않는다
+  const reports = await deps.fetchReportPeriods(uid);
+  if (reports.some((r) => r.start_date.slice(0, 10) === startDate && r.week_index === weekIndex)) {
     return { outcome: 'existing', notified: false, failed: false };
   }
   if (!(await deps.hasPremiumAccess(uid)))
     return { outcome: 'noAccess', notified: false, failed: false };
 
-  const baselineStart = baselineStartOf(await deps.fetchProgramStart(uid), startDate);
+  const range = weekRange(startDate, weekIndex);
+  const programStart = await deps.fetchProgramStart(uid);
+  const baselineStart = baselineStartOf(programStart, startDate);
+  const displayWeek = displayWeekFor(
+    { startDate, weekIndex },
+    sameProgramReports(reports, startDate, programStart)
+  );
   const data = await deps.fetchWeekData({
     uid,
     startDate,
@@ -225,12 +286,13 @@ const processUser = async (
     toIso: kstMidnightIso(range.to, 1),
   });
   const known = normalizeWeekData(data);
-  const stats = computeWeeklyStats({
+  const computed = computeWeeklyStats({
     startDate,
     weekIndex,
     baselineStart,
     ...known,
-    fastingPlannedDays: plannedFastingDays(range, data.fastingPlanDays, weekIndex),
+    // 단식은 2주차부터: 지낸 주차로 본다 (한 주 더 하기 뒤 (새 시작일, 1주차)가 실제로는 2주차인 기간)
+    fastingPlannedDays: plannedFastingDays(range, data.fastingPlanDays, displayWeek),
     // 아직 결과를 답할 수 있는 단식은 실패가 아니라 응답 대기로 센다
     fastingSchedule: scheduleFrom({
       days: data.fastingPlanDays,
@@ -239,6 +301,9 @@ const processUser = async (
     }),
     now: deps.now(),
   });
+  // 저장하는 stats.weekIndex와 AI 문맥(주차별 몸 변화·다음 주 변화·기본 문장)은 표시 주차.
+  // 기간(range)은 키(start_date, week_index)로 이미 정했다
+  const stats: WeeklyStats = { ...computed, weekIndex: displayWeek };
 
   if (!hasAnyRecord(stats)) return { outcome: 'skipped', notified: false, failed: false };
 
@@ -247,6 +312,7 @@ const processUser = async (
     uid,
     start_date: startDate,
     week_index: weekIndex,
+    display_week: displayWeek,
     stats,
     content,
     status: stats.isEmpty ? 'empty' : 'ready',
@@ -258,7 +324,7 @@ const processUser = async (
   try {
     await deps.insertNotification({
       uid,
-      title: `${weekIndex}주차 리포트가 도착했어요`,
+      title: `${displayWeek}주차 리포트가 도착했어요`,
       body: '지난 한 주 기록을 정리했어요. 잘한 점과 다음 주 할 일을 확인해보세요.',
       href: `/report/${startDate}/${weekIndex}`,
       channel_id: REPORT_CHANNEL,

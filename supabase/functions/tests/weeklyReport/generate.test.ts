@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  displayWeekFor,
   generateWeeklyReports,
   handleGenerateWeeklyReports,
   reportWeekOf,
+  sameProgramReports,
   type GenerateReportsDeps,
   type NotificationRow,
   type WeekData,
@@ -71,7 +73,11 @@ const makeDeps = (
     fetchReportPeriods: vi.fn(async (uid: string) =>
       db.reports
         .filter((r) => r.uid === uid)
-        .map((r) => ({ start_date: r.start_date, week_index: r.week_index }))
+        .map((r) => ({
+          start_date: r.start_date,
+          week_index: r.week_index,
+          display_week: r.display_week,
+        }))
     ),
     fetchProgramStart: vi.fn(async () => null),
     fetchWeekData: vi.fn(async () => filledWeek()),
@@ -143,6 +149,7 @@ describe('generateWeeklyReports: 놓친 리포트 보충', () => {
       uid: 'day2',
       start_date: '2026-10-07',
       week_index: 1,
+      display_week: 1,
       stats: {} as WeeklyReportRow['stats'],
       content: null,
       status: 'ready',
@@ -160,6 +167,7 @@ describe('generateWeeklyReports: 놓친 리포트 보충', () => {
       uid: 'day2',
       start_date: '2026-10-07',
       week_index: 1,
+      display_week: 1,
       stats: {} as WeeklyReportRow['stats'],
       content: null,
       status: 'ready',
@@ -249,6 +257,7 @@ describe('generateWeeklyReports', () => {
       uid: 'a',
       start_date: '2026-10-01',
       week_index: 2,
+      display_week: 2,
       status: 'ready',
     });
     expect(report.stats.weight).toMatchObject({ start: 70, end: 69, diff: -1, daysLogged: 2 });
@@ -292,6 +301,7 @@ describe('generateWeeklyReports', () => {
       uid: 'a',
       start_date: '2026-10-01',
       week_index: 2,
+      display_week: 2,
       stats: {} as WeeklyReportRow['stats'],
       content: null,
       status: 'ready',
@@ -465,65 +475,176 @@ describe('generateWeeklyReports', () => {
   });
 });
 
-const reportRow = (uid: string, start_date: string, week_index: number): WeeklyReportRow => ({
+const reportRow = (
+  uid: string,
+  start_date: string,
+  week_index: number,
+  display_week: number | null = null
+): WeeklyReportRow => ({
   uid,
   start_date,
   week_index,
+  display_week: display_week ?? week_index,
   stats: {} as WeeklyReportRow['stats'],
   content: null,
   status: 'ready',
 });
 
+describe('displayWeekFor (리포트 제목 = 실제로 지낸 주차)', () => {
+  const p = (start_date: string, week_index: number, display_week: number | null = null) => ({
+    start_date,
+    week_index,
+    display_week,
+  });
+
+  it('겹치는 리포트도 이어지는 리포트도 없으면 week_index', () => {
+    expect(displayWeekFor({ startDate: '2026-10-01', weekIndex: 2 }, [])).toBe(2);
+    expect(displayWeekFor({ startDate: '2026-10-01', weekIndex: 2 }, [p('2026-10-01', 1)])).toBe(2);
+  });
+
+  it('4일 이상 겹치면 그 리포트의 표시 주차(display_week ?? week_index)를 이어받는다', () => {
+    // 한 주 더: (10-08, 1) = 10-08~10-14 = 옛 (10-01, 2)
+    expect(displayWeekFor({ startDate: '2026-10-08', weekIndex: 1 }, [p('2026-10-01', 2)])).toBe(2);
+    // 4일 겹침 (10-04~10-10 vs 10-01~10-07)
+    expect(displayWeekFor({ startDate: '2026-10-04', weekIndex: 1 }, [p('2026-10-01', 2, 3)])).toBe(
+      1
+    );
+    expect(displayWeekFor({ startDate: '2026-10-04', weekIndex: 1 }, [p('2026-10-01', 1, 3)])).toBe(
+      3
+    );
+  });
+
+  it('3일 이하로 겹치면 이어받지 않는다', () => {
+    // (10-05, 1) = 10-05~10-11, (10-01, 2) = 10-08~10-14와 4일 → 이어받음 / (10-01, 1)과 3일 → 아님
+    expect(displayWeekFor({ startDate: '2026-10-05', weekIndex: 1 }, [p('2026-10-01', 1)])).toBe(1);
+  });
+
+  it('시작일이 뒤로 밀린 뒤(한 주 더) 바로 이어지는 기간이면 앞 리포트 표시 주차 + 1 (감사 #3: 08:00 전 한 주 더)', () => {
+    // (10-01, 1) 뒤 10-15 07:30 한 주 더 → 시작일 10-08, (10-01, 2)는 만들어지지 않았다.
+    // (10-08, 1) = 10-08~10-14는 2주차로 지낸 기간
+    expect(displayWeekFor({ startDate: '2026-10-08', weekIndex: 1 }, [p('2026-10-01', 1)])).toBe(2);
+  });
+
+  it('한 주 더로 다시 지낸 주는 같은 숫자 (같은 시작일의 다음 주는 week_index)', () => {
+    // (10-01,1)=1, (10-01,2)=2, (10-08,1)=2(같은 기간), (10-08,2) = 10-15~10-21 = 2주차 한 번 더
+    const reports = [p('2026-10-01', 1), p('2026-10-01', 2), p('2026-10-08', 1, 2)];
+    expect(displayWeekFor({ startDate: '2026-10-08', weekIndex: 2 }, reports)).toBe(2);
+    // 08:00 전 한 주 더였던 경우도 같다
+    expect(
+      displayWeekFor({ startDate: '2026-10-08', weekIndex: 2 }, [
+        p('2026-10-01', 1),
+        p('2026-10-08', 1, 2),
+      ])
+    ).toBe(2);
+    // 그다음 주는 3주차
+    expect(
+      displayWeekFor({ startDate: '2026-10-08', weekIndex: 3 }, [...reports, p('2026-10-08', 2)])
+    ).toBe(3);
+  });
+
+  it('주차 맞추기로 앞당기면(주차가 올라감) 사용자가 정한 week_index', () => {
+    // (10-08, 1) 뒤 2주차 중 4주차로 맞춤 → 시작일 09-24. (09-24, 4) = 10-15~10-21
+    expect(displayWeekFor({ startDate: '2026-09-24', weekIndex: 4 }, [p('2026-10-08', 1)])).toBe(4);
+  });
+
+  it('바로 이어지지 않으면(빈 주가 있으면) week_index', () => {
+    expect(displayWeekFor({ startDate: '2026-10-15', weekIndex: 1 }, [p('2026-10-01', 1)])).toBe(1);
+  });
+});
+
+describe('sameProgramReports', () => {
+  const p = (start_date: string, week_index: number) => ({
+    start_date,
+    week_index,
+    display_week: null,
+  });
+  const reports = [p('2026-08-01', 3), p('2026-10-01', 1), p('2026-10-08', 1)];
+
+  it('지금 회차: 회차 시작일(program_start, 없으면 시작일) 이후 시작일의 리포트', () => {
+    expect(sameProgramReports(reports, '2026-10-08', '2026-10-01')).toEqual(reports.slice(1));
+    expect(sameProgramReports(reports, '2026-10-08', null)).toEqual(reports.slice(2));
+  });
+
+  it('지난 회차(다시 시작 직전 주 보충): 회차 시작일 전 시작일의 리포트', () => {
+    expect(sameProgramReports(reports, '2026-08-01', '2026-10-01')).toEqual(reports.slice(0, 1));
+  });
+});
+
 // 한 주 더 하기·주차 맞추기로 시작일이 바뀌면 키(start_date, week_index)가 달라진다.
-// 실제 기간(start_date + 7×(week_index−1) ~ +6일)이 이미 있는 리포트와 4일 이상 겹치면 다시 만들지 않는다
-describe('generateWeeklyReports: 시작일이 바뀌어도 같은 기간 리포트는 한 번만', () => {
-  it('한 주 더 하기 뒤 같은 기간(옛 2주차 = 새 1주차)이면 만들지도 푸시하지도 않는다', async () => {
+// 같은 기간이라도 리포트는 만들고(운영자 결정 2026-10-31), 제목은 실제로 지낸 주차(display_week)로 붙인다
+describe('generateWeeklyReports: 시작일이 바뀐 뒤 리포트 제목은 실제로 지낸 주차', () => {
+  it('한 주 더 하기 뒤 같은 기간(옛 2주차 = 새 1주차)도 만들고, 2주차로 붙인다', async () => {
     // 10-15에 (10-01, 2주차 10-08~10-14)를 만든 뒤 한 주 더 하기 → 시작일 10-08. 새 키 (10-08, 1) = 같은 기간
     const { deps, db } = makeDeps({
       fetchUsers: vi.fn(async () => [{ id: 'a', start_date: '2026-10-08' }]),
+      fetchProgramStart: vi.fn(async () => '2026-10-01'),
     });
     db.reports.push(reportRow('a', '2026-10-01', 2));
+    const result = await generateWeeklyReports(deps, '2026-10-16');
+    expect(result).toMatchObject({ candidates: 1, generated: 1, notified: 1 });
+    const row = db.reports[1];
+    expect(row).toMatchObject({ start_date: '2026-10-08', week_index: 1, display_week: 2 });
+    expect(row.stats.weekIndex).toBe(2);
+    expect(db.notifications[0]).toMatchObject({
+      title: '2주차 리포트가 도착했어요',
+      href: '/report/2026-10-08/1', // 상세 경로 키는 그대로
+    });
+  });
+
+  it('Gemini 프롬프트·단식 계획도 표시 주차로 본다 (2주차 문맥, 다음 주 3주차)', async () => {
+    // 08:00 전 한 주 더: (10-01, 2)는 없고 (10-01, 1)만 있다 (감사 #3)
+    const { deps, db } = makeDeps({
+      fetchUsers: vi.fn(async () => [{ id: 'a', start_date: '2026-10-08' }]),
+      fetchProgramStart: vi.fn(async () => '2026-10-01'),
+      fetchWeekData: vi.fn(async () => ({ ...filledWeek(), fastingResults: [] })),
+    });
+    db.reports.push(reportRow('a', '2026-10-01', 1));
+    await generateWeeklyReports(deps, '2026-10-15');
+    const prompt = vi.mocked(deps.askGemini).mock.calls[0][0];
+    expect(prompt).toContain('2주차 주간 리포트');
+    expect(prompt).toContain('다음 주(3주차)');
+    expect(db.reports[1]).toMatchObject({ week_index: 1, display_week: 2 });
+    // 1주차(week_index 1)여도 지낸 주차가 2주차라 수요일 단식 계획을 센다
+    expect(db.reports[1].stats.fasting.planned).toBe(1);
+  });
+
+  it('지난 회차의 리포트는 이어받지 않는다', async () => {
+    const { deps, db } = makeDeps({
+      fetchUsers: vi.fn(async () => [{ id: 'a', start_date: '2026-10-08' }]),
+      fetchProgramStart: vi.fn(async () => '2026-10-08'),
+    });
+    db.reports.push(reportRow('a', '2026-10-01', 2, 5));
+    await generateWeeklyReports(deps, '2026-10-15');
+    expect(db.reports[1]).toMatchObject({ week_index: 1, display_week: 1 });
+  });
+
+  it('다시 시작 직전 회차의 마지막 주 보충(후보 SQL이 옛 시작일로 준 행)은 지난 회차 리포트로 이어 붙인다', async () => {
+    // 10-01 시작, (10-01, 1) 있음. 10-15 07:30 다시 시작(오늘부터) → program_start 10-15.
+    // 후보 SQL이 (a, 10-01)을 돌려주면 (10-01, 2)를 2주차로 만든다
+    const { deps, db } = makeDeps({
+      fetchUsers: vi.fn(async () => [{ id: 'a', start_date: '2026-10-01' }]),
+      fetchProgramStart: vi.fn(async () => '2026-10-15'),
+    });
+    db.reports.push(reportRow('a', '2026-10-01', 1));
+    await generateWeeklyReports(deps, '2026-10-15');
+    expect(db.reports[1]).toMatchObject({
+      start_date: '2026-10-01',
+      week_index: 2,
+      display_week: 2,
+    });
+    expect(deps.fetchWeekData).toHaveBeenCalledWith(
+      expect.objectContaining({ baselineStart: '2026-10-01' })
+    );
+  });
+
+  it('같은 키의 리포트가 있으면 만들지 않는다 (재실행)', async () => {
+    const { deps, db } = makeDeps({
+      fetchUsers: vi.fn(async () => [{ id: 'a', start_date: '2026-10-08' }]),
+    });
+    db.reports.push(reportRow('a', '2026-10-08', 1));
     const result = await generateWeeklyReports(deps, '2026-10-15');
     expect(deps.hasPremiumAccess).not.toHaveBeenCalled();
-    expect(deps.askGemini).not.toHaveBeenCalled();
-    expect(deps.insertReport).not.toHaveBeenCalled();
-    expect(db.notifications).toHaveLength(0);
-    expect(result).toMatchObject({ candidates: 1, existing: 1, generated: 0 });
-  });
-
-  it('주차 맞추기(4주차 → 2주차, 시작일 +14일) 뒤 옛 3주차와 같은 기간이면 만들지 않는다', async () => {
-    const { deps, db } = makeDeps({
-      fetchUsers: vi.fn(async () => [{ id: 'a', start_date: '2026-10-15' }]),
-    });
-    db.reports.push(reportRow('a', '2026-10-01', 3)); // 10-15 ~ 10-21
-    const result = await generateWeeklyReports(deps, '2026-10-22');
-    expect(db.reports).toHaveLength(1);
     expect(result).toMatchObject({ existing: 1, generated: 0 });
-  });
-
-  it('4일 이상 겹치면 만들지 않는다', async () => {
-    // (10-01, 1) = 10-01~10-07. 시작일 10-04로 맞춤 → (10-04, 1) = 10-04~10-10, 4일 겹침
-    const { deps, db } = makeDeps({
-      fetchUsers: vi.fn(async () => [{ id: 'a', start_date: '2026-10-04' }]),
-    });
-    db.reports.push(reportRow('a', '2026-10-01', 1));
-    const result = await generateWeeklyReports(deps, '2026-10-11');
-    expect(db.reports).toHaveLength(1);
-    expect(result).toMatchObject({ existing: 1 });
-  });
-
-  it('3일 이하로 겹치면 새 기간으로 보고 만든다', async () => {
-    // (10-05, 1) = 10-05~10-11, (10-01, 1)과 3일 겹침
-    const { deps, db } = makeDeps({
-      fetchUsers: vi.fn(async () => [{ id: 'a', start_date: '2026-10-05' }]),
-    });
-    db.reports.push(reportRow('a', '2026-10-01', 1));
-    const result = await generateWeeklyReports(deps, '2026-10-12');
-    expect(db.reports.map((r) => [r.start_date, r.week_index])).toEqual([
-      ['2026-10-01', 1],
-      ['2026-10-05', 1],
-    ]);
-    expect(result).toMatchObject({ generated: 1, notified: 1 });
   });
 
   it('다른 유저의 리포트는 보지 않는다', async () => {
@@ -531,8 +652,8 @@ describe('generateWeeklyReports: 시작일이 바뀌어도 같은 기간 리포�
       fetchUsers: vi.fn(async () => [{ id: 'a', start_date: '2026-10-08' }]),
     });
     db.reports.push(reportRow('other', '2026-10-01', 2));
-    const result = await generateWeeklyReports(deps, '2026-10-15');
-    expect(result).toMatchObject({ generated: 1 });
+    await generateWeeklyReports(deps, '2026-10-15');
+    expect(db.reports[1]).toMatchObject({ uid: 'a', display_week: 1 });
   });
 });
 

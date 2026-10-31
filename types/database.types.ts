@@ -909,6 +909,7 @@ export type Database = {
         Row: {
           content: Json | null;
           created_at: string;
+          display_week: number | null;
           start_date: string;
           stats: Json;
           status: string;
@@ -918,6 +919,7 @@ export type Database = {
         Insert: {
           content?: Json | null;
           created_at?: string;
+          display_week?: number | null;
           start_date: string;
           stats: Json;
           status?: string;
@@ -927,6 +929,7 @@ export type Database = {
         Update: {
           content?: Json | null;
           created_at?: string;
+          display_week?: number | null;
           start_date?: string;
           stats?: Json;
           status?: string;

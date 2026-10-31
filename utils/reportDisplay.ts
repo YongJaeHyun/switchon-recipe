@@ -88,6 +88,49 @@ export function groupReportsByProgram<T extends ReportKey>(
   return { current: current.sort(byPeriodDesc), previous };
 }
 
+// 리포트가 속한 회차의 리포트들 (groupReportsByProgram의 묶음, 기간 최신 먼저). 상세 화면의 "한 번 더" 판단용.
+// 목록에 없으면(목록을 아직 못 받음) 그 리포트 하나
+export function sameProgramReportsOf<T extends ReportKey>(
+  report: T,
+  reports: T[],
+  programStart: string | null
+): T[] {
+  const sameKey = (r: ReportKey) =>
+    r.start_date.slice(0, 10) === report.start_date.slice(0, 10) &&
+    r.week_index === report.week_index;
+  const { current, previous } = groupReportsByProgram(reports, programStart);
+  const group = [current, ...previous.map((g) => g.reports)].find((g) => g.some(sameKey));
+  return group ?? [report];
+}
+
+type DisplayWeekKey = ReportKey & { display_week?: number | null };
+
+// 리포트 제목의 주차 = 실제로 지낸 주차. 서버가 정한 display_week, 없으면(마이그레이션 전 행) week_index.
+// week_index는 키(상세 경로)일 뿐, 한 주 더 하기 뒤에는 실제 주차보다 작을 수 있다
+export function reportDisplayWeek(report: DisplayWeekKey): number {
+  return typeof report.display_week === 'number' ? report.display_week : report.week_index;
+}
+
+// 같은 주(같은 기간)로 보는 기간 차이 상한(일). 서버 OVERLAP_MIN_DAYS(4일 이상 겹침)와 같은 경계: 3일 이하로 어긋나면 같은 주
+const SAME_WEEK_MAX_SHIFT_DAYS = 3;
+
+// 한 주 더 하기로 다시 지낸 주인지: 같은 회차(programReports)에 표시 주차가 같고 기간이 앞선 다른 주가 있다.
+// 같은 7일을 새 시작일로 한 번 더 만든 리포트(기간 차이 3일 이하)는 다시 지낸 주가 아니다
+export function isRepeatedWeek(report: DisplayWeekKey, programReports: DisplayWeekKey[]): boolean {
+  const week = reportDisplayWeek(report);
+  const start = periodStart(report);
+  return programReports.some(
+    (r) =>
+      reportDisplayWeek(r) === week && start - periodStart(r) > SAME_WEEK_MAX_SHIFT_DAYS * DAY_MS
+  );
+}
+
+// 목록·상세 제목의 주차: "2주차", 다시 지낸 주면 "2주차 · 한 번 더"
+export function reportWeekLabel(report: DisplayWeekKey, programReports: DisplayWeekKey[]): string {
+  const label = `${reportDisplayWeek(report)}주차`;
+  return isRepeatedWeek(report, programReports) ? `${label} · 한 번 더` : label;
+}
+
 // 리포트 상세의 "이전 회차" 표시: 리포트 시작일이 지금 회차 시작일(programStartOf)보다 앞일 때만.
 // 회차 시작일을 모르면(사용자 정보 불러오는 중) 표시하지 않는다
 export function isPreviousProgramReport(reportStart: string, programStart: string | null): boolean {
@@ -188,6 +231,7 @@ export function parseReportStats(value: unknown): WeeklyStats | null {
 export function toWeeklyReport(row: {
   start_date: string;
   week_index: number;
+  display_week?: number | null; // 마이그레이션 전에는 칸이 없다
   status: string;
   stats: unknown;
   content: unknown;
@@ -199,6 +243,7 @@ export function toWeeklyReport(row: {
   return {
     start_date: row.start_date,
     week_index: row.week_index,
+    display_week: typeof row.display_week === 'number' ? row.display_week : null,
     status,
     stats: parseReportStats(row.stats),
     content,

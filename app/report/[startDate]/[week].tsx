@@ -3,8 +3,8 @@ import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import { ReportStats } from 'components/report/ReportStats';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useWeeklyReport } from 'hooks/useWeeklyReports';
-import { type ComponentProps, type ReactNode } from 'react';
+import { useWeeklyReport, useWeeklyReports } from 'hooks/useWeeklyReports';
+import { type ComponentProps, type ReactNode, useMemo } from 'react';
 import { ActivityIndicator, ScrollView, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUserStore } from 'stores/userStore';
@@ -17,6 +17,9 @@ import {
   formatReportRange,
   isEmptyReport,
   isPreviousProgramReport,
+  isRepeatedWeek,
+  reportDisplayWeek,
+  sameProgramReportsOf,
 } from 'utils/reportDisplay';
 
 type IconName = ComponentProps<typeof MaterialIcons>['name'];
@@ -82,13 +85,21 @@ export default function ReportDetailScreen() {
   const currentStartDate = useUserStore((state) => state.start_date) || null;
   const programStart = useUserStore((state) => state.program_start);
   const { report, isLoading, isError, refetch } = useWeeklyReport(startDate, weekIndex);
+  // "한 번 더"는 같은 회차의 다른 리포트와 견줘야 알 수 있다 (목록 캐시, 없으면 받아 온다)
+  const { reports } = useWeeklyReports();
 
-  const title = Number.isInteger(weekIndex) ? `${weekIndex}주차 리포트` : '주간 리포트';
+  // 경로의 week는 키(start_date 기준 주차)라 한 주 더 하기 뒤엔 실제 주차와 다를 수 있다.
+  // 제목은 리포트를 받은 뒤 실제로 지낸 주차(display_week ?? week_index)로
+  const title = report ? `${reportDisplayWeek(report)}주차 리포트` : '주간 리포트';
   // 지금 회차 시작일 전 리포트만 이전 회차 (한 주 더 하기·주차 맞추기로 시작일이 바뀌어도 이번 회차).
   // 시작일을 아직 모르면(사용자 정보 불러오는 중) 표시하지 않는다
-  const isPrevious =
-    !!report &&
-    isPreviousProgramReport(report.start_date, programStartOf(programStart, currentStartDate));
+  const currentProgram = programStartOf(programStart, currentStartDate);
+  const isPrevious = !!report && isPreviousProgramReport(report.start_date, currentProgram);
+  // 같은 회차에서 같은 주차를 한 주 더 하기로 다시 지낸 주
+  const isRepeat = useMemo(
+    () => !!report && isRepeatedWeek(report, sameProgramReportsOf(report, reports, currentProgram)),
+    [report, reports, currentProgram]
+  );
   // 문장이 없거나 깨진 행이어도 숫자는 보여준다 (빈 칸은 숨김)
   const content = report?.content ?? EMPTY_CONTENT;
 
@@ -182,12 +193,19 @@ export default function ReportDetailScreen() {
       <ScrollView
         contentContainerClassName="gap-4 px-5 pb-10 pt-2"
         showsVerticalScrollIndicator={false}>
-        {report && (report.stats || isPrevious) && (
+        {report && (report.stats || isPrevious || isRepeat) && (
           <View className="flex-row flex-wrap items-center gap-2">
             {report.stats && (
               <Text className="text-sm text-neutral-500">
                 {formatReportRange(report.stats.range)}
               </Text>
+            )}
+            {isRepeat && (
+              <View className="rounded-full bg-green-50 px-2 py-0.5">
+                <Text className="text-xs font-semibold text-green-700">
+                  {reportDisplayWeek(report)}주차 한 번 더
+                </Text>
+              </View>
             )}
             {isPrevious && (
               <View className="rounded-full bg-neutral-200 px-2 py-0.5">

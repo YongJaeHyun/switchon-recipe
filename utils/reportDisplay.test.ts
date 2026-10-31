@@ -9,6 +9,9 @@ import {
   isReportHref,
   parseReportContent,
   parseReportStats,
+  reportDisplayWeek,
+  reportWeekLabel,
+  sameProgramReportsOf,
   shouldShowReportPreview,
   toWeeklyReport,
 } from './reportDisplay';
@@ -276,6 +279,65 @@ describe('toWeeklyReport', () => {
     expect(report.content).toBeNull();
     expect(report.stats).toBeNull();
     expect(isEmptyReport(report)).toBe(true);
+  });
+
+  it('display_week를 옮기고, 없거나 숫자가 아니면 null', () => {
+    const row = {
+      start_date: '2026-10-08',
+      week_index: 1,
+      status: 'ready',
+      stats: {},
+      content: null,
+      created_at: '2026-10-15T00:00:00Z',
+    };
+    expect(toWeeklyReport({ ...row, display_week: 2 }).display_week).toBe(2);
+    expect(toWeeklyReport({ ...row, display_week: null }).display_week).toBeNull();
+    expect(toWeeklyReport(row).display_week).toBeNull();
+  });
+});
+
+describe('reportDisplayWeek / reportWeekLabel (실제로 지낸 주차, 한 주 더 표시)', () => {
+  const r = (start_date: string, week_index: number, display_week: number | null = null) => ({
+    start_date,
+    week_index,
+    display_week,
+  });
+
+  it('display_week가 있으면 그 값, 없으면(구버전·마이그레이션 전) week_index', () => {
+    expect(reportDisplayWeek(r('2026-10-08', 1, 2))).toBe(2);
+    expect(reportDisplayWeek(r('2026-10-08', 1))).toBe(1);
+    expect(reportDisplayWeek({ start_date: '2026-10-08', week_index: 3 })).toBe(3);
+  });
+
+  it('회차 안에 같은 표시 주차가 다른 기간으로 또 있으면 뒤의 것은 "N주차 · 한 번 더"', () => {
+    // 회차 10-01: 1주차, 2주차(10-08~), 한 주 더 → 시작일 10-08, 같은 기간 (10-08,1)=2, 다시 지낸 (10-08,2)=2
+    const program = [
+      r('2026-10-01', 1, 1),
+      r('2026-10-01', 2, 2),
+      r('2026-10-08', 1, 2),
+      r('2026-10-08', 2, 2),
+      r('2026-10-08', 3, 3),
+    ];
+    expect(program.map((x) => reportWeekLabel(x, program))).toEqual([
+      '1주차',
+      '2주차',
+      '2주차', // 같은 7일을 새 시작일로 한 번 더 만든 리포트: 다시 지낸 주가 아니다
+      '2주차 · 한 번 더',
+      '3주차',
+    ]);
+  });
+
+  it('같은 표시 주차라도 다른 회차면 한 번 더가 아니다', () => {
+    const a = r('2026-10-01', 2, 2);
+    expect(reportWeekLabel(r('2026-12-01', 2, 2), [r('2026-12-01', 2, 2)])).toBe('2주차');
+    expect(reportWeekLabel(a, [a])).toBe('2주차');
+  });
+
+  it('sameProgramReportsOf: 상세 화면이 리포트가 속한 회차의 리포트를 찾는다', () => {
+    const all = [r('2026-06-01', 2), r('2026-10-01', 2), r('2026-10-08', 2, 2)];
+    expect(sameProgramReportsOf(all[2], all, '2026-10-01')).toEqual([all[2], all[1]]);
+    expect(sameProgramReportsOf(all[0], all, '2026-10-01')).toEqual([all[0]]);
+    expect(sameProgramReportsOf(all[0], all, null)).toEqual([all[0]]);
   });
 });
 
