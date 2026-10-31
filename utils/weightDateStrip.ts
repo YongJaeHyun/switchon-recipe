@@ -1,6 +1,7 @@
 // 체중 입력 시트 위 날짜 줄 (지난 날 체중도 기록). 순수 함수
 import { type BodyComp, prefillBodyComp } from './bodyComp';
 import { programStartOf } from './programStart';
+import type { InbodyFieldTexts } from './inbodyRead';
 import { prefillWeight, shiftDay } from './weight';
 
 // 시트가 저장할 날과 미리 채울 값
@@ -137,4 +138,20 @@ export function weightStripScrollX({
 }): number {
   const at = index >= 0 ? index : count - 1;
   return Math.max(0, (at + 1) * itemWidth - viewportWidth);
+}
+
+// 다른 날을 고를 때 칸 채우기: 사용자가 적던(그날 기존 값과 다른) 칸은 그대로 가져가고,
+// 손대지 않은 칸만 고른 날의 기존 값으로. 날짜를 잘못 골랐다가 바꿔도 적던 값이 사라지지 않는다
+export function carryEditedTexts({
+  current,
+  base,
+  next,
+}: {
+  current: InbodyFieldTexts;
+  base: InbodyFieldTexts;
+  next: InbodyFieldTexts;
+}): InbodyFieldTexts {
+  const pick = (kind: keyof InbodyFieldTexts) =>
+    current[kind] !== base[kind] ? current[kind] : next[kind];
+  return { weight: pick('weight'), muscle: pick('muscle'), fat: pick('fat') };
 }

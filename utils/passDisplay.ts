@@ -14,15 +14,15 @@ const kstMonthDay = (date: Date) => formatInTimeZone(date, TIME_ZONE, 'M월 d일
 const daysBetweenYmd = (from: string, to: string) =>
   Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / DAY_MS);
 
-// 패스 남은 기간. 만료됐거나 패스가 없으면 null. D-day는 KST 날짜로 센다
+// 패스 남은 기간 ("35일 남음 (12월 5일까지)"). 만료됐거나 패스가 없으면 null. 남은 날은 KST 날짜로 센다
 export function formatPassRemaining(passExpiresAt: string | null, now: Date): string | null {
   if (!passExpiresAt) return null;
   const expiresAt = new Date(passExpiresAt);
   if (Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() <= now.getTime()) return null;
 
   const days = daysBetweenYmd(kstYmd(now), kstYmd(expiresAt));
-  const dDay = days === 0 ? 'D-day' : `D-${days}`;
-  return `${dDay} (${kstMonthDay(expiresAt)}까지)`;
+  if (days === 0) return `오늘까지 (${kstMonthDay(expiresAt)})`;
+  return `${days}일 남음 (${kstMonthDay(expiresAt)}까지)`;
 }
 
 // 결제 화면 가격 문구. 판매 중이 아니면 price는 빈 문자열

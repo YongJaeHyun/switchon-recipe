@@ -3,23 +3,23 @@ import { describe, expect, it } from 'vitest';
 import { formatPassRemaining, formatSalesHeadline } from './passDisplay';
 
 describe('formatPassRemaining', () => {
-  it('D-day 계산이 KST 기준이다', () => {
+  it('남은 날 계산이 KST 기준이다', () => {
     // 만료 2026-12-01 23:59:59 KST, 지금 2026-11-19 12:00 KST
     expect(formatPassRemaining('2026-12-01T14:59:59Z', new Date('2026-11-19T03:00:00Z'))).toBe(
-      'D-12 (12월 1일까지)'
+      '12일 남음 (12월 1일까지)'
     );
   });
 
   it('UTC로는 전날이어도 KST 날짜로 센다', () => {
     // 지금 2026-11-19 23:30 UTC = 2026-11-20 08:30 KST
     expect(formatPassRemaining('2026-12-01T14:59:59Z', new Date('2026-11-19T23:30:00Z'))).toBe(
-      'D-11 (12월 1일까지)'
+      '11일 남음 (12월 1일까지)'
     );
   });
 
-  it('만료 당일은 D-day', () => {
+  it('만료 당일은 오늘까지', () => {
     expect(formatPassRemaining('2026-12-01T14:59:59Z', new Date('2026-12-01T05:00:00Z'))).toBe(
-      'D-day (12월 1일까지)'
+      '오늘까지 (12월 1일)'
     );
   });
 
