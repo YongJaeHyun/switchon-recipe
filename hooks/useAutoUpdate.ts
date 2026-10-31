@@ -74,7 +74,9 @@ export const useAutoUpdate = () => {
       }
     };
 
-    // 백그라운드로 갈 때: 받아 두기만 하고 (사용 중 재시작 방지) 다음 복귀 때 적용
+    // 백그라운드로 갈 때: 받아 두기만 한다. 받아 둔 업데이트는 다음 앱 시작 때 expo-updates가 적용한다.
+    // 복귀(포그라운드 전환) 중 reloadAsync는 안드로이드에서 흰 화면 멈춤·네이티브 abort를 일으켜서 쓰지 않는다
+    // (Sentry: 복귀 1.5초 뒤 SIGABRT, 2026-10-31 내부 테스트에서 흰 화면 재현)
     const downloadInBackground = async () => {
       if (!canUpdate || updateReady.current) return;
       try {
@@ -88,27 +90,15 @@ export const useAutoUpdate = () => {
       }
     };
 
-    const applyUpdateIfReady = async () => {
-      if (!canUpdate || !updateReady.current) return;
-      try {
-        await Updates.reloadAsync();
-      } catch (error) {
-        captureError({ error, prefix: '[OTA 업데이트 적용 실패]: ', level: 'fatal' });
-      }
-    };
-
     // ── AppState 구독 (단일) ───────────────────────────────────────
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       const prevState = appState.current;
       appState.current = nextAppState;
 
       if (prevState === 'active' && nextAppState.match(/inactive|background/)) {
-        // 포그라운드 → 백그라운드: 버전 체크 + 다운로드
+        // 포그라운드 → 백그라운드: 버전 체크 + 다운로드 (적용은 다음 앱 시작 때)
         checkCurrentVersion();
         downloadInBackground();
-      } else if (prevState.match(/inactive|background/) && nextAppState === 'active') {
-        // 백그라운드 → 포그라운드: 다운받은 업데이트 적용
-        applyUpdateIfReady();
       }
     });
 
