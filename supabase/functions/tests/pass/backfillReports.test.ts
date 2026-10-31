@@ -209,7 +209,7 @@ describe('backfillPastReports: 패스를 사면 지금 회차의 끝난 주 리�
     }
   });
 
-  it('empty 리포트(체중·할 일 기록 없음)는 저장하지만 푸시 문구에는 넣지 않는다', async () => {
+  it('체중·할 일 기록이 없는 주는 저장하지 않고 푸시 문구에도 넣지 않는다', async () => {
     const { deps, db } = makeDeps('2026-10-16', {
       // 1주차: 레시피만, 2주차: 체중 기록
       fetchWeekData: vi.fn(async (q) =>
@@ -225,7 +225,7 @@ describe('backfillPastReports: 패스를 사면 지금 회차의 끝난 주 리�
     });
     await backfillPastReports(deps, UID);
 
-    expect(db.reports.map((r) => r.status)).toEqual(['empty', 'ready']);
+    expect(db.reports.map((r) => [r.week_index, r.status])).toEqual([[2, 'ready']]);
     expect(db.notifications.map((n) => n.title)).toEqual(['지난 2주차 리포트도 만들어 뒀어요']);
     expect(db.notifications[0].href).toBe(`/report/${START}/2`);
   });

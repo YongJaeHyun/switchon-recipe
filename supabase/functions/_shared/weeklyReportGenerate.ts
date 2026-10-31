@@ -270,22 +270,24 @@ const normalizeWeekData = (data: WeekData) => ({
   ),
 });
 
-const writeContent = async (
-  deps: ReportGenerationDeps,
+// 리포트 문장. ai = Gemini 응답으로 만들었는지 (false면 기본 문장: Gemini 실패·응답 해석 실패).
+// 새 리포트는 기본 문장으로라도 저장하고, 다시 만들기(generate-my-report)는 기본 문장이면 갱신하지 않는다
+export const writeReportContent = async (
+  deps: Pick<ReportGenerationDeps, 'askGemini'>,
   stats: WeeklyStats,
   uid: string
-): Promise<ReportContent> => {
+): Promise<{ content: ReportContent; ai: boolean }> => {
   const nextWeekChanges = nextWeekChangesFor(stats.weekIndex);
   try {
     const parsed = parseReportContent(
       await deps.askGemini(buildReportPrompt(stats, nextWeekChanges))
     );
-    if (parsed) return sanitizeContent(parsed, stats, nextWeekChanges);
+    if (parsed) return { content: sanitizeContent(parsed, stats, nextWeekChanges), ai: true };
     console.error(`리포트 응답 해석 실패 (${uid}, ${stats.weekIndex}주차)`);
   } catch (error) {
     console.error(`리포트 Gemini 실패 (${uid}, ${stats.weekIndex}주차):`, error);
   }
-  return fallbackContent(stats, nextWeekChanges);
+  return { content: fallbackContent(stats, nextWeekChanges), ai: false };
 };
 
 export type ReportOutcome =
@@ -298,7 +300,7 @@ export type ReportOutcome =
   | 'skipped';
 
 // 리포트 대상은 그 주 기록이 1개 이상인 유저 (설계 §6). 앱을 열지 않은 주에 빈 리포트를 쌓지 않는다
-const hasAnyRecord = (stats: WeeklyStats) =>
+export const hasAnyRecord = (stats: WeeklyStats) =>
   stats.weight.daysLogged > 0 ||
   stats.todo.items.some((item) => item.appeared > 0) ||
   stats.fasting.success + stats.fasting.broken > 0 ||
@@ -309,7 +311,9 @@ const hasAnyRecord = (stats: WeeklyStats) =>
 // displayWeek = 저장한 표시 주차 (generated·empty일 때). DB·권한 조회 오류는 던진다 (AI 실패는 기본 문장)
 // trial을 넘기면 패스가 없는 유저의 표시 주차 1 리포트를 무료 체험으로 만든다 (trial: true, is_trial 행).
 // 무료 체험은 AI 전에 claim하고, 저장하지 못하면(기록 없음·empty·오류·키 충돌) release한다.
-// empty(체중·할 일 기록 없음)는 무료로 저장하지 않는다: 보여 줄 내용이 없는 리포트로 평생 1번을 쓰지 않게
+// empty(체중·할 일 기록 없음, stats.isEmpty)는 저장하지 않는다 (운영자 결정 2026-10-31: 기록이 없는 주는 빈 리포트를
+// 만들지 않고, 앱 목록에 "기록이 없어서 아직 리포트가 없어요" + [지금 만들기], generate-my-report).
+// 예전에 저장된 status='empty' 행은 그대로 둔다 (앱이 "이번 주는 기록이 없어요"로 보여준다)
 export const generateWeekReport = async (
   deps: ReportGenerationDeps,
   uid: string,
@@ -362,18 +366,17 @@ export const generateWeekReport = async (
   return buildAndInsert(deps, uid, startDate, weekIndex, programStart, displayWeek, source, false);
 };
 
-// 표시 주차·권한을 정한 뒤: 그 주 데이터를 읽어 통계·문장을 만들고 저장한다.
-// isTrial이면 empty는 저장하지 않고 'noAccess' (무료 체험은 문장까지 만든 리포트만)
-const buildAndInsert = async (
-  deps: ReportGenerationDeps,
+// 그 주 데이터를 읽어 통계를 만든다 (stats.weekIndex = 표시 주차). 저장·AI는 부르는 쪽.
+// source = resolveDisplayWeek의 source (새 키에 단식 계획이 없을 때 읽을 키)
+export const buildWeekStats = async (
+  deps: Pick<ReportGenerationDeps, 'fetchWeekData' | 'fetchFastingPlan' | 'now'>,
   uid: string,
   startDate: string,
   weekIndex: number,
   programStart: string | null,
   displayWeek: number,
-  source: { start_date: string; week_index: number } | null,
-  isTrial: boolean
-): Promise<{ outcome: ReportOutcome; displayWeek?: number }> => {
+  source: { start_date: string; week_index: number } | null
+): Promise<WeeklyStats> => {
   const range = weekRange(startDate, weekIndex);
   const baselineStart = baselineStartOf(programStart, startDate);
   const data = await deps.fetchWeekData({
@@ -416,12 +419,35 @@ const buildAndInsert = async (
   });
   // 저장하는 stats.weekIndex와 AI 문맥(주차별 몸 변화·다음 주 변화·기본 문장)은 표시 주차.
   // 기간(range)은 키(start_date, week_index)로 이미 정했다
-  const stats: WeeklyStats = { ...computed, weekIndex: displayWeek };
+  return { ...computed, weekIndex: displayWeek };
+};
+
+// 표시 주차·권한을 정한 뒤: 그 주 데이터를 읽어 통계·문장을 만들고 저장한다.
+// 체중·할 일 기록이 없으면(stats.isEmpty) 저장하지 않는다: 'empty' (isTrial이면 'noAccess')
+const buildAndInsert = async (
+  deps: ReportGenerationDeps,
+  uid: string,
+  startDate: string,
+  weekIndex: number,
+  programStart: string | null,
+  displayWeek: number,
+  source: { start_date: string; week_index: number } | null,
+  isTrial: boolean
+): Promise<{ outcome: ReportOutcome; displayWeek?: number }> => {
+  const stats = await buildWeekStats(
+    deps,
+    uid,
+    startDate,
+    weekIndex,
+    programStart,
+    displayWeek,
+    source
+  );
 
   if (!hasAnyRecord(stats)) return { outcome: 'skipped' };
-  if (isTrial && stats.isEmpty) return { outcome: 'noAccess' };
+  if (stats.isEmpty) return isTrial ? { outcome: 'noAccess' } : { outcome: 'empty' };
 
-  const content = stats.isEmpty ? null : await writeContent(deps, stats, uid);
+  const { content } = await writeReportContent(deps, stats, uid);
   const inserted = await deps.insertReport({
     uid,
     start_date: startDate,
@@ -429,12 +455,11 @@ const buildAndInsert = async (
     display_week: displayWeek,
     stats,
     content,
-    status: stats.isEmpty ? 'empty' : 'ready',
+    status: 'ready',
     is_trial: isTrial,
   });
   // 동시에 돈 다른 실행이 먼저 저장했다 → 그쪽이 푸시한다 (existing)
   if (!inserted) return { outcome: 'existing' };
-  if (stats.isEmpty) return { outcome: 'empty', displayWeek };
 
   return { outcome: 'generated', displayWeek };
 };

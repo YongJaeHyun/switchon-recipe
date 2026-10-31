@@ -68,7 +68,7 @@ export interface GenerateResult {
   alignedAhead: number; // 주차 맞추기로 건너뛴 기간이라 건너뜀 (alignedAheadOver, 감사 #16)
   generated: number; // 기록이 있어 문장까지 만든 리포트
   trial: number; // 그중 패스 없이 무료 체험으로 만든 1주차 리포트
-  empty: number; // 체중·할 일 기록이 없어 status='empty'로 저장
+  empty: number; // 체중·할 일 기록이 없어 만들지 않음 (빈 리포트는 저장하지 않는다. 앱 [지금 만들기])
   skipped: number; // 그 주 기록이 하나도 없어 만들지 않음
   notified: number;
   failed: number;
@@ -104,7 +104,7 @@ const processUser = async (
     { claim: (id) => deps.claimFreeReport(id), release: (id) => deps.releaseFreeReport(id) }
   );
   const isTrial = outcome === 'generated' && trial === true;
-  // 문장까지 만든 리포트만 푸시한다 (empty는 조용히 저장, 키 충돌이면 먼저 저장한 실행이 푸시)
+  // 문장까지 만든 리포트만 푸시한다 (empty는 저장하지 않음, 키 충돌이면 먼저 저장한 실행이 푸시)
   if (outcome !== 'generated') return { outcome, trial: false, notified: false, failed: false };
 
   try {

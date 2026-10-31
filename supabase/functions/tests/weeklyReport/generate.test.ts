@@ -381,7 +381,7 @@ describe('generateWeeklyReports', () => {
     expect(result).toMatchObject({ generated: 0, empty: 0, skipped: 1, notified: 0 });
   });
 
-  it('체중·할 일 기록 없이 다른 기록만 있으면 empty로 저장하고 AI 호출·푸시 없음', async () => {
+  it('체중·할 일 기록 없이 다른 기록만 있으면 저장하지 않고 AI 호출·푸시 없음 (빈 리포트를 만들지 않는다)', async () => {
     const { deps, db } = makeDeps({
       fetchWeekData: vi.fn(async () => ({
         ...emptyWeek(),
@@ -390,9 +390,8 @@ describe('generateWeeklyReports', () => {
     });
     const result = await generateWeeklyReports(deps, TODAY);
     expect(deps.askGemini).not.toHaveBeenCalled();
-    expect(db.reports).toHaveLength(1);
-    expect(db.reports[0]).toMatchObject({ status: 'empty', content: null });
-    expect(db.reports[0].stats.isEmpty).toBe(true);
+    expect(deps.insertReport).not.toHaveBeenCalled();
+    expect(db.reports).toHaveLength(0);
     expect(db.notifications).toHaveLength(0);
     expect(result).toMatchObject({ generated: 0, empty: 1, notified: 0 });
   });

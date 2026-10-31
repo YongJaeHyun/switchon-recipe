@@ -52,7 +52,7 @@ export interface BackfillDeps extends ReportGenerationDeps {
 }
 
 export interface BackfillResult {
-  created: number[]; // 새로 저장한 리포트의 키 주차(week_index), 오래된 순 (ready·empty)
+  created: number[]; // 새로 저장한 리포트의 키 주차(week_index), 오래된 순 (기록 없는 주는 저장하지 않는다)
   notified: boolean;
   failed: number;
 }
@@ -125,7 +125,7 @@ export async function backfillPastReports(
     if (covered(weekIndex)) continue;
     try {
       const { outcome, displayWeek } = await generateWeekReport(deps, uid, startDate, weekIndex);
-      if (outcome === 'generated' || outcome === 'empty') result.created.push(weekIndex);
+      if (outcome === 'generated') result.created.push(weekIndex);
       if (outcome === 'generated' && displayWeek !== undefined) {
         ready.push({ weekIndex, displayWeek });
       }

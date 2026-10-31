@@ -6,8 +6,14 @@ import { ReportStats } from 'components/report/ReportStats';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useBillingAvailable } from 'hooks/useBillingAvailable';
 import { usePass } from 'hooks/usePass';
-import { useWeeklyReport, useWeeklyReports } from 'hooks/useWeeklyReports';
-import { type ComponentProps, type ReactNode, useMemo } from 'react';
+import { WeeklyReportAPI } from 'api/WeeklyReportAPI';
+import {
+  cacheGeneratedReport,
+  useCanRegenerateReport,
+  useWeeklyReport,
+  useWeeklyReports,
+} from 'hooks/useWeeklyReports';
+import { type ComponentProps, type ReactNode, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUserStore } from 'stores/userStore';
@@ -25,6 +31,9 @@ import {
   sameProgramReportsOf,
   shouldShowTrialPassCard,
 } from 'utils/reportDisplay';
+import { showNetworkErrorToast } from 'utils/network';
+import { ON_DEMAND_MESSAGES } from 'utils/reportOnDemand';
+import { showSuccessToast } from 'utils/showToast';
 
 type IconName = ComponentProps<typeof MaterialIcons>['name'];
 
@@ -82,6 +91,46 @@ const Message = ({ text, onRetry }: { text: string; onRetry?(): void }) => (
   </View>
 );
 
+// 리포트를 만든 뒤 그 주 기록이 더해졌을 때 [다시 만들기] (패스, 리포트당 하루 1번. 보일지는 서버 check가 정한다)
+// error.retryable이 false면(오늘 이미 다시 만듦·바뀐 기록 없음 등) 버튼 없이 안내만
+const RegenerateBanner = ({
+  pending,
+  error,
+  onPress,
+}: {
+  pending: boolean;
+  error: { message: string; retryable: boolean } | null;
+  onPress(): void;
+}) => (
+  <View className="gap-2 rounded-xl border border-green-200 bg-white p-4">
+    <View className="flex-row items-center gap-3">
+      <MaterialIcons name="update" size={22} color={colors.green[600]} />
+      <View className="flex-1">
+        <Text className="text-base font-bold text-neutral-800">
+          {pending ? '새 기록으로 다시 정리하고 있어요' : '리포트를 만든 뒤 기록이 더해졌어요'}
+        </Text>
+        <Text className="text-sm text-neutral-500">
+          {pending ? '30초쯤 걸릴 수 있어요' : '다시 만들기는 하루에 한 번 할 수 있어요'}
+        </Text>
+      </View>
+    </View>
+    {error && !error.retryable ? null : (
+      <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityState={{ disabled: pending, busy: pending }}
+        disabled={pending}
+        onPress={onPress}
+        className={`flex-row items-center justify-center gap-2 rounded-lg py-3 ${pending ? 'bg-green-100' : 'bg-green-600'}`}>
+        {pending && <ActivityIndicator size="small" color={colors.green[700]} />}
+        <Text className={`font-bold ${pending ? 'text-green-700' : 'text-white'}`}>
+          {pending ? '다시 만드는 중' : '다시 만들기'}
+        </Text>
+      </TouchableOpacity>
+    )}
+    {!!error && <Text className="text-sm text-red-600">{error.message}</Text>}
+  </View>
+);
+
 export default function ReportDetailScreen() {
   const params = useLocalSearchParams<{ startDate: string; week: string }>();
   const startDate = String(params.startDate ?? '');
@@ -108,6 +157,39 @@ export default function ReportDetailScreen() {
   const { status } = usePass();
   const billingAvailable = useBillingAvailable();
   const showTrialPass = shouldShowTrialPassCard(report, status, billingAvailable);
+  // [다시 만들기]: 패스 유저의 지금 회차 리포트일 때만 서버에 묻는다 (생성 뒤 기록 변경, 오늘 다시 만든 적 없음)
+  const canRegenerate = useCanRegenerateReport(
+    startDate,
+    weekIndex,
+    status?.hasAccess === true && !!report && !!currentProgram && !isPrevious
+  );
+  const [regenerating, setRegenerating] = useState(false);
+  const [regenerateError, setRegenerateError] = useState<{
+    message: string;
+    retryable: boolean;
+  } | null>(null);
+  const regenerate = async () => {
+    if (regenerating) return;
+    setRegenerating(true);
+    setRegenerateError(null);
+    const outcome = await WeeklyReportAPI.generate(startDate, weekIndex, 'regenerate');
+    setRegenerating(false);
+    if (outcome.status === 'ok') {
+      cacheGeneratedReport(outcome.report);
+      showSuccessToast({ textType: 'CUSTOM', title: '새 기록으로 리포트를 다시 만들었어요' });
+      return;
+    }
+    if (outcome.status === 'network') {
+      showNetworkErrorToast();
+      return;
+    }
+    setRegenerateError({
+      message: ON_DEMAND_MESSAGES[outcome.status],
+      retryable: outcome.status === 'error',
+    });
+  };
+  const showRegenerate = !!report && (canRegenerate || regenerating || !!regenerateError);
+
   // 문장이 없거나 깨진 행이어도 숫자는 보여준다 (빈 칸은 숨김)
   const content = report?.content ?? EMPTY_CONTENT;
 
@@ -233,6 +315,13 @@ export default function ReportDetailScreen() {
               </View>
             )}
           </View>
+        )}
+        {showRegenerate && (
+          <RegenerateBanner
+            pending={regenerating}
+            error={regenerateError}
+            onPress={() => void regenerate()}
+          />
         )}
         {renderBody()}
       </ScrollView>

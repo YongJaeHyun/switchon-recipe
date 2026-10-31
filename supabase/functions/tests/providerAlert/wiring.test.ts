@@ -43,14 +43,14 @@ describe('Gemini/Pixabay 호출부가 모두 장애 알림을 거친다', () => 
     );
   });
 
-  it('주간 리포트(cron·패스 구매 뒤 보충): 공용 구현이 함수 이름으로 알림 fetch를 만들어 Gemini 호출에 쓴다', () => {
+  it('주간 리포트(cron·패스 구매 뒤 보충·직접 만들기): 공용 구현이 함수 이름으로 알림 fetch를 만들어 Gemini 호출에 쓴다', () => {
     const src = read('../../_shared/weeklyReportDb.ts');
     expect(flat(src)).toContain(
       "createProviderAlertFetch({ functionName, client: supabase, webhookUrl: Deno.env.get('SLACK_WEBHOOK_URL'), })"
     );
     expect(flat(src)).toMatch(/await providerFetch\( `https:\/\/generativelanguage/);
     expect(src).not.toMatch(/await fetch\(\s*`https:\/\/generativelanguage/);
-    for (const fn of ['generate-weekly-reports', 'verify-pass-purchase']) {
+    for (const fn of ['generate-weekly-reports', 'verify-pass-purchase', 'generate-my-report']) {
       expect(read(`../../${fn}/index.ts`)).toContain(`createWeeklyReportDeps(supabase, '${fn}')`);
     }
   });
