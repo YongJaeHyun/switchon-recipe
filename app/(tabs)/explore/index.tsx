@@ -1,4 +1,3 @@
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { FlashList } from '@shopify/flash-list';
 import { Filter } from 'components/common/Filter';
 import { SafeAreaViewWithNav } from 'components/common/SafeAreaViewWithNav';
@@ -10,7 +9,9 @@ import { Tabs } from 'components/explore/Tabs';
 import { RECIPE_FILTERS, RecipeFilterType } from 'const/filter';
 import { RECIPE_SORTS, RecipeSortType } from 'const/sort';
 import { Link } from 'expo-router';
+import { PassBadge } from 'components/common/PassBadge';
 import { PassOnlyModal, type PassOnlyModalView } from 'components/common/PassOnlyModal';
+import { passBadgeState } from 'utils/passFeatureLabel';
 import { RecommendView } from 'components/recommend/RecommendView';
 import { useBillingAvailable } from 'hooks/useBillingAvailable';
 import { usePass } from 'hooks/usePass';
@@ -115,15 +116,9 @@ export default function ExploreScreen() {
           tabItems={tabItems}
           onSelect={selectTab}
           selectedIndex={tabIndex}
-          // 추천 탭은 패스 기능: 패스가 있으면 다이아, 없으면 자물쇠
+          // 추천 탭은 패스 기능: 다른 패스 입구와 같은 배지 (패스 / 잠김)
           accessory={(index) =>
-            showRecommend && index === 0 ? (
-              <MaterialIcons
-                name={hasAccess ? 'diamond' : 'lock'}
-                size={14}
-                color={colors.green[600]}
-              />
-            ) : null
+            showRecommend && index === 0 ? <PassBadge state={passBadgeState(hasAccess)} /> : null
           }
         />
       </View>
