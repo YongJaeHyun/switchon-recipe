@@ -30,6 +30,19 @@ describe('Gemini/Pixabay 호출부가 모두 장애 알림을 거친다', () => 
     );
   });
 
+  it('음식 이름으로 만들기: 이름 판정·레시피 생성·이미지 모두 알림 fetch를 쓴다', () => {
+    const src = flat(read('../../create-recipe-by-name/index.ts'));
+    expect(src).toContain(
+      "createProviderAlertFetch({ functionName: 'create-recipe-by-name', client: supabase, webhookUrl: Deno.env.get('SLACK_WEBHOOK_URL'), })"
+    );
+    expect(src).toContain("requestNameCheck(prompt, requireEnv('GEMINI_API_KEY'), providerFetch)");
+    expect(src).toContain('generateAndSaveRecipe(createRecipeClients(req), providerFetch, {');
+    // 판정 요청은 넘겨받은 fetch만 쓴다
+    const check = flat(read('../../create-recipe-by-name/nameCheck.ts'));
+    expect(check).toMatch(/await fetchFn\( `https:\/\/generativelanguage/);
+    expect(check).not.toMatch(/await fetch\(/);
+  });
+
   it('재료 요청: 판단·이미지 검색·검증·생성이 재시도 뒤 최종 응답을 알림에 넘긴다', () => {
     const src = flat(read('../../process-ingredient-request/index.ts'));
     expect(src).toContain(
@@ -69,6 +82,7 @@ describe('Gemini/Pixabay 호출부가 모두 장애 알림을 거친다', () => 
       '_shared/recipeImage.ts',
       '_shared/recipeText.ts',
       '_shared/weeklyReportDb.ts',
+      'create-recipe-by-name/nameCheck.ts',
       'estimate-recipe-servings/index.ts',
       'food-check/index.ts',
       'process-ingredient-request/image.ts',

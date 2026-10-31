@@ -45,7 +45,9 @@ describe('20261101020000_recipe_by_name.sql', () => {
       'consume_recipe_by_name_trial(uuid, int)',
       'release_recipe_by_name_trial(uuid)',
     ]) {
-      expect(sql).toContain(`revoke all on function public.${sig} from public, anon, authenticated;`);
+      expect(sql).toContain(
+        `revoke all on function public.${sig} from public, anon, authenticated;`
+      );
       expect(sql).toContain(`grant execute on function public.${sig} to service_role;`);
     }
   });
@@ -58,7 +60,9 @@ describe('20261101020000_recipe_by_name.sql', () => {
 
   it('recipe.adapt_note 열과 앱이 읽는 뷰·RPC 세 곳에 맨 뒤 열로 추가', () => {
     const sql = migration();
-    expect(sql).toContain('alter table public.recipe add column if not exists adapt_note text null;');
+    expect(sql).toContain(
+      'alter table public.recipe add column if not exists adapt_note text null;'
+    );
     expect(sql).toContain('r.servings, r.adapt_note FROM recipe r');
     expect(sql.match(/servings smallint, adapt_note text\)/g)).toHaveLength(2);
     expect(sql.match(/r\.servings, r\.adapt_note FROM filtered_recipes r/g)).toHaveLength(2);
