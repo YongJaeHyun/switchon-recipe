@@ -48,6 +48,7 @@ export type Database = {
       };
       fasting_plan: {
         Row: {
+          created_at: string | null;
           days: number[];
           start_date: string;
           start_minutes: Json | null;
@@ -57,6 +58,7 @@ export type Database = {
           week_index: number;
         };
         Insert: {
+          created_at?: string | null;
           days: number[];
           start_date: string;
           start_minutes?: Json | null;
@@ -66,6 +68,7 @@ export type Database = {
           week_index: number;
         };
         Update: {
+          created_at?: string | null;
           days?: number[];
           start_date?: string;
           start_minutes?: Json | null;

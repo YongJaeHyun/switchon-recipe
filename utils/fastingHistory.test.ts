@@ -334,6 +334,80 @@ describe('fastingHistory (시작일이 겹칠 때 새 계획이 이긴다)', () 
   });
 });
 
+describe('fastingHistory (계획 생성·수정 시각)', () => {
+  const now = new Date('2026-10-30T09:00+09:00');
+  const plan = (
+    start_date: string,
+    week_index: number,
+    days: number[],
+    created_at: string | null,
+    updated_at: string | null = created_at
+  ) => ({ start_date, week_index, days, start_time: null, created_at, updated_at });
+
+  it('시작일을 바꾼 뒤 이번 주 계획을 고쳐도 그 주 앞 날짜가 사라지지 않는다 (재검토 N1)', () => {
+    // 10/1 시작 → 10/15 한 주 더(10/8 시작) → 백필 (10/8, 2주차 목·토) → 10/19에 월 추가
+    const { current } = fastingHistory({
+      startDate: '2026-10-08',
+      programStart: '2026-10-01',
+      plans: [
+        plan('2026-10-01', 2, [4], '2026-10-05T01:00:00Z'),
+        plan('2026-10-08', 2, [1, 4, 6], '2026-10-15T03:00:00Z', '2026-10-19T03:00:00Z'),
+      ],
+      results: [],
+      now,
+    });
+    expect(current).toEqual([
+      item('2026-10-19', 2),
+      item('2026-10-17', 2),
+      item('2026-10-15', 2),
+      item('2026-10-08', 2),
+    ]);
+  });
+
+  it('앞당겼다가 원래 시작일로 되돌리면 되돌린 뒤 저장한 계획이 다시 이긴다', () => {
+    // 10/1 시작(3주차 10/15~) → 10/16 9/28로 앞당김(백필 3주차 수 10/14, 바꾸기 전이라 빠짐)
+    // → 10/20 10/1로 되돌리고 3주차에 수 추가(10/21)
+    const { current } = fastingHistory({
+      startDate: '2026-10-01',
+      programStart: '2026-09-28',
+      plans: [
+        plan('2026-10-01', 2, [4], '2026-10-07T01:00:00Z'),
+        plan('2026-10-01', 3, [1, 3], '2026-10-15T01:00:00Z', '2026-10-20T01:00:00Z'),
+        plan('2026-09-28', 3, [3], '2026-10-16T01:00:00Z'),
+      ],
+      results: [],
+      now,
+    });
+    // 10/19(월)은 9/28 시작이 쓰이던 때라 빠진다 (그때 앱에는 4주차, 단식 요일 없음)
+    expect(current).toEqual([item('2026-10-21', 3), item('2026-10-08', 2)]);
+  });
+
+  it('생성 시각이 없으면(마이그레이션 전) 수정 시각으로 본다', () => {
+    const { current } = fastingHistory({
+      startDate: '2026-10-08',
+      programStart: '2026-10-01',
+      plans: [
+        plan('2026-10-01', 3, [6], null, '2026-10-14T01:00:00Z'), // 10/17 → 바꾼 뒤라 빠짐
+        plan('2026-10-08', 2, [5], null, '2026-10-16T01:00:00Z'), // 10/16
+      ],
+      results: [],
+      now,
+    });
+    expect(current).toEqual([item('2026-10-16', 2)]);
+  });
+
+  it('시각이 깨져 있으면 없는 것으로 본다 (예외 없이)', () => {
+    const { current } = fastingHistory({
+      startDate: '2026-10-01',
+      programStart: '2026-10-01',
+      plans: [plan('2026-10-01', 2, [4], 'not-a-date', 'also-bad')],
+      results: [],
+      now,
+    });
+    expect(current).toEqual([item('2026-10-08', 2)]);
+  });
+});
+
 describe('fastingHistory (계획 저장 시각)', () => {
   it('시작일이 하나면 계획을 그 주 중간에 저장했어도 앞 날짜가 남는다', () => {
     const { current } = fastingHistory({

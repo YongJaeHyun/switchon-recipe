@@ -16,6 +16,7 @@ interface PlanBody {
 }
 
 // ignoreDuplicates = true면 이미 있는 계획은 그대로 둔다 (insert-if-absent).
+// created_at은 보내지 않는다 (새 행은 DB 기본값 now(), 있던 행은 그대로: 기록 탭이 시작일 바뀐 때를 어림하는 데 쓴다).
 // 요일별 시각(start_minutes)과 옛 라벨(start_time)을 함께 쓴다
 const write = async (
   { start_date, week_index, days, schedule }: PlanBody,
@@ -95,6 +96,7 @@ const selectEvery = async (): Promise<
     days: number[];
     start_time: string | null;
     start_minutes: Json | null;
+    created_at: string | null;
     updated_at: string;
   }[]
 > => {
@@ -103,7 +105,7 @@ const selectEvery = async (): Promise<
 
   const { data, error } = await supabase
     .from('fasting_plan')
-    .select('start_date, week_index, days, start_time, start_minutes, updated_at')
+    .select('start_date, week_index, days, start_time, start_minutes, created_at, updated_at')
     .eq('uid', uid);
 
   if (error) throw error;
