@@ -89,7 +89,7 @@ const PastGroup = ({
       accessibilityState={{ expanded: open }}
       onPress={onToggle}>
       <Text className="font-bold text-neutral-600">
-        이전 회차 · {formatProgramStart(startDate)}
+        이전 프로그램 · {formatProgramStart(startDate)}
       </Text>
       <MaterialIcons
         name={open ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
@@ -158,12 +158,12 @@ export function FastingHistorySection() {
               <View className="items-center gap-1 py-8">
                 <Text className="font-bold text-neutral-500">
                   {previous.length > 0
-                    ? '이번 회차 단식 기록은 아직 없어요'
+                    ? '이번 프로그램 단식 기록은 아직 없어요'
                     : '아직 단식 기록이 없어요'}
                 </Text>
                 <Text className="text-center text-sm text-neutral-400">
                   {previous.length > 0
-                    ? '지난 회차 기록은 아래에서 볼 수 있어요'
+                    ? '지난 프로그램 기록은 아래에서 볼 수 있어요'
                     : '2주차부터 오늘 탭에서 단식 요일을 정하면 여기에 기록이 쌓여요'}
                 </Text>
               </View>
@@ -176,7 +176,7 @@ export function FastingHistorySection() {
                 accessibilityState={{ expanded: showPast }}
                 onPress={() => setShowPast((prev) => !prev)}>
                 <Text className="text-sm text-neutral-600">
-                  {showPast ? '이전 회차 접기' : '이전 회차 보기'}
+                  {showPast ? '이전 프로그램 접기' : '이전 프로그램 보기'}
                 </Text>
                 <MaterialIcons
                   name={showPast ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}

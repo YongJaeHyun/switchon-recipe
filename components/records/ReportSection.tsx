@@ -286,7 +286,7 @@ export function ReportSection() {
         <>
           {currentItems.length > 0 && (
             <View className="gap-3">
-              <Text className="text-lg font-bold text-neutral-800">이번 회차</Text>
+              <Text className="text-lg font-bold text-neutral-800">이번 프로그램</Text>
               {currentItems.map((item) => {
                 if (item.kind === 'report') {
                   return (
@@ -321,7 +321,7 @@ export function ReportSection() {
             <View key={group.startDate} className="gap-3">
               {programKnown ? (
                 <View className="gap-0.5">
-                  <Text className="text-lg font-bold text-neutral-800">이전 회차</Text>
+                  <Text className="text-lg font-bold text-neutral-800">이전 프로그램</Text>
                   <Text className="text-sm text-neutral-500">
                     {formatProgramStart(group.startDate)}
                   </Text>

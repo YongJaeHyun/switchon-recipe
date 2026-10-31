@@ -56,7 +56,7 @@ export function getPassOptions(sales: SalesState, programWeek: PassProgramWeek):
       productId: sales.productId,
       days,
       title: '스위치온 패스',
-      subtitle: '5주 · 한 회차 전체',
+      subtitle: '5주 · 프로그램 전체',
       price: formatKrw(sales.priceKrw),
       perWeek: `주당 ${formatKrw(Math.round(sales.priceKrw / (days / 7)))}`,
       original,
@@ -107,7 +107,7 @@ export function canPurchasePassSelection(
 
 export function getPassCtaLabel(option: PassOption, hasPass: boolean): string {
   if (hasPass) return `${option.price}으로 ${option.kind === 'week' ? '1주' : '5주'} 연장하기`;
-  return `${option.price}으로 ${option.kind === 'week' ? '1주' : '한 회차'} 시작하기`;
+  return `${option.price}으로 ${option.kind === 'week' ? '1주' : '프로그램'} 시작하기`;
 }
 
 // 1주 패스는 한 주 더 하기로 늘어나지 않는다

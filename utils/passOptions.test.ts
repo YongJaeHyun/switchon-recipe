@@ -29,7 +29,7 @@ describe('getPassOptions', () => {
         productId: 'switchon_pass_5w_1900',
         days: 35,
         title: '스위치온 패스',
-        subtitle: '5주 · 한 회차 전체',
+        subtitle: '5주 · 프로그램 전체',
         price: '1,900원',
         perWeek: '주당 380원',
         original: '4,900원',
@@ -216,7 +216,7 @@ describe('getPassCtaLabel', () => {
   const [fiveWeek, week] = getPassOptions(sales, 1);
 
   it('처음 사면 시작하기', () => {
-    expect(getPassCtaLabel(fiveWeek, false)).toBe('1,900원으로 한 회차 시작하기');
+    expect(getPassCtaLabel(fiveWeek, false)).toBe('1,900원으로 프로그램 시작하기');
     expect(getPassCtaLabel(week, false)).toBe('1,500원으로 1주 시작하기');
   });
 

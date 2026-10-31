@@ -8,6 +8,7 @@ import { CustomBottomSheet } from 'components/common/CustomBottomSheet';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import { FlashField, InbodyPhotoPanel, type PhotoSource } from 'components/weight/InbodyPhotoPanel';
+import { WeightDateStrip } from 'components/weight/WeightDateStrip';
 import { CHANNELS } from 'const/channels';
 import { QueryKey } from 'const/queryKey';
 import * as ImagePicker from 'expo-image-picker';
@@ -17,13 +18,13 @@ import { usePass } from 'hooks/usePass';
 import { usePremiumGate } from 'hooks/usePremiumGate';
 import { useUserSetting, useWeights } from 'hooks/useWeights';
 import { queryClient } from 'lib/queryClient';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Keyboard, TouchableOpacity, View } from 'react-native';
+import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { Nullable } from 'types/common';
 import {
   BODY_COMP_RANGE,
-  type BodyComp,
   type BodyCompKind,
   parseBodyCompInput,
   prefillBodyComp,
@@ -57,13 +58,15 @@ import {
   parseWeightInput,
   shouldAskWeightReminder,
 } from 'utils/weight';
+import {
+  type WeightInputTarget,
+  weightDateChips,
+  weightDateRange,
+  weightSheetSubtitle,
+  weightTargetForDay,
+} from 'utils/weightDateStrip';
 
-export interface WeightInputTarget {
-  day: string; // 저장할 KST 날짜 (yyyy-MM-dd)
-  initial: number | null; // 미리 채울 값 (그날 값, 없으면 어제 값)
-  initialBodyComp: BodyComp; // 미리 채울 인바디 값 (그날 값만)
-  isToday: boolean;
-}
+export type { WeightInputTarget };
 
 const BODY_COMP_FIELDS: { kind: BodyCompKind; label: string; placeholder: string }[] = [
   { kind: 'muscle', label: '골격근량', placeholder: '예: 27.1' },
@@ -144,11 +147,17 @@ const formatDayLabel = (day: string) => {
 // "결과지 사진으로 입력"은 인바디 결과지 사진을 읽어 세 칸을 채우기만 한다 (저장은 사용자가 누른다).
 // 결과지 날짜가 저장할 날과 다르면 어느 날로 저장할지 고르게 한다 (기본: 결과지 날짜, 7일 넘게 지난
 // 결과지면 시트 날짜). 결과지 날짜로 저장할 때 못 읽은 칸은 그날 기존 값(없으면 빈칸)으로 맞춘다.
-// 사진 읽기는 스위치온 패스 전용 (패스가 없으면 결제 화면으로). 직접 입력은 누구나
-export function WeightInputSheet({ bottomSheetRef, target }: WeightInputSheetProps) {
+// 사진 읽기는 스위치온 패스 전용 (패스가 없으면 결제 화면으로). 직접 입력은 누구나.
+// 맨 위 날짜 줄에서 (회차 시작 7일 전 ~ 오늘) 다른 날을 고르면 시트가 그날을 겨눈다 (그날 값으로 다시 채움,
+// 결과지를 읽은 뒤면 읽은 값 + 그날 기존 값). 여는 쪽(target)은 처음 겨눌 날만 정한다
+export function WeightInputSheet({ bottomSheetRef, target: openedTarget }: WeightInputSheetProps) {
   const { logs, isLogsFetched, saveWeight, isSaving } = useWeights();
   const { setting, isFetched, isError, updateSetting } = useUserSetting();
   const { status: passStatus } = usePass();
+  const startDate = useUserStore((state) => state.start_date) || null;
+  const programStart = useUserStore((state) => state.program_start) || null;
+  // 지금 겨눈 날 (날짜 줄에서 바꿀 수 있다). 시트를 열 때마다 여는 쪽 값으로 돌아간다
+  const [target, setTarget] = useState<Nullable<WeightInputTarget>>(openedTarget);
   const billingAvailable = useBillingAvailable();
   const gate = usePremiumGate();
   // 패스를 팔지 않고 권한도 없으면 버튼을 숨긴다 (다른 패스 기능과 같다)
@@ -195,7 +204,8 @@ export function WeightInputSheet({ bottomSheetRef, target }: WeightInputSheetPro
   // 결과지 날짜로 저장하는데 체중이 비어 있으면 저장을 막고 안내한다
   const weightNeeded = weightMissing && useMeasuredDay && text.trim() === '';
 
-  useEffect(() => {
+  // 겨눌 날을 바꾸면 읽던 사진·결과지 날짜·칸을 그날 값으로 되돌린다
+  const resetFor = (next: Nullable<WeightInputTarget>) => {
     readIdRef.current += 1;
     setReading(false);
     setPhotoPanelOpen(false);
@@ -207,14 +217,53 @@ export function WeightInputSheet({ bottomSheetRef, target }: WeightInputSheetPro
     setUseMeasuredDay(true);
     setReadResult(null);
     setWeightMissing(false);
-    setText(toText(target?.initial ?? null));
+    setText(toText(next?.initial ?? null));
     setShowError(false);
     setBodyText({
-      muscle: toText(target?.initialBodyComp.muscle_kg ?? null),
-      fat: toText(target?.initialBodyComp.fat_kg ?? null),
+      muscle: toText(next?.initialBodyComp.muscle_kg ?? null),
+      fat: toText(next?.initialBodyComp.fat_kg ?? null),
     });
     setBodyError(NO_BODY_COMP_ERROR);
-  }, [target]);
+  };
+
+  useEffect(() => {
+    setTarget(openedTarget);
+    resetFor(openedTarget);
+  }, [openedTarget]);
+
+  // 날짜 줄: 범위는 시트를 연 날 기준 (전체 기간 기록의 옛 날을 열면 그날부터), 고른 칸 = 저장할 날
+  const range = useMemo(
+    () =>
+      weightDateRange({
+        today: todayKst,
+        programStart,
+        startDate,
+        targetDay: openedTarget?.day,
+      }),
+    [todayKst, programStart, startDate, openedTarget]
+  );
+  const chips = useMemo(
+    () => weightDateChips({ range, today: todayKst, logs, selectedDay: saveDay }),
+    [range, todayKst, logs, saveDay]
+  );
+
+  // 날짜 칸을 누르면 그날로. 결과지를 읽은 뒤면 읽은 값 + 못 읽은 칸은 그날 기존 값 (결과지 날짜를 고를 때와 같다)
+  const handleSelectDay = (day: string) => {
+    if (reading || isSaving || day === saveDay) return;
+    const next = weightTargetForDay(logs, day, todayKst);
+    if (!readResult) {
+      setTarget(next);
+      resetFor(next);
+      return;
+    }
+    setTarget(next);
+    setMeasuredDay(null);
+    setMeasuredDayOld(false);
+    setUseMeasuredDay(true);
+    const forDay = inbodyTextsForDay({ result: readResult.result, base: dayLogTexts(logs, day) });
+    setFieldTexts(forDay.texts);
+    setWeightMissing(forDay.weightMissing);
+  };
 
   const invalid = showError && parseWeightInput(text) === null;
   const bodyInvalid = (kind: BodyCompKind) =>
@@ -374,7 +423,7 @@ export function WeightInputSheet({ bottomSheetRef, target }: WeightInputSheetPro
     showSuccessToast({
       textType: 'CUSTOM',
       title:
-        saveDay === target.day
+        saveDay === todayKst
           ? `${weight.toFixed(1)}kg 기록했어요`
           : `${formatDayLabel(saveDay)}에 ${weight.toFixed(1)}kg 기록했어요`,
     });
@@ -399,11 +448,17 @@ export function WeightInputSheet({ bottomSheetRef, target }: WeightInputSheetPro
     <>
       <CustomBottomSheet ref={bottomSheetRef}>
         <BottomSheetView className="px-5">
-          <Text className="mb-1 text-2xl font-bold">체중 기록</Text>
-          <Text className="mb-6 text-neutral-500">
-            {target && saveDay
-              ? `${saveDay === target.day && target.isToday ? '오늘 ' : ''}${formatDayLabel(saveDay)} 체중을 적어 주세요`
-              : ''}
+          <Text className="mb-3 text-2xl font-bold">체중 기록</Text>
+          {target && (
+            <WeightDateStrip
+              chips={chips}
+              disabled={reading || isSaving}
+              placeKey={openedTarget}
+              onSelect={handleSelectDay}
+            />
+          )}
+          <Text className="mb-4 text-neutral-500">
+            {saveDay ? weightSheetSubtitle(saveDay, todayKst) : ''}
           </Text>
 
           <FlashField
