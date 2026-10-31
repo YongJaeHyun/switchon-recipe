@@ -19,11 +19,13 @@ interface PassOnlyModalProps {
   // null이면 닫힌 상태
   view: PassOnlyModalView | null;
   onClose: () => void;
+  // [패스 보기]로 결제 화면에 가기 전에 (예: 바텀시트 안에서 열었으면 시트를 닫는다)
+  onBeforeOpenPass?: () => void;
 }
 
 // 패스 전용 기능을 패스 없이 눌렀을 때: 바로 결제 화면으로 보내지 않고 먼저 묻는다.
 // 레시피 한도 초과 창(QuotaExceededModal)과 같은 모양
-export function PassOnlyModal({ view, onClose }: PassOnlyModalProps) {
+export function PassOnlyModal({ view, onClose, onBeforeOpenPass }: PassOnlyModalProps) {
   // 닫히는 페이드 동안 내용이 먼저 사라지지 않도록 마지막 내용을 유지한다
   const lastView = useRef(view);
   if (view) lastView.current = view;
@@ -31,6 +33,7 @@ export function PassOnlyModal({ view, onClose }: PassOnlyModalProps) {
 
   const openPass = () => {
     onClose();
+    onBeforeOpenPass?.();
     router.push('/pass');
   };
 

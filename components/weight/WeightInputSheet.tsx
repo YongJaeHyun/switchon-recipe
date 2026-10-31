@@ -16,7 +16,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { useBillingAvailable } from 'hooks/useBillingAvailable';
 import { usePass } from 'hooks/usePass';
-import { usePremiumGate } from 'hooks/usePremiumGate';
+import { usePassOnlyPrompt } from 'hooks/usePassOnlyPrompt';
+import { PassOnlyModal } from 'components/common/PassOnlyModal';
 import { useUserSetting, useWeights } from 'hooks/useWeights';
 import { queryClient } from 'lib/queryClient';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -171,7 +172,10 @@ export function WeightInputSheet({ bottomSheetRef, target: openedTarget }: Weigh
   // 지금 겨눈 날 (날짜 줄에서 바꿀 수 있다). 시트를 열 때마다 여는 쪽 값으로 돌아간다
   const [target, setTarget] = useState<Nullable<WeightInputTarget>>(openedTarget);
   const billingAvailable = useBillingAvailable();
-  const gate = usePremiumGate();
+  const photoPrompt = usePassOnlyPrompt(
+    '인바디 결과지 사진으로 입력',
+    '결과지 사진을 찍으면 체중·골격근량·체지방량을 읽어 채워 드려요'
+  );
   // 패스를 팔지 않고 권한도 없으면 버튼을 숨긴다 (다른 패스 기능과 같다)
   const showPhotoButton = shouldShowPremiumEntry(passStatus, billingAvailable);
   const photoLocked = passStatus?.hasAccess !== true;
@@ -342,20 +346,16 @@ export function WeightInputSheet({ bottomSheetRef, target: openedTarget }: Weigh
     }
   };
 
-  // 패스가 없으면 usePremiumGate가 결제 화면으로 보낸다. 시트가 결제 화면 위에 남지 않게 먼저 닫는다.
+  // 패스가 없으면 결제 화면으로 바로 보내지 않고 "패스 기능이에요" 창으로 먼저 묻는다 (탐색 추천 탭과 같다).
   // 패스가 있으면 인바디 줄 아래에 사진 찍기/앨범 고르기 칸을 펼친다 (다시 누르면 접는다)
   const handlePhotoPress = () => {
     if (photoPanelOpen) {
       setPhotoPanelOpen(false);
       return;
     }
-    if (passStatus && !passStatus.hasAccess) {
-      Keyboard.dismiss();
-      bottomSheetRef.current?.close();
-    }
-    gate(() => {
+    Keyboard.dismiss();
+    photoPrompt.guard(() => {
       if (!target || reading) return;
-      Keyboard.dismiss();
       setNotice(null);
       setPhotoPanelOpen(true);
     })();
@@ -624,6 +624,11 @@ export function WeightInputSheet({ bottomSheetRef, target: openedTarget }: Weigh
           </RippleButton>
         </BottomSheetView>
       </CustomBottomSheet>
+
+      <PassOnlyModal
+        {...photoPrompt.modalProps}
+        onBeforeOpenPass={() => bottomSheetRef.current?.close()}
+      />
 
       <ConfirmModal
         type="create"
