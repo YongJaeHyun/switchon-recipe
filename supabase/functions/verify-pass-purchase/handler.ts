@@ -5,10 +5,12 @@ import type { createGooglePlayClient, ProductPurchase } from '../_shared/googleP
 import {
   computeExpiry,
   type ExtensionForExpiry,
+  FIRST_PURCHASE_DISCOUNT_TIER,
   isPurchaseEligible,
   passProductOf,
   type PremiumSetting,
   type PurchaseForExpiry,
+  tierOfProduct,
 } from '../_shared/pass.ts';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -21,7 +23,7 @@ export const BACKFILL_RETRY_WINDOW_MS = DAY_MS;
 export type VerifyResult =
   | { status: 'granted'; passExpiresAt: string }
   | { status: 'already_processed'; passExpiresAt: string | null }
-  | { status: 'price_changed' } // 유예 밖 → 환불함
+  | { status: 'price_changed' } // 유예 밖이거나 첫 구매 할인을 이미 씀 → 환불함
   | { status: 'invalid' }; // 미결제, 다른 계정, 모르는 상품
 
 // pass_purchase 테이블 한 행 (camelCase)
@@ -49,6 +51,13 @@ export interface VerifyDeps {
   insertPurchase(row: PurchaseRow): Promise<'inserted' | 'duplicate'>; // unique 위반이면 'duplicate'
   // user_pass 만료일을 greatest(기존, expiresAt)로 올리고 저장된 값을 돌려준다 (줄이지 않음)
   raisePassExpiry(uid: string, expiresAt: Date): Promise<Date>;
+  // granted 구매 기록 (DB 함수 grant_pass_purchase). 유저별 lock 안에서 한 트랜잭션으로 확인과 기록을 한다:
+  // checkFirstPurchaseDiscount면 이미 granted인 5주 패스가 있을 때 기록하지 않고 'discount_used'.
+  // 같은 토큰이 이미 있으면 'duplicate'
+  grantPurchase(
+    row: PurchaseRow,
+    checkFirstPurchaseDiscount: boolean
+  ): Promise<'inserted' | 'duplicate' | 'discount_used'>;
   play: Pick<
     ReturnType<typeof createGooglePlayClient>,
     'getProductPurchase' | 'consumeProductPurchase' | 'refundOrder'
@@ -144,6 +153,16 @@ const grantedInterval = (
   return { grantedFrom, grantedUntil };
 };
 
+// 환불 요청. orderId가 없으면 환불하지 못하고 로그만 남긴다
+const refundIneligible = async (deps: VerifyDeps, orderId: string | null, token: string) => {
+  if (orderId) {
+    await deps.play.refundOrder(orderId);
+  } else {
+    // 구매 토큰은 결제 증빙이므로 로그에는 앞부분만 남긴다
+    console.error('환불해야 하는 구매인데 orderId가 없어 환불하지 못함:', `${token.slice(0, 8)}…`);
+  }
+};
+
 export async function verifyPurchase(deps: VerifyDeps, input: VerifyInput): Promise<VerifyResult> {
   const product = passProductOf(input.productId);
   if (!product) return { status: 'invalid' };
@@ -165,46 +184,59 @@ export async function verifyPurchase(deps: VerifyDeps, input: VerifyInput): Prom
     raw: purchase,
   };
 
-  const setting = await deps.getSetting();
-  if (!isPurchaseEligible(input.productId, purchasedAt, setting)) {
-    if (purchase.orderId) {
-      await deps.play.refundOrder(purchase.orderId);
-    } else {
-      // 구매 토큰은 결제 증빙이므로 로그에는 앞부분만 남긴다
-      console.error(
-        '유예 밖 구매인데 orderId가 없어 환불하지 못함:',
-        `${input.purchaseToken.slice(0, 8)}…`
-      );
-    }
-    await deps.insertPurchase({
+  const [setting, existing, extensions] = await Promise.all([
+    deps.getSetting(),
+    deps.listUserPurchases(input.uid),
+    deps.listUserExtensions(input.uid),
+  ]);
+  const candidate = { purchaseToken: input.purchaseToken, productId: input.productId, purchasedAt };
+
+  // 지급하지 않는 구매: refunded_ineligible로 먼저 기록하고, 이 요청이 기록했을 때만 환불한다.
+  // 같은 토큰을 다른 요청이 이미 기록(지급 포함)했으면 환불하지 않는다 → 지급한 구매는 절대 되돌리지 않는다.
+  // (환불이 실패해도 소비하지 않은 구매라 Play가 3일 뒤 자동 환불한다)
+  const rejectIneligible = async (): Promise<VerifyResult> => {
+    const inserted = await deps.insertPurchase({
       ...baseRow,
       grantedFrom: null,
       grantedUntil: null,
       status: 'refunded_ineligible',
     });
+    if (inserted === 'duplicate') return processedByOtherRequest();
+    await refundIneligible(deps, purchase.orderId ?? null, input.purchaseToken);
     return { status: 'price_changed' };
+  };
+
+  // 같은 토큰의 동시 요청이 먼저 기록했다. 그 기록대로 답한다
+  const processedByOtherRequest = async (): Promise<VerifyResult> => {
+    const recorded = await deps.findPurchase(input.purchaseToken);
+    return alreadyProcessed(
+      deps,
+      input,
+      recorded ?? { status: 'granted', uid: input.uid, purchasedAt }
+    );
+  };
+
+  // 이 토큰 자신은 빼고 본다: 같은 토큰의 다른 요청이 먼저 지급했으면 그 기록이 '이미 쓴 할인'으로 잡혀
+  // 지급된 구매를 환불하게 된다 (재시도와 복구가 동시에 올 때)
+  const others = existing.filter((p) => p.purchaseToken !== input.purchaseToken);
+  if (!isPurchaseEligible(input.productId, purchasedAt, setting, others)) {
+    return rejectIneligible();
   }
 
-  const [existing, extensions] = await Promise.all([
-    deps.listUserPurchases(input.uid),
-    deps.listUserExtensions(input.uid),
-  ]);
   const { grantedFrom, grantedUntil } = grantedInterval(
     existing,
     extensions,
-    { purchaseToken: input.purchaseToken, productId: input.productId, purchasedAt },
+    candidate,
     product.days
   );
-  const inserted = await deps.insertPurchase({
-    ...baseRow,
-    grantedFrom,
-    grantedUntil,
-    status: 'granted',
-  });
+  // 할인가 구매는 lock 안에서 한 번 더 확인한다: 위 확인 뒤 다른 요청이 5주 패스를 먼저 지급했을 수 있다
+  const inserted = await deps.grantPurchase(
+    { ...baseRow, grantedFrom, grantedUntil, status: 'granted' },
+    tierOfProduct(input.productId) === FIRST_PURCHASE_DISCOUNT_TIER
+  );
+  if (inserted === 'discount_used') return rejectIneligible();
   // Play 구매의 계정이 요청한 유저와 같음을 위에서 확인했으므로 같은 uid의 동시 요청이다
-  if (inserted === 'duplicate') {
-    return alreadyProcessed(deps, input, { status: 'granted', uid: input.uid, purchasedAt });
-  }
+  if (inserted === 'duplicate') return processedByOtherRequest();
 
   // 동시에 처리된 다른 구매도 반영되도록 insert 후 전체 구매로 다시 계산한다
   const expiry = (await syncPassExpiry(deps, input.uid)) as Date;

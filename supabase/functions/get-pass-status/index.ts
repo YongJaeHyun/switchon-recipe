@@ -4,13 +4,19 @@
 // has_premium_access_for(uid) RPC 결과를 합쳐서 돌려준다. hasAccess는 여기서 다시 계산하지 않고
 // DB 함수 결과를 그대로 전달한다 (서버 최종 판단은 단일 소스여야 하므로).
 // foodCheckTrialRemaining: 패스 없이 쓸 수 있는 음식 판정 무료 횟수 (앱 표시용, food-check가 최종 판단)
+// sales: 5주 패스 첫 구매 할인(2,900원)은 granted 5주 패스 구매가 없는 유저에게만 (운영자 결정 2026-11-01)
 // recipeByNameTrialRemaining: 패스 없이 쓸 수 있는 음식 이름으로 만들기 무료 횟수 (앱 표시용, create-recipe-by-name이 최종 판단)
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getUid, requireEnv } from '../_shared/auth.ts';
 import { foodCheckTrialRemaining } from '../_shared/foodCheckTrial.ts';
-import { getSalesState, type PremiumSetting } from '../_shared/pass.ts';
+import {
+  getSalesState,
+  hasUsedFirstPurchaseDiscount,
+  type PremiumSetting,
+  type PurchaseForExpiry,
+} from '../_shared/pass.ts';
 import { recipeByNameTrialRemaining } from '../_shared/recipeNameCheck.ts';
 
 const json = (body: unknown, status: number) =>
@@ -39,6 +45,21 @@ const getPassExpiresAt = async (uid: string): Promise<string | null> => {
     .maybeSingle();
   if (error) throw error;
   return data?.pass_expires_at ?? null;
+};
+
+// 할인을 이미 썼는지. 조회가 실패하면 상태 전체를 실패시킨다: 할인을 쓴 유저에게 할인가를 보여 주면 결제 뒤 환불된다
+const getDiscountUsed = async (uid: string): Promise<boolean> => {
+  const { data, error } = await supabase
+    .from('pass_purchase')
+    .select('product_id, status')
+    .eq('uid', uid);
+  if (error) throw error;
+  return hasUsedFirstPurchaseDiscount(
+    (data as { product_id: string; status: PurchaseForExpiry['status'] }[]).map((row) => ({
+      productId: row.product_id,
+      status: row.status,
+    }))
+  );
 };
 
 const getHasAccess = async (uid: string): Promise<boolean> => {
@@ -78,8 +99,9 @@ serve(async (req: Request) => {
     if (!uid) return json({ error: 'unauthorized' }, 401);
 
     const now = new Date();
-    const [setting, passExpiresAt, hasAccess, trial] = await Promise.all([
+    const [setting, discountUsed, passExpiresAt, hasAccess, trial] = await Promise.all([
       getSetting(),
+      getDiscountUsed(uid),
       getPassExpiresAt(uid),
       getHasAccess(uid),
       getTrialRemaining(uid),
@@ -87,7 +109,7 @@ serve(async (req: Request) => {
 
     return json(
       {
-        sales: getSalesState(now, setting),
+        sales: getSalesState(now, setting, { discountUsed }),
         passExpiresAt,
         hasAccess,
         foodCheckTrialRemaining: trial.foodCheck,

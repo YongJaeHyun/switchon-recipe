@@ -13,6 +13,8 @@ import { useQuotaGate } from './useQuotaGate';
 export interface RecipeByNameRequest {
   name: string;
   isZeroCarb: boolean;
+  // 고른 주차 (1~4, 5 = 유지기)
+  week: number;
 }
 
 // 먹고 싶은 음식으로 만들기 시트의 생성 흐름: 호출 → 결과별 안내 → 성공이면 상세로.

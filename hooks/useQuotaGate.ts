@@ -72,6 +72,8 @@ export const useQuotaGate = () => {
         adBonusLeft: quota && !quota.isPass ? quota.adBonusLeft : null,
         passDaily: setting?.passDaily ?? null,
         passFeatures: PASS_QUOTA_MODAL_FEATURES,
+        passCapReached: exceeded.passCapReached === true,
+        passTotalLimit: exceeded.passTotalLimit ?? null,
       })
     : null;
 

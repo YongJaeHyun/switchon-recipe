@@ -49,6 +49,7 @@ import {
   inbodyTextsForDay,
 } from 'utils/inbodyRead';
 import { requireOnline } from 'utils/network';
+import { passBadgeState } from 'utils/passFeatureLabel';
 import { isPassOnSale, shouldShowPremiumEntry } from 'utils/passScreen';
 import { enablePushForChannel, showNotificationPermissionAlert } from 'utils/notifications';
 import { showErrorToast, showInfoToast, showSuccessToast } from 'utils/showToast';
@@ -522,7 +523,7 @@ export function WeightInputSheet({ bottomSheetRef, target: openedTarget }: Weigh
                 } ${reading ? 'opacity-50' : ''}`}>
                 <MaterialIcons name="photo-camera" size={16} color={colors.green[600]} />
                 <Text className="text-sm font-semibold text-green-600">결과지 사진으로 입력</Text>
-                <PassBadge locked={photoLocked} />
+                <PassBadge state={passBadgeState(!photoLocked)} />
               </TouchableOpacity>
             )}
           </View>

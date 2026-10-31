@@ -135,7 +135,7 @@ describe('handleCreateRecipeRequest (기존 흐름 유지)', () => {
     const res = await handleCreateRecipeRequest(req(), deps);
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ id: 1 });
-    expect(deps.generate).toHaveBeenCalledWith({ command: 'c', week: 2, is_zero_carb: true });
+    expect(deps.generate).toHaveBeenCalledWith({ command: 'c', week: 2, is_zero_carb: true }, 'u');
   });
 
   it('로그인 정보가 없으면 500', async () => {

@@ -131,6 +131,24 @@ const deps = (): VerifyDeps => ({
     return new Date(data as string);
   },
 
+  async grantPurchase(row: PurchaseRow, checkFirstPurchaseDiscount: boolean) {
+    const { data, error } = await supabase.rpc('grant_pass_purchase', {
+      p_uid: row.uid,
+      p_product_id: row.productId,
+      p_purchase_token: row.purchaseToken,
+      p_order_id: row.orderId,
+      p_price_krw: row.priceKrw,
+      p_purchased_at: row.purchasedAt.toISOString(),
+      p_granted_from: row.grantedFrom?.toISOString() ?? null,
+      p_granted_until: row.grantedUntil?.toISOString() ?? null,
+      p_raw: row.raw,
+      p_check_first_purchase_discount: checkFirstPurchaseDiscount,
+    });
+    if (error) throw error;
+    if (data === 'inserted' || data === 'duplicate' || data === 'discount_used') return data;
+    throw new Error(`grant_pass_purchase 결과를 알 수 없음: ${String(data)}`);
+  },
+
   play: getPlayClient(),
 
   // 응답 뒤 백그라운드(EdgeRuntime.waitUntil)로 돈다. 검증 응답을 기다리게 하거나 실패시키지 않는다

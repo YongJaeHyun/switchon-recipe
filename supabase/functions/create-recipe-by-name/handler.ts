@@ -1,7 +1,7 @@
 // 먹고 싶은 음식 이름으로 레시피 만들기 요청 처리 본체. 외부 의존성(인증, 패스, 체험·한도 rpc, Gemini, 저장)은
 // deps로 받아 Vitest(node)에서 가짜로 테스트한다. URL import를 두지 않는다 (실제 연결은 index.ts).
 //
-// 흐름: 인증 → 입력 정리(1~30자, 따옴표·줄바꿈 제거) → 패스 확인(has_premium_access_for)
+// 흐름: 인증 → 입력 정리(1~30자, 따옴표·줄바꿈 제거, 주차는 1~5 정수 또는 없음) → 패스 확인(has_premium_access_for)
 // → (패스가 없으면) 무료 체험 차감 (평생 2번, 다 썼으면 402)
 // → 이름 확인 하루 10번 차감 (넘으면 429 NAME_CHECK_LIMIT, Gemini를 부르지 않음)
 // → 레시피 하루 한도 차감 (consume_recipe_quota, 넘으면 429 QUOTA_EXCEEDED)
@@ -23,11 +23,12 @@ import {
   buildNameCheckPrompt,
   buildRecipeByNameCommand,
   DISH_NAME_MAX,
+  parseChosenWeek,
   parseNameCheckResponse,
   recipeWeekOf,
+  resolveRuleWeek,
   sanitizeDishName,
 } from '../_shared/recipeNameCheck.ts';
-import { programDayOf, programWeekOf } from '../_shared/week.ts';
 
 export const MAX_BODY_BYTES = 4 * 1024;
 export const NAME_CHECK_LIMIT_MESSAGE = '오늘은 더 확인할 수 없어요. 내일 다시 해 주세요';
@@ -62,9 +63,10 @@ export interface RecipeByNameDeps {
   getStartDate(uid: string): Promise<string | null>;
   now(): Date;
   // 이름 판정 Gemini 응답 텍스트
-  checkName(prompt: string): Promise<string>;
+  // uid: 요청한 유저 (Gemini 사용량 기록용)
+  checkName(prompt: string, uid: string): Promise<string>;
   // 기존 레시피 생성·이미지·저장. 저장된 recipe 행을 돌려준다
-  generate(input: RecipeByNameInput): Promise<unknown>;
+  generate(input: RecipeByNameInput, uid: string): Promise<unknown>;
 }
 
 const json = (body: unknown, status: number) =>
@@ -75,7 +77,14 @@ const json = (body: unknown, status: number) =>
 
 class BadRequestError extends Error {}
 
-const readInput = async (req: Request): Promise<{ name: string; isZeroCarb: boolean }> => {
+interface NameInput {
+  name: string;
+  isZeroCarb: boolean;
+  // 앱이 고른 주차 (1~4, 5 = 유지기). 예전 앱은 보내지 않음 → null (시작일로 구함)
+  chosenWeek: number | null;
+}
+
+const readInput = async (req: Request): Promise<NameInput> => {
   const declared = Number(req.headers.get('content-length'));
   if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) {
     throw new BadRequestError('요청이 너무 커요');
@@ -95,7 +104,9 @@ const readInput = async (req: Request): Promise<{ name: string; isZeroCarb: bool
   const name = sanitizeDishName(b.name);
   if (!name) throw new BadRequestError(INVALID_NAME_MESSAGE);
   if (typeof b.isZeroCarb !== 'boolean') throw new BadRequestError('저탄수·무탄수를 골라 주세요');
-  return { name, isZeroCarb: b.isZeroCarb };
+  const chosenWeek = parseChosenWeek(b.week);
+  if (chosenWeek === 'invalid') throw new BadRequestError('주차를 다시 골라 주세요');
+  return { name, isZeroCarb: b.isZeroCarb, chosenWeek };
 };
 
 // 되돌리기는 실패해도 로그만 남긴다 (원래 응답·오류를 가리지 않게)
@@ -112,7 +123,7 @@ export async function handleRecipeByName(req: Request, deps: RecipeByNameDeps): 
     const uid = await deps.getUid(req);
     if (!uid) return json({ error: 'unauthorized' }, 401);
 
-    let input: { name: string; isZeroCarb: boolean };
+    let input: NameInput;
     try {
       input = await readInput(req);
     } catch (error) {
@@ -154,7 +165,7 @@ export async function handleRecipeByName(req: Request, deps: RecipeByNameDeps): 
 async function createWithLimits(
   deps: RecipeByNameDeps,
   uid: string,
-  input: { name: string; isZeroCarb: boolean },
+  input: NameInput,
   trialRemaining: number | null
 ): Promise<{ response: Response; saved: boolean }> {
   const nameCheck = await deps.consumeNameCheck(uid);
@@ -185,13 +196,12 @@ async function createWithLimits(
   const isPassUser = trialRemaining === null;
   try {
     const startDate = await deps.getStartDate(uid);
-    const now = deps.now();
-    const week = programWeekOf(startDate, now);
-    const day = programDayOf(startDate, now);
+    const { week, day } = resolveRuleWeek(input.chosenWeek, startDate, deps.now());
 
     checkCalled = true;
     const text = await deps.checkName(
-      buildNameCheckPrompt({ name: input.name, week, day, isZeroCarb: input.isZeroCarb })
+      buildNameCheckPrompt({ name: input.name, week, day, isZeroCarb: input.isZeroCarb }),
+      uid
     );
     const check = parseNameCheckResponse(text, input.name);
     if (check.status === 'invalid') {
@@ -206,13 +216,16 @@ async function createWithLimits(
 
     await releaseNameCheck();
 
-    const recipe = await deps.generate({
-      command: buildRecipeByNameCommand({ check, isZeroCarb: input.isZeroCarb, week }),
-      week: recipeWeekOf(week),
-      isZeroCarb: input.isZeroCarb,
-      recipeName: check.recipeName,
-      adaptNote: check.status === 'adapt' ? check.changes.join('\n') : null,
-    });
+    const recipe = await deps.generate(
+      {
+        command: buildRecipeByNameCommand({ check, isZeroCarb: input.isZeroCarb, week }),
+        week: recipeWeekOf(week),
+        isZeroCarb: input.isZeroCarb,
+        recipeName: check.recipeName,
+        adaptNote: check.status === 'adapt' ? check.changes.join('\n') : null,
+      },
+      uid
+    );
 
     const body =
       trialRemaining === null

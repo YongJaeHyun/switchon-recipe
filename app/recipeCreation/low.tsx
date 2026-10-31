@@ -8,9 +8,11 @@ import { IngredientsLoadError } from 'components/recipeCreation/IngredientsLoadE
 import Ingredients, { IngredientsProps } from 'components/recipeCreation/Ingredients';
 import QuotaExceededModal from 'components/recipeCreation/QuotaExceededModal';
 import SelectedIngredient from 'components/recipeCreation/SelectedIngredient';
+import { WeekChips } from 'components/recipeCreation/WeekChips';
 import { getChoseong } from 'es-hangul';
 import { useIngredients } from 'hooks/useIngredients';
 import { useRecipeCreation } from 'hooks/useRecipeCreation';
+import { useRecipeWeekChoice } from 'hooks/useRecipeWeekChoice';
 import { useSelect } from 'hooks/useSelect';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { useLocalSearchParams } from 'expo-router';
@@ -22,11 +24,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { RecipeCategory, RecipeMethod } from 'types/recipe';
-import { getWeekAndDay } from 'utils/date';
-import { ingredientsForWeek } from 'utils/ingredientLists';
+import { ingredientListsForWeek, ingredientsForWeek } from 'utils/ingredientLists';
+import { recipeRuleWeek, recipeSaveWeek } from 'utils/recipeWeekChoice';
 import { getCreationLoadingKind } from 'utils/creationLoading';
 import { isCompletedHangul } from 'utils/hangul';
 
@@ -34,6 +35,7 @@ export default function LowRecipeCreationScreen() {
   const {
     selectedIngredients,
     resetIngredients,
+    upsertIngredients,
     isLoading: isIngredientsLoading,
   } = useSelectedIngredients({ type: 'low' });
 
@@ -54,12 +56,13 @@ export default function LowRecipeCreationScreen() {
 
   const [resetTrigger, setResetTrigger] = useState(false);
 
-  const getUserWeek = () => {
-    const startDate = useUserStore.getState().start_date;
-    const { week: userWeek } = getWeekAndDay(startDate);
-
-    return userWeek;
-  };
+  // 어느 주차 규칙으로 만들지 (처음은 지금 주차). 바꾸면 재료 칸과 선택 재료가 그 주차에 맞춰진다
+  const weekChoice = useRecipeWeekChoice({
+    type: 'low',
+    selectedIngredients,
+    upsertIngredients,
+    isReady: !isIngredientsLoading && !isIngredientListLoading && ingredients.length > 0,
+  });
 
   const getSearchedIngredients = (item: IngredientsProps) =>
     item.ingredientList.filter((ingredient) => {
@@ -82,13 +85,13 @@ export default function LowRecipeCreationScreen() {
 
   // 기존 명령문 그대로. 생성·한도·이동 흐름은 useRecipeCreation이 맡는다
   const buildRequest = () => {
-    const userWeek = getUserWeek();
-    // 지금 주차보다 높은 주차 재료는 보내지 않는다 (시작일 변경 뒤 선택 목록 정리를 못 했을 때)
-    const usable = ingredientsForWeek(selectedIngredients, userWeek);
+    const chosenWeek = weekChoice.week;
+    // 고른 주차보다 높은 주차 재료는 보내지 않는다 (선택 목록 정리를 못 했을 때)
+    const usable = ingredientsForWeek(selectedIngredients, chosenWeek);
     const ingredients = usable.map((ingredient) => ingredient.name).join(', ');
 
-    const availableWeek = Math.min(userWeek, 4);
-    const recipeWeek = Math.min(userWeek, 3);
+    const availableWeek = recipeRuleWeek(chosenWeek);
+    const recipeWeek = recipeSaveWeek(chosenWeek);
 
     let command = '';
 
@@ -122,6 +125,12 @@ export default function LowRecipeCreationScreen() {
   return (
     <SafeAreaViewWithNav className="relative flex-1 bg-white px-5">
       <View className="mb-8 w-full gap-3">
+        <WeekChips
+          value={weekChoice.week}
+          currentWeek={weekChoice.currentWeek}
+          onChange={weekChoice.changeWeek}
+          disabled={creation.isCreating}
+        />
         <SearchInput keyword={keyword} onChangeText={setKeyword} placeholder="재료를 검색하세요!" />
         <FlatList
           contentContainerClassName="gap-2"
@@ -141,7 +150,7 @@ export default function LowRecipeCreationScreen() {
         <FlatList
           className="mb-4 flex-1"
           contentContainerClassName="gap-6"
-          data={lowLists}
+          data={ingredientListsForWeek(lowLists, weekChoice.week)}
           extraData={resetTrigger ? 'reset-1' : 'reset-0'}
           ListFooterComponent={() => <IngredientRequest />}
           renderItem={({ item }) => (
@@ -149,6 +158,7 @@ export default function LowRecipeCreationScreen() {
               title={item.title}
               week={item.week}
               ingredientList={getSearchedIngredients(item)}
+              selectableWeek={weekChoice.week}
             />
           )}
         />

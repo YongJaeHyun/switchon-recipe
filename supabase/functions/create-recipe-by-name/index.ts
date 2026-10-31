@@ -6,6 +6,7 @@
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { aiUsageFetch } from '../_shared/aiUsage.ts';
 import { getUid, requireEnv } from '../_shared/auth.ts';
 import { createRecipeClients, generateAndSaveRecipe } from '../_shared/createRecipe.ts';
 import { parseTrialConsume } from '../_shared/foodCheckTrial.ts';
@@ -84,16 +85,23 @@ const depsFor = (req: Request): RecipeByNameDeps => ({
     return data?.start_date ?? null;
   },
 
-  checkName: (prompt) => requestNameCheck(prompt, requireEnv('GEMINI_API_KEY'), providerFetch),
+  // 사용량 기록(ai_usage)은 장애 알림 fetch를 한 번 더 감싸 기능 이름·uid를 붙인다 (_shared/aiUsage.ts)
+  checkName: (prompt, uid) =>
+    requestNameCheck(
+      prompt,
+      requireEnv('GEMINI_API_KEY'),
+      aiUsageFetch(providerFetch, supabase, { feature: 'recipe_name_check', uid })
+    ),
 
   // recipe insert는 기존 생성과 같이 유저 JWT를 실은 클라이언트로 한다 (uid 기본값이 요청 유저로 채워짐)
-  generate: ({ command, week, isZeroCarb, recipeName, adaptNote }) =>
+  generate: ({ command, week, isZeroCarb, recipeName, adaptNote }, uid) =>
     generateAndSaveRecipe(createRecipeClients(req), providerFetch, {
       command,
       week,
       is_zero_carb: isZeroCarb,
       recipeName,
       adaptNote,
+      uid,
     }),
 });
 

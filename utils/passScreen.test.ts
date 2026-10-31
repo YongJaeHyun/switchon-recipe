@@ -11,11 +11,12 @@ import {
 const freeSales: SalesState = {
   onSale: true,
   freeActive: true,
-  tier: 'early1',
-  productId: 'switchon_pass_5w_1900',
-  priceKrw: 1900,
+  tier: 'early2',
+  productId: 'switchon_pass_5w_2900',
+  priceKrw: 2900,
   freeDaysLeft: 12,
-  nextTier: { tier: 'early2', priceKrw: 2900, startsAt: '2026-11-07T15:00:00.000Z' },
+  nextTier: { tier: 'regular', priceKrw: 4900, startsAt: '2026-11-14T15:00:00.000Z' },
+  firstPurchaseDiscount: true,
 };
 
 describe('isPassOnSale', () => {

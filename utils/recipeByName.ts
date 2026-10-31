@@ -4,6 +4,7 @@ import type { RecipeDB } from 'types/database';
 import type { PassStatus } from 'types/pass';
 import type { QuotaExceeded } from 'types/recipeQuota';
 import { type TrialEntryState, trialEntryState } from './passTrial';
+import { quotaExceededFromBody } from './recipeQuota';
 
 // 서버 _shared/recipeNameCheck.ts와 같은 값
 export const RECIPE_BY_NAME_TRIAL_LIMIT = 2;
@@ -88,14 +89,7 @@ export function interpretRecipeByNameResponse(status: number, body: unknown): Re
     if (b?.code === 'NAME_CHECK_LIMIT') {
       return { status: 'nameCheckLimit', message: text(b.error, DEFAULT_LIMIT_MESSAGE) };
     }
-    return {
-      status: 'quotaExceeded',
-      quota: {
-        quotaExceeded: true,
-        canWatchAd: b?.canWatchAd === true,
-        isPass: b?.isPass === true,
-      },
-    };
+    return { status: 'quotaExceeded', quota: quotaExceededFromBody(b) };
   }
   if (status === 402) return { status: 'locked' };
   if (status === 400) return { status: 'invalid', message: text(b?.error, INVALID_FALLBACK) };

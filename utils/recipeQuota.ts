@@ -1,17 +1,24 @@
-import type { RecipeQuota } from 'types/recipeQuota';
+import type { QuotaExceeded, RecipeQuota } from 'types/recipeQuota';
 
 const PASS_REMAINING_NOTICE_THRESHOLD = 5;
+// 이번 패스로 만들 수 있는 레시피가 이만큼 이하로 남으면 알려준다
+const PASS_TOTAL_NOTICE_THRESHOLD = 20;
 
 // 무료: 기본 하루 개수와 남은 개수를 항상 표시, 패스: 남은 개수가 적을 때만 표시.
 // 최대 개수는 광고 보상과 상관없이 기본 한도(dailyLimit)로 고정한다
+// 패스는 이번 패스 총량이 20개 이하로 남았고 오늘 남은 수보다 적거나 같으면 총량을 보여준다
 export const formatRemaining = (
-  q: Pick<RecipeQuota, 'isPass' | 'remaining' | 'limit' | 'dailyLimit'>
+  q: Pick<RecipeQuota, 'isPass' | 'remaining' | 'limit' | 'dailyLimit' | 'passTotalRemaining'>
 ): string | null => {
   const max = q.dailyLimit ?? q.limit;
   if (q.remaining <= 0) {
     return `오늘 ${q.isPass ? '' : '무료 '}레시피를 모두 만들었어요 · 자정에 다시 채워져요`;
   }
   if (q.isPass) {
+    const total = q.passTotalRemaining;
+    if (typeof total === 'number' && total <= PASS_TOTAL_NOTICE_THRESHOLD && total <= q.remaining) {
+      return `이번 패스로 ${total}개 더 만들 수 있어요`;
+    }
     if (q.remaining > PASS_REMAINING_NOTICE_THRESHOLD) return null;
     return `오늘 ${q.remaining}/${max}개 남았어요`;
   }
@@ -38,6 +45,33 @@ export type QuotaModalView = {
 
 const DONE_FOR_TODAY = { headline: '오늘은 여기까지예요', note: '내일 다시 만들 수 있어요' };
 
+// 이번 패스 레시피 총량을 다 쓴 경우: 무료 이용자처럼 무료 하루 수와 광고로 이어서 만든다.
+// 회차 중이므로 패스를 다시 사라는 안내는 하지 않는다
+const passCapView = (input: {
+  canWatchAd: boolean;
+  adsAvailable: boolean;
+  freeDaily: number | null;
+  adBonusLeft: number | null;
+  passTotalLimit?: number | null;
+}): QuotaModalView => {
+  const headline = input.passTotalLimit
+    ? `이번 패스로 만들 수 있는 레시피 ${input.passTotalLimit}개를 모두 만들었어요`
+    : '이번 패스로 만들 수 있는 레시피를 모두 만들었어요';
+  const free = input.freeDaily ? `무료 레시피(하루 ${input.freeDaily}개)` : '무료 레시피';
+  const ways = input.adsAvailable ? `${free}와 광고로` : `${free}로`;
+  if (input.canWatchAd && input.adsAvailable) {
+    return {
+      headline,
+      note: `이제 ${ways} 더 만들 수 있어요`,
+      ad: {
+        hint: input.adBonusLeft ? `오늘 광고로 ${input.adBonusLeft}개 더 만들 수 있어요` : null,
+      },
+      pass: null,
+    };
+  }
+  return { headline, note: `내일부터 ${ways} 더 만들 수 있어요`, ad: null, pass: null };
+};
+
 // 한도 초과 모달에 보여줄 내용. 개수는 DB 설정(quota_setting)에서 온 값을 넘겨받고, 모르면 숫자를 뺀다
 export const getQuotaModalView = (input: {
   isPass: boolean;
@@ -48,7 +82,11 @@ export const getQuotaModalView = (input: {
   adBonusLeft: number | null;
   passDaily: number | null;
   passFeatures: readonly string[];
+  // 이번 패스 레시피 총량을 다 썼는지 (429 본문 passCapReached)와 그 총량
+  passCapReached?: boolean;
+  passTotalLimit?: number | null;
 }): QuotaModalView => {
+  if (input.passCapReached) return passCapView(input);
   if (input.isPass) return { ...DONE_FOR_TODAY, ad: null, pass: null };
 
   const pass = input.onSale
@@ -69,6 +107,21 @@ export const getQuotaModalView = (input: {
       hint: input.adBonusLeft ? `오늘 광고로 ${input.adBonusLeft}개 더 만들 수 있어요` : null,
     },
     pass,
+  };
+};
+
+// create-recipe-by-gemini·create-recipe-by-name의 429 QUOTA_EXCEEDED 본문을 앱 모양으로.
+// 패스 총량 필드는 서버가 보낸 경우에만 더한다
+export const quotaExceededFromBody = (body: unknown): QuotaExceeded => {
+  const b = (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>;
+  return {
+    quotaExceeded: true,
+    canWatchAd: b.canWatchAd === true,
+    isPass: b.isPass === true,
+    ...(b.passCapReached === true ? { passCapReached: true as const } : {}),
+    ...(b.passCapReached === true && typeof b.passTotalLimit === 'number'
+      ? { passTotalLimit: b.passTotalLimit }
+      : {}),
   };
 };
 

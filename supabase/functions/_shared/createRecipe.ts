@@ -9,6 +9,7 @@
 import { Image } from 'https://deno.land/x/imagescript@1.2.15/mod.ts';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { aiUsageFetch, type AiUsageFeature } from './aiUsage.ts';
 import { requireEnv } from './auth.ts';
 import type { RegisteredIngredient } from './ingredientNormalize.ts';
 import { fetchAllPages } from './pagination.ts';
@@ -100,6 +101,8 @@ export interface GenerateRecipeInput {
   recipeName?: string;
   // create-recipe-by-name: 바꿔 만든 안내 (recipe.adapt_note). 없으면 insert에 넣지 않는다 (기존 생성 그대로)
   adaptNote?: string | null;
+  // 요청한 유저. Gemini 사용량 기록(ai_usage)에 붙인다
+  uid?: string | null;
 }
 
 // 레시피 텍스트 생성 → 이미지 생성·업로드 → recipe 저장. 저장된 행을 돌려준다.
@@ -107,20 +110,28 @@ export interface GenerateRecipeInput {
 export async function generateAndSaveRecipe(
   { userClient: supabaseClient, adminClient }: RecipeClients,
   providerFetch: typeof fetch,
-  { command, week, is_zero_carb, recipeName, adaptNote }: GenerateRecipeInput
+  { command, week, is_zero_carb, recipeName, adaptNote, uid }: GenerateRecipeInput
 ): Promise<unknown> {
   const geminiKey = Deno.env.get('GEMINI_API_KEY');
   if (!geminiKey) throw new Error('GEMINI_API_KEY not set');
 
+  // 장애 알림 fetch에 기능 이름·uid를 붙여 Gemini 사용량도 남긴다 (_shared/aiUsage.ts, 실패해도 생성은 그대로)
+  const usageFetch = (feature: AiUsageFeature) =>
+    aiUsageFetch(providerFetch, adminClient, { feature, uid });
+
   // 🔹 1. 텍스트 기반 레시피 생성
-  const recipeJson = await requestRecipeText(command, geminiKey, providerFetch);
+  const recipeJson = await requestRecipeText(command, geminiKey, usageFetch('recipe_text'));
   const validated = validateRecipe(recipeJson);
   if (recipeName) validated.recipeName = recipeName;
   // 태그는 RecipeSchema 밖에서 따로 검증한다. 잘못된 태그가 레시피 생성을 막지 않도록 null로 저장한다.
   const tags = parseRecipeTags(recipeJson);
 
   // 🔹 2. 이미지 생성
-  const imageBase64 = await requestRecipeImage(validated.recipeName, geminiKey, providerFetch);
+  const imageBase64 = await requestRecipeImage(
+    validated.recipeName,
+    geminiKey,
+    usageFetch('recipe_image')
+  );
 
   // base64 → binary
   const pngBuffer = Uint8Array.from(atob(imageBase64), (c) => c.charCodeAt(0));
@@ -219,7 +230,7 @@ async function handleCreateRecipe(req: Request, providerFetch: typeof fetch): Pr
       if (error) throw new Error(`레시피 한도 복구 실패: ${error.message}`);
     },
 
-    generate: ({ command, week, is_zero_carb }) =>
-      generateAndSaveRecipe(clients, providerFetch, { command, week, is_zero_carb }),
+    generate: ({ command, week, is_zero_carb }, uid) =>
+      generateAndSaveRecipe(clients, providerFetch, { command, week, is_zero_carb, uid }),
   });
 }

@@ -91,7 +91,8 @@ export interface FoodCheckDeps {
   getStartDate(uid: string): Promise<string | null>;
   now(): Date;
   // Gemini 응답 텍스트를 돌려준다
-  askGemini(prompt: string, input: FoodCheckInput): Promise<string>;
+  // uid: 요청한 유저 (Gemini 사용량 기록용)
+  askGemini(prompt: string, input: FoodCheckInput, uid: string): Promise<string>;
   insertCheck(row: FoodCheckInsert): Promise<FoodCheckRow>;
   // 사진을 디코드해 원본(JPEG는 그대로, PNG는 긴 변 1280px JPEG q80)·썸네일(긴 변 200px JPEG q70)을
   // 만든다. 디코드할 수 없으면 던진다
@@ -307,7 +308,7 @@ async function checkWithQuota(
         const now = deps.now();
         const week = programWeekOf(startDate, now);
         const day = programDayOf(startDate, now);
-        const text = await deps.askGemini(buildFoodCheckPrompt(input, week, day), input);
+        const text = await deps.askGemini(buildFoodCheckPrompt(input, week, day), input, uid);
         const parsed = parseFoodCheckResponse(text, input.type, week);
         if (parsed.status === 'unrecognized') throw new UnrecognizedError();
         if (parsed.status === 'invalid') {

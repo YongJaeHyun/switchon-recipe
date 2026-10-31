@@ -3,6 +3,7 @@ import {
   formatAdBonusLeft,
   formatRemaining,
   getQuotaModalView,
+  quotaExceededFromBody,
   runAdBonusFlow,
   waitForAdBonus,
 } from './recipeQuota';
@@ -86,6 +87,87 @@ describe('getQuotaModalView', () => {
   });
 });
 
+describe('getQuotaModalView: 이번 패스 레시피 총량을 다 쓴 경우', () => {
+  const capped = {
+    isPass: false,
+    canWatchAd: true,
+    adsAvailable: true,
+    onSale: true,
+    freeDaily: 5,
+    adBonusLeft: 3,
+    passDaily: 20,
+    passFeatures: ['음식 판정'],
+    passCapReached: true,
+    passTotalLimit: 150,
+  };
+
+  it('총량을 알려주고, 무료·광고로 이어서 만들 수 있다고 안내한다 (패스 안내 없음)', () => {
+    expect(getQuotaModalView(capped)).toEqual({
+      headline: '이번 패스로 만들 수 있는 레시피 150개를 모두 만들었어요',
+      note: '이제 무료 레시피(하루 5개)와 광고로 더 만들 수 있어요',
+      ad: { hint: '오늘 광고로 3개 더 만들 수 있어요' },
+      pass: null,
+    });
+  });
+  it('오늘 광고를 볼 수 없으면 내일부터 무료로 만들 수 있다고 알려준다', () => {
+    expect(getQuotaModalView({ ...capped, canWatchAd: false })).toEqual({
+      headline: '이번 패스로 만들 수 있는 레시피 150개를 모두 만들었어요',
+      note: '내일부터 무료 레시피(하루 5개)와 광고로 더 만들 수 있어요',
+      ad: null,
+      pass: null,
+    });
+  });
+  it('광고를 쓸 수 없는 앱이면 무료 레시피만, 숫자를 모르면 숫자 없이', () => {
+    expect(
+      getQuotaModalView({
+        ...capped,
+        adsAvailable: false,
+        canWatchAd: false,
+        freeDaily: null,
+        passTotalLimit: null,
+      })
+    ).toEqual({
+      headline: '이번 패스로 만들 수 있는 레시피를 모두 만들었어요',
+      note: '내일부터 무료 레시피로 더 만들 수 있어요',
+      ad: null,
+      pass: null,
+    });
+  });
+});
+
+describe('quotaExceededFromBody: 429 QUOTA_EXCEEDED 본문 → 앱 모양', () => {
+  it('기존 본문은 그대로', () => {
+    expect(
+      quotaExceededFromBody({ code: 'QUOTA_EXCEEDED', canWatchAd: true, isPass: false })
+    ).toEqual({
+      quotaExceeded: true,
+      canWatchAd: true,
+      isPass: false,
+    });
+    expect(quotaExceededFromBody(null)).toEqual({
+      quotaExceeded: true,
+      canWatchAd: false,
+      isPass: false,
+    });
+  });
+  it('패스 총량을 다 쓴 본문이면 그 정보를 더한다', () => {
+    expect(
+      quotaExceededFromBody({
+        canWatchAd: false,
+        isPass: false,
+        passCapReached: true,
+        passTotalLimit: 180,
+      })
+    ).toEqual({
+      quotaExceeded: true,
+      canWatchAd: false,
+      isPass: false,
+      passCapReached: true,
+      passTotalLimit: 180,
+    });
+  });
+});
+
 describe('formatRemaining', () => {
   it('무료는 하루 무료 개수와 남은 개수를 함께 보여준다', () => {
     expect(formatRemaining({ isPass: false, remaining: 3, limit: 5 })).toBe(
@@ -117,6 +199,25 @@ describe('formatRemaining', () => {
   });
   it('패스는 5개 이하로 남으면 보여준다', () => {
     expect(formatRemaining({ isPass: true, remaining: 4, limit: 20 })).toBe('오늘 4/20개 남았어요');
+  });
+  it('이번 패스 총량이 20개 이하로 남으면 총량을 보여준다', () => {
+    expect(
+      formatRemaining({ isPass: true, remaining: 12, limit: 20, passTotalRemaining: 12 })
+    ).toBe('이번 패스로 12개 더 만들 수 있어요');
+    expect(
+      formatRemaining({ isPass: true, remaining: 15, limit: 20, passTotalRemaining: 21 })
+    ).toBeNull();
+  });
+  it('오늘 남은 수가 더 적으면 오늘 남은 수를 보여준다', () => {
+    expect(
+      formatRemaining({
+        isPass: true,
+        remaining: 3,
+        limit: 20,
+        dailyLimit: 20,
+        passTotalRemaining: 18,
+      })
+    ).toBe('오늘 3/20개 남았어요');
   });
 });
 

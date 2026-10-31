@@ -81,7 +81,7 @@ describe('handleReadInbody', () => {
     });
     expect(deps.usageStore).toHaveBeenCalledWith(UID, '2026-10-30');
     expect(store.value()).toBe(1);
-    expect(deps.askGemini).toHaveBeenCalledWith(expect.stringContaining('체지방량'), photo);
+    expect(deps.askGemini).toHaveBeenCalledWith(expect.stringContaining('체지방량'), photo, UID);
   });
 
   it('data URL 접두사는 떼고 Gemini에 넘긴다', async () => {
@@ -90,7 +90,7 @@ describe('handleReadInbody', () => {
       req({ ...photo, imageBase64: `data:image/jpeg;base64,${BASE64}` }),
       deps
     );
-    expect(deps.askGemini).toHaveBeenCalledWith(expect.any(String), photo);
+    expect(deps.askGemini).toHaveBeenCalledWith(expect.any(String), photo, UID);
   });
 
   it('범위 밖·형식 오류 값은 null로 돌려준다', async () => {
@@ -192,7 +192,7 @@ describe('handleReadInbody', () => {
     const wrapped = `${BASE64.slice(0, 76)}\n${BASE64.slice(76)}`;
     const res = await handleReadInbody(req({ ...photo, imageBase64: wrapped }), deps);
     expect(res.status).toBe(200);
-    expect(deps.askGemini).toHaveBeenCalledWith(expect.any(String), photo);
+    expect(deps.askGemini).toHaveBeenCalledWith(expect.any(String), photo, UID);
   });
 
   it('패스가 없으면 402 (food-check와 같은 본문), 차감·Gemini 안 함', async () => {

@@ -20,8 +20,12 @@ describe('Gemini/Pixabay 호출부가 모두 장애 알림을 거친다', () => 
 
   it('레시피 생성: 텍스트·이미지 요청 모두 알림 fetch를 쓴다', () => {
     const src = read('../../_shared/createRecipe.ts');
-    expect(src).toContain('requestRecipeText(command, geminiKey, providerFetch)');
-    expect(src).toContain('requestRecipeImage(validated.recipeName, geminiKey, providerFetch)');
+    // 알림 fetch(providerFetch)를 사용량 기록(aiUsageFetch)으로 한 번 더 감싸 쓴다
+    expect(flat(src)).toContain('aiUsageFetch(providerFetch, adminClient, { feature, uid })');
+    expect(src).toContain("requestRecipeText(command, geminiKey, usageFetch('recipe_text'))");
+    expect(flat(src)).toContain(
+      "requestRecipeImage( validated.recipeName, geminiKey, usageFetch('recipe_image') )"
+    );
     expect(read('../../create-recipe-by-gemini/index.ts')).toContain(
       "serve(createRecipeHandler('create-recipe-by-gemini'));"
     );
@@ -35,7 +39,9 @@ describe('Gemini/Pixabay 호출부가 모두 장애 알림을 거친다', () => 
     expect(src).toContain(
       "createProviderAlertFetch({ functionName: 'create-recipe-by-name', client: supabase, webhookUrl: Deno.env.get('SLACK_WEBHOOK_URL'), })"
     );
-    expect(src).toContain("requestNameCheck(prompt, requireEnv('GEMINI_API_KEY'), providerFetch)");
+    expect(src).toContain(
+      "requestNameCheck( prompt, requireEnv('GEMINI_API_KEY'), aiUsageFetch(providerFetch, supabase, { feature: 'recipe_name_check', uid }) )"
+    );
     expect(src).toContain('generateAndSaveRecipe(createRecipeClients(req), providerFetch, {');
     // 판정 요청은 넘겨받은 fetch만 쓴다
     const check = flat(read('../../create-recipe-by-name/nameCheck.ts'));
@@ -48,11 +54,13 @@ describe('Gemini/Pixabay 호출부가 모두 장애 알림을 거친다', () => 
     expect(src).toContain(
       "createProviderAlertMonitor({ functionName: 'process-ingredient-request'"
     );
+    // 최종 응답은 장애 알림과 사용량 기록에 같이 넘긴다
+    expect(src).toContain('providerMonitor.observe(url, res); observeUsage(url, res);');
     expect(src).toContain(
-      'judgeIngredient(record.name, existing, geminiKey, { onFinalResponse: providerMonitor.observe, })'
+      "judgeIngredient(record.name, existing, geminiKey, { onFinalResponse: finalResponseObserver('ingredient_judge', record.uid ?? null), })"
     );
     expect(src).toContain(
-      "pixabayKey: requireEnv('PIXABAY_API_KEY'), onFinalResponse: providerMonitor.observe,"
+      "pixabayKey: requireEnv('PIXABAY_API_KEY'), // 사진 검증(gemini-2.5-flash)과 이미지 생성(이미지 모델)이 같은 콜백을 쓰므로 모델로 나눈다 onFinalResponse: finalResponseObserver("
     );
   });
 
@@ -66,6 +74,19 @@ describe('Gemini/Pixabay 호출부가 모두 장애 알림을 거친다', () => 
     for (const fn of ['generate-weekly-reports', 'verify-pass-purchase', 'generate-my-report']) {
       expect(read(`../../${fn}/index.ts`)).toContain(`createWeeklyReportDeps(supabase, '${fn}')`);
     }
+  });
+
+  it.each([
+    ['tag-recipes/index.ts', "{ feature: 'recipe_tags' }"],
+    ['estimate-recipe-servings/index.ts', "{ feature: 'recipe_servings' }"],
+    ['food-check/index.ts', "aiUsageFetch(alertFetch, supabase, { feature: 'food_check', uid })"],
+    ['read-inbody/index.ts', "aiUsageFetch(alertFetch, supabase, { feature: 'inbody_read', uid })"],
+    [
+      '_shared/weeklyReportDb.ts',
+      "aiUsageFetch(alertFetch, supabase, { feature: functionName === 'generate-my-report' ? 'report_on_demand' : 'weekly_report', uid: uid ?? null, })",
+    ],
+  ])('%s: Gemini 호출마다 사용량을 기능 이름으로 남긴다 (ai_usage)', (path, wiring) => {
+    expect(flat(read(`../../${path}`))).toContain(wiring);
   });
 
   it('Gemini·Pixabay를 부르는 파일은 위에서 확인한 곳뿐이다', () => {

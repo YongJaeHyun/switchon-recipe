@@ -12,7 +12,8 @@ const REQUEST_TIMEOUT_MS = 120 * 1000;
 // 먹고 싶은 음식 이름으로 레시피 만들기. 서버가 정한 결과(성공/거절/한도/402/400/500)는 RecipeByNameOutcome으로
 // 돌려주고 화면이 안내한다. 네트워크 오류·시간 초과·취소는 여기서 안내(취소는 조용히)하고 undefined를 돌려준다
 const create = async (
-  input: { name: string; isZeroCarb: boolean },
+  // week: 고른 주차 (1~4, 5 = 유지기)
+  input: { name: string; isZeroCarb: boolean; week: number },
   signal?: AbortSignal
 ): Promise<RecipeByNameOutcome | undefined> => {
   try {

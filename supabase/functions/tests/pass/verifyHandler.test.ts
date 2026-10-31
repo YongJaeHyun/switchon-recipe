@@ -11,14 +11,15 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const UID = 'user-1';
 const TOKEN = 'token-1';
 const P1900 = 'switchon_pass_5w_1900';
+const P2900 = 'switchon_pass_5w_2900';
 const P4900 = 'switchon_pass_5w_4900';
 const P1W = 'switchon_pass_1w_1500';
 
-// 무료 기간 2026-11-01 ~ 2026-11-14 (KST). 1주차 구간: 2026-10-31T15:00Z ~ 2026-11-07T15:00Z
+// 무료(출시 할인) 기간 2026-11-01 ~ 2026-11-14 (KST): 2026-10-31T15:00Z ~ 2026-11-14T15:00Z
 const SETTING: PremiumSetting = { freeStart: '2026-11-01', freeEnd: '2026-11-14' };
 const IN_EARLY1 = new Date('2026-11-02T03:00:00.000Z');
-// 1주차 구간 종료 + 24시간 유예 (2026-11-08T15:00Z) 이후
-const AFTER_GRACE = new Date('2026-11-10T00:00:00.000Z');
+// 할인 기간 종료 + 24시간 유예 (2026-11-15T15:00Z) 이후
+const AFTER_GRACE = new Date('2026-11-16T00:00:00.000Z');
 
 const purchase = (overrides: Partial<ProductPurchase> = {}): ProductPurchase => ({
   purchaseState: 0,
@@ -27,7 +28,7 @@ const purchase = (overrides: Partial<ProductPurchase> = {}): ProductPurchase => 
   purchaseTimeMillis: String(IN_EARLY1.getTime()),
   orderId: 'GPA.1234',
   obfuscatedExternalAccountId: UID,
-  productId: P1900,
+  productId: P2900,
   ...overrides,
 });
 
@@ -78,6 +79,7 @@ const createFakeDeps = (
     ),
     insertPurchase: vi.fn(async (row: PurchaseRow) => {
       if (options.insertResult === 'duplicate') return 'duplicate' as const;
+      if (rows.some((r) => r.purchaseToken === row.purchaseToken)) return 'duplicate' as const;
       rows.push(row);
       return 'inserted' as const;
     }),
@@ -93,6 +95,24 @@ const createFakeDeps = (
       expiries.set(uid, next);
       return next;
     }),
+    // DB 함수 grant_pass_purchase처럼 확인과 기록을 한 번에 (JS에서는 await 없이 끝나 원자적)
+    grantPurchase: vi.fn(async (row: PurchaseRow, checkFirstPurchaseDiscount: boolean) => {
+      if (options.insertResult === 'duplicate') return 'duplicate' as const;
+      if (rows.some((r) => r.purchaseToken === row.purchaseToken)) return 'duplicate' as const;
+      if (
+        checkFirstPurchaseDiscount &&
+        rows.some(
+          (r) =>
+            r.uid === row.uid &&
+            r.status === 'granted' &&
+            r.productId.startsWith('switchon_pass_5w_')
+        )
+      ) {
+        return 'discount_used' as const;
+      }
+      rows.push(row);
+      return 'inserted' as const;
+    }),
     play,
   };
 
@@ -101,10 +121,10 @@ const createFakeDeps = (
 
 const existingRow = (overrides: Partial<PurchaseRow> = {}): PurchaseRow => ({
   uid: UID,
-  productId: P1900,
+  productId: P4900,
   purchaseToken: 'old-token',
   orderId: 'GPA.0001',
-  priceKrw: 1900,
+  priceKrw: 4900,
   purchasedAt: new Date('2026-11-01T00:00:00.000Z'),
   grantedFrom: new Date('2026-11-01T00:00:00.000Z'),
   grantedUntil: new Date(new Date('2026-11-01T00:00:00.000Z').getTime() + 35 * DAY_MS),
@@ -113,7 +133,7 @@ const existingRow = (overrides: Partial<PurchaseRow> = {}): PurchaseRow => ({
   ...overrides,
 });
 
-const input = { uid: UID, productId: P1900, purchaseToken: TOKEN };
+const input = { uid: UID, productId: P2900, purchaseToken: TOKEN };
 
 describe('verifyPurchase: 1주 패스', () => {
   const weekInput = { uid: UID, productId: P1W, purchaseToken: TOKEN };
@@ -262,14 +282,14 @@ describe('verifyPurchase', () => {
     const expectedExpiry = new Date(IN_EARLY1.getTime() + 35 * DAY_MS);
     expect(result).toEqual({ status: 'granted', passExpiresAt: expectedExpiry.toISOString() });
 
-    expect(deps.insertPurchase).toHaveBeenCalledTimes(1);
+    expect(deps.grantPurchase).toHaveBeenCalledTimes(1);
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
       uid: UID,
-      productId: P1900,
+      productId: P2900,
       purchaseToken: TOKEN,
       orderId: 'GPA.1234',
-      priceKrw: 1900,
+      priceKrw: 2900,
       purchasedAt: IN_EARLY1,
       grantedFrom: IN_EARLY1,
       grantedUntil: expectedExpiry,
@@ -277,10 +297,10 @@ describe('verifyPurchase', () => {
     });
 
     expect(expiries.get(UID)).toEqual(
-      computeExpiry([{ productId: P1900, purchasedAt: IN_EARLY1, status: 'granted' }])
+      computeExpiry([{ productId: P2900, purchasedAt: IN_EARLY1, status: 'granted' }])
     );
     expect(play.consumeProductPurchase).toHaveBeenCalledTimes(1);
-    expect(play.consumeProductPurchase).toHaveBeenCalledWith(P1900, TOKEN);
+    expect(play.consumeProductPurchase).toHaveBeenCalledWith(P2900, TOKEN);
   });
 
   it('이미 처리된 토큰이면 Play 조회 없이 already_processed를 반환한다', async () => {
@@ -295,6 +315,7 @@ describe('verifyPurchase', () => {
     expect(play.consumeProductPurchase).not.toHaveBeenCalled();
     expect(play.refundOrder).not.toHaveBeenCalled();
     expect(deps.insertPurchase).not.toHaveBeenCalled();
+    expect(deps.grantPurchase).not.toHaveBeenCalled();
   });
 
   it('이미 granted로 처리된 토큰이면 Play 조회 없이 consume만 다시 시도한다', async () => {
@@ -309,8 +330,9 @@ describe('verifyPurchase', () => {
     });
     expect(deps.raisePassExpiry).toHaveBeenCalledWith(UID, row.grantedUntil);
     expect(play.getProductPurchase).not.toHaveBeenCalled();
-    expect(play.consumeProductPurchase).toHaveBeenCalledWith(P1900, TOKEN);
+    expect(play.consumeProductPurchase).toHaveBeenCalledWith(P2900, TOKEN);
     expect(deps.insertPurchase).not.toHaveBeenCalled();
+    expect(deps.grantPurchase).not.toHaveBeenCalled();
   });
 
   it('다른 유저가 이미 처리한 granted 토큰이면 invalid, 그 유저 만료일을 동기화하지 않고 consume만 재시도', async () => {
@@ -324,8 +346,9 @@ describe('verifyPurchase', () => {
     expect(deps.raisePassExpiry).not.toHaveBeenCalled();
     expect(expiries.size).toBe(0);
     expect(play.getProductPurchase).not.toHaveBeenCalled();
-    expect(play.consumeProductPurchase).toHaveBeenCalledWith(P1900, TOKEN);
+    expect(play.consumeProductPurchase).toHaveBeenCalledWith(P2900, TOKEN);
     expect(deps.insertPurchase).not.toHaveBeenCalled();
+    expect(deps.grantPurchase).not.toHaveBeenCalled();
   });
 
   it('다른 유저(또는 탈퇴로 uid null)의 refunded 토큰이면 invalid, consume 안 함', async () => {
@@ -356,6 +379,7 @@ describe('verifyPurchase', () => {
 
     expect(result).toEqual({ status: 'invalid' });
     expect(deps.insertPurchase).not.toHaveBeenCalled();
+    expect(deps.grantPurchase).not.toHaveBeenCalled();
     expect(deps.raisePassExpiry).not.toHaveBeenCalled();
     expect(play.consumeProductPurchase).not.toHaveBeenCalled();
   });
@@ -369,6 +393,7 @@ describe('verifyPurchase', () => {
 
     expect(result).toEqual({ status: 'invalid' });
     expect(deps.insertPurchase).not.toHaveBeenCalled();
+    expect(deps.grantPurchase).not.toHaveBeenCalled();
     expect(play.consumeProductPurchase).not.toHaveBeenCalled();
   });
 
@@ -379,6 +404,7 @@ describe('verifyPurchase', () => {
 
     expect(await verifyPurchase(deps, input)).toEqual({ status: 'invalid' });
     expect(deps.insertPurchase).not.toHaveBeenCalled();
+    expect(deps.grantPurchase).not.toHaveBeenCalled();
   });
 
   it('모르는 productId면 Play 호출 없이 invalid', async () => {
@@ -391,9 +417,10 @@ describe('verifyPurchase', () => {
     expect(play.consumeProductPurchase).not.toHaveBeenCalled();
     expect(play.refundOrder).not.toHaveBeenCalled();
     expect(deps.insertPurchase).not.toHaveBeenCalled();
+    expect(deps.grantPurchase).not.toHaveBeenCalled();
   });
 
-  it('유예 밖의 1900 구매는 환불하고 refunded_ineligible로 기록, price_changed', async () => {
+  it('유예 밖의 2,900원 구매는 환불하고 refunded_ineligible로 기록, price_changed', async () => {
     const { deps, play, rows } = createFakeDeps({
       now: AFTER_GRACE,
       playPurchase: purchase({ purchaseTimeMillis: String(AFTER_GRACE.getTime()) }),
@@ -489,6 +516,7 @@ describe('verifyPurchase', () => {
 
     expect(await verifyPurchase(deps, input)).toEqual({ status: 'invalid' });
     expect(deps.insertPurchase).not.toHaveBeenCalled();
+    expect(deps.grantPurchase).not.toHaveBeenCalled();
   });
 
   it('만료일 기록 전에 요청이 끊겨도 재시도의 already_processed 경로에서 복구된다', async () => {
@@ -508,7 +536,7 @@ describe('verifyPurchase', () => {
       passExpiresAt: expectedExpiry.toISOString(),
     });
     expect(expiries.get(UID)).toEqual(expectedExpiry);
-    expect(play.consumeProductPurchase).toHaveBeenCalledWith(P1900, TOKEN);
+    expect(play.consumeProductPurchase).toHaveBeenCalledWith(P2900, TOKEN);
   });
 
   it('동시 구매에서 오래된 짧은 만료일이 저장된 긴 만료일을 줄이지 않는다', async () => {
@@ -529,7 +557,7 @@ describe('verifyPurchase', () => {
 
 describe('verifyPurchase: 지난 주 리포트 보충 (운영자 결정 2026-10-31)', () => {
   it('패스를 주면(1주 패스 포함) 그 유저의 보충을 시작한다', async () => {
-    for (const productId of [P1900, P1W]) {
+    for (const productId of [P2900, P1W]) {
       const { deps } = createFakeDeps({ playPurchase: purchase({ productId }) });
       const backfillReports = vi.fn();
       const result = await verifyPurchase({ ...deps, backfillReports }, { ...input, productId });
@@ -604,5 +632,189 @@ describe('verifyPurchase: 지난 주 리포트 보충 (운영자 결정 2026-10-
 
     expect(result.status).toBe('granted');
     expect(backfillReports).toHaveBeenCalled();
+  });
+});
+
+describe('verifyPurchase: 첫 구매 할인 (운영자 결정 2026-11-01)', () => {
+  const earlier = new Date('2026-11-01T00:00:00.000Z');
+  const later = new Date('2026-11-03T00:00:00.000Z');
+
+  it('이미 지급된 5주 패스가 있으면 2,900원 구매는 환불하고 refunded_ineligible, price_changed', async () => {
+    const { deps, play, rows } = createFakeDeps({
+      existing: [existingRow({ productId: P4900, purchasedAt: earlier })],
+    });
+
+    const result = await verifyPurchase(deps, input);
+
+    expect(result).toEqual({ status: 'price_changed' });
+    expect(play.refundOrder).toHaveBeenCalledWith('GPA.1234');
+    expect(rows[1]).toMatchObject({
+      purchaseToken: TOKEN,
+      status: 'refunded_ineligible',
+      grantedFrom: null,
+    });
+    expect(rows[0].status).toBe('granted');
+    expect(deps.grantPurchase).not.toHaveBeenCalled();
+    expect(play.consumeProductPurchase).not.toHaveBeenCalled();
+  });
+
+  it('먼저 산 5주 패스가 환불(voided)됐으면 할인을 다시 받을 수 있다', async () => {
+    const { deps, play } = createFakeDeps({
+      existing: [existingRow({ productId: P2900, purchasedAt: earlier, status: 'voided' })],
+    });
+
+    expect((await verifyPurchase(deps, input)).status).toBe('granted');
+    expect(play.refundOrder).not.toHaveBeenCalled();
+  });
+
+  it('1주 패스를 산 적이 있어도 5주 패스 첫 구매는 할인', async () => {
+    const { deps, play } = createFakeDeps({
+      existing: [existingRow({ productId: P1W, priceKrw: 1500, purchasedAt: earlier })],
+    });
+
+    expect((await verifyPurchase(deps, input)).status).toBe('granted');
+    expect(play.refundOrder).not.toHaveBeenCalled();
+  });
+
+  it('할인을 쓴 뒤 4,900원 구매는 할인 기간 안에도 유효 (할인 확인 없이 기록)', async () => {
+    const { deps, play } = createFakeDeps({
+      existing: [existingRow({ productId: P2900, purchasedAt: earlier })],
+      playPurchase: purchase({ productId: P4900 }),
+    });
+
+    expect((await verifyPurchase(deps, { ...input, productId: P4900 })).status).toBe('granted');
+    expect(deps.grantPurchase).toHaveBeenCalledWith(expect.anything(), false);
+    expect(play.refundOrder).not.toHaveBeenCalled();
+  });
+
+  it('2,900원 구매는 lock 안 확인을 켜서 기록한다', async () => {
+    const { deps } = createFakeDeps();
+
+    await verifyPurchase(deps, input);
+
+    expect(deps.grantPurchase).toHaveBeenCalledWith(
+      expect.objectContaining({ purchaseToken: TOKEN, status: 'granted' }),
+      true
+    );
+  });
+
+  it('1,900원 새 구매는 할인 기간 안이어도 환불 (더 팔지 않음)', async () => {
+    const { deps, play, rows } = createFakeDeps({ playPurchase: purchase({ productId: P1900 }) });
+
+    expect(await verifyPurchase(deps, { ...input, productId: P1900 })).toEqual({
+      status: 'price_changed',
+    });
+    expect(play.refundOrder).toHaveBeenCalledWith('GPA.1234');
+    expect(rows[0]).toMatchObject({ productId: P1900, status: 'refunded_ineligible' });
+  });
+
+  it('동시에 검증된 할인 구매 둘: 정확히 하나만 지급, 다른 하나는 지급 전에 환불, 만료일은 줄지 않는다', async () => {
+    const { deps, play, rows } = createFakeDeps();
+    const tokenA = 'token-a';
+    const tokenB = 'token-b';
+    const times: Record<string, Date> = { [tokenA]: earlier, [tokenB]: later };
+    play.getProductPurchase.mockImplementation(async (_productId: string, token: string) =>
+      purchase({ purchaseTimeMillis: String(times[token].getTime()), orderId: `GPA.${token}` })
+    );
+    const raised: number[] = [];
+    const raise = deps.raisePassExpiry;
+    deps.raisePassExpiry = vi.fn(async (uid: string, expiresAt: Date) => {
+      const stored = await raise(uid, expiresAt);
+      raised.push(stored.getTime());
+      return stored;
+    });
+
+    const results = await Promise.all([
+      verifyPurchase(deps, { ...input, purchaseToken: tokenA }),
+      verifyPurchase(deps, { ...input, purchaseToken: tokenB }),
+    ]);
+
+    // 둘 다 insert 전 확인을 통과했고, lock 안 확인에서 하나만 기록됐다
+    expect(deps.grantPurchase).toHaveBeenCalledTimes(2);
+    expect(results.map((r) => r.status).sort()).toEqual(['granted', 'price_changed']);
+    const granted = rows.filter((r) => r.status === 'granted');
+    const refunded = rows.filter((r) => r.status === 'refunded_ineligible');
+    expect(granted).toHaveLength(1);
+    expect(refunded).toHaveLength(1);
+    expect(play.refundOrder).toHaveBeenCalledTimes(1);
+    expect(play.refundOrder).toHaveBeenCalledWith(refunded[0].orderId);
+    expect(play.consumeProductPurchase).toHaveBeenCalledTimes(1);
+    expect(play.consumeProductPurchase).toHaveBeenCalledWith(P2900, granted[0].purchaseToken);
+    // 저장된 만료일은 늘기만 한다
+    expect(raised).toEqual([...raised].sort((a, b) => a - b));
+    expect(raised.length).toBeGreaterThan(0);
+  });
+
+  it('구매 시각이 더 이른 할인 구매가 나중에 검증되면 그것을 환불하고, 이미 지급한 구매는 그대로 둔다', async () => {
+    const grantedUntil = new Date(later.getTime() + 35 * DAY_MS);
+    const { deps, play, rows, expiries } = createFakeDeps({
+      existing: [
+        existingRow({
+          productId: P2900,
+          purchaseToken: 'later-token',
+          orderId: 'GPA.LATER',
+          purchasedAt: later,
+          grantedFrom: later,
+          grantedUntil,
+        }),
+      ],
+      storedExpiry: grantedUntil,
+      playPurchase: purchase({ purchaseTimeMillis: String(earlier.getTime()) }),
+      now: later,
+    });
+
+    const result = await verifyPurchase(deps, input);
+
+    expect(result).toEqual({ status: 'price_changed' });
+    expect(rows[0]).toMatchObject({ purchaseToken: 'later-token', status: 'granted' });
+    expect(rows[1]).toMatchObject({ purchaseToken: TOKEN, status: 'refunded_ineligible' });
+    expect(play.refundOrder).toHaveBeenCalledTimes(1);
+    expect(play.refundOrder).toHaveBeenCalledWith('GPA.1234');
+    expect(expiries.get(UID)).toEqual(grantedUntil);
+    expect(play.consumeProductPurchase).not.toHaveBeenCalled();
+  });
+
+  it('같은 할인 구매 토큰의 다른 요청이 먼저 지급했으면 환불하지 않는다 (재시도·복구가 동시에 올 때)', async () => {
+    // 요청 B: findPurchase 때는 아직 없었고, Play 조회 사이에 요청 A가 같은 토큰을 granted로 기록했다
+    const { deps, play, rows } = createFakeDeps({
+      existing: [
+        existingRow({
+          productId: P2900,
+          purchaseToken: TOKEN,
+          orderId: 'GPA.1234',
+          priceKrw: 2900,
+        }),
+      ],
+    });
+    vi.mocked(deps.findPurchase).mockResolvedValueOnce(null);
+
+    const result = await verifyPurchase(deps, input);
+
+    expect(result.status).toBe('already_processed');
+    expect(play.refundOrder).not.toHaveBeenCalled();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].status).toBe('granted');
+  });
+
+  it('지급하지 않는 구매는 기록을 먼저 남기고, 이미 기록된 토큰이면 환불하지 않는다', async () => {
+    const { deps, play } = createFakeDeps({
+      existing: [existingRow({ productId: P4900, purchasedAt: earlier })],
+    });
+    vi.mocked(deps.insertPurchase).mockResolvedValueOnce('duplicate');
+
+    await verifyPurchase(deps, input);
+
+    expect(play.refundOrder).not.toHaveBeenCalled();
+  });
+
+  it('insert 전 확인 뒤 다른 요청이 먼저 지급했으면(lock 안 확인이 discount_used) 지급하지 않고 환불', async () => {
+    const { deps, play, rows } = createFakeDeps();
+    vi.mocked(deps.grantPurchase).mockResolvedValueOnce('discount_used');
+
+    expect(await verifyPurchase(deps, input)).toEqual({ status: 'price_changed' });
+    expect(play.refundOrder).toHaveBeenCalledWith('GPA.1234');
+    expect(rows).toEqual([expect.objectContaining({ status: 'refunded_ineligible' })]);
+    expect(deps.raisePassExpiry).not.toHaveBeenCalled();
+    expect(play.consumeProductPurchase).not.toHaveBeenCalled();
   });
 });

@@ -1,4 +1,5 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { PassTrialBanner } from 'components/common/PassTrialBanner';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import { ReportPassCard } from 'components/report/ReportPreviewCard';
@@ -312,6 +313,8 @@ export default function ReportDetailScreen() {
       <ScrollView
         contentContainerClassName="gap-4 px-5 pb-10 pt-2"
         showsVerticalScrollIndicator={false}>
+        {/* 패스 없이 받은 무료 1주차 리포트 (패스 사용자에게는 보이지 않는다) */}
+        {report?.is_trial && <PassTrialBanner variant="gift" />}
         {report && (report.stats || isPrevious || isRepeat) && (
           <View className="flex-row flex-wrap items-center gap-2">
             {report.stats && (

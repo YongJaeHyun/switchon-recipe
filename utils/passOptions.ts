@@ -11,10 +11,11 @@ export interface PassOption {
   days: number;
   title: string;
   subtitle: string;
-  price: string; // "1,900원"
-  perWeek: string | null; // "주당 380원" (5주 패스만)
-  original: string | null; // 할인 전 정가 "4,900원" (5주 패스가 할인 중일 때만)
-  badge: string | null; // "61% 할인" (5주 패스가 할인 중일 때만)
+  price: string; // "2,900원"
+  perWeek: string | null; // "주당 580원" (5주 패스만)
+  original: string | null; // 할인 전 정가 "4,900원" (5주 패스가 첫 구매 할인일 때만)
+  badge: string | null; // "40% 할인" (5주 패스가 첫 구매 할인일 때만)
+  note: string | null; // "처음 한 번만 이 가격이에요" (5주 패스가 첫 구매 할인일 때만)
   recommended: boolean;
 }
 
@@ -50,7 +51,7 @@ export function getPassOptions(sales: SalesState, programWeek: PassProgramWeek):
 
   if (sales.productId && sales.priceKrw !== null) {
     const days = passDaysOf(sales.productId);
-    const { original, badge } = formatSalesHeadline(sales);
+    const { original, badge, note } = formatSalesHeadline(sales);
     options.push({
       kind: 'fiveWeek',
       productId: sales.productId,
@@ -61,6 +62,7 @@ export function getPassOptions(sales: SalesState, programWeek: PassProgramWeek):
       perWeek: `주당 ${formatKrw(Math.round(sales.priceKrw / (days / 7)))}`,
       original,
       badge,
+      note,
       recommended: false,
     });
   }
@@ -76,6 +78,7 @@ export function getPassOptions(sales: SalesState, programWeek: PassProgramWeek):
       perWeek: null,
       original: null,
       badge: null,
+      note: null,
       recommended: false,
     });
   }

@@ -3,6 +3,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { Image } from 'https://deno.land/x/imagescript@1.2.15/mod.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { type AiUsageContext, createAiUsageInsert, observeAiUsage } from '../_shared/aiUsage.ts';
 import { createProviderAlertMonitor } from '../_shared/providerAlert.ts';
 import { isServiceRoleRequest } from '../_shared/serviceRole.ts';
 import {
@@ -53,6 +54,17 @@ const providerMonitor = createProviderAlertMonitor({
   client: supabase,
   webhookUrl: Deno.env.get('SLACK_WEBHOOK_URL'),
 });
+
+// 최종 응답 하나를 장애 알림과 Gemini 사용량 기록(ai_usage, _shared/aiUsage.ts)에 같이 넘긴다.
+// 둘 다 본문을 복제해서 읽고 던지지 않으므로 재료 처리 흐름은 그대로다
+const recordUsage = createAiUsageInsert(supabase);
+const finalResponseObserver = (feature: AiUsageContext['feature'], uid: string | null) => {
+  const observeUsage = observeAiUsage(recordUsage, { feature, uid });
+  return (url: string, res: Response) => {
+    providerMonitor.observe(url, res);
+    observeUsage(url, res);
+  };
+};
 
 const loadExistingIngredients = async (): Promise<ExistingIngredient[]> => {
   const { data, error } = await supabase
@@ -182,7 +194,7 @@ const buildReport = async (
 
   const geminiKey = requireEnv('GEMINI_API_KEY');
   const judgement = await judgeIngredient(record.name, existing, geminiKey, {
-    onFinalResponse: providerMonitor.observe,
+    onFinalResponse: finalResponseObserver('ingredient_judge', record.uid ?? null),
   });
 
   if (judgement.decision === 'reject') {
@@ -202,7 +214,11 @@ const buildReport = async (
   const imageDeps = createImageDeps({
     geminiKey,
     pixabayKey: requireEnv('PIXABAY_API_KEY'),
-    onFinalResponse: providerMonitor.observe,
+    // 사진 검증(gemini-2.5-flash)과 이미지 생성(이미지 모델)이 같은 콜백을 쓰므로 모델로 나눈다
+    onFinalResponse: finalResponseObserver(
+      (model) => (model.includes('image') ? 'ingredient_image' : 'ingredient_image_check'),
+      record.uid ?? null
+    ),
   });
   const baseSortOrder = await loadNextSortOrder();
 

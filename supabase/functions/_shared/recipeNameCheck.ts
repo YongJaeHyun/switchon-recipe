@@ -2,6 +2,7 @@
 // 레시피 생성 명령문, 무료 체험 횟수. Deno 엣지 함수와 Vitest(node) 양쪽에서 로드되므로 URL import를 두지 않는다.
 
 import { weekRuleText } from './foodCheck.ts';
+import { programDayOf, programWeekOf } from './week.ts';
 
 // 이름 판정은 이미지 없이 텍스트만, 가장 싼 flash-lite 계열로 한 번 부른다
 export const RECIPE_NAME_CHECK_MODEL = 'gemini-2.5-flash-lite';
@@ -40,6 +41,30 @@ export function recipeByNameTrialRemaining(used: number | null | undefined): num
 // 저장하는 레시피 주차 (앱 레시피 만들기 화면과 같이 3주차까지). 규칙 주차는 명령문에서 4주차까지
 export const recipeWeekOf = (week: number) => Math.min(Math.max(Math.floor(week), 1), 3);
 const ruleWeekOf = (week: number) => Math.min(Math.max(Math.floor(week), 1), 4);
+
+// 앱이 고를 수 있는 주차: 1~4주차, 5 = 유지기
+export const CHOSEN_WEEK_MAX = 5;
+
+// 앱이 보낸 week. 없으면 null (예전 앱: 시작일로 구함), 1~5 정수가 아니면 'invalid'
+export function parseChosenWeek(value: unknown): number | null | 'invalid' {
+  if (value === undefined) return null;
+  if (typeof value !== 'number' || !Number.isInteger(value)) return 'invalid';
+  return value >= 1 && value <= CHOSEN_WEEK_MAX ? value : 'invalid';
+}
+
+// 판정·생성에 쓸 주차와 일차. 고른 주차가 이번 주차(유지기는 5로 묶음)면 실제 주차·일차,
+// 다른 주차를 골랐으면 그 주차만 (일차별 끼니 규칙 없음)
+export function resolveRuleWeek(
+  chosen: number | null,
+  startDate: string | null | undefined,
+  now: Date
+): { week: number; day?: number } {
+  const week = programWeekOf(startDate, now);
+  if (chosen === null || chosen === Math.min(week, CHOSEN_WEEK_MAX)) {
+    return { week, day: programDayOf(startDate, now) };
+  }
+  return { week: chosen };
+}
 
 const carbLabel = (isZeroCarb: boolean) =>
   isZeroCarb ? '무탄수(밥·면·고구마 같은 탄수화물 없이)' : '저탄수(탄수화물은 소량만)';

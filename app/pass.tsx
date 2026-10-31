@@ -290,6 +290,7 @@ const OptionCard = ({
           </View>
         )}
       </View>
+      {option.note && <Text className="text-xs font-bold text-green-700">{option.note}</Text>}
       {option.perWeek && <Text className="text-sm text-neutral-500">{option.perWeek}</Text>}
       {next && <Text className="text-xs text-neutral-500">{next}으로 올라요</Text>}
     </View>

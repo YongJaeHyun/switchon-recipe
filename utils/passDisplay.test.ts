@@ -45,26 +45,7 @@ const baseSales: SalesState = {
 };
 
 describe('formatSalesHeadline', () => {
-  it('early1', () => {
-    const sales: SalesState = {
-      ...baseSales,
-      freeActive: true,
-      tier: 'early1',
-      productId: 'switchon_pass_5w_1900',
-      priceKrw: 1900,
-      freeDaysLeft: 12,
-      // 무료 기간 2026-11-01 시작 → 2주차는 2026-11-08 00:00 KST
-      nextTier: { tier: 'early2', priceKrw: 2900, startsAt: '2026-11-07T15:00:00.000Z' },
-    };
-    expect(formatSalesHeadline(sales)).toEqual({
-      price: '1,900원',
-      original: '4,900원',
-      badge: '61% 할인',
-      next: '11월 8일부터 2,900원',
-    });
-  });
-
-  it('early2', () => {
+  it('첫 구매 할인 2,900원: 정가 줄긋기, 계산한 할인율, 처음 한 번만 안내, 다음 가격', () => {
     const sales: SalesState = {
       ...baseSales,
       freeActive: true,
@@ -73,13 +54,32 @@ describe('formatSalesHeadline', () => {
       priceKrw: 2900,
       freeDaysLeft: 3,
       nextTier: { tier: 'regular', priceKrw: 4900, startsAt: '2026-11-14T15:00:00.000Z' },
+      firstPurchaseDiscount: true,
     };
     expect(formatSalesHeadline(sales)).toEqual({
       price: '2,900원',
       original: '4,900원',
       badge: '40% 할인',
+      note: '처음 한 번만 이 가격이에요',
       next: '11월 15일부터 4,900원',
     });
+  });
+
+  it('할인을 이미 쓴 유저(서버가 4,900원, firstPurchaseDiscount false): 할인 표시 없음', () => {
+    expect(
+      formatSalesHeadline({ ...baseSales, freeActive: true, firstPurchaseDiscount: false })
+    ).toEqual({ price: '4,900원', original: null, badge: null, note: null, next: null });
+  });
+
+  it('firstPurchaseDiscount를 모르는 옛 서버: 할인가면 할인 표시, "처음 한 번만"은 없음', () => {
+    expect(
+      formatSalesHeadline({
+        ...baseSales,
+        tier: 'early2',
+        productId: 'switchon_pass_5w_2900',
+        priceKrw: 2900,
+      })
+    ).toMatchObject({ original: '4,900원', badge: '40% 할인', note: null });
   });
 
   it('regular → original null', () => {
@@ -87,6 +87,7 @@ describe('formatSalesHeadline', () => {
       price: '4,900원',
       original: null,
       badge: null,
+      note: null,
       next: null,
     });
   });
