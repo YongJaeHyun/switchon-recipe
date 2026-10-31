@@ -1,17 +1,16 @@
 import { CustomSelect } from 'components/common/CustomSelect';
+import { RecipeJobBandSpacer } from 'components/common/RecipeJobBand';
 import { SafeAreaViewWithNav } from 'components/common/SafeAreaViewWithNav';
 import { SearchInput } from 'components/common/SearchInput';
 import { Text } from 'components/common/Text';
 import { IngredientRequest } from 'components/recipeCreation/IngredientRequest';
-import CreationLoadingOverlay from 'components/recipeCreation/CreationLoadingOverlay';
 import { IngredientsLoadError } from 'components/recipeCreation/IngredientsLoadError';
 import Ingredients, { IngredientsProps } from 'components/recipeCreation/Ingredients';
-import QuotaExceededModal from 'components/recipeCreation/QuotaExceededModal';
 import SelectedIngredient from 'components/recipeCreation/SelectedIngredient';
 import { WeekChips } from 'components/recipeCreation/WeekChips';
 import { getChoseong } from 'es-hangul';
 import { useIngredients } from 'hooks/useIngredients';
-import { useRecipeCreation } from 'hooks/useRecipeCreation';
+import { type RecipeCreationJob, useRecipeCreation } from 'hooks/useRecipeCreation';
 import { useRecipeWeekChoice } from 'hooks/useRecipeWeekChoice';
 import { useSelect } from 'hooks/useSelect';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
@@ -28,7 +27,6 @@ import colors from 'tailwindcss/colors';
 import { RecipeCategory, RecipeMethod } from 'types/recipe';
 import { ingredientListsForWeek, ingredientsForWeek } from 'utils/ingredientLists';
 import { recipeRuleWeek, recipeSaveWeek } from 'utils/recipeWeekChoice';
-import { getCreationLoadingKind } from 'utils/creationLoading';
 import { isCompletedHangul } from 'utils/hangul';
 
 export default function LowRecipeCreationScreen() {
@@ -83,8 +81,8 @@ export default function LowRecipeCreationScreen() {
       return isMatch;
     });
 
-  // 기존 명령문 그대로. 생성·한도·이동 흐름은 useRecipeCreation이 맡는다
-  const buildRequest = () => {
+  // 기존 명령문 그대로. 생성(뒤에서)·한도·완성 안내는 useRecipeCreation과 하단 띠가 맡는다
+  const buildJob = (): RecipeCreationJob => {
     const chosenWeek = weekChoice.week;
     // 고른 주차보다 높은 주차 재료는 보내지 않는다 (선택 목록 정리를 못 했을 때)
     const usable = ingredientsForWeek(selectedIngredients, chosenWeek);
@@ -106,10 +104,13 @@ export default function LowRecipeCreationScreen() {
     command += '\nRemove Switch-On week or carbohydrate from the recipe name.';
     command += '\nYou may freely use sauces or seasonings.';
 
-    return { command, week: recipeWeek, isZeroCarb: false };
+    return {
+      request: { command, week: recipeWeek, isZeroCarb: false },
+      label: { kind: 'ingredients', names: usable.map((i) => i.name), isZeroCarb: false },
+    };
   };
 
-  const creation = useRecipeCreation(buildRequest);
+  const creation = useRecipeCreation(buildJob);
   const { quotaGate } = creation;
 
   const handleReset = () => {
@@ -117,10 +118,7 @@ export default function LowRecipeCreationScreen() {
     setResetTrigger((prev) => !prev);
   };
 
-  const loadingKind = getCreationLoadingKind({
-    isRecipeLoading: creation.isCreating,
-    isDataLoading: isIngredientsLoading || isIngredientListLoading,
-  });
+  const isDataLoading = isIngredientsLoading || isIngredientListLoading;
 
   return (
     <SafeAreaViewWithNav className="relative flex-1 bg-white px-5">
@@ -129,7 +127,6 @@ export default function LowRecipeCreationScreen() {
           value={weekChoice.week}
           currentWeek={weekChoice.currentWeek}
           onChange={weekChoice.changeWeek}
-          disabled={creation.isCreating}
         />
         <SearchInput keyword={keyword} onChangeText={setKeyword} placeholder="재료를 검색하세요!" />
         <FlatList
@@ -193,17 +190,22 @@ export default function LowRecipeCreationScreen() {
         <View className="w-full flex-row gap-2">
           <TouchableOpacity
             className="flex-[3.5] items-center justify-center rounded-lg border border-amber-500 py-4"
-            onPress={handleReset}
-            disabled={creation.isRecipeLoading}>
+            onPress={handleReset}>
             <Text className="text-lg font-semibold text-amber-500">재료 초기화</Text>
           </TouchableOpacity>
           <TouchableHighlight
-            className="flex-[6.5] items-center justify-center rounded-lg bg-amber-500 py-4"
+            className={`flex-[6.5] items-center justify-center rounded-lg bg-amber-500 py-4 ${
+              creation.isCreating ? 'opacity-50' : ''
+            }`}
             underlayColor={colors.amber[600]}
             onPress={creation.create}
             disabled={creation.isCreating}>
             <Text className="text-lg font-semibold text-white">
-              {selectedIngredients.length > 0 ? '레시피 제작' : `랜덤 레시피 제작`}
+              {creation.isCreating
+                ? '만드는 중…'
+                : selectedIngredients.length > 0
+                  ? '레시피 제작'
+                  : `랜덤 레시피 제작`}
             </Text>
           </TouchableHighlight>
         </View>
@@ -216,13 +218,12 @@ export default function LowRecipeCreationScreen() {
           </View>
         )}
       </View>
-      {loadingKind === 'data' && (
+      {isDataLoading && (
         <View className="absolute inset-0 z-50 items-center justify-center">
           <ActivityIndicator size="large" color={colors.amber[500]} />
         </View>
       )}
-      {loadingKind === 'recipe' && <CreationLoadingOverlay />}
-      <QuotaExceededModal {...creation.quotaModalProps} />
+      <RecipeJobBandSpacer />
     </SafeAreaViewWithNav>
   );
 }

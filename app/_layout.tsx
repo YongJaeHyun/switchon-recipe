@@ -2,7 +2,9 @@ import { PortalProvider } from '@gorhom/portal';
 import { initializeKakaoSDK } from '@react-native-kakao/core';
 import * as Sentry from '@sentry/react-native';
 import { QueryClientProvider } from '@tanstack/react-query';
+import { RecipeJobBand } from 'components/common/RecipeJobBand';
 import { WeekCompletePopup } from 'components/common/WeekCompletePopup';
+import { RecipeByNameSheet } from 'components/recipeByName/RecipeByNameSheet';
 import { toastConfig } from 'config/toastConfig';
 import { isRunningInExpoGo } from 'expo';
 import { Stack, useNavigationContainerRef } from 'expo-router';
@@ -87,6 +89,9 @@ function RootLayout() {
               <Stack.Screen name="report" options={{ headerShown: false }} />
               <Stack.Screen name="kakaolink" options={{ headerShown: false }} />
             </Stack>
+            {/* 뒤에서 만드는 레시피 띠는 화면 위에, 바텀시트(Portal)는 띠 위에 그려진다 */}
+            <RecipeJobBand />
+            <RecipeByNameSheet />
           </PortalProvider>
         </GestureHandlerRootView>
         <Toast config={toastConfig} />

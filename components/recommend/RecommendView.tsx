@@ -1,13 +1,12 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Chip } from 'components/common/Chip';
+import { RecipeJobBandSpacer } from 'components/common/RecipeJobBand';
 import RippleButton from 'components/common/RippleButton';
 import { SearchInput } from 'components/common/SearchInput';
 import { Text } from 'components/common/Text';
 import { RecipeCard } from 'components/explore/RecipeCard';
-import CreationLoadingOverlay from 'components/recipeCreation/CreationLoadingOverlay';
 import IngredientTile from 'components/recipeCreation/IngredientTile';
 import { IngredientsLoadError } from 'components/recipeCreation/IngredientsLoadError';
-import QuotaExceededModal from 'components/recipeCreation/QuotaExceededModal';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useIngredients } from 'hooks/useIngredients';
 import { useRecipeCreation } from 'hooks/useRecipeCreation';
@@ -332,11 +331,15 @@ export function RecommendView({ embedded = false }: { embedded?: boolean }) {
   const creation = useRecipeCreation(() => {
     const now = getWeekAndDay(useUserStore.getState().start_date);
     const { command, isZeroCarb } = buildRecipeCommand(conditions, now);
-    return { command, week: recipeWeekOf(now.week), isZeroCarb };
+    return {
+      request: { command, week: recipeWeekOf(now.week), isZeroCarb },
+      label: { kind: 'recommend', names: mustInclude, isZeroCarb },
+    };
   });
   const { quotaGate } = creation;
 
-  const busy = isRecommending || creation.isCreating;
+  // 새로 만들기는 뒤에서 돌아서 조건 칸은 막지 않는다 (만들기 버튼만 막는다)
+  const busy = isRecommending;
   // [저장]은 "다음에도 기억"만 뜻한다. 저장 목록을 받기 전에는 덮어쓰지 않도록 막는다
   const excludeDirty = excluded.isLoaded && !sameList(exclude, excluded.saved ?? []);
   const saveDisabled = !excludeDirty || excluded.isSaving || busy;
@@ -405,17 +408,19 @@ export function RecommendView({ embedded = false }: { embedded?: boolean }) {
   const createButton = (
     <View className="gap-1">
       <RippleButton
-        outerClassName={noMatches ? 'bg-green-600' : 'border border-green-600 bg-white'}
+        outerClassName={`${noMatches ? 'bg-green-600' : 'border border-green-600 bg-white'} ${
+          creation.isCreating ? 'opacity-50' : ''
+        }`}
         rounded="lg"
         className={noMatches ? 'w-full py-5' : 'w-full py-3.5'}
         rippleColor={noMatches ? colors.green[700] : colors.green[100]}
-        disabled={busy}
+        disabled={busy || creation.isCreating}
         onPress={creation.create}>
         <Text
           className={
             noMatches ? 'text-lg font-bold text-white' : 'text-base font-bold text-green-600'
           }>
-          이 조건으로 새로 만들기
+          {creation.isCreating ? '만드는 중…' : '이 조건으로 새로 만들기'}
         </Text>
       </RippleButton>
       {quotaGate.remainingText && (
@@ -574,6 +579,7 @@ export function RecommendView({ embedded = false }: { embedded?: boolean }) {
             {createButton}
           </View>
         )}
+        <RecipeJobBandSpacer />
       </ScrollView>
 
       {isRecommending && (
@@ -582,7 +588,6 @@ export function RecommendView({ embedded = false }: { embedded?: boolean }) {
           <Text className="font-bold text-white">추천 레시피를 고르는 중...</Text>
         </View>
       )}
-      {creation.isCreating && <CreationLoadingOverlay />}
 
       <IngredientPicker
         mode={picker}
@@ -597,7 +602,6 @@ export function RecommendView({ embedded = false }: { embedded?: boolean }) {
         onToggle={toggleIngredient}
         onClose={() => setPicker(null)}
       />
-      <QuotaExceededModal {...creation.quotaModalProps} />
     </Shell>
   );
 }

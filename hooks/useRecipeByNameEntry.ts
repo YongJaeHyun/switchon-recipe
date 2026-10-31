@@ -1,6 +1,6 @@
 import type { PassOnlyModalView } from 'components/common/PassOnlyModal';
-import { useRecipeByNameSheet } from 'components/recipeByName/RecipeByNameSheet';
 import { useState } from 'react';
+import { useRecipeByNameSheetStore } from 'stores/recipeByNameSheetStore';
 import { passBadgeState } from 'utils/passFeatureLabel';
 import { isPassOnSale } from 'utils/passScreen';
 import {
@@ -11,6 +11,7 @@ import {
 } from 'utils/recipeByName';
 import { useBillingAvailable } from './useBillingAvailable';
 import { usePass } from './usePass';
+import { useRecipeJobOrigin } from './useRecipeJobOrigin';
 
 // 먹고 싶은 음식으로 만들기 입구(레시피 탭 카드, 탐색 결과 없음)의 공통 동작.
 // 패스 상태를 알면 입구는 늘 보인다. 패스·무료 체험이 있으면 입력 시트를 열고, 없으면 결제 화면으로 바로
@@ -19,14 +20,16 @@ export const useRecipeByNameEntry = () => {
   const { status } = usePass();
   const billingAvailable = useBillingAvailable();
   const entry = recipeByNameEntryState(status, billingAvailable);
-  const sheet = useRecipeByNameSheet();
+  const openSheet = useRecipeByNameSheetStore((state) => state.open);
+  // 시트는 앱에 하나(app/_layout). 이 화면을 보고 있는 동안 완성되면 바로 레시피로
+  const origin = useRecipeJobOrigin();
   const [passModal, setPassModal] = useState<PassOnlyModalView | null>(null);
 
   const canUse = entry.kind === 'open' || entry.kind === 'trial';
 
   const press = (name = '', isZeroCarb = false) => {
     if (canUse) {
-      sheet.open(name, isZeroCarb);
+      openSheet({ name, isZeroCarb, origin });
       return;
     }
     setPassModal({
@@ -44,7 +47,6 @@ export const useRecipeByNameEntry = () => {
     // 입구 배지 (패스 사용 중 / 무료 체험 N번 남음 / 잠김)
     badge: passBadgeState(status?.hasAccess === true, entry),
     press,
-    sheetRequest: sheet.request,
     passModalProps: { view: passModal, onClose: () => setPassModal(null) },
   };
 };

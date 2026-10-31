@@ -1,24 +1,26 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { BottomSheetTextInput, BottomSheetView } from '@gorhom/bottom-sheet';
 import { BottomSheetMethods } from '@gorhom/bottom-sheet/lib/typescript/types';
-import { Portal } from '@gorhom/portal';
 import { CustomBottomSheet } from 'components/common/CustomBottomSheet';
 import { PassTrialBanner } from 'components/common/PassTrialBanner';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
-import CreationLoadingOverlay from 'components/recipeCreation/CreationLoadingOverlay';
-import QuotaExceededModal from 'components/recipeCreation/QuotaExceededModal';
 import { WeekChips } from 'components/recipeCreation/WeekChips';
 import { useBillingAvailable } from 'hooks/useBillingAvailable';
 import { usePass } from 'hooks/usePass';
 import { useBlurOnKeyboardHide } from 'hooks/useBlurOnKeyboardHide';
-import { useRecipeByName } from 'hooks/useRecipeByName';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { BackHandler, Keyboard, type TextInput, TouchableOpacity, View } from 'react-native';
+import { useQuotaGate } from 'hooks/useQuotaGate';
+import { useEffect, useRef, useState } from 'react';
+import { Keyboard, type TextInput, TouchableOpacity, View } from 'react-native';
+import { runRecipeJob } from 'services/recipeJobRunner';
+import { useRecipeByNameSheetStore } from 'stores/recipeByNameSheetStore';
+import { useRecipeJobBusy } from 'stores/recipeJobStore';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { carbTypeStyle } from 'utils/carbType';
 import { getWeekAndDay } from 'utils/date';
+import { requireOnline } from 'utils/network';
+import { recipeJobLabel } from 'utils/recipeJob';
 import {
   cleanDishNameInput,
   DISH_NAME_MAX,
@@ -33,33 +35,15 @@ import {
   nameWeekLabel,
 } from 'utils/recipeWeekChoice';
 
-export interface RecipeByNameOpenRequest {
-  name: string;
-  isZeroCarb: boolean;
-  // 같은 값으로 다시 열어도 새로 열리게
-  at: number;
-}
-
-// 시트를 여는 쪽(useRecipeByNameEntry)이 쓴다
-export const useRecipeByNameSheet = () => {
-  const [request, setRequest] = useState<RecipeByNameOpenRequest | null>(null);
-  const open = useCallback(
-    (name = '', isZeroCarb = false) => setRequest({ name, isZeroCarb, at: Date.now() }),
-    []
-  );
-  return { request, open };
-};
-
 const CARB_OPTIONS = [false, true] as const;
-
-interface RecipeByNameSheetProps {
-  request: RecipeByNameOpenRequest | null;
-}
 
 // 먹고 싶은 음식 이름 + 주차 + 저탄수/무탄수 → [레시피 만들기] (운영자: 바텀시트 유지).
 // 이름 칸은 value를 다시 넣지 않는다(uncontrolled): 매번 다시 넣으면 한글 조합이 깨져 초성·모음이 따로 써졌다.
-// 열 때마다 key를 바꿔 새 입력칸으로 시작하고, 보낼 때만 정리한다
-export function RecipeByNameSheet({ request }: RecipeByNameSheetProps) {
+// 열 때마다 key를 바꿔 새 입력칸으로 시작하고, 보낼 때만 정리한다.
+// 앱에 하나만 붙는다(app/_layout): 입구(useRecipeByNameEntry)와 하단 띠(이름 고치기)가 stores/recipeByNameSheetStore로 연다.
+// [레시피 만들기]를 누르면 시트를 닫고 뒤에서 만든다. 거절·한도·체험 끝 같은 답은 하단 띠가 알린다
+export function RecipeByNameSheet() {
+  const request = useRecipeByNameSheetStore((state) => state.request);
   const sheetRef = useRef<BottomSheetMethods>(null);
   const initialName = cleanDishNameInput(request?.name ?? '');
   const inputRef = useRef<TextInput>(null);
@@ -76,10 +60,12 @@ export function RecipeByNameSheet({ request }: RecipeByNameSheetProps) {
   const entry = recipeByNameEntryState(status, billingAvailable);
   const trialRemaining = entry.kind === 'trial' ? entry.remaining : null;
 
-  const creation = useRecipeByName({ onSuccess: () => sheetRef.current?.close() });
-  const { clearMessage } = creation;
-  const clearMessageRef = useRef(clearMessage);
-  clearMessageRef.current = clearMessage;
+  // 남은 개수 표시용
+  const quotaGate = useQuotaGate();
+  const isBusy = useRecipeJobBusy();
+  // 띠에서 "이름 고치기"로 다시 열 때 서버가 준 안내
+  const [message, setMessage] = useState<string | null>(null);
+  const clearMessage = () => setMessage(null);
   const currentChoiceRef = useRef(currentChoice);
   currentChoiceRef.current = currentChoice;
 
@@ -92,26 +78,31 @@ export function RecipeByNameSheet({ request }: RecipeByNameSheetProps) {
     nameRef.current = name;
     setHasName(name.trim().length > 0);
     setIsZeroCarb(request.isZeroCarb);
-    setWeek(currentChoiceRef.current);
-    clearMessageRef.current();
+    setWeek(request.weekChoice ?? currentChoiceRef.current);
+    setMessage(request.message ?? null);
     sheetRef.current?.expand();
   }, [request]);
 
-  // 만드는 중에는 뒤로 가기로 빠져나가지 않는다 (나가면 완성된 레시피로 넘어가지 못함)
-  useEffect(() => {
-    if (!creation.isCreating) return;
-    const subscription = BackHandler.addEventListener('hardwareBackPress', () => true);
-    return () => subscription.remove();
-  }, [creation.isCreating]);
-
   const trimmed = () => cleanDishNameInput(nameRef.current).trim();
-  const canSubmit = hasName && !creation.isCreating;
+  const canSubmit = hasName && !isBusy;
+
+  const start = requireOnline((name: string) => {
+    sheetRef.current?.close();
+    runRecipeJob(
+      {
+        kind: 'byName',
+        request: { name, isZeroCarb, week: nameRequestWeek(week, currentWeek) },
+        weekChoice: week,
+      },
+      { label: recipeJobLabel({ kind: 'byName', name }), origin: request?.origin ?? '' }
+    );
+  });
 
   const submit = () => {
     const name = trimmed();
-    if (!name || creation.isCreating) return;
+    if (!name || isBusy) return;
     Keyboard.dismiss();
-    void creation.create({ name, isZeroCarb, week: nameRequestWeek(week, currentWeek) });
+    void start(name);
   };
 
   const clearName = () => {
@@ -124,7 +115,7 @@ export function RecipeByNameSheet({ request }: RecipeByNameSheetProps) {
   const footnote =
     trialRemaining !== null
       ? '만들 수 없는 이름이면 무료 체험 횟수가 줄지 않아요'
-      : creation.remainingText;
+      : quotaGate.remainingText;
 
   return (
     <>
@@ -143,7 +134,7 @@ export function RecipeByNameSheet({ request }: RecipeByNameSheetProps) {
 
           <View
             className={`mb-2 flex-row items-center rounded-xl border bg-white px-4 ${
-              creation.message ? 'border-amber-500' : 'border-neutral-300'
+              message ? 'border-amber-500' : 'border-neutral-300'
             }`}>
             <MaterialIcons name="restaurant" size={20} color={colors.neutral[400]} />
             <BottomSheetTextInput
@@ -161,9 +152,8 @@ export function RecipeByNameSheet({ request }: RecipeByNameSheetProps) {
               onChangeText={(text: string) => {
                 nameRef.current = text;
                 setHasName(text.trim().length > 0);
-                if (creation.message) clearMessage();
+                if (message) clearMessage();
               }}
-              editable={!creation.isCreating}
               placeholder="예: 김치찌개"
               placeholderTextColor={colors.neutral[300]}
               maxLength={DISH_NAME_MAX}
@@ -171,7 +161,7 @@ export function RecipeByNameSheet({ request }: RecipeByNameSheetProps) {
               onSubmitEditing={submit}
               accessibilityLabel="먹고 싶은 음식 이름"
             />
-            {hasName && !creation.isCreating && (
+            {hasName && (
               <TouchableOpacity
                 hitSlop={8}
                 onPress={clearName}
@@ -182,10 +172,10 @@ export function RecipeByNameSheet({ request }: RecipeByNameSheetProps) {
             )}
           </View>
 
-          {creation.message ? (
+          {message ? (
             <View className="mb-5 flex-row items-start gap-2 rounded-xl bg-amber-50 px-3 py-2.5">
               <MaterialIcons name="info-outline" size={18} color={colors.amber[600]} />
-              <Text className="flex-1 text-sm leading-5 text-neutral-700">{creation.message}</Text>
+              <Text className="flex-1 text-sm leading-5 text-neutral-700">{message}</Text>
             </View>
           ) : (
             <Text className="mb-5 text-sm text-neutral-400">
@@ -201,9 +191,8 @@ export function RecipeByNameSheet({ request }: RecipeByNameSheetProps) {
             labelOf={nameWeekLabel}
             onChange={(next) => {
               setWeek(next);
-              if (creation.message) clearMessage();
+              if (message) clearMessage();
             }}
-            disabled={creation.isCreating}
           />
 
           <View className="mb-6 flex-row gap-3">
@@ -213,7 +202,6 @@ export function RecipeByNameSheet({ request }: RecipeByNameSheetProps) {
               return (
                 <TouchableOpacity
                   key={style.label}
-                  disabled={creation.isCreating}
                   onPress={() => setIsZeroCarb(zero)}
                   accessibilityRole="radio"
                   accessibilityState={{ selected }}
@@ -235,7 +223,9 @@ export function RecipeByNameSheet({ request }: RecipeByNameSheetProps) {
             className="w-full bg-green-600 py-4"
             disabled={!canSubmit}
             onPress={submit}>
-            <Text className="text-lg font-semibold text-white">레시피 만들기</Text>
+            <Text className="text-lg font-semibold text-white">
+              {isBusy ? '만드는 중…' : '레시피 만들기'}
+            </Text>
           </RippleButton>
           {footnote && (
             <Text
@@ -247,14 +237,6 @@ export function RecipeByNameSheet({ request }: RecipeByNameSheetProps) {
           )}
         </BottomSheetView>
       </CustomBottomSheet>
-
-      {/* 시트보다 늦게 붙어 시트·탭 바까지 덮는다 */}
-      {creation.isCreating && (
-        <Portal>
-          <CreationLoadingOverlay />
-        </Portal>
-      )}
-      <QuotaExceededModal {...creation.quotaModalProps} />
     </>
   );
 }
