@@ -51,17 +51,6 @@ export const useRecipeByNameSheet = () => {
 
 const CARB_OPTIONS = [false, true] as const;
 
-// 키 큰 시트로 연다(화면의 88%): 이름 칸이 시트 맨 위라 키보드가 올라와도 가리지 않는다.
-// (실제 폰에서는 엣지 투 엣지 때문에 시트가 키보드를 따라 올라오지 않아, 낮게 열린 시트의 이름 칸이 가려졌다)
-const SNAP_POINTS = ['88%'];
-const SHEET_LAYOUT = {
-  snapPoints: SNAP_POINTS,
-  enableDynamicSizing: false,
-  keyboardBehavior: 'extend',
-  keyboardBlurBehavior: 'restore',
-  android_keyboardInputMode: 'adjustResize',
-} as const;
-
 interface RecipeByNameSheetProps {
   request: RecipeByNameOpenRequest | null;
 }
@@ -92,6 +81,15 @@ export function RecipeByNameSheet({ request }: RecipeByNameSheetProps) {
   clearMessageRef.current = clearMessage;
   const currentChoiceRef = useRef(currentChoice);
   currentChoiceRef.current = currentChoice;
+
+  // 뒤로 가기 등으로 키보드만 닫혀도 입력칸이 포커스를 잃지 않아 시트가 올라간 채 남는다.
+  // 키보드가 닫히면 포커스를 풀어 시트가 원래 높이로 내려오게 한다 (keyboardBlurBehavior: 'restore')
+  useEffect(() => {
+    const subscription = Keyboard.addListener('keyboardDidHide', () => {
+      inputRef.current?.blur();
+    });
+    return () => subscription.remove();
+  }, []);
 
   // 여는 요청이 바뀔 때만 채운다 (다른 값이 바뀔 때 다시 돌면 입력 중인 이름이 지워진다)
   useEffect(() => {
@@ -136,8 +134,9 @@ export function RecipeByNameSheet({ request }: RecipeByNameSheetProps) {
 
   return (
     <>
-      <CustomBottomSheet ref={sheetRef} keyboard={SHEET_LAYOUT}>
-        <BottomSheetView className="flex-1 px-5 pt-1">
+      {/* 체중 기록 시트와 같은 기본 설정: 내용에 맞는 높이로 열리고, 키보드가 올라오면 시트도 따라 올라갔다가 내려가면 돌아온다 */}
+      <CustomBottomSheet ref={sheetRef} keyboard={{ keyboardBlurBehavior: 'restore' }}>
+        <BottomSheetView className="px-5 pb-6 pt-1">
           <Text className="mb-4 text-2xl font-bold">{RECIPE_BY_NAME_TITLE}</Text>
           {trialRemaining !== null && (
             <PassTrialBanner

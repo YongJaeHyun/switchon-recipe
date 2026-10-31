@@ -8,6 +8,8 @@ interface TabsProps<TabItemType> {
   tabItems: readonly TabItemType[];
   bgColor?: string;
   underlineColor?: string;
+  // 탭 이름 옆에 붙일 작은 표시 (예: 추천 탭의 패스 표시)
+  accessory?: (index: number) => React.ReactNode;
 }
 
 export const Tabs = <TabItemType extends string>({
@@ -16,6 +18,7 @@ export const Tabs = <TabItemType extends string>({
   tabItems,
   bgColor,
   underlineColor,
+  accessory,
 }: TabsProps<TabItemType>) => {
   const layout = useWindowDimensions();
   const width = (layout.width - 40) / tabItems.length;
@@ -51,8 +54,9 @@ export const Tabs = <TabItemType extends string>({
         <Pressable
           key={item}
           onPress={() => onSelect(i)}
-          className="h-11 flex-1 items-center justify-center">
+          className="h-11 flex-1 flex-row items-center justify-center gap-1">
           <Text className={selectedIndex === i ? 'font-bold' : 'text-neutral-500'}>{item}</Text>
+          {accessory?.(i)}
         </Pressable>
       ))}
     </View>
