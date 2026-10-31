@@ -73,6 +73,21 @@ export const dismissRecipeJob = (state: RecipeJobState): RecipeJobState =>
     ? state
     : { ...state, job: { phase: 'idle' } };
 
+// 로그아웃·계정이 바뀌면 도는 중이어도 비운다. lastId는 남겨 그 작업의 늦은 결과가 다음 작업을 건드리지 않게 한다
+export const resetRecipeJob = (state: RecipeJobState): RecipeJobState => ({
+  lastId: state.lastId,
+  job: { phase: 'idle' },
+});
+
+// 띠를 숨기는 화면 (expo-router segments): 로그인 전·첫 안내, 그리고 아래에 고정 버튼이 있어 띠가 가리는 화면
+// (패스 결제의 구매 버튼, 문의 쓰기의 제출하기)
+export const isRecipeJobBandHidden = (segments: readonly string[]) => {
+  const [first, second] = segments;
+  if (!first || first === 'index') return true;
+  if (first === '(auth)' || first === '(greet)' || first === 'pass') return true;
+  return first === '(inquiry)' && second === 'new';
+};
+
 // 완성됐을 때 시작한 화면을 아직 보고 있으면 띠 대신 바로 레시피로
 export const shouldOpenOnDone = (state: RecipeJobState, focusedOrigins: readonly string[]) =>
   state.job.phase === 'done' && focusedOrigins.includes(state.job.origin);

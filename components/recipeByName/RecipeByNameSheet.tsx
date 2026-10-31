@@ -69,17 +69,24 @@ export function RecipeByNameSheet() {
   const currentChoiceRef = useRef(currentChoice);
   currentChoiceRef.current = currentChoice;
 
-  useBlurOnKeyboardHide();
+  // 시트는 앱에 늘 붙어 있으므로 열려 있을 때만 키보드를 듣는다
+  const [isOpen, setIsOpen] = useState(false);
+  useBlurOnKeyboardHide(isOpen);
 
   // 여는 요청이 바뀔 때만 채운다 (다른 값이 바뀔 때 다시 돌면 입력 중인 이름이 지워진다)
   useEffect(() => {
-    if (!request) return;
+    // 로그아웃하면 요청이 지워진다: 열려 있으면 닫는다
+    if (!request) {
+      sheetRef.current?.close();
+      return;
+    }
     const name = cleanDishNameInput(request.name);
     nameRef.current = name;
     setHasName(name.trim().length > 0);
     setIsZeroCarb(request.isZeroCarb);
     setWeek(request.weekChoice ?? currentChoiceRef.current);
     setMessage(request.message ?? null);
+    setIsOpen(true);
     sheetRef.current?.expand();
   }, [request]);
 
@@ -120,7 +127,10 @@ export function RecipeByNameSheet() {
   return (
     <>
       {/* 체중 기록 시트와 같은 기본 설정: 내용에 맞는 높이로 열리고, 키보드가 올라오면 시트도 따라 올라갔다가 내려가면 돌아온다 */}
-      <CustomBottomSheet ref={sheetRef} keyboard={{ keyboardBlurBehavior: 'restore' }}>
+      <CustomBottomSheet
+        ref={sheetRef}
+        onClose={() => setIsOpen(false)}
+        keyboard={{ keyboardBlurBehavior: 'restore' }}>
         <BottomSheetView className="px-5 pb-6 pt-1">
           <Text className="mb-4 text-2xl font-bold">{RECIPE_BY_NAME_TITLE}</Text>
           {trialRemaining !== null && (

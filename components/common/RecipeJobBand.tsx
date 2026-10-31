@@ -6,7 +6,7 @@ import { router, useSegments } from 'expo-router';
 import { useBillingAvailable } from 'hooks/useBillingAvailable';
 import { usePass } from 'hooks/usePass';
 import { useQuotaGate } from 'hooks/useQuotaGate';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { openRecipeDetail, runRecipeJob, type SavedRecipeJob } from 'services/recipeJobRunner';
@@ -20,13 +20,12 @@ import {
   RECIPE_BY_NAME_TITLE,
   RECIPE_BY_NAME_TRIAL_LIMIT,
 } from 'utils/recipeByName';
-import { type RecipeJobBand as Band, recipeJobBand } from 'utils/recipeJob';
+import { type RecipeJobBand as Band, isRecipeJobBandHidden, recipeJobBand } from 'utils/recipeJob';
+import { showInfoToast } from 'utils/showToast';
 
 const GAP = 8;
 // 탭 바 높이 (@react-navigation/bottom-tabs 기본, 아이콘 아래 글자) + 아래 안전 영역
 const TAB_BAR_HEIGHT = 49;
-// 띠를 띄우지 않는 화면 (로그인 전·첫 안내)
-const HIDDEN_GROUPS = new Set(['(auth)', '(greet)', 'index']);
 
 const TONE = {
   running: { box: 'border-green-700 bg-green-700', title: 'text-white', icon: null },
@@ -118,15 +117,13 @@ export function RecipeJobBand() {
   const { status } = usePass();
   const billingAvailable = useBillingAvailable();
   const [passModal, setPassModal] = useState<PassOnlyModalView | null>(null);
-  // 한도 창에서 광고를 보면 다시 보낼 요청
-  const retryJob = useRef<SavedRecipeJob | null>(null);
 
   const { setWaitingBonus, setBandHeight, dismiss } = state;
   useEffect(() => {
     setWaitingBonus(quotaGate.isWaitingBonus);
   }, [quotaGate.isWaitingBonus, setWaitingBonus]);
 
-  const hidden = !band || HIDDEN_GROUPS.has(segments[0] ?? 'index');
+  const hidden = !band || isRecipeJobBandHidden(segments);
   useEffect(() => {
     if (hidden) setBandHeight(0);
   }, [hidden, setBandHeight]);
@@ -141,7 +138,7 @@ export function RecipeJobBand() {
         };
       case 'quota':
         return () => {
-          retryJob.current = job.input as SavedRecipeJob;
+          useRecipeJobStore.getState().setRetryJob(job.input);
           dismiss();
           quotaGate.showExceeded(job.quota);
         };
@@ -180,8 +177,16 @@ export function RecipeJobBand() {
   };
 
   const retry = async () => {
-    const saved = retryJob.current;
-    if (saved) runRecipeJob(saved.input, saved.meta);
+    // 로그아웃하면 지워진다 (다른 계정으로 앞 계정의 요청을 보내지 않게)
+    const saved = useRecipeJobStore.getState().retryJob as SavedRecipeJob | null;
+    if (!saved) return;
+    if (!runRecipeJob(saved.input, saved.meta)) {
+      showInfoToast({
+        textType: 'CUSTOM',
+        title: '다른 레시피를 만드는 중이에요',
+        subtitle: '다 되면 다시 만들어 주세요',
+      });
+    }
   };
 
   const inTabs = segments[0] === '(tabs)';

@@ -22,6 +22,7 @@ import { usePass } from 'hooks/usePass';
 import { queryClient } from 'lib/queryClient';
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
+import { resetRecipeJobs } from 'services/recipeJobRunner';
 import { useMealAlarmStore } from 'stores/mealAlarmStore';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
@@ -77,6 +78,8 @@ export default function MeScreen() {
     await cancelAccountAlarms();
     // 끼니 알림 설정·시각은 기기에 남으니 다음 계정이 깨끗하게 시작하도록 초기화
     useMealAlarmStore.getState().reset();
+    // 뒤에서 만들던 레시피(띠·다시 보낼 요청·시트)도 이 계정 것이라 비운다
+    resetRecipeJobs();
 
     if (provider === 'google') await GoogleSignin.signOut();
     if (provider === 'kakao') await unlink();
@@ -92,6 +95,8 @@ export default function MeScreen() {
   const handleLogout = async () => {
     await cancelAccountAlarms();
     useMealAlarmStore.getState().reset();
+    // 뒤에서 만들던 레시피(띠·다시 보낼 요청·시트)도 이 계정 것이라 비운다
+    resetRecipeJobs();
     await UserAPI.logout();
   };
 

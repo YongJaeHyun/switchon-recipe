@@ -6,6 +6,8 @@ import {
   recipeJobLabel,
   dismissRecipeJob,
   finishRecipeJob,
+  isRecipeJobBandHidden,
+  resetRecipeJob,
   shouldOpenOnDone,
   startRecipeJob,
   type RecipeJobState,
@@ -202,5 +204,56 @@ describe('recipeJobLabel', () => {
 
   it('이름으로: 적은 이름 그대로', () => {
     expect(recipeJobLabel({ kind: 'byName', name: '김치찌개' })).toBe('🍳 김치찌개 만드는 중…');
+  });
+});
+
+describe('watchdog (오래 걸리면 오류로 끝내기)', () => {
+  it('시간 초과로 오류가 된 뒤 늦게 온 결과는 무시한다', () => {
+    const { state, id } = running();
+    const timedOut = finishRecipeJob(state, id, { type: 'error' });
+    expect(timedOut.job.phase).toBe('error');
+    expect(isRecipeJobBusy(timedOut)).toBe(false);
+    expect(finishRecipeJob(timedOut, id, { type: 'done', recipe })).toBe(timedOut);
+  });
+
+  it('다음 작업이 돌 때 앞 작업의 늦은 결과는 다음 작업을 끝내지 않는다', () => {
+    const { state, id } = running();
+    const timedOut = finishRecipeJob(state, id, { type: 'error' });
+    const next = startRecipeJob(timedOut, { label: 'b', origin: 'o1', input: {} });
+    if (!next) throw new Error('should start');
+    expect(finishRecipeJob(next.state, id, { type: 'done', recipe })).toBe(next.state);
+  });
+});
+
+describe('resetRecipeJob (로그아웃·계정 바뀜)', () => {
+  it('도는 중이어도 비우고, 그 작업의 늦은 결과는 무시한다', () => {
+    const { state, id } = running();
+    const reset = resetRecipeJob(state);
+    expect(reset.job.phase).toBe('idle');
+    expect(isRecipeJobBusy(reset)).toBe(false);
+    expect(finishRecipeJob(reset, id, { type: 'done', recipe })).toBe(reset);
+  });
+
+  it('다음 작업 id는 겹치지 않는다', () => {
+    const { state, id } = running();
+    const next = startRecipeJob(resetRecipeJob(state), { label: 'b', origin: 'o', input: {} });
+    expect(next?.id).toBe(id + 1);
+  });
+});
+
+describe('isRecipeJobBandHidden', () => {
+  it('로그인 전·첫 안내·아래 고정 버튼 화면(패스 결제, 문의 쓰기)에서는 숨긴다', () => {
+    expect(isRecipeJobBandHidden([])).toBe(true);
+    expect(isRecipeJobBandHidden(['(auth)'])).toBe(true);
+    expect(isRecipeJobBandHidden(['(greet)'])).toBe(true);
+    expect(isRecipeJobBandHidden(['pass'])).toBe(true);
+    expect(isRecipeJobBandHidden(['(inquiry)', 'new'])).toBe(true);
+  });
+
+  it('탭·레시피 제작·상세·문의 목록에서는 보인다', () => {
+    expect(isRecipeJobBandHidden(['(tabs)', 'home'])).toBe(false);
+    expect(isRecipeJobBandHidden(['recipeCreation', 'low'])).toBe(false);
+    expect(isRecipeJobBandHidden(['recipeDetail'])).toBe(false);
+    expect(isRecipeJobBandHidden(['(inquiry)'])).toBe(false);
   });
 });

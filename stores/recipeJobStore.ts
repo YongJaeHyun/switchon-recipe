@@ -4,6 +4,7 @@ import {
   finishRecipeJob,
   initialRecipeJobState,
   isRecipeJobBusy,
+  resetRecipeJob,
   type RecipeJobResult,
   type RecipeJobState,
   startRecipeJob,
@@ -17,6 +18,8 @@ interface RecipeJobStore extends RecipeJobState {
   waitingBonus: boolean;
   // 띠 높이(재어 둠): 아래 버튼이 있는 화면이 그만큼 비워 둔다 (RecipeJobBandSpacer)
   bandHeight: number;
+  // 한도 창에서 광고를 보면 다시 보낼 요청 (services/recipeJobRunner SavedRecipeJob). 로그아웃하면 지운다
+  retryJob: unknown;
 
   start(job: { label: string; origin: string; input: unknown }): number | null;
   finish(id: number, result: RecipeJobResult): void;
@@ -25,6 +28,9 @@ interface RecipeJobStore extends RecipeJobState {
   blurOrigin(origin: string): void;
   setWaitingBonus(waiting: boolean): void;
   setBandHeight(height: number): void;
+  setRetryJob(job: unknown): void;
+  // 로그아웃·계정 바뀜: 띠·다시 보낼 요청·광고 대기를 모두 비운다
+  reset(): void;
 }
 
 export const useRecipeJobStore = create<RecipeJobStore>()((set, get) => ({
@@ -32,6 +38,7 @@ export const useRecipeJobStore = create<RecipeJobStore>()((set, get) => ({
   focusedOrigins: [],
   waitingBonus: false,
   bandHeight: 0,
+  retryJob: null,
 
   start: (job) => {
     const started = startRecipeJob(get(), job);
@@ -51,6 +58,8 @@ export const useRecipeJobStore = create<RecipeJobStore>()((set, get) => ({
     set((state) => ({ focusedOrigins: state.focusedOrigins.filter((o) => o !== origin) })),
   setWaitingBonus: (waitingBonus) => set({ waitingBonus }),
   setBandHeight: (bandHeight) => set({ bandHeight }),
+  setRetryJob: (retryJob) => set({ retryJob }),
+  reset: () => set((state) => ({ ...resetRecipeJob(state), retryJob: null, waitingBonus: false })),
 }));
 
 // 만들기 버튼을 막을지 ("만드는 중…")

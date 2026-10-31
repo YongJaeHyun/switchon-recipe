@@ -17,9 +17,12 @@ export interface RecipeByNameOpenRequest {
 interface RecipeByNameSheetStore {
   request: RecipeByNameOpenRequest | null;
   open(request: Omit<RecipeByNameOpenRequest, 'at'>): void;
+  // 로그아웃: 열린 시트를 닫고 요청을 지운다
+  reset(): void;
 }
 
 export const useRecipeByNameSheetStore = create<RecipeByNameSheetStore>()((set) => ({
   request: null,
   open: (request) => set({ request: { ...request, at: Date.now() } }),
+  reset: () => set({ request: null }),
 }));
