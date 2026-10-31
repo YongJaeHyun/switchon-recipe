@@ -247,18 +247,35 @@ export function groupPastStarts(starts: string[], programStart: string | null): 
 
 // 시작일 변경으로 저장할 것. 할 것이 없으면 null (같은 시작일, 같은 회차 시작일).
 // startChanged = 시작일이 바뀜 (재료·통계 정리도 한다). 같은 날 다시 시작인데 회차 시작일만 다르면
-// (한 주 더 하기 뒤 오늘이 1주차 1일인 날 등) 회차 시작일만 바꾸고 정리하지 않는다
+// (한 주 더 하기 뒤 오늘이 1주차 1일인 날 등) 회차 시작일만 바꾸고 정리하지 않는다.
+// alignBase = 오늘 첫 변경 전 회차 시작일 (dayProgramBase). 주차 맞추기는 지금 회차 시작일 대신 이것과 비교한다:
+// 앞당겼다가 같은 날 되돌리면 회차 시작일도 돌아간다 (앞당긴 날짜에 묶이면 그 사이 날들이 이번 회차로 섞인다)
 export function startDateChange(input: {
   kind: StartDateChangeKind;
   startDate: string | null | undefined;
   programStart: string | null | undefined;
   newStart: string;
+  alignBase?: string | null;
 }): { programStart: string; startChanged: boolean } | null {
   const current = programStartOf(input.programStart, input.startDate);
-  const programStart = nextProgramStart(input.kind, current, input.newStart);
+  const basis = input.kind === 'align' && input.alignBase ? input.alignBase : current;
+  const programStart = nextProgramStart(input.kind, basis, input.newStart);
   const startChanged = !isSameStartDate(input.startDate, input.newStart);
   if (!startChanged && programStart === current) return null;
   return { programStart, startChanged };
+}
+
+// 오늘(KST) 첫 시작일 변경 전 회차 시작일 기록. 같은 유저·같은 날이면 그대로, 아니면 지금 회차 시작일로 새로 연다.
+// 기기 메모리에만 둔다 (앱을 다시 켜면 그 뒤 변경부터 센다)
+export type DayProgramBase = { uid: string; day: string; program: string | null };
+
+export function dayProgramBase(
+  base: DayProgramBase | null,
+  now: { uid: string; today: string },
+  currentProgram: string | null
+): DayProgramBase {
+  if (base && base.uid === now.uid && base.day === now.today) return base;
+  return { uid: now.uid, day: now.today, program: currentProgram };
 }
 
 // 시작일을 바꾼 뒤 updated_at을 새로 찍을 단식 계획 행: 새 시작일의 오늘 주차 (단식이 있는 2주차부터, 시작 전이면 없음).

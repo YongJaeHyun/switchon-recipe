@@ -10,6 +10,7 @@ import {
   nextProgramStart,
   planToTouch,
   startDateChange,
+  dayProgramBase,
   PROGRAM_CHAIN_DAYS,
   programStartOf,
   isBeforeStart,
@@ -774,5 +775,71 @@ describe('planToTouch (시작일을 바꾼 뒤 표시할 이번 주차 단식 �
       start_date: '2026-10-01',
       week_index: 3,
     });
+  });
+});
+
+// 같은 날 주차 맞추기로 앞당겼다가 되돌리면 회차 시작일도 오늘 첫 변경 전 값으로 돌아간다 (앞당긴 날짜에 묶이지 않게)
+describe('주차 맞추기 되돌리기 (오늘 첫 변경 전 회차 시작일)', () => {
+  it('앞당겼다가 같은 날 되돌리면 원래 회차 시작일', () => {
+    const base = dayProgramBase(null, { uid: 'u', today: '2026-10-31' }, '2026-10-17');
+    expect(base).toEqual({ uid: 'u', day: '2026-10-31', program: '2026-10-17' });
+    // 2주차 → 4주차: 시작일·회차 시작일 10-03
+    expect(
+      startDateChange({
+        kind: 'align',
+        startDate: '2026-10-17',
+        programStart: '2026-10-17',
+        newStart: '2026-10-03',
+        alignBase: base.program,
+      })
+    ).toEqual({ programStart: '2026-10-03', startChanged: true });
+    // 같은 날 다시 2주차로: 회차 시작일도 10-17
+    const again = dayProgramBase(base, { uid: 'u', today: '2026-10-31' }, '2026-10-03');
+    expect(again).toBe(base);
+    expect(
+      startDateChange({
+        kind: 'align',
+        startDate: '2026-10-03',
+        programStart: '2026-10-03',
+        newStart: '2026-10-17',
+        alignBase: again.program,
+      })
+    ).toEqual({ programStart: '2026-10-17', startChanged: true });
+  });
+
+  it('다른 날이거나 다른 유저면 지금 회차 시작일부터 새로', () => {
+    const base = { uid: 'u', day: '2026-10-30', program: '2026-10-17' };
+    expect(dayProgramBase(base, { uid: 'u', today: '2026-10-31' }, '2026-10-03')).toEqual({
+      uid: 'u',
+      day: '2026-10-31',
+      program: '2026-10-03',
+    });
+    expect(dayProgramBase(base, { uid: 'v', today: '2026-10-30' }, '2026-10-03').program).toBe(
+      '2026-10-03'
+    );
+  });
+
+  it('미루기는 기준보다 늦으면 기준 그대로 (앞 주차 기록을 회차에서 빼지 않는다)', () => {
+    expect(
+      startDateChange({
+        kind: 'align',
+        startDate: '2026-10-17',
+        programStart: '2026-10-17',
+        newStart: '2026-10-24',
+        alignBase: '2026-10-17',
+      })
+    ).toEqual({ programStart: '2026-10-17', startChanged: true });
+  });
+
+  it('기준은 주차 맞추기에만 쓴다 (한 주 더 하기는 지금 회차 시작일 그대로)', () => {
+    expect(
+      startDateChange({
+        kind: 'repeat',
+        startDate: '2026-10-03',
+        programStart: '2026-10-03',
+        newStart: '2026-10-10',
+        alignBase: '2026-10-17',
+      })
+    ).toEqual({ programStart: '2026-10-03', startChanged: true });
   });
 });

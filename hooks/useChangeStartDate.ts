@@ -6,8 +6,11 @@ import { queryClient } from 'lib/queryClient';
 import { getKoreanDateString } from 'utils/date';
 import { useUserStore } from 'stores/userStore';
 import {
+  dayProgramBase,
   planToTouch,
+  programStartOf,
   startDateChange,
+  type DayProgramBase,
   startDateCleanup,
   type StartDateChangeKind,
 } from 'utils/programStart';
@@ -20,6 +23,9 @@ interface ChangeStartDateOptions {
   // 시작일 저장이 성공한 직후, 정리(재료·통계)보다 먼저 (한 주 더 하기의 '이미 물어봄' 표시 등)
   onSaved?: () => void;
 }
+
+// 오늘 첫 시작일 변경 전 회차 시작일 (같은 날 주차 맞추기를 되돌리면 회차 시작일도 되돌린다)
+let programBase: DayProgramBase | null = null;
 
 // 시작일을 바꾸는 단 하나의 길 (프로그램 설정 시트, 한 주 더 하기, 온보딩). 회차 시작일(program_start)도 함께 저장한다.
 // 바꿀 것이 없으면(같은 시작일·같은 회차 시작일) 아무것도 하지 않고 true. 시작일 저장이 실패하면 아무것도 지우지 않는다. 성공하면 새 시작일 기준으로
@@ -35,12 +41,17 @@ export function useChangeStartDate() {
     newStart: string,
     options: ChangeStartDateOptions
   ): Promise<boolean> => {
-    const { start_date, program_start } = useUserStore.getState();
+    const { id, start_date, program_start } = useUserStore.getState();
+    const today = getKoreanDateString({ formatType: 'date' });
+    const base = id
+      ? dayProgramBase(programBase, { uid: id, today }, programStartOf(program_start, start_date))
+      : null;
     const change = startDateChange({
       kind: options.kind,
       startDate: start_date,
       programStart: program_start,
       newStart,
+      alignBase: base?.program,
     });
     // 바꿀 것이 없으면 저장도 정리도 하지 않는다
     if (!change) return true;
@@ -48,11 +59,13 @@ export function useChangeStartDate() {
       toast: options.toast,
     });
     if (!ok) return false;
+    // 다시 시작은 새 회차: 오늘 이 뒤의 주차 맞추기는 새 회차 시작일과 비교한다
+    if (base)
+      programBase = options.kind === 'restart' ? { ...base, program: change.programStart } : base;
     options.onSaved?.();
     // 같은 시작일(회차 시작일만 바뀜)이면 정리하지 않는다 (오늘 기록한 할 일 완료율이 지워져 체크리스트와 어긋나지 않게)
     if (!change.startChanged) return true;
 
-    const today = getKoreanDateString({ formatType: 'date' });
     // 이번 주차 단식 계획이 이미 있으면(같은 날 주차 맞추기를 되돌림 등) 표시해, 기록 탭이 오늘부터 새 시작일 계획을 쓰게 한다
     const touch = planToTouch(newStart, today);
     if (touch) void FastingPlanAPI.touch(touch);
