@@ -24,6 +24,7 @@ import { requireOnline } from 'utils/network';
 import { getKoreanDateString } from 'utils/date';
 import { getWeekColorHex } from 'utils/getWeekColor';
 import { passBar } from 'utils/passBar';
+import { getPassLimitRows, PASS_LIMITS_RESET_NOTE } from 'utils/passLimits';
 import { formatPassRemaining, formatSalesHeadline } from 'utils/passDisplay';
 import {
   canPurchasePassSelection,
@@ -341,6 +342,32 @@ const FeatureList = ({ recipeLine }: { recipeLine: string | null }) => (
   </View>
 );
 
+// 고른 상품으로 쓸 수 있는 양. 결제 버튼 바로 위(스크롤 맨 끝)에서 결제 전에 보게 한다.
+// 숫자는 서버 limits만 쓰고, 없으면(옛 서버·조회 실패) 틀린 숫자 대신 통째로 숨긴다
+const PassLimitsPanel = ({ status, kind }: { status: PassStatus; kind: PassOptionKind }) => {
+  const rows = getPassLimitRows(status.limits, kind);
+  if (rows.length === 0) return null;
+  return (
+    <View className="gap-3.5 rounded-2xl bg-neutral-50 px-4 py-5">
+      <Text className="text-base font-bold text-neutral-900">패스로 쓸 수 있는 양</Text>
+      {rows.map(({ icon, label, value, note }) => (
+        <View key={label} className="flex-row items-start gap-2.5">
+          <MaterialIcons name={icon} size={18} color={colors.green[700]} style={{ marginTop: 1 }} />
+          <Text className="w-[88px] text-sm font-bold text-neutral-800">{label}</Text>
+          <View className="flex-1 gap-0.5">
+            <Text className="text-sm leading-5 text-neutral-700">{value}</Text>
+            {note && <Text className="text-xs font-bold text-green-700">{note}</Text>}
+          </View>
+        </View>
+      ))}
+      <View className="flex-row items-center gap-1.5 border-t border-neutral-200 pt-3">
+        <MaterialIcons name="schedule" size={14} color={colors.neutral[500]} />
+        <Text className="text-xs text-neutral-500">{PASS_LIMITS_RESET_NOTE}</Text>
+      </View>
+    </View>
+  );
+};
+
 // 딥링크로 앱을 막 켜 이 화면부터 열리면 시작 화면(index)을 거치지 않아 유저를 불러오지 않는다.
 // 그때 여기서 불러온다 (불러오면 store가 바뀌어 화면이 다시 그려진다). 로그인이 안 돼 있으면 시작 화면으로
 const useLoadUserIfMissing = (uid: string) => {
@@ -516,6 +543,7 @@ export default function PassScreen() {
             ))}
           </View>
           <FeatureList recipeLine={getPassRecipeLine(quotaSetting?.passDaily)} />
+          <PassLimitsPanel status={status} kind={selected.kind} />
         </ScrollView>
         <View className="gap-2 border-t border-neutral-100 px-5 pb-6 pt-3">
           <RippleButton

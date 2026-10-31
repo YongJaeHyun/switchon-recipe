@@ -7,6 +7,7 @@
 // 경우는 Gemini 비용이 들었으므로 되돌리지 않는다.
 
 import { kstToday } from '../_shared/kstToday.ts';
+import { INBODY_DAILY_LIMIT } from '../_shared/passLimits.ts';
 import {
   assertPremium,
   type PremiumCheckClient,
@@ -18,7 +19,8 @@ import { buildInbodyPrompt, parseInbodyResponse } from './result.ts';
 import { consumeDailyUsage, releaseDailyUsage, type UsageStore } from './usage.ts';
 
 export const MAX_BODY_BYTES = 4 * 1024 * 1024;
-export const INBODY_DAILY_LIMIT = 10;
+// 하루 한도는 결제 화면 안내(get-pass-status)와 같은 값이라 _shared/passLimits.ts에 둔다
+export { INBODY_DAILY_LIMIT };
 // 이보다 짧은 base64는 사진일 수 없다 (약 750바이트)
 export const MIN_IMAGE_BASE64_LENGTH = 1000;
 const BASE64_PATTERN = /^[A-Za-z0-9+/]+={0,2}$/;

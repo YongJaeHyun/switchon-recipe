@@ -18,6 +18,18 @@ export interface SalesState {
   firstPurchaseDiscount?: boolean;
 }
 
+// 패스로 쓸 수 있는 양 (서버 _shared/passLimits.ts와 같은 모양). 결제 화면 안내용
+export interface PassLimits {
+  recipeDaily: number;
+  recipePerPass: number; // 5주 패스 하나로 만들 수 있는 레시피
+  recipePerWeek: number; // 1주 패스 하나, 한 주 더 하기 한 번마다 더하는 레시피
+  nameCheckDaily: number;
+  foodCheckDaily: number;
+  inbodyDaily: number;
+  fiveWeekDays: number;
+  weekPassDays: number;
+}
+
 export interface PassStatus {
   sales: SalesState;
   passExpiresAt: string | null; // ISO
@@ -28,6 +40,8 @@ export interface PassStatus {
   recipeByNameTrialRemaining?: number;
   // 무료 1주차 주간 리포트 남은 횟수 (0 또는 1, 평생 1번). 모르면 undefined
   freeReportRemaining?: number;
+  // 패스로 쓸 수 있는 양. 옛 서버거나 서버 조회가 실패하면 없음 → 앱은 안내를 숨긴다
+  limits?: PassLimits;
   serverNow: string; // ISO
 }
 
