@@ -54,17 +54,16 @@ export function parseChosenWeek(value: unknown): number | null | 'invalid' {
   return value >= 1 && value <= CHOSEN_WEEK_MAX ? value : 'invalid';
 }
 
-// 판정·생성에 쓸 주차와 일차. 고른 주차가 이번 주차(유지기는 5로 묶음)면 실제 주차·일차,
-// 다른 주차를 골랐으면 그 주차만 (일차별 끼니 규칙 없음)
+// 판정·생성에 쓸 주차. 고른 주차가 이번 주차(유지기는 5로 묶음)면 실제 주차, 아니면 고른 주차.
+// 일차는 쓰지 않는다: 레시피는 미리 만들어 두는 것이라 쉐이크만 먹는 1주차 1~3일에도 만들 수 있어야 한다
+// (운영자 2026-11-01 "1주차에도 무탄수 및 저탄수를 만들 수 있어야")
 export function resolveRuleWeek(
   chosen: number | null,
   startDate: string | null | undefined,
   now: Date
 ): { week: number; day?: number } {
   const week = programWeekOf(startDate, now);
-  if (chosen === null || chosen === Math.min(week, CHOSEN_WEEK_MAX)) {
-    return { week, day: programDayOf(startDate, now) };
-  }
+  if (chosen === null || chosen === Math.min(week, CHOSEN_WEEK_MAX)) return { week };
   return { week: chosen };
 }
 
@@ -88,6 +87,8 @@ export function buildNameCheckPrompt({
     '',
     '[이번 주차 규칙]',
     weekRuleText(week, day),
+    '',
+    '이 레시피는 미리 만들어 두는 것이라 끼니 구성(쉐이크만 먹는 날 등) 때문에 reject하지 마세요. 재료와 조리법이 이번 주차에 먹을 수 있는지로만 판정하세요.',
     '',
     '[판정 대상]',
     `음식 이름: "${clean(name)}"`,
