@@ -76,7 +76,8 @@ export function useChangeStartDate() {
 
   // 시작일이 바뀐 뒤 정리: 이번 주차 단식 계획 표시, 새 주차보다 높은 선택 재료 빼기, 오늘 주차·일차부터의 할 일 통계 지우기.
   // 온보딩(UserAPI.updateOnboarding으로 따로 저장)도 이미 시작일이 있던 유저면 이것을 부른다
-  // alignedFrom = 주차 맞추기 전 시작일. 있으면 오늘 칸부터 지우는 대신 지난 통계 행을 새 시작일 기준 같은 날짜 칸으로 옮긴다
+  // alignedFrom = 주차 맞추기(또는 기록이 있던 유저의 온보딩) 전 시작일. 있으면 오늘 칸부터 지우는 대신 지난 통계 행을
+  // 새 시작일 기준 같은 날짜 칸으로 옮긴다 (먼저 쓰고 나중에 지움, 실패하면 예전처럼 오늘 칸부터만 지움)
   const cleanupAfterStartChange = async (
     newStart: string,
     today: string,

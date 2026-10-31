@@ -93,7 +93,8 @@ const PROGRAM_CHAIN_DAYS = 56;
 // 누적 체중 기준 시작일 = 회차 시작일. 앱 utils/programStart.ts programStartOf와 같은 규칙:
 // program_start(한 주 더 하기·주차 맞추기로 start_date가 바뀌어도 그대로)가 없거나 날짜 꼴이 아니거나
 // start_date보다 뒤면(구버전 앱이 시작일을 앞당김) start_date. start_date보다 56일 넘게 앞이어도 start_date
-// (구버전 앱이 다시 시작하며 start_date만 바꿔 옛 회차의 program_start가 남은 경우)
+// (구버전 앱이 다시 시작하며 start_date만 바꿔 옛 회차의 program_start가 남은 경우). 지금 앱의 같은 회차도
+// 한 주 더 하기 아홉 번쯤, 또는 유지기 오래 지나 1·4주차로 주차 맞추기면 56일을 넘어 새 회차로 읽힌다 (받아들임)
 export function baselineStartOf(
   programStart: string | null | undefined,
   startDate: string

@@ -460,4 +460,13 @@ describe('previousWeekPlanOf', () => {
     expect(previousWeekPlanOf(plans, '2026-10-30')).toBeNull();
     expect(previousWeekPlanOf([], '2026-10-15')).toBeNull();
   });
+
+  it('지금 회차 계획만 (다시 시작 전 회차의 계획이 어제를 덮어도 쓰지 않는다)', () => {
+    // 옛 시작일 10-01의 3주차(10-15~21) 계획을 10-15 아침에 쓴 뒤 그날 다시 시작 → 회차 10-15, 새 2주차 첫날 10-22.
+    // 어제 10-21은 새 1주차(단식 없음)인데 옛 3주차 계획이 덮는다
+    const plans = [plan('2026-10-01', 3, '2026-10-14T22:00:00Z')];
+    expect(previousWeekPlanOf(plans, '2026-10-22', '2026-10-15')).toBeNull();
+    // 한 주 더 하기·주차 맞추기 뒤에는 앞 시작일도 회차 시작일 이후라 쓴다
+    expect(previousWeekPlanOf(plans, '2026-10-22', '2026-10-01')).toBe(plans[0]);
+  });
 });

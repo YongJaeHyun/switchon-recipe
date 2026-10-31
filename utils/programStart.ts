@@ -191,8 +191,11 @@ export const PROGRAM_CHAIN_DAYS = 56;
 
 // 지금 회차 시작일. program_start가 없거나(구버전 앱·마이그레이션 전) 시작일보다 뒤면
 // (구버전 앱이 시작일을 앞당김) 시작일로 본다. 시작일보다 PROGRAM_CHAIN_DAYS(56일) 넘게 앞이어도 시작일로 본다:
-// 구버전 앱(5.x)은 다시 시작할 때 start_date만 쓰므로 옛 회차의 program_start가 남는다 (한 주 더 하기·주차 맞추기는
-// 8주 안쪽으로만 움직인다). 서버 _shared/weeklyStats.ts baselineStartOf와 같은 규칙. 둘 다 없으면 null
+// 구버전 앱(5.x)은 다시 시작할 때 start_date만 쓰므로 옛 회차의 program_start가 남는다.
+// 지금 앱의 같은 회차도 56일을 넘으면 새 회차로 읽힌다 (받아들임, 저장된 program_start는 그대로라 되돌리면 돌아온다):
+// - 한 주 더 하기를 아홉 번쯤 (+7일씩, 횟수 제한 없음)
+// - 유지기 오래(9주차 2일 이후) 지나 1주차로, 또는 12주차 2일 이후 4주차로 주차 맞추기 (사실상 다시 시작으로 본다)
+// 서버 _shared/weeklyStats.ts baselineStartOf와 같은 규칙. 둘 다 없으면 null
 export function programStartOf(
   programStart: string | null | undefined,
   startDate: string | null | undefined

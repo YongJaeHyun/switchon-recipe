@@ -189,7 +189,9 @@ export const fastingWeekBoundary = (
 
 // 지난 주차 계획을 (시작일, 주차−1)로 찾지 못할 때(한 주 더 하기·주차 맞추기로 시작일이 바뀐 직후)의 대신:
 // 이번 주차 첫날(from) 바로 전날을 덮는 계획(그 시작일의 그 주 7일) 중 가장 늦게 생성·수정된 것.
-// 앱은 지금 시작일의 계획만 쓰므로 그날 실제로 따르던 계획이다. 없으면 null
+// 앱은 지금 시작일의 계획만 쓰므로 그날 실제로 따르던 계획이다. programStart(지금 회차 시작일, programStartOf)를 주면
+// 그 이후 시작일의 계획만 본다: 다시 시작 전 회차의 계획이 새 1주차(단식 없음) 날을 덮어도 묻지 않게.
+// 한 주 더 하기·주차 맞추기 전 시작일은 회차 시작일 이후라 쓴다. 없으면 null
 export const previousWeekPlanOf = <
   T extends {
     start_date: string;
@@ -199,8 +201,10 @@ export const previousWeekPlanOf = <
   },
 >(
   plans: T[],
-  from: string
+  from: string,
+  programStart?: string | null
 ): T | null => {
+  const program = programStart ? programStart.slice(0, 10) : null;
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(from);
   if (!m) return null;
   const yesterday = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) - DAY_MS;
@@ -213,6 +217,7 @@ export const previousWeekPlanOf = <
     );
   let best: T | null = null;
   for (const plan of plans) {
+    if (program && plan.start_date.slice(0, 10) < program) continue;
     const s = /^(\d{4})-(\d{2})-(\d{2})/.exec(plan.start_date);
     if (!s) continue;
     const weekStart =

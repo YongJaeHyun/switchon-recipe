@@ -71,9 +71,10 @@ export default function OnboardingScreen() {
     if (declaredKey) markRepeatAsked(declaredKey);
     const previousStart = useUserStore.getState().start_date;
     const ok = await UserAPI.updateOnboarding(selectedDate);
-    // 이미 다른 시작일로 기록이 남은 유저(온보딩을 안 끝낸 옛 행)면 시작일 변경과 같은 정리 (통계·재료·단식 계획)
-    if (ok && onboardingNeedsCleanup(previousStart, selectedDate))
-      await cleanupAfterStartChange(selectedDate, today);
+    // 이미 다른 시작일로 기록이 남은 유저(온보딩을 안 끝낸 옛 행)면 시작일 변경과 같은 정리 (통계·재료·단식 계획).
+    // 할 일 통계는 주차 맞추기처럼 같은 날짜 칸으로 옮긴다 (옛 시작일 기준 칸에 남아 다른 날짜로 보이지 않게)
+    if (ok && previousStart && onboardingNeedsCleanup(previousStart, selectedDate))
+      await cleanupAfterStartChange(selectedDate, today, { alignedFrom: previousStart });
     router.replace('/(tabs)/home');
   };
   // 끼니 알림: 예 → 권한 요청(거부하면 꺼짐), 아니오 → 꺼짐. 나중에 내 정보에서 켤 수 있다
