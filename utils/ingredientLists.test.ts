@@ -4,6 +4,7 @@ import {
   buildAllWeekLists,
   buildLowIngredientLists,
   buildZeroIngredientLists,
+  ingredientsForWeek,
 } from './ingredientLists';
 
 const ingredient = (name: string, week: number, isCarbohydrate?: boolean): Ingredient => ({
@@ -48,5 +49,12 @@ describe('buildAllWeekLists', () => {
 
     expect(lists.map((l) => l.week)).toEqual([1, 2, 3]);
     expect(names(lists[2].ingredientList)).toEqual(['현미밥', '바나나']);
+  });
+});
+
+describe('ingredientsForWeek', () => {
+  it('지금 주차보다 높은 주차 재료는 뺀다 (한 주 더 하기로 주차가 내려갔는데 정리를 못 한 경우)', () => {
+    expect(ingredientsForWeek(list, 2).map((i) => i.name)).toEqual(['계란', '두부']);
+    expect(ingredientsForWeek(list, 3)).toEqual(list);
   });
 });
