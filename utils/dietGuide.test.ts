@@ -5,6 +5,7 @@ import {
   getTodoAction,
   fastingWeekBoundary,
   formatKstClock,
+  previousWeekPlanOf,
   WEEK_CHANGES,
 } from './dietGuide';
 import type { FastingSchedule } from './fastingSchedule';
@@ -424,5 +425,39 @@ describe('formatKstClock', () => {
     expect(formatKstClock(new Date('2026-10-19T13:00:00Z'))).toBe('22:00');
     expect(formatKstClock(new Date('2026-10-19T15:30:00Z'))).toBe('00:30');
     expect(formatKstClock(new Date('2026-10-19T10:30:00+09:00'))).toBe('10:30');
+  });
+});
+
+// 시작일이 바뀐 뒤 (새 시작일, 주차−1) 계획이 없을 때: 이번 주차 첫날 바로 전날을 덮는 계획 중 가장 늦게 쓰인 것
+describe('previousWeekPlanOf', () => {
+  const plan = (
+    start_date: string,
+    week_index: number,
+    updated_at: string,
+    created_at = updated_at
+  ) => ({
+    start_date,
+    week_index,
+    created_at,
+    updated_at,
+  });
+
+  it('한 주 더 하기 뒤(3주차 → 2주차): 어제를 덮는 예전 시작일의 2주차 계획', () => {
+    // 회차 10-01, 10-15(3주차 1일)에 한 주 더 → 시작일 10-08, 이번 주차 첫날 10-15
+    const plans = [
+      plan('2026-10-01', 2, '2026-10-08T00:00:00Z'),
+      plan('2026-10-08', 2, '2026-10-15T01:00:00Z'),
+    ];
+    expect(previousWeekPlanOf(plans, '2026-10-15')).toBe(plans[0]);
+  });
+
+  it('겹치면 가장 늦게 쓰인 계획, 덮는 계획이 없으면 null', () => {
+    const plans = [
+      plan('2026-10-01', 2, '2026-10-08T00:00:00Z'),
+      plan('2026-10-02', 2, '2026-10-09T00:00:00Z'),
+    ];
+    expect(previousWeekPlanOf(plans, '2026-10-15')).toBe(plans[1]);
+    expect(previousWeekPlanOf(plans, '2026-10-30')).toBeNull();
+    expect(previousWeekPlanOf([], '2026-10-15')).toBeNull();
   });
 });
