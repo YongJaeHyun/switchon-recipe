@@ -94,21 +94,22 @@ const alreadyProcessed = async (
 const isValidPurchase = (purchase: ProductPurchase, input: VerifyInput) =>
   purchase.purchaseState === PURCHASED &&
   purchase.obfuscatedExternalAccountId === input.uid &&
-  (purchase.productId === undefined || purchase.productId === input.productId);
+  // 응답에 상품이 없으면 요청한 상품(가격·일수를 정함)과 같은지 확인할 수 없으므로 받지 않는다
+  purchase.productId === input.productId;
 
 // 이 구매가 더해 주는 구간: 이 구매 이전의 granted 구매·연장으로 만든 만료일 뒤에 상품 일수만큼 이어 붙인다
 const grantedInterval = (
   existing: PurchaseForExpiry[],
   extensions: ExtensionForExpiry[],
-  productId: string,
-  days: number,
-  purchasedAt: Date
+  purchase: { purchaseToken: string; productId: string; purchasedAt: Date },
+  days: number
 ) => {
+  const { purchasedAt } = purchase;
   const t = purchasedAt.getTime();
   const before = existing.filter((p) => p.purchasedAt.getTime() <= t);
   const extensionsBefore = extensions.filter((e) => e.extendedAt.getTime() < t);
   const grantedUntil = computeExpiry(
-    [...before, { productId, purchasedAt, status: 'granted' }],
+    [...before, { ...purchase, status: 'granted' }],
     extensionsBefore
   ) as Date;
   const grantedFrom = new Date(grantedUntil.getTime() - days * DAY_MS);
@@ -163,9 +164,8 @@ export async function verifyPurchase(deps: VerifyDeps, input: VerifyInput): Prom
   const { grantedFrom, grantedUntil } = grantedInterval(
     existing,
     extensions,
-    input.productId,
-    product.days,
-    purchasedAt
+    { purchaseToken: input.purchaseToken, productId: input.productId, purchasedAt },
+    product.days
   );
   const inserted = await deps.insertPurchase({
     ...baseRow,

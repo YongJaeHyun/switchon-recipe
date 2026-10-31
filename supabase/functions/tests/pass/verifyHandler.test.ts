@@ -40,7 +40,7 @@ const createFakeDeps = (
     raiseError?: Error; // 첫 raisePassExpiry 호출만 실패
     storedExpiry?: Date; // user_pass에 이미 저장된 만료일
     now?: Date;
-    extensions?: Date[]; // 한 주 더 하기 연장 시각 (pass_extension.extended_at)
+    extensions?: { extendedAt: Date; purchaseToken: string }[]; // pass_extension 행
   } = {}
 ) => {
   const rows: PurchaseRow[] = [...(options.existing ?? [])];
@@ -66,10 +66,15 @@ const createFakeDeps = (
     listUserPurchases: vi.fn(async (uid: string) =>
       rows
         .filter((r) => r.uid === uid)
-        .map((r) => ({ productId: r.productId, purchasedAt: r.purchasedAt, status: r.status }))
+        .map((r) => ({
+          purchaseToken: r.purchaseToken,
+          productId: r.productId,
+          purchasedAt: r.purchasedAt,
+          status: r.status,
+        }))
     ),
     listUserExtensions: vi.fn(async (_uid: string) =>
-      (options.extensions ?? []).map((extendedAt) => ({ extendedAt }))
+      (options.extensions ?? []).map((e) => ({ ...e }))
     ),
     insertPurchase: vi.fn(async (row: PurchaseRow) => {
       if (options.insertResult === 'duplicate') return 'duplicate' as const;
@@ -179,7 +184,7 @@ describe('verifyPurchase: 한 주 더 하기 연장', () => {
   it('연장된 패스 중 새로 사면 연장분 뒤에 이어 붙인다 (연장 7일이 사라지지 않음)', async () => {
     const { deps, rows } = createFakeDeps({
       existing: [existingRow({ purchasedAt: p1 })],
-      extensions: [extendedAt],
+      extensions: [{ extendedAt, purchaseToken: 'old-token' }],
       storedExpiry: new Date(p1.getTime() + 42 * DAY_MS), // DB 함수가 이미 +7일
       playPurchase: purchase({ productId: P4900, purchaseTimeMillis: String(later.getTime()) }),
       now: later,
@@ -199,13 +204,50 @@ describe('verifyPurchase: 한 주 더 하기 연장', () => {
   it('already_processed 복구도 연장을 반영한 만료일로 맞춘다', async () => {
     const { deps } = createFakeDeps({
       existing: [existingRow({ purchaseToken: TOKEN, purchasedAt: p1 })],
-      extensions: [extendedAt],
+      extensions: [{ extendedAt, purchaseToken: TOKEN }],
     });
 
     expect(await verifyPurchase(deps, input)).toEqual({
       status: 'already_processed',
       passExpiresAt: new Date(p1.getTime() + 42 * DAY_MS).toISOString(),
     });
+  });
+
+  it('구매 하나에 묶인 연장은 2번까지만, 1주 패스에 묶인 연장은 반영하지 않는다', async () => {
+    const week = existingRow({
+      purchaseToken: 'week-token',
+      productId: P1W,
+      purchasedAt: new Date('2026-11-02T00:00:00.000Z'),
+    });
+    const { deps } = createFakeDeps({
+      existing: [existingRow({ purchaseToken: TOKEN, purchasedAt: p1 }), week],
+      extensions: [
+        { extendedAt: new Date('2026-11-08T00:00:00.000Z'), purchaseToken: TOKEN },
+        { extendedAt: new Date('2026-11-15T00:00:00.000Z'), purchaseToken: TOKEN },
+        { extendedAt: new Date('2026-11-22T00:00:00.000Z'), purchaseToken: TOKEN },
+        { extendedAt: new Date('2026-11-29T00:00:00.000Z'), purchaseToken: 'week-token' },
+      ],
+    });
+
+    // 35 + 7(1주) + 연장 2번
+    expect(await verifyPurchase(deps, input)).toEqual({
+      status: 'already_processed',
+      passExpiresAt: new Date(p1.getTime() + 56 * DAY_MS).toISOString(),
+    });
+  });
+});
+
+describe('verifyPurchase: Play 응답의 상품', () => {
+  it('Play 응답에 productId가 없으면 invalid (요청한 상품과 같은지 확인할 수 없음)', async () => {
+    const { deps, rows } = createFakeDeps({ playPurchase: purchase({ productId: undefined }) });
+
+    expect(await verifyPurchase(deps, input)).toEqual({ status: 'invalid' });
+    expect(rows).toHaveLength(0);
+  });
+
+  it('Play 응답의 productId가 요청과 다르면 invalid', async () => {
+    const { deps } = createFakeDeps({ playPurchase: purchase({ productId: P1W }) });
+    expect(await verifyPurchase(deps, input)).toEqual({ status: 'invalid' });
   });
 });
 

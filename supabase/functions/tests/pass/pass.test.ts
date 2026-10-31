@@ -40,10 +40,10 @@ describe('1주 패스 상품', () => {
   });
 
   it('passProductOf: 상품별 가격·일수 (5주 35일, 1주 7일), 모르는 상품은 null', () => {
-    expect(passProductOf('switchon_pass_5w_1900')).toEqual({ priceKrw: 1900, days: 35 });
-    expect(passProductOf('switchon_pass_5w_2900')).toEqual({ priceKrw: 2900, days: 35 });
-    expect(passProductOf('switchon_pass_5w_4900')).toEqual({ priceKrw: 4900, days: 35 });
-    expect(passProductOf('switchon_pass_1w_1500')).toEqual({ priceKrw: 1500, days: 7 });
+    expect(passProductOf('switchon_pass_5w_1900')).toMatchObject({ priceKrw: 1900, days: 35 });
+    expect(passProductOf('switchon_pass_5w_2900')).toMatchObject({ priceKrw: 2900, days: 35 });
+    expect(passProductOf('switchon_pass_5w_4900')).toMatchObject({ priceKrw: 4900, days: 35 });
+    expect(passProductOf('switchon_pass_1w_1500')).toMatchObject({ priceKrw: 1500, days: 7 });
     expect(passProductOf('x')).toBeNull();
   });
 
@@ -207,7 +207,12 @@ describe('computeExpiry', () => {
     purchasedAt: string,
     status: PurchaseForExpiry['status'] = 'granted',
     productId = 'switchon_pass_5w_4900'
-  ): PurchaseForExpiry => ({ productId, purchasedAt: new Date(purchasedAt), status });
+  ): PurchaseForExpiry => ({
+    purchaseToken: `${productId}@${purchasedAt}`,
+    productId,
+    purchasedAt: new Date(purchasedAt),
+    status,
+  });
 
   it('없음: 빈 배열', () => {
     expect(computeExpiry([])).toBeNull();
@@ -272,7 +277,12 @@ describe('computeExpiry: 상품별 일수', () => {
     purchasedAt: string,
     productId: string,
     status: PurchaseForExpiry['status'] = 'granted'
-  ): PurchaseForExpiry => ({ productId, purchasedAt: new Date(purchasedAt), status });
+  ): PurchaseForExpiry => ({
+    purchaseToken: `${productId}@${purchasedAt}`,
+    productId,
+    purchasedAt: new Date(purchasedAt),
+    status,
+  });
   const at = (iso: string) => new Date(iso).getTime();
 
   it('1주 패스 단독: +7일', () => {
@@ -309,54 +319,113 @@ describe('computeExpiry: 상품별 일수', () => {
   });
 });
 
-describe('computeExpiry: 한 주 더 하기 연장', () => {
-  const p = (purchasedAt: string, status: PurchaseForExpiry['status'] = 'granted') => ({
-    productId: 'switchon_pass_5w_4900',
+describe('computeExpiry: 한 주 더 하기 연장 (구매에 묶인 연장, 구매당 상한)', () => {
+  const p = (
+    token: string,
+    purchasedAt: string,
+    status: PurchaseForExpiry['status'] = 'granted',
+    productId = 'switchon_pass_5w_4900'
+  ): PurchaseForExpiry => ({
+    purchaseToken: token,
+    productId,
     purchasedAt: new Date(purchasedAt),
     status,
   });
-  const ext = (extendedAt: string) => ({ extendedAt: new Date(extendedAt) });
+  const ext = (token: string, extendedAt: string) => ({
+    purchaseToken: token,
+    extendedAt: new Date(extendedAt),
+  });
   const at = (iso: string) => new Date(iso).getTime();
+  const A = '2026-11-01T10:00:00Z';
 
-  it('PASS_EXTENSION_DAYS는 7일', () => {
+  it('PASS_EXTENSION_DAYS는 7일, 상품별 연장 상한: 5주 2번, 1주 0번', () => {
     expect(PASS_EXTENSION_DAYS).toBe(7);
+    expect(passProductOf('switchon_pass_5w_1900')?.maxExtensions).toBe(2);
+    expect(passProductOf('switchon_pass_5w_4900')?.maxExtensions).toBe(2);
+    expect(passProductOf('switchon_pass_1w_1500')?.maxExtensions).toBe(0);
   });
 
   it('패스 기간 중 연장: 만료일 +7일', () => {
+    expect(computeExpiry([p('a', A)], [ext('a', '2026-11-20T00:00:00Z')])?.getTime()).toBe(
+      at(A) + 42 * DAY
+    );
+  });
+
+  it('5주 구매 하나에 연장은 2번까지만 반영한다 (행이 더 있어도)', () => {
     expect(
-      computeExpiry([p('2026-11-01T10:00:00Z')], [ext('2026-11-20T00:00:00Z')])?.getTime()
-    ).toBe(at('2026-11-01T10:00:00Z') + 42 * DAY);
+      computeExpiry(
+        [p('a', A)],
+        [
+          ext('a', '2026-11-10T00:00:00Z'),
+          ext('a', '2026-11-17T00:00:00Z'),
+          ext('a', '2026-11-24T00:00:00Z'),
+          ext('a', '2026-12-01T00:00:00Z'),
+        ]
+      )?.getTime()
+    ).toBe(at(A) + 49 * DAY);
+  });
+
+  it('1주 패스에 묶인 연장은 반영하지 않는다', () => {
+    expect(
+      computeExpiry(
+        [p('w', A, 'granted', 'switchon_pass_1w_1500')],
+        [ext('w', '2026-11-03T00:00:00Z')]
+      )?.getTime()
+    ).toBe(at(A) + 7 * DAY);
+  });
+
+  it('구매마다 따로 센다: 5주 두 번이면 연장 4번까지', () => {
+    const B = '2026-11-20T10:00:00Z';
+    expect(
+      computeExpiry(
+        [p('a', A), p('b', B)],
+        [
+          ext('a', '2026-11-10T00:00:00Z'),
+          ext('a', '2026-11-17T00:00:00Z'),
+          ext('b', '2026-11-24T00:00:00Z'),
+          ext('b', '2026-12-01T00:00:00Z'),
+          ext('b', '2026-12-08T00:00:00Z'),
+        ]
+      )?.getTime()
+    ).toBe(at(A) + (70 + 28) * DAY);
+  });
+
+  it('묶인 구매가 없거나(모르는 토큰) 환불됐으면 반영하지 않는다', () => {
+    expect(computeExpiry([p('a', A)], [ext('zzz', '2026-11-20T00:00:00Z')])?.getTime()).toBe(
+      at(A) + 35 * DAY
+    );
+    expect(
+      computeExpiry(
+        [p('a', A), p('b', '2026-11-10T10:00:00Z', 'voided')],
+        [ext('b', '2026-11-20T00:00:00Z')]
+      )?.getTime()
+    ).toBe(at(A) + 35 * DAY);
+    expect(computeExpiry([p('a', A, 'voided')], [ext('a', '2026-11-20T00:00:00Z')])).toBeNull();
+  });
+
+  it('묶인 구매보다 앞선 연장(구매 전 시각)은 반영하지 않는다', () => {
+    expect(computeExpiry([p('a', A)], [ext('a', '2026-10-20T00:00:00Z')])?.getTime()).toBe(
+      at(A) + 35 * DAY
+    );
+  });
+
+  it('연장 시각에 패스가 끝나 있었으면 반영하지 않는다', () => {
+    expect(computeExpiry([p('a', A)], [ext('a', '2026-12-20T00:00:00Z')])?.getTime()).toBe(
+      at(A) + 35 * DAY
+    );
   });
 
   it('연장 뒤 새 구매: 연장된 만료일 뒤에 이어 붙인다 (연장분이 사라지지 않음)', () => {
     expect(
       computeExpiry(
-        [p('2026-11-01T10:00:00Z'), p('2026-11-25T10:00:00Z')],
-        [ext('2026-11-20T00:00:00Z')]
+        [p('a', A), p('b', '2026-11-25T10:00:00Z')],
+        [ext('a', '2026-11-20T00:00:00Z')]
       )?.getTime()
-    ).toBe(at('2026-11-01T10:00:00Z') + 77 * DAY);
-  });
-
-  it('연장 시각에 패스가 끝나 있었으면(환불로 앞 구매가 빠짐 등) 연장은 반영하지 않는다', () => {
-    expect(
-      computeExpiry([p('2026-11-01T10:00:00Z')], [ext('2026-12-20T00:00:00Z')])?.getTime()
-    ).toBe(at('2026-11-01T10:00:00Z') + 35 * DAY);
-    expect(
-      computeExpiry([p('2026-11-01T10:00:00Z', 'voided')], [ext('2026-11-20T00:00:00Z')])
-    ).toBeNull();
-  });
-
-  it('연장 후 구매가 환불돼도 남은 구매 기간 안의 연장은 유지', () => {
-    expect(
-      computeExpiry(
-        [p('2026-11-01T10:00:00Z'), p('2026-11-10T10:00:00Z', 'voided')],
-        [ext('2026-11-20T00:00:00Z'), ext('2026-11-27T00:00:00Z')]
-      )?.getTime()
-    ).toBe(at('2026-11-01T10:00:00Z') + 49 * DAY);
+    ).toBe(at(A) + 77 * DAY);
   });
 
   it('연장만 있고 구매가 없으면 null', () => {
-    expect(computeExpiry([], [ext('2026-11-20T00:00:00Z')])).toBeNull();
+    expect(computeExpiry([], [ext('a', '2026-11-20T00:00:00Z')])).toBeNull();
   });
 });
 

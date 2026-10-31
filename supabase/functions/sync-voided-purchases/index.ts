@@ -65,11 +65,17 @@ const deps = (): VoidedDeps => ({
   async listUserPurchases(uid: string): Promise<PurchaseForExpiry[]> {
     const { data, error } = await supabase
       .from('pass_purchase')
-      .select('product_id, purchased_at, status')
+      .select('purchase_token, product_id, purchased_at, status')
       .eq('uid', uid);
     if (error) throw error;
     return data.map(
-      (row: { product_id: string; purchased_at: string; status: PurchaseForExpiry['status'] }) => ({
+      (row: {
+        purchase_token: string;
+        product_id: string;
+        purchased_at: string;
+        status: PurchaseForExpiry['status'];
+      }) => ({
+        purchaseToken: row.purchase_token,
         productId: row.product_id,
         purchasedAt: new Date(row.purchased_at),
         status: row.status,
@@ -80,10 +86,13 @@ const deps = (): VoidedDeps => ({
   async listUserExtensions(uid: string): Promise<ExtensionForExpiry[]> {
     const { data, error } = await supabase
       .from('pass_extension')
-      .select('extended_at')
+      .select('extended_at, purchase_token')
       .eq('uid', uid);
     if (error) throw error;
-    return data.map((row: { extended_at: string }) => ({ extendedAt: new Date(row.extended_at) }));
+    return data.map((row: { extended_at: string; purchase_token: string }) => ({
+      extendedAt: new Date(row.extended_at),
+      purchaseToken: row.purchase_token,
+    }));
   },
 
   // raise_pass_expiry와 달리 정확한 값으로 쓴다: 환불로 만료일이 줄거나 패스 자체가 없어질 수 있다

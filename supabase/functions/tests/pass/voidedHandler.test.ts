@@ -23,7 +23,7 @@ const voided = (overrides: Partial<VoidedPurchase> = {}): VoidedPurchase => ({
 const createFakeDeps = (
   rows: Row[],
   voidedPurchases: VoidedPurchase[],
-  extensions: { uid: string; extendedAt: Date }[] = []
+  extensions: { uid: string; extendedAt: Date; purchaseToken: string }[] = []
 ) => {
   const expiries = new Map<string, Date | null>();
 
@@ -46,6 +46,7 @@ const createFakeDeps = (
       rows
         .filter((r) => r.uid === uid)
         .map((r) => ({
+          purchaseToken: r.purchaseToken,
           productId: r.productId ?? 'switchon_pass_5w_4900',
           purchasedAt: r.purchasedAt,
           status: r.status as 'granted' | 'voided',
@@ -53,7 +54,9 @@ const createFakeDeps = (
     ),
 
     listUserExtensions: vi.fn(async (uid: string) =>
-      extensions.filter((e) => e.uid === uid).map((e) => ({ extendedAt: e.extendedAt }))
+      extensions
+        .filter((e) => e.uid === uid)
+        .map((e) => ({ extendedAt: e.extendedAt, purchaseToken: e.purchaseToken }))
     ),
 
     setPassExpiry: vi.fn(async (uid: string, expiresAt: Date | null) => {
@@ -82,7 +85,7 @@ describe('syncVoided: 한 주 더 하기 연장', () => {
     const { deps, expiries } = createFakeDeps(
       rows,
       [voided({ purchaseToken: 't2' })],
-      [{ uid: 'u1', extendedAt: new Date('2026-11-20T00:00:00.000Z') }]
+      [{ uid: 'u1', extendedAt: new Date('2026-11-20T00:00:00.000Z'), purchaseToken: 't1' }]
     );
 
     await syncVoided(deps, SINCE);
@@ -90,12 +93,33 @@ describe('syncVoided: 한 주 더 하기 연장', () => {
     expect(expiries.get('u1')).toEqual(new Date(p1.getTime() + 42 * DAY));
   });
 
+  it('연장이 묶인 구매가 환불되면 다른 구매가 남아 있어도 그 연장은 빠진다', async () => {
+    const rows: Row[] = [
+      { purchaseToken: 't1', uid: 'u1', status: 'granted', purchasedAt: p1 },
+      {
+        purchaseToken: 't2',
+        uid: 'u1',
+        status: 'granted',
+        purchasedAt: new Date('2026-11-10T00:00:00.000Z'),
+      },
+    ];
+    const { deps, expiries } = createFakeDeps(
+      rows,
+      [voided({ purchaseToken: 't2' })],
+      [{ uid: 'u1', extendedAt: new Date('2026-11-20T00:00:00.000Z'), purchaseToken: 't2' }]
+    );
+
+    await syncVoided(deps, SINCE);
+
+    expect(expiries.get('u1')).toEqual(new Date(p1.getTime() + 35 * DAY));
+  });
+
   it('연장의 바탕이 된 구매가 환불되면 연장도 없어진다', async () => {
     const rows: Row[] = [{ purchaseToken: 't1', uid: 'u1', status: 'granted', purchasedAt: p1 }];
     const { deps, expiries } = createFakeDeps(
       rows,
       [voided({ purchaseToken: 't1' })],
-      [{ uid: 'u1', extendedAt: new Date('2026-11-20T00:00:00.000Z') }]
+      [{ uid: 'u1', extendedAt: new Date('2026-11-20T00:00:00.000Z'), purchaseToken: 't1' }]
     );
 
     await syncVoided(deps, SINCE);

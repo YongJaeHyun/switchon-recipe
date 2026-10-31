@@ -353,19 +353,29 @@ export type Database = {
         Row: {
           extended_at: string;
           new_start_date: string;
+          purchase_token: string;
           uid: string;
         };
         Insert: {
           extended_at?: string;
           new_start_date: string;
+          purchase_token: string;
           uid: string;
         };
         Update: {
           extended_at?: string;
           new_start_date?: string;
+          purchase_token?: string;
           uid?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: 'pass_extension_purchase_token_fkey';
+            columns: ['purchase_token'];
+            isOneToOne: false;
+            referencedRelation: 'pass_purchase';
+            referencedColumns: ['purchase_token'];
+          },
           {
             foreignKeyName: 'pass_extension_uid_fkey';
             columns: ['uid'];
