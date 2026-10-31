@@ -26,4 +26,7 @@ export type ShareImageName =
   | `completion-${1 | 2 | 3 | 4 | 5}`
   | `foodcheck-${'ok' | 'caution' | 'avoid'}`;
 
+// 이미지 실제 크기는 2배(1600×800)지만 비율만 맞으면 된다
+export const SHARE_IMAGE_SIZE = { width: 800, height: 400 } as const;
+
 export const shareImageUrl = (name: ShareImageName) => `${SHARE_IMAGE_BASE}${name}.png`;

@@ -159,7 +159,15 @@ describe('feedTemplate (템플릿 ID가 없을 때 기본 피드)', () => {
       mobileWebUrl: STORE_URL,
     };
     expect(template).toEqual({
-      content: { title: 't', description: 'd', imageUrl: 'https://img/a.png', link },
+      // 공유 이미지는 2:1 가로형 — 크기를 안 주면 카톡이 정사각형으로 가운데만 잘라 보여 준다
+      content: {
+        title: 't',
+        description: 'd',
+        imageUrl: 'https://img/a.png',
+        imageWidth: 800,
+        imageHeight: 400,
+        link,
+      },
       buttons: [{ title: 'b', link }],
     });
   });
