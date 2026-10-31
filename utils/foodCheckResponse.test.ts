@@ -33,6 +33,18 @@ describe('interpretFoodCheckResponse', () => {
     });
   });
 
+  it('200 ok에 무료 체험 남은 횟수가 있으면 함께 돌려준다', () => {
+    expect(
+      interpretFoodCheckResponse(200, { status: 'ok', check: record, trialRemaining: 2 })
+    ).toEqual({ status: 'ok', check: record, trialRemaining: 2 });
+  });
+
+  it('200 ok의 trialRemaining이 숫자가 아니면 버린다', () => {
+    expect(
+      interpretFoodCheckResponse(200, { status: 'ok', check: record, trialRemaining: '2' })
+    ).toEqual({ status: 'ok', check: record });
+  });
+
   it('200 unrecognized는 서버 문구를 쓴다', () => {
     expect(
       interpretFoodCheckResponse(200, { status: 'unrecognized', message: '다시 찍어주세요' })

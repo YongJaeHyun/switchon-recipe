@@ -6,12 +6,13 @@ import { type Href, router } from 'expo-router';
 import { useBillingAvailable } from 'hooks/useBillingAvailable';
 import { usePass } from 'hooks/usePass';
 import { usePremiumGate } from 'hooks/usePremiumGate';
-import { type ComponentProps } from 'react';
+import { type ComponentProps, type ReactNode } from 'react';
 import { View } from 'react-native';
 import colors from 'tailwindcss/colors';
 import { RECOMMEND_LOCKED_MESSAGE } from 'types/recommend';
 import { getWeekAndDay } from 'utils/date';
 import { useUserStore } from 'stores/userStore';
+import { foodCheckEntryState } from 'utils/foodCheckTrial';
 import { shouldShowPremiumEntry } from 'utils/passScreen';
 import { isRecommendLocked } from 'utils/recommendForm';
 
@@ -26,6 +27,8 @@ interface Tool {
   notice?(week: number, day: number): string | null;
 }
 
+const FOOD_CHECK_HREF = '/foodCheck';
+
 // 레시피 탭의 구독 전용 도구 목록
 const TOOLS: Tool[] = [
   {
@@ -39,7 +42,7 @@ const TOOLS: Tool[] = [
     title: '편의점 판정',
     description: '먹어도 되는지 바로 확인',
     icon: 'storefront',
-    href: '/foodCheck',
+    href: FOOD_CHECK_HREF,
   },
 ];
 
@@ -47,11 +50,21 @@ interface ToolCardProps {
   title: string;
   description: string;
   icon: IconName;
-  locked: boolean;
+  // 오른쪽 표시 (패스 잠금, 무료 체험 남은 횟수). 없으면 화살표만
+  badge: ReactNode;
   onPress(): void;
 }
 
-function ToolCard({ title, description, icon, locked, onPress }: ToolCardProps) {
+// 패스 없이 써 볼 수 있는 횟수. 잠금 배지(진한 초록 채움)와 구분되게 테두리만 쓴다
+function TrialBadge({ remaining }: { remaining: number }) {
+  return (
+    <View className="rounded-full border border-green-600 bg-white px-2 py-0.5">
+      <Text className="text-xs font-bold text-green-700">무료 {remaining}번</Text>
+    </View>
+  );
+}
+
+function ToolCard({ title, description, icon, badge, onPress }: ToolCardProps) {
   return (
     <RippleButton
       outerClassName="border border-neutral-200 bg-white"
@@ -68,36 +81,66 @@ function ToolCard({ title, description, icon, locked, onPress }: ToolCardProps) 
         </View>
       </View>
       <View className="flex-row items-center gap-1">
-        {locked && <PassBadge locked />}
+        {badge}
         <MaterialIcons name="navigate-next" size={24} color={colors.neutral[400]} />
       </View>
     </RippleButton>
   );
 }
 
-// 패스를 팔지 않고 권한도 없으면 통째로 숨긴다. 권한이 없으면 누를 때 usePremiumGate가 결제 화면으로 보낸다.
+// 패스를 팔지 않고 권한도 없으면 숨긴다. 권한이 없으면 누를 때 usePremiumGate가 결제 화면으로 보낸다.
+// 편의점 판정은 무료 체험(패스 없이 3번)이 남았으면 판매 여부와 관계없이 보이고 바로 들어간다.
 export function RecipeToolCards() {
   const { status } = usePass();
   const billingAvailable = useBillingAvailable();
   const gate = usePremiumGate();
   const startDate = useUserStore((state) => state.start_date);
 
-  if (!shouldShowPremiumEntry(status, billingAvailable)) return null;
-
-  const locked = status?.hasAccess !== true;
+  const premiumEntry = shouldShowPremiumEntry(status, billingAvailable);
+  const foodCheck = foodCheckEntryState(status, billingAvailable);
   const { week, day } = getWeekAndDay(startDate);
+
+  const cards = TOOLS.flatMap((tool) => {
+    const base = {
+      title: tool.title,
+      description: tool.notice?.(week, day) ?? tool.description,
+      icon: tool.icon,
+    };
+    if (tool.href === FOOD_CHECK_HREF) {
+      if (foodCheck.kind === 'hidden') return [];
+      if (foodCheck.kind === 'trial') {
+        return [
+          {
+            ...base,
+            badge: <TrialBadge remaining={foodCheck.remaining} />,
+            onPress: () => router.push(tool.href),
+          },
+        ];
+      }
+      return [
+        {
+          ...base,
+          badge: foodCheck.kind === 'locked' ? <PassBadge locked /> : null,
+          onPress: gate(() => router.push(tool.href)),
+        },
+      ];
+    }
+    if (!premiumEntry) return [];
+    return [
+      {
+        ...base,
+        badge: status?.hasAccess !== true ? <PassBadge locked /> : null,
+        onPress: gate(() => router.push(tool.href)),
+      },
+    ];
+  });
+
+  if (cards.length === 0) return null;
 
   return (
     <View className="gap-3">
-      {TOOLS.map((tool) => (
-        <ToolCard
-          key={tool.title}
-          title={tool.title}
-          description={tool.notice?.(week, day) ?? tool.description}
-          icon={tool.icon}
-          locked={locked}
-          onPress={gate(() => router.push(tool.href))}
-        />
+      {cards.map((card) => (
+        <ToolCard key={card.title} {...card} />
       ))}
     </View>
   );

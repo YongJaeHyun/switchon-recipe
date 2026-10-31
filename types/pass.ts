@@ -19,6 +19,8 @@ export interface PassStatus {
   sales: SalesState;
   passExpiresAt: string | null; // ISO
   hasAccess: boolean; // 서버 has_premium_access_for 결과 (앱에서는 표시용)
+  // 패스 없이 쓸 수 있는 편의점 판정 무료 횟수 (표시용). 이 필드를 모르는 옛 서버면 없음
+  foodCheckTrialRemaining?: number;
   serverNow: string; // ISO
 }
 

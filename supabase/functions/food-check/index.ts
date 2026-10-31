@@ -9,6 +9,7 @@ import { Image } from 'https://deno.land/x/imagescript@1.2.15/mod.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getUid, requireEnv } from '../_shared/auth.ts';
 import type { FoodCheckInput } from '../_shared/foodCheck.ts';
+import { FOOD_CHECK_TRIAL_LIMIT, parseTrialConsume } from '../_shared/foodCheckTrial.ts';
 import { parsePremiumQuota } from '../_shared/premiumQuota.ts';
 import { createProviderAlertFetch } from '../_shared/providerAlert.ts';
 import { type FoodCheckDeps, type FoodCheckRow, handleFoodCheck } from './handler.ts';
@@ -110,6 +111,20 @@ const deps: FoodCheckDeps = {
       p_feature: FEATURE,
     });
     if (error) throw new Error(`판정 한도 복구 실패: ${error.message}`);
+  },
+
+  async consumeTrial(uid) {
+    const { data, error } = await supabase.rpc('consume_food_check_trial', {
+      p_uid: uid,
+      p_limit: FOOD_CHECK_TRIAL_LIMIT,
+    });
+    if (error) throw new Error(`무료 체험 확인 실패: ${error.message}`);
+    return parseTrialConsume(data);
+  },
+
+  async releaseTrial(uid) {
+    const { error } = await supabase.rpc('release_food_check_trial', { p_uid: uid });
+    if (error) throw new Error(`무료 체험 복구 실패: ${error.message}`);
   },
 
   async getStartDate(uid) {

@@ -50,7 +50,8 @@ export interface FoodCheckRow {
 
 // FoodCheckAPI.check 결과. 네트워크/알 수 없는 오류는 토스트를 띄우고 undefined를 돌려준다
 export type FoodCheckOutcome =
-  | { status: 'ok'; check: FoodCheckRecord }
+  // trialRemaining: 패스 없이 무료 체험으로 판정했을 때 남은 횟수 (패스 사용자는 없음)
+  | { status: 'ok'; check: FoodCheckRecord; trialRemaining?: number }
   | { status: 'unrecognized'; message: string }
   // 402: 패스 없음
   | { status: 'locked' }

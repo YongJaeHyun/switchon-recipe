@@ -1,9 +1,11 @@
 // 편의점 판정 요청 처리 본체. 외부 의존성(인증, 한도, Gemini, DB/스토리지)은 deps로 받아
 // Vitest(node)에서 가짜로 테스트한다. URL import를 두지 않는다 (실제 연결은 index.ts).
-// 흐름: 인증 -> 본문 크기/입력 검증 -> 패스 확인(has_premium_access_for) -> 하루 한도 차감
+// 흐름: 인증 -> 본문 크기/입력 검증 -> 패스 확인(has_premium_access_for) -> (패스가 없으면) 무료 체험 차감
+// (평생 3번, 다 썼으면 402) -> 하루 한도 차감
 // -> (사진이면) 디코드·썸네일 생성 -> Gemini 판정·해석 -> 행 저장 -> (사진이면) 원본·썸네일 업로드
 // -> 행에 경로 기록. 사진 디코드를 Gemini보다 먼저 해서 깨진 사진은 AI 비용 없이 실패한다.
-// 한도 차감 뒤 실패(인식 실패 포함)는 모두 차감을 되돌린다(release).
+// 한도 차감 뒤 실패(인식 실패 포함)는 모두 차감을 되돌린다(release). 무료 체험도 판정이 성공해
+// 저장될 때만 쓴 것으로 남기고, 그 밖의 결과(인식 실패, 하루 한도 초과, 오류)는 되돌린다(releaseTrial).
 
 import {
   buildFoodCheckPrompt,
@@ -80,6 +82,9 @@ export interface FoodCheckDeps {
   premiumClient: PremiumCheckClient;
   consume(uid: string): Promise<PremiumQuotaDecision>;
   release(uid: string): Promise<void>;
+  // 패스가 없을 때 무료 체험 1번을 쓴다. 쓴 뒤 남은 횟수, 이미 다 썼으면 -1
+  consumeTrial(uid: string): Promise<number>;
+  releaseTrial(uid: string): Promise<void>;
   getStartDate(uid: string): Promise<string | null>;
   now(): Date;
   // Gemini 응답 텍스트를 돌려준다
@@ -234,68 +239,109 @@ export async function handleFoodCheck(req: Request, deps: FoodCheckDeps): Promis
       throw error;
     }
 
+    // 패스가 없으면 무료 체험을 쓴다 (남은 횟수, 패스 사용자는 null)
+    let trialRemaining: number | null = null;
     try {
       await assertPremium(deps.premiumClient, uid);
     } catch (error) {
-      if (error instanceof PremiumRequiredError) return premiumRequiredResponse(error);
-      throw error;
+      if (!(error instanceof PremiumRequiredError)) throw error;
+      const remaining = await deps.consumeTrial(uid);
+      if (remaining < 0) return premiumRequiredResponse(error);
+      trialRemaining = remaining;
     }
 
-    let outcome;
+    // 판정이 저장되기 전에 끝나면 무료 체험을 되돌린다. 되돌리기 실패는 로그만 남기고 원래 응답을 돌려준다
+    let saved = false;
     try {
-      outcome = await runWithQuota(
-        { consume: () => deps.consume(uid), release: () => deps.release(uid) },
-        async () => {
-          // 깨진 사진은 Gemini 호출 전에 실패시킨다 (차감은 runWithQuota가 되돌림)
-          const images =
-            input.type === 'text'
-              ? null
-              : await deps.prepareImages({
-                  imageBase64: input.imageBase64,
-                  mimeType: input.mimeType,
-                });
-          const startDate = await deps.getStartDate(uid);
-          const now = deps.now();
-          const week = programWeekOf(startDate, now);
-          const day = programDayOf(startDate, now);
-          const text = await deps.askGemini(buildFoodCheckPrompt(input, week, day), input);
-          const parsed = parseFoodCheckResponse(text, input.type, week);
-          if (parsed.status === 'unrecognized') throw new UnrecognizedError();
-          if (parsed.status === 'invalid') {
-            throw new Error(`Gemini 응답 형식이 올바르지 않습니다: ${text.slice(0, 200)}`);
-          }
-          return save(deps, uid, input, parsed.result, week, images);
+      const result = await checkWithQuota(deps, uid, input, trialRemaining);
+      saved = result.saved;
+      return result.response;
+    } finally {
+      if (trialRemaining !== null && !saved) {
+        try {
+          await deps.releaseTrial(uid);
+        } catch (releaseError) {
+          console.error('무료 체험 되돌리기 실패:', releaseError);
         }
-      );
-    } catch (error) {
-      if (error instanceof UnrecognizedError) {
-        return json({ status: 'unrecognized', message: UNRECOGNIZED_MESSAGE }, 200);
-      }
-      throw error;
-    }
-
-    if (outcome.status === 'exceeded') {
-      return json(
-        { code: 'PREMIUM_QUOTA_EXCEEDED', error: PREMIUM_QUOTA_EXCEEDED_MESSAGE, remaining: 0 },
-        429
-      );
-    }
-
-    const row = outcome.value;
-    let thumbUrl: string | null = null;
-    if (row.thumb_path) {
-      // 판정·저장은 끝났으므로 URL 실패로 차감을 되돌리지 않는다 (앱은 경로로 다시 받을 수 있음)
-      try {
-        thumbUrl = await deps.signThumbUrl(row.thumb_path);
-      } catch (error) {
-        console.error('썸네일 signed URL 생성 실패:', error);
       }
     }
-
-    return json({ status: 'ok', check: toRecord(row, thumbUrl) }, 200);
   } catch (error) {
     // 오류 상세는 로그에만 남긴다
     console.error('편의점 판정 실패:', error);
     return json(INTERNAL_ERROR_BODY, 500);
   }
+}
+
+// 하루 한도 차감 → 판정 → 저장. saved는 판정이 저장됐는지 (무료 체험을 쓴 것으로 남길지)
+async function checkWithQuota(
+  deps: FoodCheckDeps,
+  uid: string,
+  input: FoodCheckInput,
+  trialRemaining: number | null
+): Promise<{ response: Response; saved: boolean }> {
+  let outcome;
+  try {
+    outcome = await runWithQuota(
+      { consume: () => deps.consume(uid), release: () => deps.release(uid) },
+      async () => {
+        // 깨진 사진은 Gemini 호출 전에 실패시킨다 (차감은 runWithQuota가 되돌림)
+        const images =
+          input.type === 'text'
+            ? null
+            : await deps.prepareImages({
+                imageBase64: input.imageBase64,
+                mimeType: input.mimeType,
+              });
+        const startDate = await deps.getStartDate(uid);
+        const now = deps.now();
+        const week = programWeekOf(startDate, now);
+        const day = programDayOf(startDate, now);
+        const text = await deps.askGemini(buildFoodCheckPrompt(input, week, day), input);
+        const parsed = parseFoodCheckResponse(text, input.type, week);
+        if (parsed.status === 'unrecognized') throw new UnrecognizedError();
+        if (parsed.status === 'invalid') {
+          throw new Error(`Gemini 응답 형식이 올바르지 않습니다: ${text.slice(0, 200)}`);
+        }
+        return save(deps, uid, input, parsed.result, week, images);
+      }
+    );
+  } catch (error) {
+    if (error instanceof UnrecognizedError) {
+      return {
+        response: json({ status: 'unrecognized', message: UNRECOGNIZED_MESSAGE }, 200),
+        saved: false,
+      };
+    }
+    throw error;
+  }
+
+  if (outcome.status === 'exceeded') {
+    return {
+      response: json(
+        { code: 'PREMIUM_QUOTA_EXCEEDED', error: PREMIUM_QUOTA_EXCEEDED_MESSAGE, remaining: 0 },
+        429
+      ),
+      saved: false,
+    };
+  }
+
+  const row = outcome.value;
+  let thumbUrl: string | null = null;
+  if (row.thumb_path) {
+    // 판정·저장은 끝났으므로 URL 실패로 차감을 되돌리지 않는다 (앱은 경로로 다시 받을 수 있음)
+    try {
+      thumbUrl = await deps.signThumbUrl(row.thumb_path);
+    } catch (error) {
+      console.error('썸네일 signed URL 생성 실패:', error);
+    }
+  }
+
+  const check = toRecord(row, thumbUrl);
+  return {
+    response: json(
+      trialRemaining === null ? { status: 'ok', check } : { status: 'ok', check, trialRemaining },
+      200
+    ),
+    saved: true,
+  };
 }

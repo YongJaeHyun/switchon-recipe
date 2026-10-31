@@ -16,8 +16,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import type { FoodCheckInput, FoodCheckPhotoType, FoodCheckRecord } from 'types/foodCheck';
+import type { PassStatus } from 'types/pass';
 import { formatKoreanDate } from 'utils/date';
 import { formatPremiumRemaining, verdictLabel } from 'utils/foodCheckDisplay';
+import { formatFoodCheckTrial, getFoodCheckTrialRemaining } from 'utils/foodCheckTrial';
 import {
   IMAGE_TOO_LARGE_MESSAGE,
   isImageBase64TooLarge,
@@ -107,6 +109,41 @@ const PhotoButton = ({
   </View>
 );
 
+// 패스 없이 쓰는 무료 체험 안내. 남았으면 횟수, 다 썼으면 (살 수 있을 때) 패스로 이어 준다
+const TrialNotice = ({ remaining, canBuyPass }: { remaining: number; canBuyPass: boolean }) => {
+  const exhausted = remaining <= 0;
+  return (
+    <View className="flex-row items-center gap-3 rounded-xl border border-green-600 bg-white px-4 py-3">
+      <MaterialIcons
+        name={exhausted ? 'lock' : 'redeem'}
+        size={22}
+        color={exhausted ? colors.neutral[500] : colors.green[600]}
+      />
+      <View className="flex-1 gap-0.5">
+        <Text className={`font-bold ${exhausted ? 'text-neutral-700' : 'text-green-700'}`}>
+          {formatFoodCheckTrial(remaining)}
+        </Text>
+        {canBuyPass && (
+          <Text className="text-xs text-neutral-500">
+            {exhausted
+              ? '스위치온 패스로 계속 판정할 수 있어요'
+              : '다 쓰면 스위치온 패스로 계속 판정할 수 있어요'}
+          </Text>
+        )}
+      </View>
+      {exhausted && canBuyPass && (
+        <RippleButton
+          outerClassName="bg-green-600"
+          rounded="lg"
+          className="px-3 py-2"
+          onPress={() => router.push('/pass')}>
+          <Text className="text-sm font-bold text-white">패스 보기</Text>
+        </RippleButton>
+      )}
+    </View>
+  );
+};
+
 // 기록 한 줄. 썸네일이 없으면(글자 입력, 아직 안 만들어짐) 아이콘으로 대신한다
 const HistoryItem = ({ check, disabled }: { check: FoodCheckRecord; disabled: boolean }) => {
   const isAvoid = check.verdict === 'avoid';
@@ -183,6 +220,14 @@ export default function FoodCheckScreen() {
         switch (outcome.status) {
           case 'ok':
             setFoodCheckDetail(uid, outcome.check);
+            if (outcome.trialRemaining !== undefined) {
+              // 무료 체험으로 판정했다. 남은 횟수를 바로 반영하고 서버 값으로 다시 받는다
+              const trialRemaining = outcome.trialRemaining;
+              queryClient.setQueryData<PassStatus>([QueryKey.pass, uid], (old) =>
+                old ? { ...old, foodCheckTrialRemaining: trialRemaining } : old
+              );
+              void queryClient.invalidateQueries({ queryKey: [QueryKey.pass] });
+            }
             void queryClient.invalidateQueries({ queryKey: [QueryKey.foodChecks] });
             void queryClient.invalidateQueries({ queryKey: [QueryKey.premiumQuota] });
             if (input.type === 'text') setText('');
@@ -196,7 +241,7 @@ export default function FoodCheckScreen() {
             });
             return;
           case 'locked':
-            // 패스가 만료됐을 수 있다. 상태를 다시 받고, 이 빌드에서 살 수 있으면 결제 화면으로
+            // 패스가 만료됐거나 무료 체험을 다 썼을 수 있다. 상태를 다시 받고, 이 빌드에서 살 수 있으면 결제 화면으로
             void queryClient.invalidateQueries({ queryKey: [QueryKey.pass] });
             if (isPassOnSale(passStatus?.sales, billingAvailable)) {
               router.push('/pass');
@@ -300,7 +345,11 @@ export default function FoodCheckScreen() {
   }, [photoTypeParam, guarded, pickPhoto]);
 
   const busy = checking;
-  const remainingText = quota ? formatPremiumRemaining(quota) : null;
+  const hasAccess = passStatus?.hasAccess === true;
+  // 하루 한도는 패스 사용자에게만 보이고, 패스가 없으면 무료 체험 안내를 보인다
+  const remainingText = hasAccess && quota ? formatPremiumRemaining(quota) : null;
+  const showTrial = !!passStatus && !hasAccess && passStatus.foodCheckTrialRemaining !== undefined;
+  const canBuyPass = isPassOnSale(passStatus?.sales, billingAvailable);
 
   return (
     <SafeAreaView className="flex-1 bg-neutral-50">
@@ -315,6 +364,10 @@ export default function FoodCheckScreen() {
           </Text>
           {remainingText && <Text className="text-sm text-green-600">{remainingText}</Text>}
         </View>
+
+        {showTrial && (
+          <TrialNotice remaining={getFoodCheckTrialRemaining(passStatus)} canBuyPass={canBuyPass} />
+        )}
 
         <View className="gap-3">
           <PhotoTypeToggle value={photoType} onChange={setPhotoType} disabled={busy} />
