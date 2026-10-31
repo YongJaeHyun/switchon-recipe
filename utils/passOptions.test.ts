@@ -1,10 +1,12 @@
 import type { SalesState } from 'types/pass';
 import { describe, expect, it } from 'vitest';
 import {
+  canPurchasePassSelection,
   getPassCtaLabel,
   getPassOptions,
   getPassRecipeLine,
   getRepeatWeekNote,
+  passProgramWeek,
   selectPassOption,
 } from './passOptions';
 
@@ -30,6 +32,8 @@ describe('getPassOptions', () => {
         subtitle: '5주 · 한 회차 전체',
         price: '1,900원',
         perWeek: '주당 380원',
+        original: '4,900원',
+        badge: '61% 할인',
         recommended: true,
       },
       {
@@ -40,6 +44,8 @@ describe('getPassOptions', () => {
         subtitle: '7일 · 써 보거나 한 주 더 할 때',
         price: '1,500원',
         perWeek: null,
+        original: null,
+        badge: null,
         recommended: false,
       },
     ]);
@@ -59,6 +65,22 @@ describe('getPassOptions', () => {
       price: '4,900원',
       perWeek: '주당 980원',
     });
+  });
+
+  it('정가(정규 구간)면 5주 패스에 할인 표시가 없다', () => {
+    const [fiveWeek] = getPassOptions(
+      { ...sales, tier: 'regular', productId: 'switchon_pass_5w_4900', priceKrw: 4900 },
+      1
+    );
+    expect(fiveWeek).toMatchObject({ original: null, badge: null });
+  });
+
+  it('2차 할인 구간은 40% 할인', () => {
+    const [fiveWeek] = getPassOptions(
+      { ...sales, productId: 'switchon_pass_5w_2900', priceKrw: 2900 },
+      1
+    );
+    expect(fiveWeek).toMatchObject({ original: '4,900원', badge: '40% 할인' });
   });
 
   it('1주 패스가 판매 중이 아니면(null) 5주 패스만', () => {
@@ -109,10 +131,62 @@ describe('getPassOptions 추천', () => {
     expect(recommendedOf(null)[0]).toEqual(['fiveWeek', true]);
   });
 
+  it('유저를 불러오는 중이면 추천하지 않고 5주 패스부터', () => {
+    expect(getPassOptions(sales, 'loading').map((o) => [o.kind, o.recommended])).toEqual([
+      ['fiveWeek', false],
+      ['week', false],
+    ]);
+  });
+
   it('4주차여도 1주 패스가 없으면 5주 패스 추천', () => {
     expect(getPassOptions({ ...sales, weekPass: null }, 4).map((o) => o.recommended)).toEqual([
       true,
     ]);
+  });
+});
+
+describe('passProgramWeek', () => {
+  const today = '2026-10-31';
+
+  it('유저를 아직 불러오지 않았으면(id 없음) loading — 빈 시작일을 1주차로 보지 않는다', () => {
+    expect(passProgramWeek({ userId: '', startDate: '', today })).toBe('loading');
+    expect(passProgramWeek({ userId: null, startDate: '2026-10-01', today })).toBe('loading');
+  });
+
+  it('불러온 유저에게 시작일이 없으면 null', () => {
+    expect(passProgramWeek({ userId: 'u1', startDate: '', today })).toBeNull();
+    expect(passProgramWeek({ userId: 'u1', startDate: null, today })).toBeNull();
+  });
+
+  it('시작일이 있으면 오늘 주차', () => {
+    expect(passProgramWeek({ userId: 'u1', startDate: '2026-10-31', today })).toBe(1);
+    expect(passProgramWeek({ userId: 'u1', startDate: '2026-10-10', today })).toBe(4);
+    expect(passProgramWeek({ userId: 'u1', startDate: '2026-09-01', today })).toBe(9);
+  });
+
+  it('시작 전이면 1주차', () => {
+    expect(passProgramWeek({ userId: 'u1', startDate: '2026-11-02', today })).toBe(1);
+  });
+
+  it('불러오면 추천이 주차를 따른다 (4주차 → 1주 패스)', () => {
+    const week = passProgramWeek({ userId: 'u1', startDate: '2026-10-10', today });
+    expect(selectPassOption(getPassOptions(sales, week), null)?.kind).toBe('week');
+  });
+});
+
+describe('canPurchasePassSelection', () => {
+  it('유저를 불러오는 중이면 기본 선택으로는 살 수 없다', () => {
+    expect(canPurchasePassSelection('loading', null)).toBe(false);
+  });
+
+  it('불러오는 중이어도 직접 고른 상품은 살 수 있다', () => {
+    expect(canPurchasePassSelection('loading', 'fiveWeek')).toBe(true);
+    expect(canPurchasePassSelection('loading', 'week')).toBe(true);
+  });
+
+  it('주차를 알면(시작일 없음 포함) 살 수 있다', () => {
+    expect(canPurchasePassSelection(4, null)).toBe(true);
+    expect(canPurchasePassSelection(null, null)).toBe(true);
   });
 });
 

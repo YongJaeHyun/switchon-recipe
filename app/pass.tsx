@@ -1,5 +1,6 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { PassAPI } from 'api/PassAPI';
+import { UserAPI } from 'api/UserAPI';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import { PASS_FEATURES } from 'const/passFeatures';
@@ -11,7 +12,7 @@ import { useBillingAvailable } from 'hooks/useBillingAvailable';
 import { usePass } from 'hooks/usePass';
 import { useRecipeQuota } from 'hooks/useRecipeQuota';
 import { queryClient } from 'lib/queryClient';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BillingUnavailableError, purchasePass } from 'services/billing';
@@ -19,15 +20,17 @@ import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import type { PassStatus } from 'types/pass';
 import { requireOnline } from 'utils/network';
-import { getKoreanDateString, getWeekAndDay } from 'utils/date';
+import { getKoreanDateString } from 'utils/date';
 import { getWeekColorHex } from 'utils/getWeekColor';
 import { passJourney } from 'utils/passJourney';
 import { formatPassRemaining, formatSalesHeadline } from 'utils/passDisplay';
 import {
+  canPurchasePassSelection,
   getPassCtaLabel,
   getPassOptions,
   getPassRecipeLine,
   getRepeatWeekNote,
+  passProgramWeek,
   selectPassOption,
   type PassOption,
   type PassOptionKind,
@@ -55,8 +58,17 @@ const Centered = ({ children }: { children: React.ReactNode }) => (
 // 패스 기간을 5주(35일) 눈금 위에 그린다. 1주 패스는 앞 7일만 칠하고 나머지는 회색
 const SCALE_DAYS = 35;
 
-// 맨 위: 고른 패스가 내 다이어트 일정(주차)의 어디까지를 덮는지
-const JourneyHero = ({ status, option }: { status: PassStatus; option: PassOption }) => {
+// 맨 위: 고른 패스가 내 다이어트 일정(주차)의 어디까지를 덮는지.
+// scheduleLoading = 유저를 아직 불러오지 않아 주차를 모름 → 주차 색 대신 회색 막대
+const JourneyHero = ({
+  status,
+  option,
+  scheduleLoading,
+}: {
+  status: PassStatus;
+  option: PassOption;
+  scheduleLoading: boolean;
+}) => {
   const startDate = useUserStore((state) => state.start_date);
   const remaining = formatPassRemaining(status.passExpiresAt, new Date());
   // 이미 패스가 있으면 연장분은 지금 패스가 끝나는 날부터
@@ -92,22 +104,30 @@ const JourneyHero = ({ status, option }: { status: PassStatus; option: PassOptio
       </View>
 
       <View className="gap-2">
-        <View className="flex-row gap-0.5">
-          {segments.map(({ week, days }) => (
-            <View key={week} style={{ flex: days }}>
-              {days >= 5 && (
-                <Text className="text-xs font-bold" style={{ color: weekBarColor(week) }}>
-                  {weekLabel(week)}
-                </Text>
-              )}
-            </View>
-          ))}
-          {restDays > 0 && <View style={{ flex: restDays }} />}
-        </View>
+        {scheduleLoading ? (
+          <Text className="text-xs text-neutral-400">내 일정을 불러오고 있어요</Text>
+        ) : (
+          <View className="flex-row gap-0.5">
+            {segments.map(({ week, days }) => (
+              <View key={week} style={{ flex: days }}>
+                {days >= 5 && (
+                  <Text className="text-xs font-bold" style={{ color: weekBarColor(week) }}>
+                    {weekLabel(week)}
+                  </Text>
+                )}
+              </View>
+            ))}
+            {restDays > 0 && <View style={{ flex: restDays }} />}
+          </View>
+        )}
         <View className="h-3 flex-row gap-0.5 overflow-hidden rounded-full">
-          {segments.map(({ week, days }) => (
-            <View key={week} style={{ flex: days, backgroundColor: weekBarColor(week) }} />
-          ))}
+          {scheduleLoading ? (
+            <View style={{ flex: option.days, backgroundColor: colors.neutral[300] }} />
+          ) : (
+            segments.map(({ week, days }) => (
+              <View key={week} style={{ flex: days, backgroundColor: weekBarColor(week) }} />
+            ))
+          )}
           {restDays > 0 && (
             <View style={{ flex: restDays, backgroundColor: colors.neutral[100] }} />
           )}
@@ -159,8 +179,16 @@ const OptionCard = ({
       <Text className="text-sm text-neutral-500">{option.subtitle}</Text>
       <View className="mt-1 flex-row items-baseline gap-2">
         <Text className="text-2xl font-bold text-neutral-900">{option.price}</Text>
-        {option.perWeek && <Text className="text-sm text-neutral-500">{option.perWeek}</Text>}
+        {option.original && (
+          <Text className="text-sm text-neutral-400 line-through">{option.original}</Text>
+        )}
+        {option.badge && (
+          <View className="self-center rounded-full bg-green-600 px-2 py-0.5">
+            <Text className="text-xs font-bold text-white">{option.badge}</Text>
+          </View>
+        )}
       </View>
+      {option.perWeek && <Text className="text-sm text-neutral-500">{option.perWeek}</Text>}
       {next && <Text className="text-xs text-neutral-500">{next}으로 올라요</Text>}
     </View>
     <MaterialIcons
@@ -201,19 +229,54 @@ const FeatureList = ({ recipeLine }: { recipeLine: string | null }) => (
   </View>
 );
 
+// 딥링크로 앱을 막 켜 이 화면부터 열리면 시작 화면(index)을 거치지 않아 유저를 불러오지 않는다.
+// 그때 여기서 불러온다 (불러오면 store가 바뀌어 화면이 다시 그려진다). 로그인이 안 돼 있으면 시작 화면으로
+const useLoadUserIfMissing = (uid: string) => {
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    if (uid) return;
+    let cancelled = false;
+    setFailed(false);
+    UserAPI.checkIsLoggedIn()
+      .then((isLoggedIn) => {
+        if (!cancelled && !isLoggedIn) router.replace('/');
+      })
+      .catch((error) => {
+        console.error('[PassScreen.loadUser]', error);
+        if (!cancelled) setFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [uid, attempt]);
+
+  return { failed, retry: () => setAttempt((n) => n + 1) };
+};
+
 export default function PassScreen() {
   const uid = useUserStore((state) => state.id);
+  const userLoad = useLoadUserIfMissing(uid);
   const { status, isLoading, refetch } = usePass();
   const billingAvailable = useBillingAvailable();
   const { setting: quotaSetting } = useRecipeQuota();
 
   // 고른 상품. 처음엔 추천 상품(null → 첫 상품)
   const [selectedKind, setSelectedKind] = useState<PassOptionKind | null>(null);
-  // 4주차부터는 1주 패스를 추천·기본 선택한다
+  // 4주차부터는 1주 패스를 추천·기본 선택한다. 딥링크·알림으로 앱을 막 켜 유저를 아직 불러오지 않았으면
+  // 주차를 모르므로('loading') 추천하지 않고, 불러오면 다시 그린다
   const startDate = useUserStore((state) => state.start_date);
-  const programWeek = startDate ? getWeekAndDay(startDate).week : null;
+  const programWeek = passProgramWeek({
+    userId: uid,
+    startDate,
+    today: getKoreanDateString({ formatType: 'date' }),
+  });
+  const scheduleLoading = programWeek === 'loading';
   const options = status ? getPassOptions(status.sales, programWeek) : [];
   const selected = selectPassOption(options, selectedKind);
+  // 주차를 모르는 동안 기본 선택(추천이 아닐 수 있음)으로는 결제하지 않는다. 직접 고른 상품은 그대로 살 수 있다
+  const canPurchase = canPurchasePassSelection(programWeek, selectedKind);
 
   // 결제/검증이 진행 중이면 다시 누를 수 없다 (상태 반영 전 연타도 ref로 막는다)
   const inFlightRef = useRef(false);
@@ -221,7 +284,7 @@ export default function PassScreen() {
 
   const handlePurchase = async () => {
     const productId = selected?.productId;
-    if (inFlightRef.current || !uid || !productId) return;
+    if (inFlightRef.current || !uid || !productId || !canPurchase) return;
 
     inFlightRef.current = true;
     setPurchasing(true);
@@ -265,7 +328,8 @@ export default function PassScreen() {
 
   const renderBody = () => {
     if (!status) {
-      if (isLoading) {
+      // 유저를 아직 불러오지 않았으면(딥링크·알림으로 앱을 막 켬) 패스 조회가 꺼져 있다 — 실패가 아니라 기다리는 중
+      if (isLoading || (scheduleLoading && !userLoad.failed)) {
         return (
           <Centered>
             <ActivityIndicator size={48} color={colors.green[600]} />
@@ -275,7 +339,10 @@ export default function PassScreen() {
       return (
         <Centered>
           <Text className="text-neutral-600">패스 정보를 불러오지 못했어요.</Text>
-          <RippleButton outerClassName="bg-green-600" className="px-5 py-2" onPress={refetch}>
+          <RippleButton
+            outerClassName="bg-green-600"
+            className="px-5 py-2"
+            onPress={scheduleLoading ? userLoad.retry : refetch}>
             <Text className="text-white">다시 시도</Text>
           </RippleButton>
         </Centered>
@@ -313,12 +380,12 @@ export default function PassScreen() {
 
     const hasPass = formatPassRemaining(status.passExpiresAt, new Date()) !== null;
     const { next } = formatSalesHeadline(status.sales);
-    const disabled = purchasing;
+    const disabled = purchasing || !canPurchase;
 
     return (
       <>
         <ScrollView contentContainerClassName="gap-8 px-5 pb-6 pt-4">
-          <JourneyHero status={status} option={selected} />
+          <JourneyHero status={status} option={selected} scheduleLoading={scheduleLoading} />
           <View className="gap-3" accessibilityRole="radiogroup">
             {status.sales.freeActive && (
               <Text className="text-sm font-bold text-green-700">
