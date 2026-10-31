@@ -10,7 +10,7 @@ import { useRecipeStore } from 'stores/recipeStore';
 import colors from 'tailwindcss/colors';
 import { RecipeCardData, RecipeIngredient } from 'types/recipe';
 import { carbTypeStyle } from 'utils/carbType';
-import { getWeekColor } from 'utils/getWeekColor';
+import { WeekPill } from 'components/recipes/WeekPill';
 import { Category } from './Category';
 import { HighlightText } from './HighlightText';
 
@@ -43,13 +43,7 @@ export const RecipeCard = React.memo(({ keyword, ...recipe }: RecipeCardProps) =
         {/* 테두리(2dp) 안쪽 모서리에 맞춰 사진을 rounded-xl(12)보다 2 작은 반지름으로 자른다 */}
         <View className="relative h-48 overflow-hidden rounded-t-[10px]">
           <View className="absolute left-2 top-2 z-50">
-            {recipe.week && (
-              <View className={`rounded-full bg-white px-2 py-1`}>
-                <Text className={`text-sm ${getWeekColor(recipe.week)}`}>
-                  {recipe.week}주차{recipe.week === 3 && '+'}
-                </Text>
-              </View>
-            )}
+            {recipe.week && <WeekPill week={recipe.week} />}
           </View>
 
           <ImageSkeleton />

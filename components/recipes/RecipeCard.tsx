@@ -8,8 +8,8 @@ import { useRecipeStore } from 'stores/recipeStore';
 import colors from 'tailwindcss/colors';
 import { RecipeWithIsSavedDB } from 'types/database';
 import { carbTypeStyle } from 'utils/carbType';
-import { getWeekColor } from 'utils/getWeekColor';
 import { CarbInfo } from './CarbInfo';
+import { WeekPill } from './WeekPill';
 
 interface RecipeCardProps extends RecipeWithIsSavedDB {
   // 상세 화면에서 다른 레시피 상세로 갈 때: 같은 화면이면 Link 기본 동작(navigate)이 새 화면을 쌓지 않고
@@ -44,13 +44,7 @@ export function RecipeCard({ push, ...recipe }: RecipeCardProps) {
         {/* 테두리(2dp) 안쪽 모서리에 맞춰 사진을 rounded-xl(12)보다 2 작은 반지름으로 자른다 */}
         <View className="relative h-full w-full flex-[5] overflow-hidden rounded-t-[10px]">
           <View className="absolute left-2 top-2 z-50">
-            {recipe.week && (
-              <View className="rounded-full bg-white px-2 py-1">
-                <Text className={`text-sm ${getWeekColor(recipe.week)}`}>
-                  {recipe.week}주차{recipe.week === 3 && '+'}
-                </Text>
-              </View>
-            )}
+            {recipe.week && <WeekPill week={recipe.week} />}
           </View>
 
           <ImageSkeleton />
