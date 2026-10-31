@@ -195,28 +195,36 @@ describe('resolveRuleWeek', () => {
   const START = '2026-10-20';
   const NOW = new Date('2026-11-01T03:00:00Z');
 
-  it('고른 주차가 없으면 시작일로 구한 주차·일차', () => {
-    expect(resolveRuleWeek(null, START, NOW)).toEqual({ week: 2, day: 6 });
+  // 레시피는 미리 만들어 두는 것이라 일차(쉐이크만 먹는 1~3일 등)로 막지 않는다 (운영자 2026-11-01)
+  it('고른 주차가 없으면 시작일로 구한 주차, 일차는 쓰지 않는다', () => {
+    expect(resolveRuleWeek(null, START, NOW)).toEqual({ week: 2 });
   });
 
-  it('고른 주차가 이번 주차면 실제 일차까지', () => {
-    expect(resolveRuleWeek(2, START, NOW)).toEqual({ week: 2, day: 6 });
+  it('고른 주차가 이번 주차여도 일차는 쓰지 않는다', () => {
+    expect(resolveRuleWeek(2, START, NOW)).toEqual({ week: 2 });
   });
 
-  it('다른 주차를 고르면 그 주차, 일차 규칙 없음', () => {
+  it('다른 주차를 고르면 그 주차', () => {
     expect(resolveRuleWeek(1, START, NOW)).toEqual({ week: 1 });
     expect(resolveRuleWeek(3, START, NOW)).toEqual({ week: 3 });
     expect(resolveRuleWeek(5, START, NOW)).toEqual({ week: 5 });
   });
 
-  it('시작 전(시작일 없음)은 1주차 1일차로 본다', () => {
-    expect(resolveRuleWeek(1, null, NOW)).toEqual({ week: 1, day: 1 });
+  it('시작 전(시작일 없음)은 1주차', () => {
+    expect(resolveRuleWeek(1, null, NOW)).toEqual({ week: 1 });
     expect(resolveRuleWeek(2, null, NOW)).toEqual({ week: 2 });
   });
 
-  it('유지기(6주차 이상)에 유지기를 고르면 실제 주차·일차', () => {
+  it('유지기(6주차 이상)에 유지기를 고르면 실제 주차', () => {
     // 2026-09-01 시작 → 61일 경과 → 9주차
-    expect(resolveRuleWeek(5, '2026-09-01', NOW)).toEqual({ week: 9, day: 6 });
+    expect(resolveRuleWeek(5, '2026-09-01', NOW)).toEqual({ week: 9 });
     expect(resolveRuleWeek(4, '2026-09-01', NOW)).toEqual({ week: 4 });
+  });
+});
+
+describe('buildNameCheckPrompt: 끼니 구성으로 거절하지 않는다', () => {
+  it('지금이 쉐이크만 먹는 날이어도 재료·조리법으로만 판정하라고 쓴다', () => {
+    const p = buildNameCheckPrompt({ name: '김치찌개', week: 1, isZeroCarb: true });
+    expect(p).toContain('끼니 구성(쉐이크만 먹는 날 등) 때문에 reject하지 마세요');
   });
 });
