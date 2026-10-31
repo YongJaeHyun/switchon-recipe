@@ -3,7 +3,6 @@ import { PassBadge } from 'components/common/PassBadge';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import { PassOnlyModal } from 'components/common/PassOnlyModal';
-import { RecipeByNameSheet } from 'components/recipeByName/RecipeByNameSheet';
 import type { RecipeFilterType } from 'const/filter';
 import { useRecipeByNameEntry } from 'hooks/useRecipeByNameEntry';
 import { View } from 'react-native';
@@ -44,7 +43,6 @@ export function CreateRecipeSuggestion({ keyword, filter }: CreateRecipeSuggesti
         <Text className="font-bold text-green-700">{suggestionLabel(word)}</Text>
         <PassBadge state={byName.badge} />
       </RippleButton>
-      <RecipeByNameSheet request={byName.sheetRequest} />
       <PassOnlyModal {...byName.passModalProps} />
     </View>
   );

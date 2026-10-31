@@ -7,11 +7,16 @@ import { showErrorToast } from 'utils/showToast';
 import { Maybe } from '../types/common';
 import { UserAPI } from './UserAPI';
 
+// 레시피·이미지 생성까지 기다린다 (멈춘 요청이 만들기를 막지 않게)
+const REQUEST_TIMEOUT_MS = 120 * 1000;
+
 interface CreateRecipeProps {
   command: string;
   week: number;
   isZeroCarb: boolean;
   signal?: AbortSignal;
+  // 뒤에서 만들 때: 실패 토스트 없이 결과만 돌려준다 (하단 띠가 알린다)
+  quiet?: boolean;
 }
 
 export const createRecipe = async ({
@@ -19,6 +24,7 @@ export const createRecipe = async ({
   week,
   isZeroCarb: is_zero_carb,
   signal,
+  quiet = false,
 }: CreateRecipeProps): Promise<Maybe<RecipeDB> | QuotaExceeded> => {
   try {
     const edgeFunctionName = __DEV__ ? 'create-recipe-by-gemini-test' : 'create-recipe-by-gemini';
@@ -33,6 +39,7 @@ export const createRecipe = async ({
           'Content-Type': 'application/json',
         },
         signal,
+        timeout: REQUEST_TIMEOUT_MS,
       }
     );
 
@@ -44,6 +51,7 @@ export const createRecipe = async ({
       if (body?.code === 'QUOTA_EXCEEDED') return quotaExceededFromBody(body);
     }
 
+    if (quiet) return;
     if (isNetworkError(error)) {
       showErrorToast({ textType: 'NETWORK_ERROR' });
     } else if (isCancel(error)) {

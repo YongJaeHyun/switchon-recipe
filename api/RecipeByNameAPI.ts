@@ -14,7 +14,9 @@ const REQUEST_TIMEOUT_MS = 120 * 1000;
 const create = async (
   // week: 고른 주차 (1~4, 5 = 유지기)
   input: { name: string; isZeroCarb: boolean; week: number },
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  // 뒤에서 만들 때: 네트워크·시간 초과 토스트 없이 undefined만 (하단 띠가 알린다)
+  quiet = false
 ): Promise<RecipeByNameOutcome | undefined> => {
   try {
     const session = await UserAPI.getSession();
@@ -45,10 +47,11 @@ const create = async (
     const kind = classifyFoodCheckRequestError(error);
     if (kind === 'canceled') return undefined;
     if (kind === 'network') {
-      showNetworkErrorToast();
+      if (!quiet) showNetworkErrorToast();
       return undefined;
     }
     if (kind !== 'timeout') captureError({ error, prefix: '[RecipeByNameAPI.create]: ' });
+    if (quiet) return undefined;
     showErrorToast({ textType: 'RECIPE_CREATION_TEMPORARY_ERROR' });
     return undefined;
   }

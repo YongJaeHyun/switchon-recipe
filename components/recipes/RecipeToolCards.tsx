@@ -3,7 +3,6 @@ import { PassBadge } from 'components/common/PassBadge';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import { PassOnlyModal } from 'components/common/PassOnlyModal';
-import { RecipeByNameSheet } from 'components/recipeByName/RecipeByNameSheet';
 import { useRecipeByNameEntry } from 'hooks/useRecipeByNameEntry';
 import { type Href, router } from 'expo-router';
 import { useBillingAvailable } from 'hooks/useBillingAvailable';
@@ -151,7 +150,6 @@ export function RecipeToolCards() {
       {cards.map((card) => (
         <ToolCard key={card.title} {...card} />
       ))}
-      <RecipeByNameSheet request={byName.sheetRequest} />
       <PassOnlyModal {...byName.passModalProps} />
     </View>
   );
