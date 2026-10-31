@@ -18,6 +18,8 @@ update public.weekly_report set display_week = week_index where display_week is 
 -- 지난 시작일은 저장하지 않으므로 그 시작일로 남은 행(weekly_report·fasting_plan의 start_date) 중 회차 시작일 전
 -- 가장 최근 것을 쓴다. 그 시작일로 지낸 마지막 주가 끝난 뒤에 새 회차가 시작됐을 때만(program > 그 주 마지막 날) 돌려준다.
 -- 한계: 그 시작일로 남은 행이 없으면(1주차만 지내고 다시 시작 → 단식 계획·리포트 없음) 보충하지 못한다.
+-- 한계: 새 회차 시작일이 내일보다 뒤(program > p_today + 1)면 보충하지 않는다. 앱의 다시 시작은 오늘·내일만 고르므로
+-- 보통 생기지 않지만, 새 주차 1일차에 4일 이상 뒤 날짜로 다시 시작(온보딩 등)하면 그 주 리포트는 빠진다.
 -- 한 주 더 하기·주차 맞추기는 회차 시작일이 그대로거나 앞당겨져 지난 시작일 ≥ 회차 시작일이라 여기 걸리지 않는다
 -- (그 기간은 새 시작일 키로 만들어지고 display_week로 제목이 붙는다). 구버전 앱의 다시 시작(program_start가 옛 값)도 걸리지 않는다.
 -- 회차 시작일 = program_start (없거나 start_date보다 뒤면 start_date, 앱 programStartOf와 같은 규칙).

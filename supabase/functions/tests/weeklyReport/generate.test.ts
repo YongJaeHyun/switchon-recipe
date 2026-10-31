@@ -80,6 +80,7 @@ const makeDeps = (
         }))
     ),
     fetchProgramStart: vi.fn(async () => null),
+    fetchFastingPlan: vi.fn(async () => null),
     fetchWeekData: vi.fn(async () => filledWeek()),
     askGemini: vi.fn(async () => geminiOk),
     insertReport: vi.fn(async (row: WeeklyReportRow) => {
@@ -542,6 +543,30 @@ describe('displayWeekFor (리포트 제목 = 실제로 지낸 주차)', () => {
     ).toBe(3);
   });
 
+  it('한 주 더를 두 번 08:00 전에 하면 1, 2, 2, 2 (다시 지낸 주는 계속 2주차, 리뷰 #1)', () => {
+    // 10-01 시작. 10-15 07:30 한 주 더 → 10-08, 10-22 07:30 또 한 주 더 → 10-15
+    const first = [p('2026-10-01', 1, 1), p('2026-10-08', 1, 2)];
+    expect(displayWeekFor({ startDate: '2026-10-15', weekIndex: 1 }, first)).toBe(2);
+    const second = [...first, p('2026-10-15', 1, 2)];
+    expect(displayWeekFor({ startDate: '2026-10-15', weekIndex: 2 }, second)).toBe(2);
+  });
+
+  it('한 주 더 한 번은 08:00 뒤, 두 번째는 08:00 전이어도 다시 지낸 주는 2주차 (리뷰 #1)', () => {
+    // (10-01,1)=1, (10-01,2)=2, 같은 기간 (10-08,1)=2, 10-22 07:30 또 한 주 더 → 10-15
+    const reports = [p('2026-10-01', 1, 1), p('2026-10-01', 2, 2), p('2026-10-08', 1, 2)];
+    expect(displayWeekFor({ startDate: '2026-10-15', weekIndex: 1 }, reports)).toBe(2);
+    expect(
+      displayWeekFor({ startDate: '2026-10-15', weekIndex: 2 }, [...reports, p('2026-10-15', 1, 2)])
+    ).toBe(2);
+  });
+
+  it('새 1주차가 2주차 이상 리포트 바로 뒤면 이어 세지 않는다 (5.x 다시 시작, 리뷰 #2)', () => {
+    // 5.x는 program_start를 옛 값으로 둔 채 다시 시작한다. (10-01, 3) = 10-15~10-21 뒤 10-22 다시 시작
+    expect(displayWeekFor({ startDate: '2026-10-22', weekIndex: 1 }, [p('2026-10-01', 3)])).toBe(1);
+    // 한계: 앞 리포트가 1주차면 08:00 전 한 주 더와 구별할 수 없어 2주차로 본다
+    expect(displayWeekFor({ startDate: '2026-10-08', weekIndex: 1 }, [p('2026-10-01', 1)])).toBe(2);
+  });
+
   it('주차 맞추기로 앞당기면(주차가 올라감) 사용자가 정한 week_index', () => {
     // (10-08, 1) 뒤 2주차 중 4주차로 맞춤 → 시작일 09-24. (09-24, 4) = 10-15~10-21
     expect(displayWeekFor({ startDate: '2026-09-24', weekIndex: 4 }, [p('2026-10-08', 1)])).toBe(4);
@@ -606,6 +631,57 @@ describe('generateWeeklyReports: 시작일이 바뀐 뒤 리포트 제목은 실
     expect(db.reports[1]).toMatchObject({ week_index: 1, display_week: 2 });
     // 1주차(week_index 1)여도 지낸 주차가 2주차라 수요일 단식 계획을 센다
     expect(db.reports[1].stats.fasting.planned).toBe(1);
+  });
+
+  it('새 키에 단식 계획이 없으면 그 기간의 옛 키(겹친 리포트) 계획을 쓴다 (리뷰 #3)', async () => {
+    // 한 주 더 뒤 (10-08, 1) = 옛 (10-01, 2). 앱은 계획을 (10-01, 2)에만 남겼다
+    const fetchFastingPlan = vi.fn(async () => ({
+      days: [3],
+      start_time: null,
+      start_minutes: null,
+    }));
+    const { deps, db } = makeDeps({
+      fetchUsers: vi.fn(async () => [{ id: 'a', start_date: '2026-10-08' }]),
+      fetchProgramStart: vi.fn(async () => '2026-10-01'),
+      fetchWeekData: vi.fn(async () => ({
+        ...filledWeek(),
+        fastingPlanDays: null,
+        fastingResults: [],
+      })),
+      fetchFastingPlan,
+    });
+    db.reports.push(reportRow('a', '2026-10-01', 2));
+    await generateWeeklyReports(deps, '2026-10-16');
+    expect(fetchFastingPlan).toHaveBeenCalledWith('a', '2026-10-01', 2);
+    expect(db.reports[1].stats.fasting.planned).toBe(1); // 수요일 10-14
+  });
+
+  it('08:00 전 한 주 더로 옛 키 리포트가 없으면 옛 시작일 기준 그 주차 계획을 쓴다 (리뷰 #3)', async () => {
+    const fetchFastingPlan = vi.fn(async () => ({
+      days: [3],
+      start_time: null,
+      start_minutes: null,
+    }));
+    const { deps, db } = makeDeps({
+      fetchUsers: vi.fn(async () => [{ id: 'a', start_date: '2026-10-08' }]),
+      fetchProgramStart: vi.fn(async () => '2026-10-01'),
+      fetchWeekData: vi.fn(async () => ({
+        ...filledWeek(),
+        fastingPlanDays: null,
+        fastingResults: [],
+      })),
+      fetchFastingPlan,
+    });
+    db.reports.push(reportRow('a', '2026-10-01', 1));
+    await generateWeeklyReports(deps, '2026-10-15');
+    expect(fetchFastingPlan).toHaveBeenCalledWith('a', '2026-10-01', 2);
+    expect(db.reports[1].stats.fasting.planned).toBe(1);
+  });
+
+  it('새 키에 계획이 있거나 이어받을 옛 키가 없으면 다시 읽지 않는다', async () => {
+    const { deps } = makeDeps();
+    await generateWeeklyReports(deps, TODAY);
+    expect(deps.fetchFastingPlan).not.toHaveBeenCalled();
   });
 
   it('지난 회차의 리포트는 이어받지 않는다', async () => {

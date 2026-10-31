@@ -85,6 +85,12 @@ export interface ReportPeriod {
   display_week: number | null; // 마이그레이션 전 행은 null → week_index
 }
 
+export interface FastingPlanRow {
+  days: number[] | null;
+  start_time: string | null;
+  start_minutes?: unknown;
+}
+
 export interface GenerateReportsDeps {
   now(): Date;
   // 오늘이 새 주차 1~3일차인 유저 (전부, 페이지 처리는 구현이). 구현은 SQL 함수
@@ -94,6 +100,12 @@ export interface GenerateReportsDeps {
   hasPremiumAccess(uid: string): Promise<boolean>;
   // 유저의 리포트 키·표시 주차 전부 (리포트는 주 1개라 적다). 같은 키 여부와 표시 주차를 handler가 본다
   fetchReportPeriods(uid: string): Promise<ReportPeriod[]>;
+  // fasting_plan(uid, start_date, week_index) 한 행. 없으면 null. 새 키에 계획이 없을 때 그 기간의 옛 키로 읽는다
+  fetchFastingPlan(
+    uid: string,
+    startDate: string,
+    weekIndex: number
+  ): Promise<FastingPlanRow | null>;
   // user.program_start (회차 시작일, yyyy-MM-dd). 없으면 null (구버전 앱·마이그레이션 전)
   fetchProgramStart(uid: string): Promise<string | null>;
   fetchWeekData(query: WeekQuery): Promise<WeekData>;
@@ -147,15 +159,21 @@ export function sameProgramReports<T extends ReportPeriod>(
 // 새 리포트의 표시 주차 = 실제로 지낸 주차. reports = 같은 회차의 리포트 (sameProgramReports)
 // 1. 기간이 OVERLAP_MIN_DAYS 이상 겹치는 리포트가 있으면 그 리포트의 표시 주차 (가장 많이 겹치는 것, 같으면 최근)
 //    예) 한 주 더 하기 뒤 (새 시작일, 1주차) = (옛 시작일, 2주차)와 같은 기간 → 2주차
-// 2. 가장 최근 리포트 바로 다음 기간이고, 그 사이 시작일이 바뀌었고(다른 start_date), week_index로는 주차가
-//    올라가지 않으면(한 주 더 하기·주차 미루기 전에 지낸 주) → 그 리포트 표시 주차 + 1
-//    예) 감사 #3: 3주차 1일차 08:00 전에 한 주 더 → (옛, 2주차)가 없고 (새, 1주차)가 그 기간 → 2주차
+// 2. 가장 최근 리포트 바로 다음 기간이고, 그 리포트 시작일 기준으로 센 주차(week_index + 1)가 더 크면 그 주차.
+//    그 기간에 쓰이던 시작일은 가장 최근 리포트의 시작일이다 (한 주 더 하기·주차 미루기는 그 뒤에 했다)
+//    예) 감사 #3: 3주차 1일차 08:00 전에 한 주 더 → (옛, 2주차)가 없고 (새, 1주차)가 그 기간 → 2주차.
+//    한 주 더를 두 번 08:00 전에 해도 1, 2, 2, 2 (표시 주차 + 1이 아니라 week_index + 1이라 3이 되지 않는다)
+//    단, 새 1주차가 2주차 이상 리포트 바로 뒤면 건너뛴다: 한 주 더 하기로는 생기지 않고, 구버전(5.x) 다시 시작
+//    (program_start가 옛 값이라 지난 회차 리포트가 같은 회차로 보임)이다.
+//    한계: 앞 리포트가 1주차면 5.x 다시 시작과 08:00 전 한 주 더(2주차 반복)를 구별할 수 없어 2주차로 본다
 // 3. 그 외 week_index. 한 주 더로 다시 지낸 주는 새 시작일 기준 주차라 같은 숫자가 다시 나온다
 //    (앱이 "N주차 · 한 번 더"로 구분). 주차 맞추기로 앞당겨 주차가 올라가면 사용자가 정한 주차를 따른다
-export function displayWeekFor(
+// source = 그 기간을 실제로 지낼 때의 키 (겹친 리포트의 키, 또는 앞 리포트 시작일 기준 다음 주차). 앱은 단식 계획을
+// 그 키로 남겼으므로 새 키에 계획이 없을 때 이 키로 읽는다. 규칙 3이면 null
+export function resolveDisplayWeek(
   target: { startDate: string; weekIndex: number },
   reports: ReportPeriod[]
-): number {
+): { week: number; source: { start_date: string; week_index: number } | null } {
   const start = target.startDate.slice(0, 10);
   const range = weekRange(start, target.weekIndex);
   // 기간 최신 먼저, 같은 기간이면 시작일 최신 먼저
@@ -172,18 +190,37 @@ export function displayWeekFor(
     const days = overlapDays(range, period);
     if (days >= OVERLAP_MIN_DAYS && (!best || days > best.days)) best = { report, days };
   }
-  if (best) return displayOf(best.report);
+  if (best) {
+    return {
+      week: displayOf(best.report),
+      source: {
+        start_date: best.report.start_date.slice(0, 10),
+        week_index: best.report.week_index,
+      },
+    };
+  }
 
   const latest = byRecent[0];
   if (
     latest &&
-    latest.report.start_date.slice(0, 10) !== start &&
     dayMs(latest.period.to) + DAY_MS === dayMs(range.from) &&
-    displayOf(latest.report) + 1 > target.weekIndex
+    latest.report.week_index + 1 > target.weekIndex &&
+    !(target.weekIndex === 1 && latest.report.week_index >= 2)
   ) {
-    return displayOf(latest.report) + 1;
+    const week = latest.report.week_index + 1;
+    return {
+      week,
+      source: { start_date: latest.report.start_date.slice(0, 10), week_index: week },
+    };
   }
-  return target.weekIndex;
+  return { week: target.weekIndex, source: null };
+}
+
+export function displayWeekFor(
+  target: { startDate: string; weekIndex: number },
+  reports: ReportPeriod[]
+): number {
+  return resolveDisplayWeek(target, reports).week;
 }
 
 // 새 주차 몇 일차까지 지난 주차 리포트를 만들지 (1일차 + 보충 2일).
@@ -272,7 +309,7 @@ const processUser = async (
   const range = weekRange(startDate, weekIndex);
   const programStart = await deps.fetchProgramStart(uid);
   const baselineStart = baselineStartOf(programStart, startDate);
-  const displayWeek = displayWeekFor(
+  const { week: displayWeek, source } = resolveDisplayWeek(
     { startDate, weekIndex },
     sameProgramReports(reports, startDate, programStart)
   );
@@ -285,6 +322,19 @@ const processUser = async (
     fromIso: kstMidnightIso(range.from),
     toIso: kstMidnightIso(range.to, 1),
   });
+  // 한 주 더 하기 등으로 새 키가 된 기간: 앱은 단식 계획을 그 기간을 지낼 때의 키로만 남겼다
+  if (
+    data.fastingPlanDays === null &&
+    source &&
+    (source.start_date !== startDate || source.week_index !== weekIndex)
+  ) {
+    const plan = await deps.fetchFastingPlan(uid, source.start_date, source.week_index);
+    if (plan) {
+      data.fastingPlanDays = plan.days;
+      data.fastingPlanStartTime = plan.start_time;
+      data.fastingPlanStartMinutes = plan.start_minutes;
+    }
+  }
   const known = normalizeWeekData(data);
   const computed = computeWeeklyStats({
     startDate,

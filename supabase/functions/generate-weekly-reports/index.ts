@@ -79,6 +79,24 @@ const deps: GenerateReportsDeps = {
     });
   },
 
+  async fetchFastingPlan(uid, startDate, weekIndex) {
+    const { data, error } = await supabase
+      .from('fasting_plan')
+      .select('days, start_time, start_minutes')
+      .eq('uid', uid)
+      .eq('start_date', startDate)
+      .eq('week_index', weekIndex)
+      .maybeSingle();
+    if (error) throw error;
+    return data
+      ? {
+          days: data.days ?? null,
+          start_time: data.start_time ?? null,
+          start_minutes: data.start_minutes ?? null,
+        }
+      : null;
+  },
+
   async fetchProgramStart(uid) {
     const { data, error } = await supabase
       .from('user')
