@@ -120,7 +120,8 @@ const JourneyHero = ({
   const restDays = holder ? 0 : Math.max(0, SCALE_DAYS - option.days);
   const showMarker = holder && bar.currentDays > 0 && bar.currentEndsOn;
   // 표시 위치: 지금 패스가 막대의 반 이상이면 경계 왼쪽에 붙이고, 아니면 경계 오른쪽에서 시작
-  const markerOnLeft = bar.currentDays * 2 >= bar.totalDays;
+  // 지금 패스 칸에 "오늘"과 끝 날짜가 같이 들어갈 만큼 넓은지 (40% 이상)
+  const markerOnLeft = bar.currentDays * 10 >= bar.totalDays * 4;
   const repeatNote = getRepeatWeekNote(option);
 
   return (
@@ -195,30 +196,38 @@ const JourneyHero = ({
             <View style={{ flex: restDays, backgroundColor: colors.neutral[100] }} />
           )}
         </View>
-        {showMarker && (
+        {showMarker ? (
+          // 막대 아래 날짜 눈금: 시작 "오늘", 지금 패스 끝(눈금선) 날짜, 연장 끝 날짜 — 모두 한 줄에 막대 위치에 맞춰.
+          // "까지·연장하면" 설명은 아래 범례(지금 패스 / 연장분)가 맡는다.
+          // 지금 패스 칸이 넓으면 그 칸 안에 "오늘"과 끝 날짜를 양쪽에, 좁으면 끝 날짜를 눈금 오른쪽에 붙인다
           <View className="flex-row">
             <View
               style={{ flex: bar.currentDays }}
-              className={markerOnLeft ? 'items-end border-r-2 border-neutral-900 pr-1.5' : ''}>
+              className="flex-row items-start justify-between border-r-2 border-neutral-900 pr-1.5">
+              <Text className="text-sm text-neutral-500">오늘</Text>
               {markerOnLeft && (
-                <Text className="text-sm font-bold text-neutral-900">{bar.currentEndsOn}까지</Text>
+                <Text className="text-sm font-bold text-neutral-900">{bar.currentEndsOn}</Text>
               )}
             </View>
             <View
               style={{ flex: option.days }}
-              className={markerOnLeft ? '' : 'items-start border-l-2 border-neutral-900 pl-1.5'}>
+              className={`flex-row items-start pl-1.5 ${
+                markerOnLeft ? 'justify-end' : 'justify-between'
+              }`}>
               {!markerOnLeft && (
-                <Text className="text-sm font-bold text-neutral-900">{bar.currentEndsOn}까지</Text>
+                <Text className="text-sm font-bold text-neutral-900">{bar.currentEndsOn}</Text>
               )}
+              <Text className="text-sm font-bold text-green-700">{bar.endsOn}</Text>
             </View>
           </View>
+        ) : (
+          <View className="flex-row justify-between">
+            <Text className="text-xs text-neutral-500">오늘</Text>
+            <Text className="text-sm font-bold text-neutral-900">
+              {holder ? `연장하면 ${bar.endsOn}까지` : `${bar.endsOn}까지`}
+            </Text>
+          </View>
         )}
-        <View className="flex-row justify-between">
-          <Text className="text-xs text-neutral-500">오늘</Text>
-          <Text className="text-sm font-bold text-neutral-900">
-            {holder ? `연장하면 ${bar.endsOn}까지` : `${bar.endsOn}까지`}
-          </Text>
-        </View>
         {holder && !scheduleLoading && (
           <View className="mt-1 flex-row items-center gap-4">
             <View className="flex-row items-center gap-1.5">
@@ -226,14 +235,14 @@ const JourneyHero = ({
                 className="h-2.5 w-2.5 rounded-sm"
                 style={{ backgroundColor: colors.neutral[700] }}
               />
-              <Text className="text-xs text-neutral-500">지금 패스</Text>
+              <Text className="text-xs text-neutral-500">지금 패스 · {bar.currentEndsOn}까지</Text>
             </View>
             <View className="flex-row items-center gap-1.5">
               <View className="h-2.5 w-2.5 flex-row overflow-hidden rounded-sm">
                 <HatchFill color={colors.neutral[700]} id="hatch-legend" />
               </View>
               <Text className="text-xs text-neutral-500">
-                연장분 ({durationLabel(option.days)})
+                {durationLabel(option.days)} 연장하면 · {bar.endsOn}까지
               </Text>
             </View>
           </View>
