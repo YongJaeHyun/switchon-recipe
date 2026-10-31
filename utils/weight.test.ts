@@ -9,6 +9,7 @@ import {
   pointerWeight,
   shouldAskWeightReminder,
   weekOfDay,
+  livedPeriodsOf,
   weekOfLog,
   weightChange,
   weightsInPeriod,
@@ -285,5 +286,102 @@ describe('회차 시작일 기준 기간 (program_start)', () => {
     expect(weekOfLog('2026-10-05', START, PROGRAM)).toBe(1);
     expect(weekOfLog('2026-09-28', START, PROGRAM)).toBeLessThanOrEqual(0);
     expect(weekOfLog('2026-10-05', START, null)).toBeLessThanOrEqual(0);
+  });
+});
+
+// 한 주 더 하기 뒤 실제로 지낸 주차: 회차 10-01, 3주차에 들어선 10-15에 2주차를 한 번 더 → 시작일 10-08.
+// 10-01~07 = 1주차, 10-08~14 = 2주차(10-01 기준), 10-15~ = 2주차 한 번 더(10-08 기준)
+describe('weekOfLog: 실제로 지낸 주차 (단식 계획·리포트 키)', () => {
+  const PROGRAM = '2026-10-01';
+  const START = '2026-10-08';
+  const TODAY = '2026-10-17';
+  const plans = [
+    {
+      start_date: '2026-10-01',
+      week_index: 2,
+      created_at: '2026-10-07T23:10:00Z',
+      updated_at: '2026-10-07T23:10:00Z',
+    },
+    // 3주차 첫날 아침에 백필됐다가 같은 날 한 주 더 하기
+    {
+      start_date: '2026-10-01',
+      week_index: 3,
+      created_at: '2026-10-14T22:00:00Z',
+      updated_at: '2026-10-14T22:00:00Z',
+    },
+    {
+      start_date: '2026-10-08',
+      week_index: 2,
+      created_at: '2026-10-15T00:00:00Z',
+      updated_at: '2026-10-15T01:00:00Z',
+    },
+  ];
+  const lived = { periods: livedPeriodsOf({ plans }), today: TODAY };
+
+  it('시작일 뒤라도 앞 시작일로 지낸 주는 그때 주차 (1주차가 두 번 나오지 않는다)', () => {
+    expect(weekOfLog('2026-10-03', START, PROGRAM, lived)).toBe(1);
+    expect(weekOfLog('2026-10-10', START, PROGRAM, lived)).toBe(2);
+    expect(weekOfLog('2026-10-16', START, PROGRAM, lived)).toBe(2);
+  });
+
+  it('지금 주차는 언제나 지금 시작일 기준 (예전 시작일의 이번 주 계획이 남아 있어도)', () => {
+    const stale = {
+      periods: livedPeriodsOf({ plans: plans.filter((p) => p.start_date === PROGRAM) }),
+      today: TODAY,
+    };
+    expect(weekOfLog('2026-10-16', START, PROGRAM, stale)).toBe(2);
+    expect(weekOfLog('2026-10-10', START, PROGRAM, stale)).toBe(2);
+  });
+
+  it('리포트의 표시 주차도 실제 주차로 쓴다 (단식 계획이 없을 때)', () => {
+    const reports = [
+      {
+        start_date: '2026-10-08',
+        week_index: 1,
+        display_week: 2,
+        created_at: '2026-10-14T23:00:00Z',
+      },
+    ];
+    const byReport = { periods: livedPeriodsOf({ reports }), today: TODAY };
+    expect(weekOfLog('2026-10-10', START, PROGRAM, byReport)).toBe(2);
+  });
+
+  it('겹치는 기록이 여럿이면 가장 늦게 쓰인 것 (주차 맞추기를 되돌린 경우 등)', () => {
+    const periods = livedPeriodsOf({
+      plans: [
+        { start_date: '2026-10-01', week_index: 2, created_at: '2026-10-08T00:00:00Z' },
+        { start_date: '2026-10-08', week_index: 1, created_at: '2026-10-09T00:00:00Z' },
+      ],
+    });
+    expect(weekOfLog('2026-10-10', START, PROGRAM, { periods, today: TODAY })).toBe(1);
+  });
+
+  it('지난 회차(회차 시작일 전 시작일) 기록은 쓰지 않는다', () => {
+    const periods = livedPeriodsOf({
+      plans: [{ start_date: '2026-09-20', week_index: 3, created_at: '2026-10-05T00:00:00Z' }],
+    });
+    expect(weekOfLog('2026-10-05', START, PROGRAM, { periods, today: TODAY })).toBe(1);
+  });
+
+  it('기록이 없으면 예전대로 (시작일 뒤는 시작일, 그 앞은 회차 시작일 기준)', () => {
+    expect(weekOfLog('2026-10-10', START, PROGRAM, { periods: [], today: TODAY })).toBe(1);
+    expect(weekOfLog('2026-10-10', START, PROGRAM)).toBe(1);
+  });
+
+  it('그래프 점 색도 실제 주차', () => {
+    const points = chartPoints(
+      [
+        { day: '2026-10-03', weight_kg: 71 },
+        { day: '2026-10-10', weight_kg: 70 },
+        { day: '2026-10-16', weight_kg: 69 },
+      ],
+      START,
+      { programStart: PROGRAM, lived }
+    );
+    expect(points.map((p) => p.dataPointColor)).toEqual([
+      getWeekColorHex(1),
+      getWeekColorHex(2),
+      getWeekColorHex(2),
+    ]);
   });
 });
