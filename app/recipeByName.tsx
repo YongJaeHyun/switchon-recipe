@@ -22,7 +22,13 @@ import {
   RECIPE_BY_NAME_TITLE,
   recipeByNameEntryState,
 } from 'utils/recipeByName';
-import { defaultChosenWeek } from 'utils/recipeWeekChoice';
+import {
+  defaultChosenWeek,
+  defaultNameWeekChoice,
+  NAME_WEEK_CHOICES,
+  nameRequestWeek,
+  nameWeekLabel,
+} from 'utils/recipeWeekChoice';
 
 const CARB_OPTIONS = [false, true] as const;
 
@@ -39,7 +45,8 @@ export default function RecipeByNameScreen() {
   const [isZeroCarb, setIsZeroCarb] = useState(params.zero === '1');
   const startDate = useUserStore((state) => state.start_date);
   const currentWeek = defaultChosenWeek(getWeekAndDay(startDate).week);
-  const [week, setWeek] = useState(currentWeek);
+  const currentChoice = defaultNameWeekChoice(currentWeek);
+  const [week, setWeek] = useState(currentChoice);
 
   const { status } = usePass();
   const billingAvailable = useBillingAvailable();
@@ -63,7 +70,7 @@ export default function RecipeByNameScreen() {
     const name = trimmed();
     if (!name || creation.isCreating) return;
     Keyboard.dismiss();
-    void creation.create({ name, isZeroCarb, week });
+    void creation.create({ name, isZeroCarb, week: nameRequestWeek(week, currentWeek) });
   };
 
   const clearName = () => {
@@ -147,7 +154,9 @@ export default function RecipeByNameScreen() {
         <WeekChips
           className="mb-3"
           value={week}
-          currentWeek={currentWeek}
+          currentWeek={currentChoice}
+          choices={NAME_WEEK_CHOICES}
+          labelOf={nameWeekLabel}
           onChange={(next) => {
             setWeek(next);
             if (creation.message) clearMessage();
