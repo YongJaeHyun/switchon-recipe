@@ -27,6 +27,8 @@ export function foodCheckEntryState(
 ): FoodCheckEntryState {
   if (!status) return { kind: 'hidden' };
   if (status.hasAccess) return { kind: 'open' };
+  // 남은 횟수를 모르면(조회 실패·옛 서버) 막지 않고 서버 판단에 맡긴다
+  if (status.foodCheckTrialRemaining === undefined) return { kind: 'open' };
   const remaining = getFoodCheckTrialRemaining(status);
   if (remaining > 0) return { kind: 'trial', remaining };
   return isPassOnSale(status.sales, billingAvailable) ? { kind: 'locked' } : { kind: 'hidden' };

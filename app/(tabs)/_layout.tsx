@@ -1,10 +1,12 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import RippleButton from 'components/common/RippleButton';
+import { CHANNELS } from 'const/channels';
 import { Tabs } from 'expo-router';
 import { useDailyReminderSync } from 'hooks/useDailyReminderSync';
 import { useEffect } from 'react';
 import { useNotificationGateStore } from 'stores/notificationGateStore';
 import colors from 'tailwindcss/colors';
+import { registerChannelIfPermitted } from 'utils/notifications';
 
 function TabLayout() {
   // 다음 날 아침 리마인드 (그날 앱을 안 연 사람에게만)
@@ -15,6 +17,12 @@ function TabLayout() {
     const { setPhase } = useNotificationGateStore.getState();
     setPhase('tabs');
     return () => setPhase('outside');
+  }, []);
+
+  // 리포트 알림 채널: 안드로이드는 채널이 없으면 푸시가 버려진다. 무료 1주차 리포트·구매 후 알림도 받도록
+  // 권한이 이미 있는 사용자는 앱을 열 때 한 번 만든다 (권한 요청은 하지 않는다)
+  useEffect(() => {
+    registerChannelIfPermitted(CHANNELS.REPORT);
   }, []);
 
   return (

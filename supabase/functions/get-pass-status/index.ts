@@ -45,8 +45,8 @@ const getHasAccess = async (uid: string): Promise<boolean> => {
   return data === true;
 };
 
-// 표시용이라 조회가 실패하면(마이그레이션 적용 전 등) 상태 전체를 실패시키지 않고 0으로 둔다
-const getFoodCheckTrialRemaining = async (uid: string): Promise<number> => {
+// 표시용이라 조회가 실패하면(마이그레이션 적용 전 등) 상태 전체를 실패시키지 않고 빈 값(undefined)으로 둔다. 앱은 모르는 값으로 보고 서버 판단에 맡긴다
+const getFoodCheckTrialRemaining = async (uid: string): Promise<number | undefined> => {
   const { data, error } = await supabase
     .from('user_trial')
     .select('food_check_used')
@@ -54,7 +54,7 @@ const getFoodCheckTrialRemaining = async (uid: string): Promise<number> => {
     .maybeSingle();
   if (error) {
     console.error('무료 체험 조회 실패:', error);
-    return 0;
+    return undefined;
   }
   return foodCheckTrialRemaining(data?.food_check_used);
 };

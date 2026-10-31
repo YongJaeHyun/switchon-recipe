@@ -57,6 +57,11 @@ describe('foodCheckEntryState', () => {
     expect(foodCheckEntryState(status({ hasAccess: true }), true)).toEqual({ kind: 'open' });
   });
 
+  it('남은 횟수를 모르면(조회 실패·옛 서버) 숨기거나 잠그지 않고 연다 (서버가 최종 판단)', () => {
+    expect(foodCheckEntryState(status({}), true)).toEqual({ kind: 'open' });
+    expect(foodCheckEntryState(status({}, false), false)).toEqual({ kind: 'open' });
+  });
+
   it('무료 체험이 남았으면 체험 (판매 중이 아니어도)', () => {
     expect(foodCheckEntryState(status({ foodCheckTrialRemaining: 3 }), true)).toEqual({
       kind: 'trial',
