@@ -61,7 +61,7 @@ const createFakeDeps = (
     getSetting: vi.fn(async () => SETTING),
     findPurchase: vi.fn(async (token: string) => {
       const row = rows.find((r) => r.purchaseToken === token);
-      return row ? { status: row.status, uid: row.uid } : null;
+      return row ? { status: row.status, uid: row.uid, purchasedAt: row.purchasedAt } : null;
     }),
     listUserPurchases: vi.fn(async (uid: string) =>
       rows
@@ -538,8 +538,33 @@ describe('verifyPurchase: 지난 주 리포트 보충 (운영자 결정 2026-10-
     }
   });
 
-  it('같은 유저의 재시도(already_processed, granted)도 보충을 다시 시작한다 (보충은 멱등)', async () => {
-    const { deps } = createFakeDeps({ existing: [existingRow({ purchaseToken: TOKEN })] });
+  it('같은 유저의 재시도(already_processed, granted)도 구매 24시간 안이면 보충을 다시 시작한다', async () => {
+    const purchasedAt = new Date(IN_EARLY1.getTime() - 23 * 60 * 60 * 1000);
+    const { deps } = createFakeDeps({
+      existing: [existingRow({ purchaseToken: TOKEN, purchasedAt })],
+    });
+    const backfillReports = vi.fn();
+    const result = await verifyPurchase({ ...deps, backfillReports }, input);
+
+    expect(result.status).toBe('already_processed');
+    expect(backfillReports).toHaveBeenCalledWith(UID);
+  });
+
+  it('24시간이 지난 옛 토큰으로 다시 검증하면 보충하지 않는다 (시작일 바꿔 반복 악용 차단)', async () => {
+    const purchasedAt = new Date(IN_EARLY1.getTime() - 24 * 60 * 60 * 1000);
+    const { deps } = createFakeDeps({
+      existing: [existingRow({ purchaseToken: TOKEN, purchasedAt })],
+    });
+    const backfillReports = vi.fn();
+    for (let i = 0; i < 5; i++) {
+      const result = await verifyPurchase({ ...deps, backfillReports }, input);
+      expect(result.status).toBe('already_processed');
+    }
+    expect(backfillReports).not.toHaveBeenCalled();
+  });
+
+  it('insert가 duplicate(동시 요청)여도 방금 산 구매면 보충을 시작한다', async () => {
+    const { deps } = createFakeDeps({ insertResult: 'duplicate' });
     const backfillReports = vi.fn();
     const result = await verifyPurchase({ ...deps, backfillReports }, input);
 

@@ -6,6 +6,7 @@ import type {
 } from '../../_shared/weeklyReportGenerate.ts';
 import {
   backfillPastReports,
+  BACKFILL_DAILY_LIMIT,
   BACKFILL_MAX_REPORTS,
   type BackfillDeps,
   startReportBackfill,
@@ -42,6 +43,9 @@ interface FakeDb {
   reports: WeeklyReportRow[];
   notifications: NotificationRow[];
 }
+
+// 리포트 저장 시각 (weekly_report.created_at). 없는 행은 오래전에 만든 리포트
+const createdAt = new WeakMap<WeeklyReportRow, number>();
 
 const existingReport = (weekIndex: number, startDate = START): WeeklyReportRow =>
   ({
@@ -83,8 +87,13 @@ const makeDeps = (
       );
       if (dup) return false;
       db.reports.push(row);
+      createdAt.set(row, deps.now().getTime());
       return true;
     }),
+    countReportsCreatedSince: vi.fn(
+      async (uid: string, since: Date) =>
+        db.reports.filter((r) => r.uid === uid && (createdAt.get(r) ?? 0) >= since.getTime()).length
+    ),
     insertNotification: vi.fn(async (row: NotificationRow) => {
       db.notifications.push(row);
     }),
@@ -291,6 +300,118 @@ describe('backfillPastReports: 패스를 사면 지금 회차의 끝난 주 리�
 
     expect(db.reports.map((r) => r.week_index)).toEqual([1]);
     expect(db.notifications.map((n) => n.title)).toEqual(['지난 1주차 리포트도 만들어 뒀어요']);
+  });
+});
+
+describe('backfillPastReports: 시작일을 바꿔 옛 토큰으로 반복 검증해도 리포트·AI가 늘지 않는다 (최종 리뷰 #3 I-1)', () => {
+  const TODAY = '2026-10-23'; // 4주차
+  const shift = (days: number) => {
+    const d = new Date(`${START}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + days);
+    return d.toISOString().slice(0, 10);
+  };
+
+  it('1~3주차 리포트가 있고 시작일을 3일 미루면 겹치는 주라 아무것도 만들지 않는다', async () => {
+    const db: FakeDb = {
+      reports: [existingReport(1), existingReport(2), existingReport(3)],
+      notifications: [],
+    };
+    const { deps } = makeDeps(TODAY, { fetchStartDate: vi.fn(async () => shift(3)) }, db);
+    const result = await backfillPastReports(deps, UID);
+
+    expect(result).toMatchObject({ created: [], notified: false });
+    expect(db.reports).toHaveLength(3);
+    expect(deps.askGemini).not.toHaveBeenCalled();
+    expect(deps.fetchWeekData).not.toHaveBeenCalled();
+    expect(db.notifications).toEqual([]);
+  });
+
+  it('첫 보충 뒤 시작일을 하루씩 미뤄 가며 반복해도 새 리포트·AI 호출이 없다 (리뷰 재현)', async () => {
+    let startDate = START;
+    const { deps, db } = makeDeps(TODAY, { fetchStartDate: vi.fn(async () => startDate) });
+    await backfillPastReports(deps, UID); // 정상 보충: 1~3주차
+    expect(db.reports).toHaveLength(3);
+    expect(deps.askGemini).toHaveBeenCalledTimes(3);
+
+    for (let k = 1; k <= 20; k++) {
+      startDate = shift(k);
+      await backfillPastReports(deps, UID);
+    }
+    expect(db.reports).toHaveLength(3);
+    expect(deps.askGemini).toHaveBeenCalledTimes(3);
+    expect(db.notifications).toHaveLength(1);
+  });
+
+  it('시작일을 앞당겨 겹침이 3일 이하인 주가 생겨도 24시간 몫(4개)을 넘지 않는다', async () => {
+    // 기록은 시작일(10-01)부터 매일 있다
+    let startDate = START;
+    const { deps, db } = makeDeps(TODAY, {
+      fetchStartDate: vi.fn(async () => startDate),
+      fetchWeekData: vi.fn(async (q) =>
+        q.range.to < START
+          ? { ...filledWeek(q.range.from), weights: [], todoDays: [] }
+          : filledWeek(q.range.from < START ? START : q.range.from)
+      ),
+    });
+    await backfillPastReports(deps, UID); // 정상 보충: 1~3주차
+    for (let k = -1; k >= -20; k--) {
+      startDate = shift(k);
+      await backfillPastReports(deps, UID);
+    }
+    expect(db.reports.length).toBeLessThanOrEqual(BACKFILL_DAILY_LIMIT);
+    expect(vi.mocked(deps.askGemini).mock.calls.length).toBeLessThanOrEqual(BACKFILL_DAILY_LIMIT);
+  });
+
+  it('겹치지 않는 주가 계속 나와도 24시간에 만드는 리포트는 BACKFILL_DAILY_LIMIT개까지', async () => {
+    expect(BACKFILL_DAILY_LIMIT).toBe(BACKFILL_MAX_REPORTS);
+    let startDate = START;
+    const { deps, db } = makeDeps(TODAY, { fetchStartDate: vi.fn(async () => startDate) });
+    for (let k = 0; k >= -60; k -= 7) {
+      startDate = shift(k);
+      await backfillPastReports(deps, UID);
+    }
+    expect(db.reports.length).toBeLessThanOrEqual(BACKFILL_DAILY_LIMIT);
+    expect(vi.mocked(deps.askGemini).mock.calls.length).toBeLessThanOrEqual(BACKFILL_DAILY_LIMIT);
+  });
+
+  it('24시간 안에 만든 리포트 수만큼 이번 보충 몫이 줄고, 다 쓰면 데이터도 읽지 않는다', async () => {
+    const { deps, db } = makeDeps('2026-11-12', {
+      countReportsCreatedSince: vi.fn(async () => BACKFILL_DAILY_LIMIT - 1),
+    });
+    await backfillPastReports(deps, UID);
+    expect(db.reports.map((r) => r.week_index)).toEqual([1]);
+
+    const full = makeDeps('2026-11-12', {
+      countReportsCreatedSince: vi.fn(async () => BACKFILL_DAILY_LIMIT),
+    });
+    await backfillPastReports(full.deps, UID);
+    expect(full.db.reports).toEqual([]);
+    expect(full.deps.fetchReportPeriods).not.toHaveBeenCalled();
+    expect(full.deps.askGemini).not.toHaveBeenCalled();
+  });
+
+  it('최근 리포트 수를 못 읽으면 보충하지 않는다 (비용 쪽으로 안전하게)', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { deps, db } = makeDeps(TODAY, {
+      countReportsCreatedSince: vi.fn(async () => {
+        throw new Error('db down');
+      }),
+    });
+    const result = await backfillPastReports(deps, UID);
+    error.mockRestore();
+
+    expect(db.reports).toEqual([]);
+    expect(deps.askGemini).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ created: [], failed: 1 });
+  });
+
+  it('24시간 기준 시각은 지금 - 24시간이다', async () => {
+    const { deps } = makeDeps(TODAY);
+    await backfillPastReports(deps, UID);
+    expect(deps.countReportsCreatedSince).toHaveBeenCalledWith(
+      UID,
+      new Date(at(TODAY).getTime() - 24 * 60 * 60 * 1000)
+    );
   });
 });
 
