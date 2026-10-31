@@ -149,7 +149,10 @@ const grantedInterval = (
     [...before, { ...purchase, status: 'granted' }],
     extensionsBefore
   ) as Date;
-  const grantedFrom = new Date(grantedUntil.getTime() - days * DAY_MS);
+  // 시작 = 이전 만료일이 남아 있으면 그 시각, 아니면 구매 시각 (끝은 마지막 날 23:59:59 KST로 올려져 있어
+  // 끝에서 일수를 빼면 시작이 구매일 밤으로 밀린다)
+  const previous = computeExpiry(before, extensionsBefore);
+  const grantedFrom = previous && previous.getTime() > t ? previous : purchasedAt;
   return { grantedFrom, grantedUntil };
 };
 

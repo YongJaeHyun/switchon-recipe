@@ -256,7 +256,15 @@ export function isPurchaseEligible(
   return t >= launch.start.getTime() && t < launch.end.getTime() + GRACE_MS;
 }
 
+// t가 속한 KST 날짜의 마지막 순간 (23:59:59.999 KST). 패스는 마지막 날 밤까지 쓴다 (운영자 결정 2026-11-01:
+// 화면은 "12월 5일까지"처럼 날짜만 보여 주는데 결제 시각에 끝나면 그날 저녁에 갑자기 막힌다)
+export function endOfKstDay(t: number): number {
+  const kstDayStart = Math.floor((t + KST_OFFSET_MS) / DAY_MS) * DAY_MS - KST_OFFSET_MS;
+  return kstDayStart + DAY_MS - 1;
+}
+
 // granted 구매와 한 주 더 하기 연장을 시간 순으로 쌓아 만료일을 만든다.
+// 구매마다 상품 일수를 더한 뒤 그날 KST 23:59:59.999로 올린다 (연장 +7일은 그 시각을 그대로 유지한다)
 // - 구매: 그때 만료일이 남아 있으면 그 뒤에, 아니면 구매 시각부터 상품 일수만큼
 // - 연장: +7일. 단 다음을 모두 만족할 때만 (DB 함수 extend_pass_for_week_repeat와 같은 상한. 행이 어떻게 생겼든
 //   여기서 다시 막는다): 묶인 구매가 그 시각 전에 산 granted 구매이고, 그 상품의 연장 상한(5주 2번, 1주 0번)이
@@ -305,7 +313,7 @@ export function computeExpiry(
     // granted 행은 검증된 상품뿐이다. 혹시 모르는 상품이면 예전처럼 5주(연장 상한 2번)로 본다
     const product = passProductOf(event.productId);
     const base: number = expiry !== null && expiry > event.at ? expiry : event.at;
-    expiry = base + (product?.days ?? PASS_DAYS) * DAY_MS;
+    expiry = endOfKstDay(base + (product?.days ?? PASS_DAYS) * DAY_MS);
     remaining.set(event.token, product?.maxExtensions ?? FIVE_WEEK_MAX_EXTENSIONS);
   }
 

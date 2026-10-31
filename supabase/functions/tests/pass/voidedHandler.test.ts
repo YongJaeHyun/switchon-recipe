@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { VoidedPurchase } from '../../_shared/googlePlay.ts';
-import { computeExpiry } from '../../_shared/pass.ts';
+import { computeExpiry, endOfKstDay } from '../../_shared/pass.ts';
 import { syncVoided, type VoidedDeps } from '../../sync-voided-purchases/handler.ts';
 
 const SINCE = Date.UTC(2026, 9, 17); // now - 7d 역할의 임의 기준점
@@ -90,7 +90,7 @@ describe('syncVoided: 한 주 더 하기 연장', () => {
 
     await syncVoided(deps, SINCE);
 
-    expect(expiries.get('u1')).toEqual(new Date(p1.getTime() + 42 * DAY));
+    expect(expiries.get('u1')).toEqual(new Date(endOfKstDay(p1.getTime() + 42 * DAY)));
   });
 
   it('연장이 묶인 구매가 환불되면 다른 구매가 남아 있어도 그 연장은 빠진다', async () => {
@@ -111,7 +111,7 @@ describe('syncVoided: 한 주 더 하기 연장', () => {
 
     await syncVoided(deps, SINCE);
 
-    expect(expiries.get('u1')).toEqual(new Date(p1.getTime() + 35 * DAY));
+    expect(expiries.get('u1')).toEqual(new Date(endOfKstDay(p1.getTime() + 35 * DAY)));
   });
 
   it('연장의 바탕이 된 구매가 환불되면 연장도 없어진다', async () => {
@@ -146,7 +146,9 @@ describe('syncVoided', () => {
 
     await syncVoided(deps, SINCE);
 
-    expect(expiries.get('u1')).toEqual(new Date(p1.getTime() + 35 * 24 * 60 * 60 * 1000));
+    expect(expiries.get('u1')).toEqual(
+      new Date(endOfKstDay(p1.getTime() + 35 * 24 * 60 * 60 * 1000))
+    );
   });
 
   it('5주 패스가 환불되고 1주 패스만 남으면 1주 패스 구매 시각 + 7일', async () => {
@@ -166,7 +168,9 @@ describe('syncVoided', () => {
 
     await syncVoided(deps, SINCE);
 
-    expect(expiries.get('u1')).toEqual(new Date(p2.getTime() + 7 * 24 * 60 * 60 * 1000));
+    expect(expiries.get('u1')).toEqual(
+      new Date(endOfKstDay(p2.getTime() + 7 * 24 * 60 * 60 * 1000))
+    );
   });
 
   it('환불된 granted 구매는 voided로 표시하고 유저 만료일을 재계산한다', async () => {

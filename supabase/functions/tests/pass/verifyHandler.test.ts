@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ProductPurchase } from '../../_shared/googlePlay.ts';
-import { computeExpiry, type PremiumSetting } from '../../_shared/pass.ts';
+import { computeExpiry, endOfKstDay, type PremiumSetting } from '../../_shared/pass.ts';
 import {
   type PurchaseRow,
   type VerifyDeps,
@@ -8,6 +8,8 @@ import {
 } from '../../verify-pass-purchase/handler.ts';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+// 패스 만료일은 그날 KST 23:59:59.999로 올려 잡는다 (운영자 결정 2026-11-01)
+const eod = (d: Date) => new Date(endOfKstDay(d.getTime()));
 const UID = 'user-1';
 const TOKEN = 'token-1';
 const P1900 = 'switchon_pass_5w_1900';
@@ -127,7 +129,7 @@ const existingRow = (overrides: Partial<PurchaseRow> = {}): PurchaseRow => ({
   priceKrw: 4900,
   purchasedAt: new Date('2026-11-01T00:00:00.000Z'),
   grantedFrom: new Date('2026-11-01T00:00:00.000Z'),
-  grantedUntil: new Date(new Date('2026-11-01T00:00:00.000Z').getTime() + 35 * DAY_MS),
+  grantedUntil: eod(new Date(new Date('2026-11-01T00:00:00.000Z').getTime() + 35 * DAY_MS)),
   status: 'granted',
   raw: {},
   ...overrides,
@@ -143,11 +145,12 @@ describe('verifyPurchase: 1주 패스', () => {
 
     const result = await verifyPurchase(deps, weekInput);
 
-    const expectedExpiry = new Date(IN_EARLY1.getTime() + 7 * DAY_MS);
+    const expectedExpiry = eod(new Date(IN_EARLY1.getTime() + 7 * DAY_MS));
     expect(result).toEqual({ status: 'granted', passExpiresAt: expectedExpiry.toISOString() });
     expect(rows[0]).toMatchObject({
       productId: P1W,
       priceKrw: 1500,
+      // 시작은 구매 시각 (끝만 마지막 날 23:59:59 KST로 올린다)
       grantedFrom: IN_EARLY1,
       grantedUntil: expectedExpiry,
       status: 'granted',
@@ -175,13 +178,15 @@ describe('verifyPurchase: 1주 패스', () => {
     const weekRow = existingRow({
       productId: P1W,
       priceKrw: 1500,
-      grantedUntil: new Date(new Date('2026-11-01T00:00:00.000Z').getTime() + 7 * DAY_MS),
+      grantedUntil: eod(new Date(new Date('2026-11-01T00:00:00.000Z').getTime() + 7 * DAY_MS)),
     });
     const { deps } = createFakeDeps({ existing: [weekRow] });
 
     const result = await verifyPurchase(deps, input);
 
-    const expectedExpiry = new Date(new Date('2026-11-01T00:00:00.000Z').getTime() + 42 * DAY_MS);
+    const expectedExpiry = eod(
+      new Date(new Date('2026-11-01T00:00:00.000Z').getTime() + 42 * DAY_MS)
+    );
     expect(result).toEqual({ status: 'granted', passExpiresAt: expectedExpiry.toISOString() });
   });
 
@@ -205,17 +210,17 @@ describe('verifyPurchase: 한 주 더 하기 연장', () => {
     const { deps, rows } = createFakeDeps({
       existing: [existingRow({ purchasedAt: p1 })],
       extensions: [{ extendedAt, purchaseToken: 'old-token' }],
-      storedExpiry: new Date(p1.getTime() + 42 * DAY_MS), // DB 함수가 이미 +7일
+      storedExpiry: eod(new Date(p1.getTime() + 42 * DAY_MS)), // DB 함수가 이미 +7일
       playPurchase: purchase({ productId: P4900, purchaseTimeMillis: String(later.getTime()) }),
       now: later,
     });
 
     const result = await verifyPurchase(deps, { ...input, productId: P4900 });
 
-    const expected = new Date(p1.getTime() + 77 * DAY_MS);
+    const expected = eod(new Date(p1.getTime() + 77 * DAY_MS));
     expect(result).toEqual({ status: 'granted', passExpiresAt: expected.toISOString() });
     expect(rows[1]).toMatchObject({
-      grantedFrom: new Date(p1.getTime() + 42 * DAY_MS),
+      grantedFrom: eod(new Date(p1.getTime() + 42 * DAY_MS)),
       grantedUntil: expected,
     });
     expect(deps.listUserExtensions).toHaveBeenCalledWith(UID);
@@ -229,7 +234,7 @@ describe('verifyPurchase: 한 주 더 하기 연장', () => {
 
     expect(await verifyPurchase(deps, input)).toEqual({
       status: 'already_processed',
-      passExpiresAt: new Date(p1.getTime() + 42 * DAY_MS).toISOString(),
+      passExpiresAt: eod(new Date(p1.getTime() + 42 * DAY_MS)).toISOString(),
     });
   });
 
@@ -252,7 +257,7 @@ describe('verifyPurchase: 한 주 더 하기 연장', () => {
     // 35 + 7(1주) + 연장 2번
     expect(await verifyPurchase(deps, input)).toEqual({
       status: 'already_processed',
-      passExpiresAt: new Date(p1.getTime() + 56 * DAY_MS).toISOString(),
+      passExpiresAt: eod(new Date(p1.getTime() + 56 * DAY_MS)).toISOString(),
     });
   });
 });
@@ -279,7 +284,7 @@ describe('verifyPurchase', () => {
 
     const result = await verifyPurchase(deps, input);
 
-    const expectedExpiry = new Date(IN_EARLY1.getTime() + 35 * DAY_MS);
+    const expectedExpiry = eod(new Date(IN_EARLY1.getTime() + 35 * DAY_MS));
     expect(result).toEqual({ status: 'granted', passExpiresAt: expectedExpiry.toISOString() });
 
     expect(deps.grantPurchase).toHaveBeenCalledTimes(1);
@@ -291,6 +296,7 @@ describe('verifyPurchase', () => {
       orderId: 'GPA.1234',
       priceKrw: 2900,
       purchasedAt: IN_EARLY1,
+      // 시작은 구매 시각 (끝만 마지막 날 23:59:59 KST로 올린다)
       grantedFrom: IN_EARLY1,
       grantedUntil: expectedExpiry,
       status: 'granted',
@@ -480,7 +486,7 @@ describe('verifyPurchase', () => {
 
   it('패스가 남아 있을 때 재구매하면 만료일이 이어 붙는다', async () => {
     const previous = existingRow();
-    const previousExpiry = previous.grantedUntil as Date; // 2026-12-06T00:00Z
+    const previousExpiry = previous.grantedUntil as Date; // 2026-12-06 23:59:59.999 KST
     const { deps, rows, expiries } = createFakeDeps({
       existing: [previous],
       playPurchase: purchase({ productId: P4900 }),
@@ -488,7 +494,7 @@ describe('verifyPurchase', () => {
 
     const result = await verifyPurchase(deps, { ...input, productId: P4900 });
 
-    const expectedExpiry = new Date(previousExpiry.getTime() + 35 * DAY_MS);
+    const expectedExpiry = eod(new Date(previousExpiry.getTime() + 35 * DAY_MS));
     expect(result).toEqual({ status: 'granted', passExpiresAt: expectedExpiry.toISOString() });
     expect(expiries.get(UID)).toEqual(expectedExpiry);
     const inserted = rows.find((r) => r.purchaseToken === TOKEN);
@@ -506,7 +512,7 @@ describe('verifyPurchase', () => {
     const result = await verifyPurchase(deps, input);
 
     expect(result.status).toBe('granted');
-    expect(expiries.get(UID)).toEqual(new Date(IN_EARLY1.getTime() + 35 * DAY_MS));
+    expect(expiries.get(UID)).toEqual(eod(new Date(IN_EARLY1.getTime() + 35 * DAY_MS)));
     expect(errorSpy).toHaveBeenCalled();
     errorSpy.mockRestore();
   });
@@ -530,7 +536,7 @@ describe('verifyPurchase', () => {
 
     const retry = await verifyPurchase(deps, input);
 
-    const expectedExpiry = new Date(IN_EARLY1.getTime() + 35 * DAY_MS);
+    const expectedExpiry = eod(new Date(IN_EARLY1.getTime() + 35 * DAY_MS));
     expect(retry).toEqual({
       status: 'already_processed',
       passExpiresAt: expectedExpiry.toISOString(),
@@ -541,14 +547,14 @@ describe('verifyPurchase', () => {
 
   it('동시 구매에서 오래된 짧은 만료일이 저장된 긴 만료일을 줄이지 않는다', async () => {
     // 다른 요청(B)이 먼저 더 긴 만료일을 기록해 둔 상태에서, A는 B를 못 본 목록으로 계산한다
-    const longer = new Date(IN_EARLY1.getTime() + 70 * DAY_MS);
+    const longer = eod(new Date(IN_EARLY1.getTime() + 70 * DAY_MS));
     const { deps, expiries } = createFakeDeps({ storedExpiry: longer });
 
     const result = await verifyPurchase(deps, input);
 
     expect(deps.raisePassExpiry).toHaveBeenCalledWith(
       UID,
-      new Date(IN_EARLY1.getTime() + 35 * DAY_MS)
+      eod(new Date(IN_EARLY1.getTime() + 35 * DAY_MS))
     );
     expect(result).toEqual({ status: 'granted', passExpiresAt: longer.toISOString() });
     expect(expiries.get(UID)).toEqual(longer);
@@ -746,7 +752,7 @@ describe('verifyPurchase: 첫 구매 할인 (운영자 결정 2026-11-01)', () =
   });
 
   it('구매 시각이 더 이른 할인 구매가 나중에 검증되면 그것을 환불하고, 이미 지급한 구매는 그대로 둔다', async () => {
-    const grantedUntil = new Date(later.getTime() + 35 * DAY_MS);
+    const grantedUntil = eod(new Date(later.getTime() + 35 * DAY_MS));
     const { deps, play, rows, expiries } = createFakeDeps({
       existing: [
         existingRow({
