@@ -18,8 +18,10 @@ export interface PassOption {
   recommended: boolean;
 }
 
-// 한 주 더 하기로 늘어나는 횟수 상한 (서버 _shared/pass.ts FIVE_WEEK_MAX_EXTENSIONS와 같은 값)
-const FIVE_WEEK_MAX_EXTENSIONS = 2;
+// 한 주 더 하기로 늘어나는 횟수 상한. 앱은 서버 코드를 import하지 않으므로 같은 값을 세 곳에 둔다:
+// 여기, 서버 supabase/functions/_shared/pass.ts FIVE_WEEK_MAX_EXTENSIONS, DB 함수 extend_pass_for_week_repeat
+// (migrations/20261031010000). 앱과 서버 값은 utils/passOptions.serverCopy.test.ts가 같은지 확인한다
+export const FIVE_WEEK_MAX_EXTENSIONS = 2;
 
 // 프로그램이 한 주쯤 남은 4주차부터(유지기 포함)는 1주 패스를 추천한다 (운영자 결정 2026-10-31)
 const WEEK_PASS_RECOMMENDED_FROM_WEEK = 4;

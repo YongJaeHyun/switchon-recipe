@@ -21,7 +21,8 @@ export const WEEK_PASS_PRODUCT = {
 
 // 한 주 더 하기 한 번에 늘어나는 패스 일수 (pass_extension 한 행 = 7일, extend_pass_for_week_repeat와 같은 값)
 export const PASS_EXTENSION_DAYS = 7;
-// 구매 하나로 받을 수 있는 한 주 더 하기 연장 횟수 (운영자 결정 2026-10-31). DB 함수와 같은 값
+// 구매 하나로 받을 수 있는 한 주 더 하기 연장 횟수 (운영자 결정 2026-10-31). DB 함수와 같은 값.
+// 앱 안내 문구용 복사본: utils/passOptions.ts FIVE_WEEK_MAX_EXTENSIONS (utils/passOptions.serverCopy.test.ts로 확인)
 export const FIVE_WEEK_MAX_EXTENSIONS = 2;
 export const WEEK_PASS_MAX_EXTENSIONS = 0;
 
