@@ -8,7 +8,9 @@ import { Switch, View } from 'react-native';
 import { useMealAlarmStore } from 'stores/mealAlarmStore';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
+import { getKoreanDateString } from 'utils/date';
 import { formatMinutes } from 'utils/fastingSchedule';
+import { mealAlarmNote } from 'utils/mealAlarms';
 import {
   MEAL_HOUR_RANGES,
   MEAL_KEYS,
@@ -26,6 +28,8 @@ export function MealAlarmSetting() {
   const times = useMealAlarmStore((state) => state.times);
   const setOn = useMealAlarmStore((state) => state.setOn);
   const setTime = useMealAlarmStore((state) => state.setTime);
+  const startDate = useUserStore((state) => state.start_date);
+  const note = mealAlarmNote(startDate, getKoreanDateString({ formatType: 'date' }));
   const [editing, setEditing] = useState<MealKey | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -68,7 +72,7 @@ export function MealAlarmSetting() {
         />
       </View>
       <Text className="mt-1 text-sm text-neutral-500">
-        1주차 동안 끼니 시간에 알려드려요. 끼니 30분 뒤는 단식 ‘식후’ 시각이 돼요.
+        {note} 끼니 30분 뒤는 단식 ‘식후’ 시각이 돼요.
       </Text>
 
       <View className="mt-3 flex-row gap-2">

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { checksForSettingSync, mealAlarmBody, mealAlarms } from './mealAlarms';
+import { checksForSettingSync, mealAlarmBody, mealAlarmNote, mealAlarms } from './mealAlarms';
 import { DEFAULT_MEAL_MINUTES } from './mealTimes';
 
 const kst = (iso: string) => new Date(`${iso}+09:00`);
@@ -129,5 +129,21 @@ describe('checksForSettingSync (리뷰 M2: 내 정보에서 바로 맞출 때 �
     expect(checksForSettingSync({ ...current, cached: undefined })).toEqual([]);
     expect(checksForSettingSync({ ...current, storeDay: 1, cached: [0] })).toEqual([]);
     expect(checksForSettingSync({ ...current, storeWeek: 2, cached: [0] })).toEqual([]);
+  });
+});
+
+describe('mealAlarmNote (내 정보 끼니 알림 설명)', () => {
+  const today = '2026-10-31';
+
+  it('1주차·시작 전·시작일 모름이면 1주차 동안 알린다', () => {
+    expect(mealAlarmNote('2026-10-28', today)).toBe('1주차 동안 끼니 시간에 알려드려요.');
+    expect(mealAlarmNote('2026-11-01', today)).toBe('1주차 동안 끼니 시간에 알려드려요.');
+    expect(mealAlarmNote('', today)).toBe('1주차 동안 끼니 시간에 알려드려요.');
+    expect(mealAlarmNote(null, today)).toBe('1주차 동안 끼니 시간에 알려드려요.');
+  });
+
+  it('1주차가 지났으면 지금은 울리지 않는다고 알린다', () => {
+    expect(mealAlarmNote('2026-10-24', today)).toBe('1주차에만 알려드려요. 지금은 울리지 않아요.');
+    expect(mealAlarmNote('2026-10-07', today)).toBe('1주차에만 알려드려요. 지금은 울리지 않아요.');
   });
 });

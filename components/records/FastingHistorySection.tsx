@@ -13,7 +13,7 @@ import colors from 'tailwindcss/colors';
 import { fastingHistoryLabel, fastingResultLabel } from 'utils/fastingEarlyEnd';
 import { getKoreanDateString } from 'utils/date';
 import { formatHistoryDay, type FastingHistoryItem } from 'utils/fastingHistory';
-import { getWeekColorHex } from 'utils/getWeekColor';
+import { getWeekInkHex } from 'utils/getWeekColor';
 import { requireOnline } from 'utils/network';
 import { formatProgramStart } from 'utils/reportDisplay';
 import { showSuccessToast } from 'utils/showToast';
@@ -35,7 +35,7 @@ const HistoryRow = ({
     <Text className="flex-1 text-neutral-800">
       <Text className="font-bold">{formatHistoryDay(item.day, today)}</Text>
       <Text className="text-neutral-400"> · </Text>
-      <Text className="font-bold" style={{ color: getWeekColorHex(item.weekIndex) }}>
+      <Text className="font-bold" style={{ color: getWeekInkHex(item.weekIndex) }}>
         {item.weekIndex}주차
       </Text>
     </Text>

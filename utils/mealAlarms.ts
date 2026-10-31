@@ -1,6 +1,7 @@
 // 1주차 끼니 시간 알림 계산 (순수). 예약·취소는 utils/notifications의 syncMealAlarms
 import { BASE_TODOS } from 'const/baseTodos';
 import { MEAL_KEYS, type MealKey, type MealTimes } from './mealTimes';
+import { programWeekAndDay } from './programStart';
 
 const MINUTE_MS = 60 * 1000;
 const DAY_MS = 24 * 60 * MINUTE_MS;
@@ -81,4 +82,14 @@ export function checksForSettingSync(input: {
   const { beforeStart, week, day, storeWeek, storeDay, cached } = input;
   if (beforeStart || !cached) return [];
   return week === storeWeek && day === storeDay ? cached : [];
+}
+
+// 내 정보 끼니 알림 설명 첫 문장. 1주차가 지났으면 켜 있어도 울리지 않는다고 알린다
+// (시작 전·1주차·시작일 모름은 1주차 동안 알림)
+export function mealAlarmNote(startDate: string | null | undefined, todayKst: string): string {
+  if (startDate) {
+    const { week, beforeStart } = programWeekAndDay(startDate, todayKst);
+    if (!beforeStart && week > 1) return '1주차에만 알려드려요. 지금은 울리지 않아요.';
+  }
+  return '1주차 동안 끼니 시간에 알려드려요.';
 }
