@@ -40,7 +40,7 @@ export function CreateRecipeSuggestion({ keyword, filter }: CreateRecipeSuggesti
               accessibilityRole="button"
               onPress={() => open(type)}>
               <View className={`h-2 w-2 rounded-full ${style.dot}`} />
-              <Text className={`font-bold ${style.badgeText}`}>{style.label}으로 만들기</Text>
+              <Text className={`font-bold ${style.badgeText}`}>{style.label}로 만들기</Text>
             </RippleButton>
           );
         })}

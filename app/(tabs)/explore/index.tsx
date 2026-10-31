@@ -10,6 +10,7 @@ import { RECIPE_FILTERS, RecipeFilterType } from 'const/filter';
 import { RECIPE_SORTS, RecipeSortType } from 'const/sort';
 import { Link } from 'expo-router';
 import { useInfiniteRecipeCards } from 'hooks/useInfiniteRecipes';
+import { flattenRecipePages } from 'utils/recipePages';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import colors from 'tailwindcss/colors';
@@ -35,9 +36,17 @@ export default function ExploreScreen() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    refetch,
   } = useInfiniteRecipeCards({ week, sortType: sort, filterType: filter });
+  // 목록은 5분 동안 다시 받지 않으므로(useInfiniteRecipeCards), 새 레시피는 당겨서 새로고침으로 본다
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  };
 
-  const flattenedRecipes = useMemo(() => recipes?.pages.flatMap((page) => page) ?? [], [recipes]);
+  const flattenedRecipes = useMemo(() => flattenRecipePages(recipes?.pages), [recipes]);
 
   return (
     <SafeAreaViewWithNav className="flex-1 bg-neutral-50">
@@ -65,7 +74,8 @@ export default function ExploreScreen() {
       </View>
 
       {isLoading ? (
-        <View className="absolute inset-0 z-50 items-center justify-center">
+        // 화면 전체를 덮는 로딩 표시라 터치를 막지 않게 한다 (로딩 중에도 검색창·탭·필터를 누를 수 있게)
+        <View pointerEvents="none" className="absolute inset-0 z-50 items-center justify-center">
           <ActivityIndicator size={56} color={colors.emerald[300]} />
         </View>
       ) : (
@@ -73,6 +83,8 @@ export default function ExploreScreen() {
           contentContainerStyle={{ padding: 20 }}
           ItemSeparatorComponent={() => <View style={{ height: 20 }} />}
           data={flattenedRecipes}
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
           ListFooterComponent={
             isFetchingNextPage ? <ActivityIndicator size={32} color={colors.emerald[300]} /> : null
           }
