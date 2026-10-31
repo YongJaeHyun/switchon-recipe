@@ -7,6 +7,8 @@ import {
   dismissRecipeJob,
   finishRecipeJob,
   isRecipeJobBandHidden,
+  recipeJobProgress,
+  recipeJobRemainingText,
   resetRecipeJob,
   shouldOpenOnDone,
   startRecipeJob,
@@ -255,5 +257,50 @@ describe('isRecipeJobBandHidden', () => {
     expect(isRecipeJobBandHidden(['recipeCreation', 'low'])).toBe(false);
     expect(isRecipeJobBandHidden(['recipeDetail'])).toBe(false);
     expect(isRecipeJobBandHidden(['(inquiry)'])).toBe(false);
+  });
+});
+
+describe('recipeJobProgress (만드는 중 막대)', () => {
+  it('0에서 시작해 예상 시간(30초)까지 천천히 차오르고 90%에서 멈춘다', () => {
+    expect(recipeJobProgress(0)).toBe(0);
+    const at10 = recipeJobProgress(10_000);
+    const at20 = recipeJobProgress(20_000);
+    expect(at10).toBeGreaterThan(0);
+    expect(at20).toBeGreaterThan(at10);
+    // 처음이 빠르고 끝이 느리다
+    expect(at10).toBeGreaterThan(at20 - at10);
+    expect(recipeJobProgress(30_000)).toBeCloseTo(0.9);
+    expect(recipeJobProgress(90_000)).toBeCloseTo(0.9);
+  });
+
+  it('음수·이상한 값은 0', () => {
+    expect(recipeJobProgress(-5)).toBe(0);
+    expect(recipeJobProgress(Number.NaN)).toBe(0);
+  });
+});
+
+describe('recipeJobRemainingText', () => {
+  it('남은 시간은 5초 단위로 올려 "약 N초 남음"', () => {
+    expect(recipeJobRemainingText(0)).toBe('약 30초 남음');
+    expect(recipeJobRemainingText(1_000)).toBe('약 30초 남음');
+    expect(recipeJobRemainingText(6_000)).toBe('약 25초 남음');
+    expect(recipeJobRemainingText(26_000)).toBe('약 5초 남음');
+  });
+
+  it('예상 시간을 넘기면 "거의 다 됐어요"', () => {
+    expect(recipeJobRemainingText(30_000)).toBe('거의 다 됐어요');
+    expect(recipeJobRemainingText(80_000)).toBe('거의 다 됐어요');
+  });
+});
+
+describe('startedAt', () => {
+  it('running에 시작 시각을 남긴다', () => {
+    const started = startRecipeJob(initialRecipeJobState, {
+      label: 'a',
+      origin: 'o',
+      input: {},
+      startedAt: 1234,
+    });
+    expect(started?.state.job).toMatchObject({ phase: 'running', startedAt: 1234 });
   });
 });

@@ -3,6 +3,7 @@ import { createRecipe } from 'api/gemini';
 import { QueryKey } from 'const/queryKey';
 import { router } from 'expo-router';
 import { queryClient } from 'lib/queryClient';
+import { Vibration } from 'react-native';
 import { useRecipeByNameSheetStore } from 'stores/recipeByNameSheetStore';
 import { useRecipeJobStore } from 'stores/recipeJobStore';
 import type { RecipeDB } from 'types/database';
@@ -125,6 +126,15 @@ export const runRecipeJob = (input: RecipeJobInput, meta: RecipeJobMeta): boolea
     if (store.job.phase !== 'running' || store.job.id !== id) return;
     clearWatchdog();
     store.finish(id, result);
+    // 완성되면 짧게 한 번 진동 (기본 Vibration API: 네이티브 모듈 없이 OTA로 나간다)
+    // (VIBRATE 권한은 Expo 기본 매니페스트에 있다. 혹시 없더라도 띠는 그대로 뜨게 감싼다)
+    if (result.type === 'done') {
+      try {
+        Vibration.vibrate(40);
+      } catch {
+        // 진동을 못 해도 괜찮다
+      }
+    }
     const after = useRecipeJobStore.getState();
     if (after.job.phase === 'done' && shouldOpenOnDone(after, after.focusedOrigins)) {
       const { recipe } = after.job;
