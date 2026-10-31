@@ -38,6 +38,8 @@ export const getTodoRatesByWeeks = async () =>
 const upsert = async (todoRate: number) =>
   sendError<StatisticsDB | null>(async () => {
     const userId = useUserStore.getState().id;
+    // 사용자 정보를 불러오기 전(uid 없음)에는 보내지 않는다
+    if (!userId) return null;
     const startDate = useUserStore.getState().start_date;
     const { week, day, beforeStart } = programWeekAndDay(
       startDate,
@@ -61,6 +63,7 @@ const upsert = async (todoRate: number) =>
 const deleteFrom = async (week: number, day: number) =>
   sendError(async () => {
     const userId = useUserStore.getState().id;
+    if (!userId) return false;
 
     const { error } = await supabase
       .from('statistics')

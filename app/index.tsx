@@ -6,7 +6,9 @@ import { Redirect, SplashScreen, useRootNavigationState } from 'expo-router';
 import { prefetchIngredients } from 'hooks/useIngredients';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
 import { useEffect, useState } from 'react';
+import { useNotificationGateStore } from 'stores/notificationGateStore';
 import { useUserStore } from 'stores/userStore';
+import { startupPhase } from 'utils/notificationGate';
 import { isOnline } from 'utils/network';
 import { withTimeout } from 'utils/withTimeout';
 
@@ -33,6 +35,7 @@ export default function Index() {
       if (!value) {
         setIsFirstLaunch(true);
       }
+      return !value;
     };
 
     const checkCurrentLogin = async () => {
@@ -46,6 +49,7 @@ export default function Index() {
           INGREDIENT_PREFETCH_TIMEOUT_MS
         ).catch((error) => console.error('[prefetchSelectedIngredients]', error));
       }
+      return !!isLoggedIn;
     };
 
     const preloadIngredients = async () => {
@@ -65,8 +69,17 @@ export default function Index() {
     };
 
     const init = async () => {
-      await checkFirstLaunch();
-      await checkCurrentLogin();
+      const isFirstLaunch = await checkFirstLaunch();
+      const isLoggedIn = await checkCurrentLogin();
+      // 탭으로 가지 않으면 눌러 연 알림의 이동은 버린다 (탭으로 가면 탭이 뜬 뒤 이동: useNotificationObserver)
+      if (
+        startupPhase({
+          isFirstLaunch,
+          isLoggedIn,
+          isOnboarded: useUserStore.getState().is_onboarded,
+        }) === 'outside'
+      )
+        useNotificationGateStore.getState().setPhase('outside');
       await preloadIngredients();
 
       SplashScreen.hideAsync();
