@@ -1,6 +1,6 @@
 import type { KakaoFeedTemplate, KakaoTemplateLink } from '@react-native-kakao/share';
 import { STORE_URL } from 'const/const';
-import { shareImageUrl } from 'const/kakaoTemplates';
+import { SHARE_IMAGE_SIZE, shareImageUrl } from 'const/kakaoTemplates';
 import type { Nullable } from 'types/common';
 import type { FoodCheckRecord } from 'types/foodCheck';
 import type { CompletionCalendar } from './completionCalendar';
@@ -268,6 +268,9 @@ export function feedTemplate(message: KakaoShareMessage): KakaoFeedTemplate {
       title: message.title,
       description: message.description,
       imageUrl: message.imageUrl,
+      // 공유 이미지(shareImageUrl)는 모두 800×400. 크기를 알려 줘야 카톡이 정사각형으로 잘라 보이지 않는다
+      imageWidth: SHARE_IMAGE_SIZE.width,
+      imageHeight: SHARE_IMAGE_SIZE.height,
       link,
     },
     buttons: [{ title: message.buttonTitle, link }],
