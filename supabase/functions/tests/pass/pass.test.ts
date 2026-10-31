@@ -6,6 +6,7 @@ import {
   isFreeActive,
   isPurchaseEligible,
   PASS_DAYS,
+  PASS_EXTENSION_DAYS,
   PASS_PRODUCTS,
   passProductOf,
   tierOfProduct,
@@ -305,6 +306,57 @@ describe('computeExpiry: 상품별 일수', () => {
         purchase('2026-11-10T10:00:00Z', 'switchon_pass_1w_1500', 'voided'),
       ])?.getTime()
     ).toBe(at('2026-11-01T10:00:00Z') + 35 * DAY);
+  });
+});
+
+describe('computeExpiry: 한 주 더 하기 연장', () => {
+  const p = (purchasedAt: string, status: PurchaseForExpiry['status'] = 'granted') => ({
+    productId: 'switchon_pass_5w_4900',
+    purchasedAt: new Date(purchasedAt),
+    status,
+  });
+  const ext = (extendedAt: string) => ({ extendedAt: new Date(extendedAt) });
+  const at = (iso: string) => new Date(iso).getTime();
+
+  it('PASS_EXTENSION_DAYS는 7일', () => {
+    expect(PASS_EXTENSION_DAYS).toBe(7);
+  });
+
+  it('패스 기간 중 연장: 만료일 +7일', () => {
+    expect(
+      computeExpiry([p('2026-11-01T10:00:00Z')], [ext('2026-11-20T00:00:00Z')])?.getTime()
+    ).toBe(at('2026-11-01T10:00:00Z') + 42 * DAY);
+  });
+
+  it('연장 뒤 새 구매: 연장된 만료일 뒤에 이어 붙인다 (연장분이 사라지지 않음)', () => {
+    expect(
+      computeExpiry(
+        [p('2026-11-01T10:00:00Z'), p('2026-11-25T10:00:00Z')],
+        [ext('2026-11-20T00:00:00Z')]
+      )?.getTime()
+    ).toBe(at('2026-11-01T10:00:00Z') + 77 * DAY);
+  });
+
+  it('연장 시각에 패스가 끝나 있었으면(환불로 앞 구매가 빠짐 등) 연장은 반영하지 않는다', () => {
+    expect(
+      computeExpiry([p('2026-11-01T10:00:00Z')], [ext('2026-12-20T00:00:00Z')])?.getTime()
+    ).toBe(at('2026-11-01T10:00:00Z') + 35 * DAY);
+    expect(
+      computeExpiry([p('2026-11-01T10:00:00Z', 'voided')], [ext('2026-11-20T00:00:00Z')])
+    ).toBeNull();
+  });
+
+  it('연장 후 구매가 환불돼도 남은 구매 기간 안의 연장은 유지', () => {
+    expect(
+      computeExpiry(
+        [p('2026-11-01T10:00:00Z'), p('2026-11-10T10:00:00Z', 'voided')],
+        [ext('2026-11-20T00:00:00Z'), ext('2026-11-27T00:00:00Z')]
+      )?.getTime()
+    ).toBe(at('2026-11-01T10:00:00Z') + 49 * DAY);
+  });
+
+  it('연장만 있고 구매가 없으면 null', () => {
+    expect(computeExpiry([], [ext('2026-11-20T00:00:00Z')])).toBeNull();
   });
 });
 

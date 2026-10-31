@@ -48,7 +48,7 @@ export function WeekRepeatStep({ week, onNext, onRepeated, onBusyChange }: WeekR
     setFrozenAdvice(advice);
     let ok = false;
     try {
-      ok = await repeatWeek();
+      ok = (await repeatWeek()).ok;
     } finally {
       setIsRepeating(false);
       onBusyChange(false);

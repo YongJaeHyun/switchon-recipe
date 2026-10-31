@@ -349,6 +349,32 @@ export type Database = {
           },
         ];
       };
+      pass_extension: {
+        Row: {
+          extended_at: string;
+          new_start_date: string;
+          uid: string;
+        };
+        Insert: {
+          extended_at?: string;
+          new_start_date: string;
+          uid: string;
+        };
+        Update: {
+          extended_at?: string;
+          new_start_date?: string;
+          uid?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'pass_extension_uid_fkey';
+            columns: ['uid'];
+            isOneToOne: false;
+            referencedRelation: 'user';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       pass_purchase: {
         Row: {
           created_at: string;
@@ -1074,6 +1100,10 @@ export type Database = {
       };
     };
     Functions: {
+      extend_pass_for_week_repeat: {
+        Args: { p_new_start: string };
+        Returns: string;
+      };
       get_recent_keywords: {
         Args: { uid_input: string };
         Returns: {

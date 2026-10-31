@@ -20,7 +20,11 @@ const voided = (overrides: Partial<VoidedPurchase> = {}): VoidedPurchase => ({
   ...overrides,
 });
 
-const createFakeDeps = (rows: Row[], voidedPurchases: VoidedPurchase[]) => {
+const createFakeDeps = (
+  rows: Row[],
+  voidedPurchases: VoidedPurchase[],
+  extensions: { uid: string; extendedAt: Date }[] = []
+) => {
   const expiries = new Map<string, Date | null>();
 
   const deps: VoidedDeps = {
@@ -48,6 +52,10 @@ const createFakeDeps = (rows: Row[], voidedPurchases: VoidedPurchase[]) => {
         }))
     ),
 
+    listUserExtensions: vi.fn(async (uid: string) =>
+      extensions.filter((e) => e.uid === uid).map((e) => ({ extendedAt: e.extendedAt }))
+    ),
+
     setPassExpiry: vi.fn(async (uid: string, expiresAt: Date | null) => {
       expiries.set(uid, expiresAt);
     }),
@@ -55,6 +63,46 @@ const createFakeDeps = (rows: Row[], voidedPurchases: VoidedPurchase[]) => {
 
   return { deps, rows, expiries };
 };
+
+describe('syncVoided: 한 주 더 하기 연장', () => {
+  const DAY = 24 * 60 * 60 * 1000;
+  const p1 = new Date('2026-11-01T00:00:00.000Z');
+
+  it('다른 구매가 환불돼도 남은 패스 기간 안의 연장 7일은 그대로 둔다', async () => {
+    const rows: Row[] = [
+      { purchaseToken: 't1', uid: 'u1', status: 'granted', purchasedAt: p1 },
+      {
+        purchaseToken: 't2',
+        uid: 'u1',
+        status: 'granted',
+        purchasedAt: new Date('2026-11-25T00:00:00.000Z'),
+        productId: 'switchon_pass_1w_1500',
+      },
+    ];
+    const { deps, expiries } = createFakeDeps(
+      rows,
+      [voided({ purchaseToken: 't2' })],
+      [{ uid: 'u1', extendedAt: new Date('2026-11-20T00:00:00.000Z') }]
+    );
+
+    await syncVoided(deps, SINCE);
+
+    expect(expiries.get('u1')).toEqual(new Date(p1.getTime() + 42 * DAY));
+  });
+
+  it('연장의 바탕이 된 구매가 환불되면 연장도 없어진다', async () => {
+    const rows: Row[] = [{ purchaseToken: 't1', uid: 'u1', status: 'granted', purchasedAt: p1 }];
+    const { deps, expiries } = createFakeDeps(
+      rows,
+      [voided({ purchaseToken: 't1' })],
+      [{ uid: 'u1', extendedAt: new Date('2026-11-20T00:00:00.000Z') }]
+    );
+
+    await syncVoided(deps, SINCE);
+
+    expect(expiries.get('u1')).toBeNull();
+  });
+});
 
 describe('syncVoided', () => {
   it('1주 패스가 환불되면 그 7일만 빠진다 (5주 패스는 35일 그대로)', async () => {

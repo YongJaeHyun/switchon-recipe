@@ -4,7 +4,7 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getUid, requireEnv } from '../_shared/auth.ts';
 import { createGooglePlayClient, parseServiceAccount } from '../_shared/googlePlay.ts';
-import type { PurchaseForExpiry } from '../_shared/pass.ts';
+import type { ExtensionForExpiry, PurchaseForExpiry } from '../_shared/pass.ts';
 import { type PurchaseRow, type VerifyDeps, verifyPurchase } from './handler.ts';
 
 const UNIQUE_VIOLATION = '23505';
@@ -64,6 +64,15 @@ const deps = (): VerifyDeps => ({
         status: row.status,
       })
     );
+  },
+
+  async listUserExtensions(uid: string): Promise<ExtensionForExpiry[]> {
+    const { data, error } = await supabase
+      .from('pass_extension')
+      .select('extended_at')
+      .eq('uid', uid);
+    if (error) throw error;
+    return data.map((row: { extended_at: string }) => ({ extendedAt: new Date(row.extended_at) }));
   },
 
   async insertPurchase(row: PurchaseRow) {

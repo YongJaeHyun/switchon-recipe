@@ -40,6 +40,7 @@ const createFakeDeps = (
     raiseError?: Error; // 첫 raisePassExpiry 호출만 실패
     storedExpiry?: Date; // user_pass에 이미 저장된 만료일
     now?: Date;
+    extensions?: Date[]; // 한 주 더 하기 연장 시각 (pass_extension.extended_at)
   } = {}
 ) => {
   const rows: PurchaseRow[] = [...(options.existing ?? [])];
@@ -66,6 +67,9 @@ const createFakeDeps = (
       rows
         .filter((r) => r.uid === uid)
         .map((r) => ({ productId: r.productId, purchasedAt: r.purchasedAt, status: r.status }))
+    ),
+    listUserExtensions: vi.fn(async (_uid: string) =>
+      (options.extensions ?? []).map((extendedAt) => ({ extendedAt }))
     ),
     insertPurchase: vi.fn(async (row: PurchaseRow) => {
       if (options.insertResult === 'duplicate') return 'duplicate' as const;
@@ -164,6 +168,44 @@ describe('verifyPurchase: 1주 패스', () => {
 
     expect((await verifyPurchase(deps, weekInput)).status).toBe('granted');
     expect(play.refundOrder).not.toHaveBeenCalled();
+  });
+});
+
+describe('verifyPurchase: 한 주 더 하기 연장', () => {
+  const p1 = new Date('2026-11-01T00:00:00.000Z');
+  const extendedAt = new Date('2026-11-20T00:00:00.000Z');
+  const later = new Date('2026-11-25T00:00:00.000Z');
+
+  it('연장된 패스 중 새로 사면 연장분 뒤에 이어 붙인다 (연장 7일이 사라지지 않음)', async () => {
+    const { deps, rows } = createFakeDeps({
+      existing: [existingRow({ purchasedAt: p1 })],
+      extensions: [extendedAt],
+      storedExpiry: new Date(p1.getTime() + 42 * DAY_MS), // DB 함수가 이미 +7일
+      playPurchase: purchase({ productId: P4900, purchaseTimeMillis: String(later.getTime()) }),
+      now: later,
+    });
+
+    const result = await verifyPurchase(deps, { ...input, productId: P4900 });
+
+    const expected = new Date(p1.getTime() + 77 * DAY_MS);
+    expect(result).toEqual({ status: 'granted', passExpiresAt: expected.toISOString() });
+    expect(rows[1]).toMatchObject({
+      grantedFrom: new Date(p1.getTime() + 42 * DAY_MS),
+      grantedUntil: expected,
+    });
+    expect(deps.listUserExtensions).toHaveBeenCalledWith(UID);
+  });
+
+  it('already_processed 복구도 연장을 반영한 만료일로 맞춘다', async () => {
+    const { deps } = createFakeDeps({
+      existing: [existingRow({ purchaseToken: TOKEN, purchasedAt: p1 })],
+      extensions: [extendedAt],
+    });
+
+    expect(await verifyPurchase(deps, input)).toEqual({
+      status: 'already_processed',
+      passExpiresAt: new Date(p1.getTime() + 42 * DAY_MS).toISOString(),
+    });
   });
 });
 

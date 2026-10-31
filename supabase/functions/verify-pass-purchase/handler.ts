@@ -4,6 +4,7 @@
 import type { createGooglePlayClient, ProductPurchase } from '../_shared/googlePlay.ts';
 import {
   computeExpiry,
+  type ExtensionForExpiry,
   isPurchaseEligible,
   passProductOf,
   type PremiumSetting,
@@ -40,6 +41,8 @@ export interface VerifyDeps {
   // 이미 기록된 구매. uid는 탈퇴(on delete set null)면 null
   findPurchase(token: string): Promise<{ status: string; uid: string | null } | null>;
   listUserPurchases(uid: string): Promise<PurchaseForExpiry[]>;
+  // 한 주 더 하기 연장 기록 (pass_extension). 만료일을 다시 계산할 때 구매와 함께 쌓는다
+  listUserExtensions(uid: string): Promise<ExtensionForExpiry[]>;
   insertPurchase(row: PurchaseRow): Promise<'inserted' | 'duplicate'>; // unique 위반이면 'duplicate'
   // user_pass 만료일을 greatest(기존, expiresAt)로 올리고 저장된 값을 돌려준다 (줄이지 않음)
   raisePassExpiry(uid: string, expiresAt: Date): Promise<Date>;
@@ -57,7 +60,11 @@ export interface VerifyInput {
 
 // 전체 구매로 만료일을 다시 계산해 user_pass에 반영한다 (동시 요청이 짧은 값으로 덮어쓰지 못하게 raise만 한다)
 const syncPassExpiry = async (deps: VerifyDeps, uid: string): Promise<Date | null> => {
-  const expiry = computeExpiry(await deps.listUserPurchases(uid));
+  const [purchases, extensions] = await Promise.all([
+    deps.listUserPurchases(uid),
+    deps.listUserExtensions(uid),
+  ]);
+  const expiry = computeExpiry(purchases, extensions);
   return expiry ? deps.raisePassExpiry(uid, expiry) : null;
 };
 
@@ -89,18 +96,21 @@ const isValidPurchase = (purchase: ProductPurchase, input: VerifyInput) =>
   purchase.obfuscatedExternalAccountId === input.uid &&
   (purchase.productId === undefined || purchase.productId === input.productId);
 
-// 이 구매가 더해 주는 구간: 이 구매 이전의 granted 구매로 만든 만료일 뒤에 상품 일수만큼 이어 붙인다
+// 이 구매가 더해 주는 구간: 이 구매 이전의 granted 구매·연장으로 만든 만료일 뒤에 상품 일수만큼 이어 붙인다
 const grantedInterval = (
   existing: PurchaseForExpiry[],
+  extensions: ExtensionForExpiry[],
   productId: string,
   days: number,
   purchasedAt: Date
 ) => {
-  const before = existing.filter((p) => p.purchasedAt.getTime() <= purchasedAt.getTime());
-  const grantedUntil = computeExpiry([
-    ...before,
-    { productId, purchasedAt, status: 'granted' },
-  ]) as Date;
+  const t = purchasedAt.getTime();
+  const before = existing.filter((p) => p.purchasedAt.getTime() <= t);
+  const extensionsBefore = extensions.filter((e) => e.extendedAt.getTime() < t);
+  const grantedUntil = computeExpiry(
+    [...before, { productId, purchasedAt, status: 'granted' }],
+    extensionsBefore
+  ) as Date;
   const grantedFrom = new Date(grantedUntil.getTime() - days * DAY_MS);
   return { grantedFrom, grantedUntil };
 };
@@ -146,8 +156,13 @@ export async function verifyPurchase(deps: VerifyDeps, input: VerifyInput): Prom
     return { status: 'price_changed' };
   }
 
+  const [existing, extensions] = await Promise.all([
+    deps.listUserPurchases(input.uid),
+    deps.listUserExtensions(input.uid),
+  ]);
   const { grantedFrom, grantedUntil } = grantedInterval(
-    await deps.listUserPurchases(input.uid),
+    existing,
+    extensions,
     input.productId,
     product.days,
     purchasedAt

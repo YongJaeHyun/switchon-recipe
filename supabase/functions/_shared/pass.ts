@@ -19,6 +19,9 @@ export const WEEK_PASS_PRODUCT = {
   days: 7,
 } as const;
 
+// 한 주 더 하기 한 번에 늘어나는 패스 일수 (pass_extension 한 행 = 7일, extend_pass_for_week_repeat와 같은 값)
+export const PASS_EXTENSION_DAYS = 7;
+
 // 상품별 가격·부여 일수. 모르는 상품이면 null
 export function passProductOf(productId: string): { priceKrw: number; days: number } | null {
   if (productId === WEEK_PASS_PRODUCT.productId) {
@@ -49,6 +52,11 @@ export interface PurchaseForExpiry {
   productId: string;
   purchasedAt: Date;
   status: 'granted' | 'voided' | 'refunded_ineligible';
+}
+
+// 한 주 더 하기로 패스를 7일 늘린 기록 (pass_extension)
+export interface ExtensionForExpiry {
+  extendedAt: Date;
 }
 
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -208,22 +216,37 @@ export function isPurchaseEligible(
   return t >= start.getTime() && t < end.getTime() + GRACE_MS;
 }
 
-// granted 구매를 시간 순으로 쌓아 만료일을 만든다: 그때 만료일이 남아 있으면 그 뒤에, 아니면 구매 시각부터 상품 일수만큼
-export function computeExpiry(purchases: PurchaseForExpiry[]): Date | null {
-  const granted = purchases
-    .filter((p) => p.status === 'granted')
-    .sort((a, b) => a.purchasedAt.getTime() - b.purchasedAt.getTime());
+// granted 구매와 한 주 더 하기 연장을 시간 순으로 쌓아 만료일을 만든다.
+// - 구매: 그때 만료일이 남아 있으면 그 뒤에, 아니면 구매 시각부터 상품 일수만큼
+// - 연장: 그때 패스가 남아 있었을 때만 +7일 (DB 함수도 활성 패스만 늘린다). 환불로 앞 구매가 빠져
+//   그 시각에 패스가 없었던 셈이 되면 연장도 반영하지 않는다
+// 같은 시각이면 구매를 먼저 본다
+export function computeExpiry(
+  purchases: PurchaseForExpiry[],
+  extensions: ExtensionForExpiry[] = []
+): Date | null {
+  type Event = { at: number; order: number; days: number | null };
+  const events: Event[] = [
+    ...purchases
+      .filter((p) => p.status === 'granted')
+      .map((p) => ({
+        at: p.purchasedAt.getTime(),
+        order: 0,
+        // granted 행은 검증된 상품뿐이다. 혹시 모르는 상품이면 예전처럼 5주로 본다
+        days: passProductOf(p.productId)?.days ?? PASS_DAYS,
+      })),
+    ...extensions.map((e) => ({ at: e.extendedAt.getTime(), order: 1, days: null })),
+  ].sort((a, b) => a.at - b.at || a.order - b.order);
 
-  if (granted.length === 0) return null;
-
-  let expiry: Date | null = null;
-  for (const purchase of granted) {
-    const base: Date =
-      expiry && expiry.getTime() > purchase.purchasedAt.getTime() ? expiry : purchase.purchasedAt;
-    // granted 행은 검증된 상품뿐이다. 혹시 모르는 상품이면 예전처럼 5주로 본다
-    const days = passProductOf(purchase.productId)?.days ?? PASS_DAYS;
-    expiry = new Date(base.getTime() + days * DAY_MS);
+  let expiry: number | null = null;
+  for (const event of events) {
+    if (event.days === null) {
+      if (expiry !== null && expiry > event.at) expiry += PASS_EXTENSION_DAYS * DAY_MS;
+      continue;
+    }
+    const base: number = expiry !== null && expiry > event.at ? expiry : event.at;
+    expiry = base + event.days * DAY_MS;
   }
 
-  return expiry;
+  return expiry === null ? null : new Date(expiry);
 }

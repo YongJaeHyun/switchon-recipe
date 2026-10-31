@@ -352,6 +352,16 @@ describe('weekRepeatCopy (팝업 문구)', () => {
       subtitle: '시작일을 10월 8일로 옮겼어요',
     });
   });
+
+  it('패스도 늘었으면 토스트에 함께 말한다', () => {
+    expect(weekRepeatToast(3, '2026-10-08', { passExtended: true })).toEqual({
+      title: '3주차를 한 주 더 해요',
+      subtitle: '시작일을 10월 8일로 옮겼어요. 패스도 한 주 늘었어요',
+    });
+    expect(weekRepeatToast(3, '2026-10-08', { passExtended: false }).subtitle).toBe(
+      '시작일을 10월 8일로 옮겼어요'
+    );
+  });
 });
 
 describe('weekRepeatCopy 기록을 못 불러왔을 때', () => {
