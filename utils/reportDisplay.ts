@@ -232,6 +232,7 @@ export function toWeeklyReport(row: {
   start_date: string;
   week_index: number;
   display_week?: number | null; // 마이그레이션 전에는 칸이 없다
+  is_trial?: boolean | null; // 무료 체험 마이그레이션(20261031020000) 전에는 칸이 없다
   status: string;
   stats: unknown;
   content: unknown;
@@ -244,6 +245,7 @@ export function toWeeklyReport(row: {
     start_date: row.start_date,
     week_index: row.week_index,
     display_week: typeof row.display_week === 'number' ? row.display_week : null,
+    is_trial: row.is_trial === true,
     status,
     stats: parseReportStats(row.stats),
     content,
@@ -263,6 +265,30 @@ export function shouldShowReportPreview(
   billingAvailable: boolean | undefined
 ): boolean {
   return !!status && !status.hasAccess && isPassOnSale(status.sales, billingAvailable);
+}
+
+// 무료 1주차 리포트(패스 없이 사용자당 평생 한 번, 서버 generate-weekly-reports)를 알리는 주차 진입 팝업:
+// 2주차에 들어설 때 이번 회차(programStart = programStartOf, 모르면 null)의 표시 주차 1 무료 리포트.
+// 없으면(08:00 cron 전·패스 유저·이미 다른 회차에서 받음) null → 팝업은 기존대로
+export const TRIAL_REPORT_ENTRY_WEEK = 2;
+export function trialReportForWeekEntry<T extends DisplayWeekKey & { is_trial: boolean }>(
+  reports: T[],
+  enteringWeek: number,
+  programStart: string | null
+): T | null {
+  if (enteringWeek !== TRIAL_REPORT_ENTRY_WEEK || !programStart) return null;
+  const { current } = groupReportsByProgram(reports, programStart);
+  return current.find((r) => r.is_trial && reportDisplayWeek(r) === 1) ?? null;
+}
+
+// 리포트 상세 하단 "매주 받으려면 스위치온 패스": 무료 리포트이고 미리보기 카드와 같은 조건
+// (패스 없음, 판매 중. 상태를 모르면 숨김)
+export function shouldShowTrialPassCard(
+  report: Pick<WeeklyReport, 'is_trial'> | null,
+  status: PassStatus | undefined,
+  billingAvailable: boolean | undefined
+): boolean {
+  return !!report?.is_trial && shouldShowReportPreview(status, billingAvailable);
 }
 
 // 주간 리포트 알림의 이동 경로인지 (/report/{start_date}/{week_index})

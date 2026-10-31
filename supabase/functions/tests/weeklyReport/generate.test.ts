@@ -72,6 +72,9 @@ const makeDeps = (
       { id: 'e', start_date: null },
     ]),
     hasPremiumAccess: vi.fn(async (uid: string) => uid !== 'd'),
+    // 기본: 무료 리포트를 이미 썼다 (무료 체험 테스트에서 바꾼다)
+    claimFreeReport: vi.fn(async () => false),
+    releaseFreeReport: vi.fn(async () => {}),
     fetchReportPeriods: vi.fn(async (uid: string) =>
       db.reports
         .filter((r) => r.uid === uid)
@@ -999,5 +1002,189 @@ describe('handleGenerateWeeklyReports', () => {
     spy.mockRestore();
     expect(res.status).toBe(500);
     expect(await res.json()).toEqual({ error: 'internal error' });
+  });
+});
+
+describe('generateWeeklyReports: 1주차 리포트 한 번 무료 (패스 없음)', () => {
+  // TODAY 10-15: d(10-08 시작)는 2주차 1일차 → 1주차 리포트 대상, 패스 없음
+  const onlyD = () => vi.fn(async () => [{ id: 'd', start_date: '2026-10-08' }]);
+
+  it('무료 리포트를 아직 안 썼으면 1주차 리포트를 is_trial로 만들고 푸시한다', async () => {
+    const { deps, db } = makeDeps({
+      fetchUsers: onlyD(),
+      claimFreeReport: vi.fn(async () => true),
+    });
+    const result = await generateWeeklyReports(deps, TODAY);
+    expect(deps.claimFreeReport).toHaveBeenCalledWith('d');
+    expect(deps.askGemini).toHaveBeenCalledTimes(1);
+    expect(db.reports).toHaveLength(1);
+    expect(db.reports[0]).toMatchObject({
+      uid: 'd',
+      start_date: '2026-10-08',
+      week_index: 1,
+      display_week: 1,
+      status: 'ready',
+      is_trial: true,
+    });
+    expect(db.notifications).toEqual([
+      expect.objectContaining({
+        uid: 'd',
+        title: '1주차 리포트가 도착했어요',
+        href: '/report/2026-10-08/1',
+      }),
+    ]);
+    expect(deps.releaseFreeReport).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ generated: 1, trial: 1, noAccess: 0, notified: 1 });
+  });
+
+  it('패스 유저 리포트는 is_trial false이고 무료 체험을 쓰지 않는다', async () => {
+    const { deps, db } = makeDeps({
+      fetchUsers: vi.fn(async () => [{ id: 'a', start_date: '2026-10-08' }]),
+      claimFreeReport: vi.fn(async () => true),
+    });
+    const result = await generateWeeklyReports(deps, TODAY);
+    expect(db.reports[0].is_trial).toBe(false);
+    expect(deps.claimFreeReport).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ generated: 1, trial: 0 });
+  });
+
+  it('이미 무료 리포트를 썼으면 만들지 않는다 (데이터 조회·AI 없음)', async () => {
+    const { deps, db } = makeDeps({ fetchUsers: onlyD() });
+    const result = await generateWeeklyReports(deps, TODAY);
+    expect(deps.claimFreeReport).toHaveBeenCalledWith('d');
+    expect(deps.fetchWeekData).not.toHaveBeenCalled();
+    expect(deps.askGemini).not.toHaveBeenCalled();
+    expect(db.reports).toHaveLength(0);
+    expect(result).toMatchObject({ noAccess: 1, generated: 0, trial: 0 });
+  });
+
+  it('2주차 이후는 무료 체험이 남아 있어도 만들지 않는다 (체험 확인도 안 함)', async () => {
+    const { deps, db } = makeDeps({
+      fetchUsers: vi.fn(async () => [{ id: 'd', start_date: '2026-10-01' }]), // 2주차 리포트
+      claimFreeReport: vi.fn(async () => true),
+    });
+    const result = await generateWeeklyReports(deps, TODAY);
+    expect(deps.claimFreeReport).not.toHaveBeenCalled();
+    expect(db.reports).toHaveLength(0);
+    expect(result).toMatchObject({ noAccess: 1 });
+  });
+
+  it('키는 1주차여도 표시 주차가 2 이상이면 만들지 않는다 (한 주 더 하기 뒤)', async () => {
+    // 옛 시작일 10-01의 1주차 리포트(10-01~07, 체험) 바로 뒤에 새 시작일 10-08로 1주차 → 표시 주차 2
+    const db: FakeDb = { reports: [], notifications: [] };
+    db.reports.push({
+      uid: 'd',
+      start_date: '2026-10-01',
+      week_index: 1,
+      display_week: 1,
+      stats: {} as WeeklyReportRow['stats'],
+      content: null,
+      status: 'ready',
+      is_trial: true,
+    });
+    const { deps } = makeDeps(
+      {
+        fetchUsers: onlyD(),
+        fetchProgramStart: vi.fn(async () => '2026-10-01'),
+        claimFreeReport: vi.fn(async () => true),
+      },
+      db
+    );
+    const result = await generateWeeklyReports(deps, TODAY);
+    expect(deps.claimFreeReport).not.toHaveBeenCalled();
+    expect(db.reports).toHaveLength(1);
+    expect(result).toMatchObject({ noAccess: 1 });
+  });
+
+  it('기록이 없거나 체중·할 일 기록이 없으면 저장하지 않고 무료 체험을 돌려준다', async () => {
+    for (const week of [
+      emptyWeek(),
+      { ...emptyWeek(), recipes: [{ created_at: '2026-10-09T03:00:00Z', is_zero_carb: true }] },
+    ]) {
+      const { deps, db } = makeDeps({
+        fetchUsers: onlyD(),
+        claimFreeReport: vi.fn(async () => true),
+        fetchWeekData: vi.fn(async () => week),
+      });
+      await generateWeeklyReports(deps, TODAY);
+      expect(deps.askGemini).not.toHaveBeenCalled();
+      expect(db.reports).toHaveLength(0);
+      expect(db.notifications).toHaveLength(0);
+      expect(deps.releaseFreeReport).toHaveBeenCalledWith('d');
+    }
+  });
+
+  it('저장 전 오류(데이터 조회·저장 실패)면 무료 체험을 돌려준다', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    for (const o of [
+      {
+        fetchWeekData: vi.fn(async (): Promise<WeekData> => {
+          throw new Error('db');
+        }),
+      },
+      {
+        insertReport: vi.fn(async (): Promise<boolean> => {
+          throw new Error('db');
+        }),
+      },
+      { insertReport: vi.fn(async () => false) }, // 키 충돌: 이 실행이 저장하지 않았다
+    ]) {
+      const { deps, db } = makeDeps({
+        fetchUsers: onlyD(),
+        claimFreeReport: vi.fn(async () => true),
+        ...o,
+      });
+      await generateWeeklyReports(deps, TODAY);
+      expect(deps.releaseFreeReport).toHaveBeenCalledWith('d');
+      expect(db.notifications).toHaveLength(0);
+    }
+    spy.mockRestore();
+  });
+
+  it('AI가 실패해도 기본 문장으로 저장하고 무료 체험을 쓴 것으로 둔다', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { deps, db } = makeDeps({
+      fetchUsers: onlyD(),
+      claimFreeReport: vi.fn(async () => true),
+      askGemini: vi.fn(async () => {
+        throw new Error('timeout');
+      }),
+    });
+    await generateWeeklyReports(deps, TODAY);
+    spy.mockRestore();
+    expect(db.reports[0]).toMatchObject({ is_trial: true, status: 'ready' });
+    expect(deps.releaseFreeReport).not.toHaveBeenCalled();
+  });
+
+  it('무료 체험 확인 rpc가 실패하면 실패로 센다 (만들지 않음)', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { deps, db } = makeDeps({
+      fetchUsers: onlyD(),
+      claimFreeReport: vi.fn(async (): Promise<boolean> => {
+        throw new Error('rpc');
+      }),
+    });
+    const result = await generateWeeklyReports(deps, TODAY);
+    spy.mockRestore();
+    expect(db.reports).toHaveLength(0);
+    expect(deps.releaseFreeReport).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ failed: 1 });
+  });
+});
+
+describe('generateWeeklyReports: 무료 체험 되돌리기 실패', () => {
+  it('되돌리기가 실패해도 원래 결과(skipped)를 그대로 센다', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { deps } = makeDeps({
+      fetchUsers: vi.fn(async () => [{ id: 'd', start_date: '2026-10-08' }]),
+      claimFreeReport: vi.fn(async () => true),
+      releaseFreeReport: vi.fn(async () => {
+        throw new Error('rpc');
+      }),
+      fetchWeekData: vi.fn(async () => emptyWeek()),
+    });
+    const result = await generateWeeklyReports(deps, TODAY);
+    spy.mockRestore();
+    expect(result).toMatchObject({ skipped: 1, failed: 0 });
   });
 });

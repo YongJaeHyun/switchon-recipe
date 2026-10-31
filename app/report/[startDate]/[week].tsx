@@ -1,8 +1,11 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
+import { ReportPassCard } from 'components/report/ReportPreviewCard';
 import { ReportStats } from 'components/report/ReportStats';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useBillingAvailable } from 'hooks/useBillingAvailable';
+import { usePass } from 'hooks/usePass';
 import { useWeeklyReport, useWeeklyReports } from 'hooks/useWeeklyReports';
 import { type ComponentProps, type ReactNode, useMemo } from 'react';
 import { ActivityIndicator, ScrollView, TouchableOpacity, View } from 'react-native';
@@ -20,6 +23,7 @@ import {
   isRepeatedWeek,
   reportDisplayWeek,
   sameProgramReportsOf,
+  shouldShowTrialPassCard,
 } from 'utils/reportDisplay';
 
 type IconName = ComponentProps<typeof MaterialIcons>['name'];
@@ -100,6 +104,10 @@ export default function ReportDetailScreen() {
     () => !!report && isRepeatedWeek(report, sameProgramReportsOf(report, reports, currentProgram)),
     [report, reports, currentProgram]
   );
+  // 패스 없이 받은 무료 1주차 리포트면 맨 아래에 패스 안내 (판매 중일 때만)
+  const { status } = usePass();
+  const billingAvailable = useBillingAvailable();
+  const showTrialPass = shouldShowTrialPassCard(report, status, billingAvailable);
   // 문장이 없거나 깨진 행이어도 숫자는 보여준다 (빈 칸은 숨김)
   const content = report?.content ?? EMPTY_CONTENT;
 
@@ -185,6 +193,13 @@ export default function ReportDetailScreen() {
             {/* 줄바꿈(\n)이 들어 있으면 그대로 줄을 나눠 보여준다 */}
             <Body>{content.nextWeek}</Body>
           </Section>
+        )}
+
+        {showTrialPass && (
+          <ReportPassCard
+            title="매주 받으려면 스위치온 패스"
+            description="2주차부터도 한 주가 끝나면 기록을 정리해 보내드려요"
+          />
         )}
       </>
     );

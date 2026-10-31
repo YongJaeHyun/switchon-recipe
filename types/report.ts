@@ -57,6 +57,7 @@ export interface WeeklyReport {
   start_date: string;
   week_index: number; // 키 (상세 경로 /report/{start_date}/{week_index})
   display_week: number | null; // 실제로 지낸 주차 (제목). null이면 week_index (reportDisplayWeek)
+  is_trial: boolean; // 패스 없이 무료 체험으로 받은 1주차 리포트 (사용자당 평생 한 번)
   status: ReportStatus;
   stats: WeeklyStats | null;
   content: ReportContent | null;

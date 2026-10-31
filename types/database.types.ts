@@ -967,6 +967,7 @@ export type Database = {
           content: Json | null;
           created_at: string;
           display_week: number | null;
+          is_trial: boolean;
           start_date: string;
           stats: Json;
           status: string;
@@ -977,6 +978,7 @@ export type Database = {
           content?: Json | null;
           created_at?: string;
           display_week?: number | null;
+          is_trial?: boolean;
           start_date: string;
           stats: Json;
           status?: string;
@@ -987,6 +989,7 @@ export type Database = {
           content?: Json | null;
           created_at?: string;
           display_week?: number | null;
+          is_trial?: boolean;
           start_date?: string;
           stats?: Json;
           status?: string;

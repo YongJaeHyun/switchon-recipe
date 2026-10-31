@@ -9,13 +9,14 @@ import { useQueryWith402Retry } from './useCustomQuery';
 
 // 내 주간 리포트 전체 (최신 먼저). 무효화는 [QueryKey.weeklyReports] 접두어로 한다
 // refetchOnMount: 'always'면 화면을 열 때마다 새로 받는다 (목록 화면)
-export const useWeeklyReports = (options?: { refetchOnMount?: 'always' }) => {
+// enabled: false면 받지 않는다 (항상 떠 있는 주차 진입 팝업이 2주차 진입 때만 받게)
+export const useWeeklyReports = (options?: { refetchOnMount?: 'always'; enabled?: boolean }) => {
   const uid = useUserStore((state) => state.id);
 
   const query = useQueryWith402Retry<WeeklyReport[]>({
     queryKey: [QueryKey.weeklyReports, uid],
     queryFn: failFastWhenOffline(WeeklyReportAPI.list),
-    enabled: !!uid,
+    enabled: !!uid && (options?.enabled ?? true),
     refetchOnMount: options?.refetchOnMount ?? true,
   });
 

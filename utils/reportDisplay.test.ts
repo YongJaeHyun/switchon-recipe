@@ -13,7 +13,9 @@ import {
   reportWeekLabel,
   sameProgramReportsOf,
   shouldShowReportPreview,
+  shouldShowTrialPassCard,
   toWeeklyReport,
+  trialReportForWeekEntry,
 } from './reportDisplay';
 
 describe('formatWeightDiff', () => {
@@ -383,5 +385,100 @@ describe('isReportHref', () => {
     expect(isReportHref('/report/2026-10-01/2')).toBe(true);
     expect(isReportHref('/(inquiry)')).toBe(false);
     expect(isReportHref(undefined)).toBe(false);
+  });
+});
+
+describe('무료 1주차 리포트 (is_trial)', () => {
+  const row = {
+    start_date: '2026-10-08',
+    week_index: 1,
+    status: 'ready',
+    stats: {},
+    content: null,
+    created_at: '2026-10-15T00:00:00Z',
+  };
+
+  it('toWeeklyReport: is_trial이 true일 때만 true (없는 옛 행·이상한 값은 false)', () => {
+    expect(toWeeklyReport({ ...row, is_trial: true }).is_trial).toBe(true);
+    expect(toWeeklyReport({ ...row, is_trial: false }).is_trial).toBe(false);
+    expect(toWeeklyReport(row).is_trial).toBe(false);
+    expect(toWeeklyReport({ ...row, is_trial: 'true' as unknown as boolean }).is_trial).toBe(false);
+  });
+
+  const report = (
+    o: Partial<{
+      start_date: string;
+      week_index: number;
+      display_week: number | null;
+      is_trial: boolean;
+    }> = {}
+  ) => ({
+    start_date: '2026-10-08',
+    week_index: 1,
+    display_week: 1,
+    is_trial: true,
+    ...o,
+  });
+
+  describe('trialReportForWeekEntry (2주차 진입 팝업)', () => {
+    it('2주차에 들어설 때 이번 회차의 무료 1주차 리포트를 돌려준다', () => {
+      const trial = report();
+      expect(trialReportForWeekEntry([trial], 2, '2026-10-08')).toBe(trial);
+    });
+
+    it('2주차가 아니면 null', () => {
+      for (const week of [1, 3, 4, 5]) {
+        expect(trialReportForWeekEntry([report()], week, '2026-10-08')).toBeNull();
+      }
+    });
+
+    it('무료 리포트가 아직 없으면(cron 08:00 전) null → 팝업은 기존대로', () => {
+      expect(trialReportForWeekEntry([], 2, '2026-10-08')).toBeNull();
+      expect(trialReportForWeekEntry([report({ is_trial: false })], 2, '2026-10-08')).toBeNull();
+    });
+
+    it('지난 회차의 무료 리포트는 아니다 (다시 시작한 뒤 2주차)', () => {
+      expect(trialReportForWeekEntry([report()], 2, '2026-11-01')).toBeNull();
+    });
+
+    it('회차 시작일을 모르면 null', () => {
+      expect(trialReportForWeekEntry([report()], 2, null)).toBeNull();
+    });
+
+    it('표시 주차가 1인 무료 리포트만', () => {
+      expect(trialReportForWeekEntry([report({ display_week: 2 })], 2, '2026-10-08')).toBeNull();
+      // 마이그레이션 전처럼 display_week가 없으면 week_index
+      const legacy = report({ display_week: null });
+      expect(trialReportForWeekEntry([legacy], 2, '2026-10-08')).toBe(legacy);
+    });
+  });
+
+  describe('shouldShowTrialPassCard (리포트 상세 하단 "매주 받으려면 스위치온 패스")', () => {
+    const status = (hasAccess: boolean, onSale: boolean) => ({
+      sales: {
+        onSale,
+        freeActive: false,
+        tier: null,
+        productId: null,
+        priceKrw: null,
+        freeDaysLeft: 0,
+        nextTier: null,
+      },
+      passExpiresAt: null,
+      hasAccess,
+      serverNow: '2026-10-22T00:00:00Z',
+    });
+
+    it('무료 리포트 + 패스 없음 + 판매 중이면 보인다', () =>
+      expect(shouldShowTrialPassCard({ is_trial: true }, status(false, true), true)).toBe(true));
+
+    it('보통 리포트, 패스 있음, 판매 안 함, 상태 모름이면 숨긴다', () => {
+      expect(shouldShowTrialPassCard({ is_trial: false }, status(false, true), true)).toBe(false);
+      expect(shouldShowTrialPassCard({ is_trial: true }, status(true, true), true)).toBe(false);
+      expect(shouldShowTrialPassCard({ is_trial: true }, status(false, false), true)).toBe(false);
+      expect(shouldShowTrialPassCard({ is_trial: true }, status(false, true), false)).toBe(false);
+      expect(shouldShowTrialPassCard({ is_trial: true }, undefined, true)).toBe(false);
+      expect(shouldShowTrialPassCard(null, status(false, true), true)).toBe(false);
+    });
   });
 });

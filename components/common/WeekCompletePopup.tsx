@@ -1,6 +1,9 @@
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { weekCompleteLottie } from 'const/assets';
+import { router } from 'expo-router';
 import { useIngredients } from 'hooks/useIngredients';
 import useSteps from 'hooks/useSteps';
+import { useWeeklyReports } from 'hooks/useWeeklyReports';
 import LottieView from 'lottie-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { Modal, ScrollView, useWindowDimensions, View } from 'react-native';
@@ -15,6 +18,8 @@ import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
 import colors from 'tailwindcss/colors';
 import { WEEK_CHANGES } from 'utils/dietGuide';
 import { getWeekColor } from 'utils/getWeekColor';
+import { programStartOf } from 'utils/programStart';
+import { TRIAL_REPORT_ENTRY_WEEK, trialReportForWeekEntry } from 'utils/reportDisplay';
 import { shouldAskWeekRepeat, weekRepeatKey } from 'utils/weekRepeat';
 import AnimatedTextView from './AnimatedTextView';
 import RippleButton from './RippleButton';
@@ -24,11 +29,23 @@ import { WeekRepeatStep } from './WeekRepeatStep';
 export function WeekCompletePopup() {
   const { close, week, visible, repeatAskedKeys, markRepeatAsked } = useWeekCompletePopupStore();
   const startDate = useUserStore((state) => state.start_date);
+  const programStart = useUserStore((state) => state.program_start);
   const { step, goNextStep, resetStep } = useSteps(2);
   const { ingredients } = useIngredients();
   const { height: windowHeight } = useWindowDimensions();
 
   const scale = useSharedValue(0);
+
+  // 2주차 진입: 패스 없이 한 번 받는 1주차 리포트(서버 08:00 cron)가 와 있으면 마지막 단계에서 알린다.
+  // 아직 없으면(08:00 전 등) 기존 팝업 그대로. 목록은 이때만 받는다
+  const { reports } = useWeeklyReports({
+    enabled: visible && week === TRIAL_REPORT_ENTRY_WEEK,
+  });
+  const trialReport = trialReportForWeekEntry(
+    reports,
+    week,
+    programStartOf(programStart, startDate || null)
+  );
 
   // 3·4주차 진입이고 이 전환에서 아직 안 물었으면 첫 단계 앞에 '지난 주 돌아보기'.
   // 팝업이 열릴 때 한 번 정한다 (닫히는 동안 시작일·주차가 바뀌어도 내용이 바뀌지 않게)
@@ -53,6 +70,13 @@ export function WeekCompletePopup() {
     if (review) markRepeatAsked(review.key);
     resetStep();
     close();
+  };
+
+  const openTrialReport = () => {
+    if (!trialReport) return;
+    const href = `/report/${trialReport.start_date}/${trialReport.week_index}` as const;
+    handleClose();
+    router.push(href);
   };
 
   const handleRepeated = () => {
@@ -126,7 +150,7 @@ export function WeekCompletePopup() {
               {/* 재료가 많으면 팝업이 화면을 넘치므로 내용만 스크롤하고 확인 버튼은 항상 보이게 함 */}
               <ScrollView
                 className="w-full"
-                style={{ maxHeight: windowHeight * 0.6 }}
+                style={{ maxHeight: windowHeight * (trialReport ? 0.4 : 0.6) }}
                 showsVerticalScrollIndicator={false}>
                 <AnimatedTextView className="w-full" delay={500}>
                   <Text className="mb-2 text-2xl font-bold">
@@ -189,6 +213,31 @@ export function WeekCompletePopup() {
                   </View>
                 </AnimatedTextView>
               </ScrollView>
+
+              {trialReport && (
+                <AnimatedTextView className="mb-4 w-full" delay={1750}>
+                  <View className="w-full gap-3 rounded-xl border border-green-200 bg-green-50 p-4">
+                    <View className="flex-row items-start gap-2">
+                      <MaterialIcons name="insights" size={22} color={colors.green[600]} />
+                      <Text className="flex-1 font-bold leading-6 text-neutral-800">
+                        지난주 기록으로 만든 1주차 리포트가 도착했어요
+                      </Text>
+                    </View>
+                    {!!trialReport.content?.summary && (
+                      <Text className="text-sm leading-5 text-green-800" numberOfLines={2}>
+                        “{trialReport.content.summary}”
+                      </Text>
+                    )}
+                    <RippleButton
+                      outerClassName="w-full border border-green-600 bg-white"
+                      className="w-full py-2.5"
+                      rippleColor={colors.green[100]}
+                      onPress={openTrialReport}>
+                      <Text className="font-bold text-green-600">리포트 보기</Text>
+                    </RippleButton>
+                  </View>
+                </AnimatedTextView>
+              )}
 
               <AnimatedTextView className="w-full" delay={2000}>
                 <RippleButton

@@ -10,6 +10,9 @@
 // AI 문맥의 주차는 week_index가 아니라 실제로 지낸 주차(display_week, displayWeekFor)를 쓴다.
 // 리포트는 1~4주차와 유지기 1주차(표시 주차 5)까지만 만든다 (운영자 결정 2026-10-31, MAX_REPORT_WEEK).
 // 한 주 만들기(표시 주차·상한·AI·저장)는 _shared/weeklyReportGenerate.ts (패스 구매 뒤 보충과 같은 규칙)
+// 후보 SQL(weekly_report_candidates)은 패스 여부를 보지 않는다. 패스 없는 유저는 generateWeekReport의 권한 rpc에서
+// 건너뛰되, 표시 주차 1 리포트는 사용자당 평생 한 번 무료로 만든다 (claimFreeReport, is_trial 행, 푸시는 같은 규칙).
+// 그래서 Gemini는 패스 없는 유저 한 명당 평생 최대 1번 불린다
 
 import { isServiceRoleRequest } from '../_shared/serviceRole.ts';
 import { resolveToday } from '../_shared/kstToday.ts';
@@ -51,6 +54,9 @@ export interface GenerateReportsDeps extends ReportGenerationDeps {
   // 다시 시작 직전 회차의 마지막 완료 주는 같은 유저가 옛 시작일로 한 번 더 온다 (start_date < program_start)
   fetchUsers(today: string): Promise<ReportUserRow[]>;
   insertNotification(row: NotificationRow): Promise<void>;
+  // 무료 1주차 리포트 (SQL 함수 claim_free_report / release_free_report, FreeReportTrial)
+  claimFreeReport(uid: string): Promise<boolean>;
+  releaseFreeReport(uid: string): Promise<void>;
 }
 
 export interface GenerateResult {
@@ -61,6 +67,7 @@ export interface GenerateResult {
   capped: number; // 표시 주차가 MAX_REPORT_WEEK보다 커서(유지기 2주차 이후) 건너뜀
   alignedAhead: number; // 주차 맞추기로 건너뛴 기간이라 건너뜀 (alignedAheadOver, 감사 #16)
   generated: number; // 기록이 있어 문장까지 만든 리포트
+  trial: number; // 그중 패스 없이 무료 체험으로 만든 1주차 리포트
   empty: number; // 체중·할 일 기록이 없어 status='empty'로 저장
   skipped: number; // 그 주 기록이 하나도 없어 만들지 않음
   notified: number;
@@ -88,10 +95,17 @@ const processUser = async (
   uid: string,
   startDate: string,
   weekIndex: number
-): Promise<{ outcome: ReportOutcome; notified: boolean; failed: boolean }> => {
-  const { outcome, displayWeek } = await generateWeekReport(deps, uid, startDate, weekIndex);
+): Promise<{ outcome: ReportOutcome; trial: boolean; notified: boolean; failed: boolean }> => {
+  const { outcome, displayWeek, trial } = await generateWeekReport(
+    deps,
+    uid,
+    startDate,
+    weekIndex,
+    { claim: (id) => deps.claimFreeReport(id), release: (id) => deps.releaseFreeReport(id) }
+  );
+  const isTrial = outcome === 'generated' && trial === true;
   // 문장까지 만든 리포트만 푸시한다 (empty는 조용히 저장, 키 충돌이면 먼저 저장한 실행이 푸시)
-  if (outcome !== 'generated') return { outcome, notified: false, failed: false };
+  if (outcome !== 'generated') return { outcome, trial: false, notified: false, failed: false };
 
   try {
     await deps.insertNotification({
@@ -102,10 +116,10 @@ const processUser = async (
       channel_id: REPORT_CHANNEL,
       type: 'WEEKLY_REPORT',
     });
-    return { outcome: 'generated', notified: true, failed: false };
+    return { outcome: 'generated', trial: isTrial, notified: true, failed: false };
   } catch (error) {
     console.error(`리포트 알림 저장 실패 (${uid}, ${weekIndex}주차):`, error);
-    return { outcome: 'generated', notified: false, failed: true };
+    return { outcome: 'generated', trial: isTrial, notified: false, failed: true };
   }
 };
 
@@ -140,6 +154,7 @@ export async function generateWeeklyReports(
     capped: 0,
     alignedAhead: 0,
     generated: 0,
+    trial: 0,
     empty: 0,
     skipped: 0,
     notified: 0,
@@ -148,8 +163,14 @@ export async function generateWeeklyReports(
 
   await forEachLimited(targets, CONCURRENCY, async ({ uid, startDate, weekIndex }) => {
     try {
-      const { outcome, notified, failed } = await processUser(deps, uid, startDate, weekIndex);
+      const { outcome, trial, notified, failed } = await processUser(
+        deps,
+        uid,
+        startDate,
+        weekIndex
+      );
       result[outcome] += 1;
+      if (trial) result.trial += 1;
       if (notified) result.notified += 1;
       if (failed) result.failed += 1;
     } catch (error) {

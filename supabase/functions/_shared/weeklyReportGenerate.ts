@@ -4,6 +4,8 @@
 // 같은 키(uid, start_date, week_index)의 리포트가 있으면 AI 호출 전에 건너뛰고, 저장은 키 충돌 시 무시한다.
 // 표시 주차(resolveDisplayWeek)·유지기 1주차까지(MAX_REPORT_WEEK)·주차 맞추기로 건너뛴 기간(alignedAheadOver)
 // 규칙은 generate-weekly-reports/handler.ts 머리 주석 참고. 푸시는 부르는 쪽이 정한다.
+// 무료 체험(운영자 결정 2026-10-31 "써 보게 한 뒤 팔기"): 패스가 없어도 표시 주차 1 리포트는 사용자당 평생 한 번
+// 만든다 (trial을 넘기는 cron만. 패스 구매 뒤 보충은 넘기지 않는다). FreeReportTrial 참고.
 
 import { scheduleFrom } from './fastingSchedule.ts';
 import { kstMidnightIso } from './kstToday.ts';
@@ -57,6 +59,7 @@ export interface WeeklyReportRow {
   stats: WeeklyStats;
   content: ReportContent | null;
   status: 'ready' | 'empty';
+  is_trial: boolean; // 패스 없이 무료 체험으로 만든 1주차 리포트 (앱이 패스 안내를 붙인다)
 }
 
 export interface NotificationRow {
@@ -100,6 +103,18 @@ export interface ReportGenerationDeps {
   // insert ... on conflict do nothing. 실제로 들어갔으면 true
   insertReport(row: WeeklyReportRow): Promise<boolean>;
 }
+
+// 무료 1주차 리포트 (user_trial.free_report_at, 사용자당 평생 1번). 실제 구현은 SQL 함수
+// claim_free_report / release_free_report (마이그레이션 20261031020000_user_trial.sql)
+export interface FreeReportTrial {
+  // 아직 안 썼으면 쓴 것으로 기록하고 true (원자적, 동시 실행 중 하나만 true). 이미 썼으면 false. 실패하면 던진다
+  claim(uid: string): Promise<boolean>;
+  // claim으로 쓴 1번을 되돌린다 (리포트를 저장하지 못했을 때)
+  release(uid: string): Promise<void>;
+}
+
+// 무료 리포트는 표시 주차 1만 (2주차 이후는 패스)
+export const FREE_REPORT_WEEK = 1;
 
 const dayMs = (day: string) => Date.parse(`${day.slice(0, 10)}T00:00:00Z`);
 
@@ -292,12 +307,16 @@ const hasAnyRecord = (stats: WeeklyStats) =>
 
 // (uid, startDate, weekIndex) 리포트 하나를 만든다. 'generated'(문장까지 만든 ready)일 때만 푸시할 거리가 있다.
 // displayWeek = 저장한 표시 주차 (generated·empty일 때). DB·권한 조회 오류는 던진다 (AI 실패는 기본 문장)
+// trial을 넘기면 패스가 없는 유저의 표시 주차 1 리포트를 무료 체험으로 만든다 (trial: true, is_trial 행).
+// 무료 체험은 AI 전에 claim하고, 저장하지 못하면(기록 없음·empty·오류·키 충돌) release한다.
+// empty(체중·할 일 기록 없음)는 무료로 저장하지 않는다: 보여 줄 내용이 없는 리포트로 평생 1번을 쓰지 않게
 export const generateWeekReport = async (
   deps: ReportGenerationDeps,
   uid: string,
   startDate: string,
-  weekIndex: number
-): Promise<{ outcome: ReportOutcome; displayWeek?: number }> => {
+  weekIndex: number,
+  trial?: FreeReportTrial
+): Promise<{ outcome: ReportOutcome; displayWeek?: number; trial?: boolean }> => {
   // 같은 키의 리포트가 있는지 먼저 본다 (리포트는 권한이 있던 유저에게만 만들어지므로 결과는 같고,
   // 재시도 실행에서 이미 만든 유저의 권한 rpc를 아낀다). 기간만 겹치는 다른 키는 건너뛰지 않는다
   const reports = await deps.fetchReportPeriods(uid);
@@ -314,8 +333,47 @@ export const generateWeekReport = async (
     return { outcome: 'alignedAhead' };
   }
 
-  if (!(await deps.hasPremiumAccess(uid))) return { outcome: 'noAccess' };
+  if (!(await deps.hasPremiumAccess(uid))) {
+    if (!trial || displayWeek !== FREE_REPORT_WEEK) return { outcome: 'noAccess' };
+    if (!(await trial.claim(uid))) return { outcome: 'noAccess' };
+    let result: { outcome: ReportOutcome; displayWeek?: number } = { outcome: 'noAccess' };
+    try {
+      result = await buildAndInsert(
+        deps,
+        uid,
+        startDate,
+        weekIndex,
+        programStart,
+        displayWeek,
+        source,
+        true
+      );
+    } finally {
+      // 되돌리기 실패는 로그만 (원래 결과·오류를 덮지 않는다. 이 유저는 무료 리포트 없이 1번을 쓴 것으로 남는다)
+      if (result.outcome !== 'generated') {
+        await trial.release(uid).catch((error) => {
+          console.error(`무료 리포트 되돌리기 실패 (${uid}):`, error);
+        });
+      }
+    }
+    return { ...result, trial: true };
+  }
 
+  return buildAndInsert(deps, uid, startDate, weekIndex, programStart, displayWeek, source, false);
+};
+
+// 표시 주차·권한을 정한 뒤: 그 주 데이터를 읽어 통계·문장을 만들고 저장한다.
+// isTrial이면 empty는 저장하지 않고 'noAccess' (무료 체험은 문장까지 만든 리포트만)
+const buildAndInsert = async (
+  deps: ReportGenerationDeps,
+  uid: string,
+  startDate: string,
+  weekIndex: number,
+  programStart: string | null,
+  displayWeek: number,
+  source: { start_date: string; week_index: number } | null,
+  isTrial: boolean
+): Promise<{ outcome: ReportOutcome; displayWeek?: number }> => {
   const range = weekRange(startDate, weekIndex);
   const baselineStart = baselineStartOf(programStart, startDate);
   const data = await deps.fetchWeekData({
@@ -361,6 +419,7 @@ export const generateWeekReport = async (
   const stats: WeeklyStats = { ...computed, weekIndex: displayWeek };
 
   if (!hasAnyRecord(stats)) return { outcome: 'skipped' };
+  if (isTrial && stats.isEmpty) return { outcome: 'noAccess' };
 
   const content = stats.isEmpty ? null : await writeContent(deps, stats, uid);
   const inserted = await deps.insertReport({
@@ -371,6 +430,7 @@ export const generateWeekReport = async (
     stats,
     content,
     status: stats.isEmpty ? 'empty' : 'ready',
+    is_trial: isTrial,
   });
   // 동시에 돈 다른 실행이 먼저 저장했다 → 그쪽이 푸시한다 (existing)
   if (!inserted) return { outcome: 'existing' };

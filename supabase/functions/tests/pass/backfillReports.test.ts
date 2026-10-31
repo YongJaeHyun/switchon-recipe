@@ -439,3 +439,40 @@ describe('startReportBackfill: 응답을 막지 않는 백그라운드 실행', 
     error.mockRestore();
   });
 });
+
+describe('backfillPastReports: 무료 1주차 리포트를 받은 뒤 패스를 사면', () => {
+  const trialReport = (startDate = START): WeeklyReportRow => ({
+    ...existingReport(1, startDate),
+    is_trial: true,
+  });
+
+  it('무료로 받은 1주차는 다시 만들지 않고 2주차부터 만든다', async () => {
+    const db: FakeDb = { reports: [trialReport()], notifications: [] };
+    const { deps } = makeDeps('2026-10-23', {}, db);
+    await backfillPastReports(deps, UID);
+
+    expect(createdWeeks(db).map(([w]) => w)).toEqual([1, 2, 3]);
+    expect(vi.mocked(deps.fetchWeekData).mock.calls.map(([q]) => q.weekIndex)).toEqual([2, 3]);
+    expect(deps.askGemini).toHaveBeenCalledTimes(2);
+    expect(db.reports.slice(1).every((r) => r.is_trial === false)).toBe(true);
+    expect(db.notifications[0].title).toBe('지난 2~3주차 리포트도 만들어 뒀어요');
+  });
+
+  it('무료 1주차가 옛 시작일 키여도 기간이 겹치면 다시 만들지 않는다', async () => {
+    // 무료 리포트(09-30 시작 1주차: 09-30~10-06) 뒤 시작일을 10-01로 미룸 → 10-01~07과 6일 겹침
+    const db: FakeDb = { reports: [trialReport('2026-09-30')], notifications: [] };
+    const { deps } = makeDeps('2026-10-09', {}, db);
+    await backfillPastReports(deps, UID);
+
+    expect(deps.askGemini).not.toHaveBeenCalled();
+    expect(db.reports).toHaveLength(1);
+    expect(db.notifications).toHaveLength(0);
+  });
+
+  it('보충은 무료 체험 경로를 쓰지 않는다 (권한이 없으면 1주차도 만들지 않음)', async () => {
+    const { deps, db } = makeDeps('2026-10-09', { hasPremiumAccess: vi.fn(async () => false) });
+    await backfillPastReports(deps, UID);
+    expect(db.reports).toEqual([]);
+    expect(deps.fetchWeekData).not.toHaveBeenCalled();
+  });
+});
