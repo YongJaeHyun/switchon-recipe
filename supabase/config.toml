@@ -452,6 +452,13 @@ verify_jwt = true
 import_map = "./functions/weight-reminder/deno.json"
 entrypoint = "./functions/weight-reminder/index.ts"
 
+# 리포트 전날 기록 알림 배치: 매일 20:00 KST cron이 service role 키로 호출 (JWT 서명은 게이트웨이, role은 함수 안에서 확인)
+[functions.report-eve-reminder]
+enabled = true
+verify_jwt = true
+import_map = "./functions/report-eve-reminder/deno.json"
+entrypoint = "./functions/report-eve-reminder/index.ts"
+
 [functions.sentry-to-github]
 enabled = true
 verify_jwt = false

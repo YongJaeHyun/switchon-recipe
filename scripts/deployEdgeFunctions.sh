@@ -13,6 +13,7 @@ npx supabase functions deploy recommend-recipes
 npx supabase functions deploy tag-recipes
 npx supabase functions deploy generate-weekly-reports
 npx supabase functions deploy weight-reminder
+npx supabase functions deploy report-eve-reminder
 npx supabase functions deploy push
 npx supabase functions deploy sentry-to-github
 npx supabase functions deploy read-inbody
