@@ -6,9 +6,10 @@ import { View } from 'react-native';
 // 오른쪽 저장(★) 칩과 같은 반투명 검정 바탕이라 밝은 사진 위에서도 잘 읽힌다
 export function WeekPill({ week }: { week: number }) {
   return (
-    <View className="flex-row items-baseline rounded-full bg-black/60 px-2.5 py-1">
-      <Text className="text-base font-bold leading-5 text-white">{week}</Text>
-      <Text className="text-sm font-semibold text-white">주차{week === 3 && '+'}</Text>
+    <View className="rounded-full bg-black/60 px-2.5 py-1">
+      <Text className="text-sm font-bold text-white">
+        {week}주차{week === 3 && '+'}
+      </Text>
     </View>
   );
 }
