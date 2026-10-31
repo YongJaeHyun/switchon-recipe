@@ -25,6 +25,7 @@ import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { RecipeCategory, RecipeMethod } from 'types/recipe';
 import { getWeekAndDay } from 'utils/date';
+import { ingredientsForWeek } from 'utils/ingredientLists';
 import { getCreationLoadingKind } from 'utils/creationLoading';
 import { isCompletedHangul } from 'utils/hangul';
 
@@ -79,15 +80,17 @@ export default function ZeroRecipeCreationScreen() {
 
   // 기존 명령문 그대로. 생성·한도·이동 흐름은 useRecipeCreation이 맡는다
   const buildRequest = () => {
-    const ingredients = selectedIngredients.map((ingredients) => ingredients.name).join(', ');
-
     const userWeek = getUserWeek();
+    // 지금 주차보다 높은 주차 재료는 보내지 않는다 (시작일 변경 뒤 선택 목록 정리를 못 했을 때)
+    const usable = ingredientsForWeek(selectedIngredients, userWeek);
+    const ingredients = usable.map((ingredient) => ingredient.name).join(', ');
+
     const availableWeek = Math.min(userWeek, 4);
     const recipeWeek = Math.min(userWeek, 3);
 
     let command = '';
 
-    if (selectedIngredients.length === 0) {
+    if (usable.length === 0) {
       command = `find a delicious zero-carb recipe randomly that can be eaten during Switch-On week ${availableWeek}.`;
     } else {
       command = `create a zero-carb recipe that can be eaten during Switch-On week ${availableWeek}. You must use only the ingredients listed below, and if possible, use all of them. \nIngredients: ${ingredients}`;

@@ -2,28 +2,87 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   formatAdBonusLeft,
   formatRemaining,
-  getQuotaModalActions,
+  getQuotaModalView,
   runAdBonusFlow,
   waitForAdBonus,
 } from './recipeQuota';
 
-describe('getQuotaModalActions', () => {
-  const base = { isPass: false, canWatchAd: true, onSale: true, adsAvailable: true };
+describe('getQuotaModalView', () => {
+  const features = ['편의점 판정', '맞춤 레시피 추천', 'AI 주간 리포트'];
+  const base = {
+    isPass: false,
+    canWatchAd: true,
+    adsAvailable: true,
+    onSale: true,
+    freeDaily: 3,
+    adBonusLeft: 17,
+    passDaily: 20,
+    passFeatures: features,
+  };
+  const passSection = { lead: '광고 없이 하루 20개', features };
 
-  it('패스 이용자는 아무 동작도 없다', () => {
-    expect(getQuotaModalActions({ ...base, isPass: true })).toEqual([]);
+  it('무료 + 광고 가능 + 판매중 → 무료 개수 제목, 광고 버튼과 남은 광고 수, 패스 안내', () => {
+    expect(getQuotaModalView(base)).toEqual({
+      headline: '오늘 무료 레시피 3개를 다 썼어요',
+      note: null,
+      ad: { hint: '오늘 광고로 17개 더 만들 수 있어요' },
+      pass: passSection,
+    });
   });
-  it('무료 + 광고 가능 + 판매중 → 광고, 패스', () => {
-    expect(getQuotaModalActions(base)).toEqual(['watchAd', 'pass']);
+  it('개수는 넘겨받은 설정값을 그대로 쓴다', () => {
+    const view = getQuotaModalView({ ...base, freeDaily: 5, adBonusLeft: 2, passDaily: 30 });
+    expect(view.headline).toBe('오늘 무료 레시피 5개를 다 썼어요');
+    expect(view.ad?.hint).toBe('오늘 광고로 2개 더 만들 수 있어요');
+    expect(view.pass?.lead).toBe('광고 없이 하루 30개');
   });
-  it('광고 소진 → 패스만', () => {
-    expect(getQuotaModalActions({ ...base, canWatchAd: false })).toEqual(['pass']);
+  it('개수를 아직 모르면 숫자 없이 보여준다', () => {
+    const view = getQuotaModalView({
+      ...base,
+      freeDaily: null,
+      adBonusLeft: null,
+      passDaily: null,
+    });
+    expect(view.headline).toBe('오늘 무료 레시피를 다 썼어요');
+    expect(view.ad).toEqual({ hint: null });
+    expect(view.pass).toEqual({ lead: '광고 없이 더 많은 레시피', features });
   });
-  it('광고 모듈 없음 → watchAd 제외', () => {
-    expect(getQuotaModalActions({ ...base, adsAvailable: false })).toEqual(['pass']);
+  it('남은 광고 수가 0이면 안내 문구를 숨긴다', () => {
+    expect(getQuotaModalView({ ...base, adBonusLeft: 0 }).ad).toEqual({ hint: null });
   });
-  it('판매 안 함 → pass 제외', () => {
-    expect(getQuotaModalActions({ ...base, onSale: false })).toEqual(['watchAd']);
+  it('광고를 다 봤으면 오늘은 여기까지 + 패스 안내', () => {
+    expect(getQuotaModalView({ ...base, canWatchAd: false })).toEqual({
+      headline: '오늘은 여기까지예요',
+      note: '내일 다시 만들 수 있어요',
+      ad: null,
+      pass: passSection,
+    });
+  });
+  it('광고를 쓸 수 없는 앱이면 오늘은 여기까지 + 패스 안내', () => {
+    const view = getQuotaModalView({ ...base, adsAvailable: false });
+    expect(view.headline).toBe('오늘은 여기까지예요');
+    expect(view.ad).toBeNull();
+    expect(view.pass).not.toBeNull();
+  });
+  it('패스를 팔지 않으면 패스 안내를 숨긴다', () => {
+    const view = getQuotaModalView({ ...base, onSale: false });
+    expect(view.ad).not.toBeNull();
+    expect(view.pass).toBeNull();
+  });
+  it('광고도 패스도 없으면 오늘은 여기까지만', () => {
+    expect(getQuotaModalView({ ...base, canWatchAd: false, onSale: false })).toEqual({
+      headline: '오늘은 여기까지예요',
+      note: '내일 다시 만들 수 있어요',
+      ad: null,
+      pass: null,
+    });
+  });
+  it('패스 이용자는 판매 여부와 상관없이 오늘은 여기까지만', () => {
+    expect(getQuotaModalView({ ...base, isPass: true })).toEqual({
+      headline: '오늘은 여기까지예요',
+      note: '내일 다시 만들 수 있어요',
+      ad: null,
+      pass: null,
+    });
   });
 });
 
@@ -57,9 +116,7 @@ describe('formatRemaining', () => {
     );
   });
   it('패스는 5개 이하로 남으면 보여준다', () => {
-    expect(formatRemaining({ isPass: true, remaining: 4, limit: 20 })).toBe(
-      '오늘 4/20개 남았어요'
-    );
+    expect(formatRemaining({ isPass: true, remaining: 4, limit: 20 })).toBe('오늘 4/20개 남았어요');
   });
 });
 

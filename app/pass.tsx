@@ -1,15 +1,18 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { PassAPI } from 'api/PassAPI';
+import { UserAPI } from 'api/UserAPI';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
+import { PASS_FEATURES } from 'const/passFeatures';
 import { QueryKey } from 'const/queryKey';
 import { TIME_ZONE } from 'const/const';
 import { formatInTimeZone } from 'date-fns-tz';
 import { router } from 'expo-router';
 import { useBillingAvailable } from 'hooks/useBillingAvailable';
 import { usePass } from 'hooks/usePass';
+import { useRecipeQuota } from 'hooks/useRecipeQuota';
 import { queryClient } from 'lib/queryClient';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BillingUnavailableError, purchasePass } from 'services/billing';
@@ -21,24 +24,19 @@ import { getKoreanDateString } from 'utils/date';
 import { getWeekColorHex } from 'utils/getWeekColor';
 import { passJourney } from 'utils/passJourney';
 import { formatPassRemaining, formatSalesHeadline } from 'utils/passDisplay';
+import {
+  canPurchasePassSelection,
+  getPassCtaLabel,
+  getPassOptions,
+  getPassRecipeLine,
+  getRepeatWeekNote,
+  passProgramWeek,
+  selectPassOption,
+  type PassOption,
+  type PassOptionKind,
+} from 'utils/passOptions';
 import { getVerifyResultToast, isPassOnSale } from 'utils/passScreen';
 import { showErrorToast, showSuccessToast } from 'utils/showToast';
-
-// 패스로 쓸 수 있는 기능 (스펙 1절)
-const PREMIUM_FEATURES = [
-  { icon: 'storefront', title: '편의점 판정', description: '먹어도 되는지 바로 확인' },
-  {
-    icon: 'restaurant-menu',
-    title: '맞춤 레시피 추천',
-    description: '먹고 싶은 걸 고르면 레시피를 골라 드려요',
-  },
-  { icon: 'insights', title: 'AI 주간 리포트', description: '체중·식단·단식을 한 주씩 정리' },
-  {
-    icon: 'photo-camera',
-    title: '인바디 결과지 인식',
-    description: '사진만 찍으면 골격근량·체지방량을 기록해요',
-  },
-] as const;
 
 const weekLabel = (week: number) => (week >= 5 ? '유지기' : `${week}주차`);
 // 유지기는 앱의 5주차 색(검정) 대신 조금 부드러운 색
@@ -57,8 +55,20 @@ const Centered = ({ children }: { children: React.ReactNode }) => (
   <View className="flex-1 items-center justify-center gap-3 px-5">{children}</View>
 );
 
-// 맨 위: 패스 5주(35일)가 내 다이어트 일정(주차)의 어디까지를 덮는지
-const JourneyHero = ({ status }: { status: PassStatus }) => {
+// 패스 기간을 5주(35일) 눈금 위에 그린다. 1주 패스는 앞 7일만 칠하고 나머지는 회색
+const SCALE_DAYS = 35;
+
+// 맨 위: 고른 패스가 내 다이어트 일정(주차)의 어디까지를 덮는지.
+// scheduleLoading = 유저를 아직 불러오지 않아 주차를 모름 → 주차 색 대신 회색 막대
+const JourneyHero = ({
+  status,
+  option,
+  scheduleLoading,
+}: {
+  status: PassStatus;
+  option: PassOption;
+  scheduleLoading: boolean;
+}) => {
   const startDate = useUserStore((state) => state.start_date);
   const remaining = formatPassRemaining(status.passExpiresAt, new Date());
   // 이미 패스가 있으면 연장분은 지금 패스가 끝나는 날부터
@@ -66,10 +76,16 @@ const JourneyHero = ({ status }: { status: PassStatus }) => {
     remaining && status.passExpiresAt
       ? formatInTimeZone(new Date(status.passExpiresAt), TIME_ZONE, 'yyyy-MM-dd')
       : getKoreanDateString({ formatType: 'date' });
-  const { endsOn, segments } = passJourney({ startDate: startDate ?? null, from });
+  const { endsOn, segments } = passJourney({
+    startDate: startDate ?? null,
+    from,
+    days: option.days,
+  });
+  const restDays = Math.max(0, SCALE_DAYS - option.days);
+  const repeatNote = getRepeatWeekNote(option);
 
   return (
-    <View className="gap-4">
+    <View className="gap-5">
       {remaining && (
         <View className="flex-row items-center gap-1.5 self-start rounded-full bg-green-50 px-3 py-1.5">
           <MaterialIcons name="verified" size={16} color={colors.green[600]} />
@@ -78,100 +94,197 @@ const JourneyHero = ({ status }: { status: PassStatus }) => {
           </Text>
         </View>
       )}
-      <View>
-        <Text className="text-6xl font-bold text-neutral-900">5주</Text>
-        <Text className="mt-1 text-lg text-neutral-700">
-          {remaining ? '연장하면' : '오늘 결제하면'}{' '}
-          <Text className="text-lg font-bold text-neutral-900">{endsOn}까지</Text> 모든 기능을 써요
+      <View className="gap-2">
+        <Text className="text-3xl font-bold leading-10 text-neutral-900">
+          한 회차를 끝까지 함께해요
+        </Text>
+        <Text className="text-base leading-6 text-neutral-600">
+          1주차 첫 쉐이크부터 유지기까지, 스위치온의 모든 기능을 한 회차 내내 써요.
         </Text>
       </View>
 
       <View className="gap-2">
+        {scheduleLoading ? (
+          <Text className="text-xs text-neutral-400">내 일정을 불러오고 있어요</Text>
+        ) : (
+          <View className="flex-row gap-0.5">
+            {segments.map(({ week, days }) => (
+              <View key={week} style={{ flex: days }}>
+                {days >= 5 && (
+                  <Text className="text-xs font-bold" style={{ color: weekBarColor(week) }}>
+                    {weekLabel(week)}
+                  </Text>
+                )}
+              </View>
+            ))}
+            {restDays > 0 && <View style={{ flex: restDays }} />}
+          </View>
+        )}
         <View className="h-3 flex-row gap-0.5 overflow-hidden rounded-full">
-          {segments.map(({ week, days }) => (
-            <View key={week} style={{ flex: days, backgroundColor: weekBarColor(week) }} />
-          ))}
-        </View>
-        <View className="flex-row gap-0.5">
-          {segments.map(({ week, days }) => (
-            <View key={week} style={{ flex: days }}>
-              {days >= 5 && (
-                <Text className="text-xs font-bold" style={{ color: weekBarColor(week) }}>
-                  {weekLabel(week)}
-                </Text>
-              )}
-            </View>
-          ))}
+          {scheduleLoading ? (
+            <View style={{ flex: option.days, backgroundColor: colors.neutral[300] }} />
+          ) : (
+            segments.map(({ week, days }) => (
+              <View key={week} style={{ flex: days, backgroundColor: weekBarColor(week) }} />
+            ))
+          )}
+          {restDays > 0 && (
+            <View style={{ flex: restDays, backgroundColor: colors.neutral[100] }} />
+          )}
         </View>
         <View className="flex-row justify-between">
           <Text className="text-xs text-neutral-500">{remaining ? '지금 패스 끝' : '오늘'}</Text>
-          <Text className="text-xs text-neutral-500">{endsOn}</Text>
+          <Text className="text-sm font-bold text-neutral-900">{endsOn}까지</Text>
         </View>
       </View>
+
+      {repeatNote && (
+        <View className="flex-row items-center gap-1.5">
+          <MaterialIcons name="autorenew" size={16} color={colors.green[700]} />
+          <Text className="text-sm text-neutral-700">{repeatNote}</Text>
+        </View>
+      )}
     </View>
   );
 };
 
-const FeatureList = () => (
-  <View className="gap-4">
-    <Text className="text-base font-bold text-neutral-900">패스로 쓸 수 있는 것</Text>
-    {PREMIUM_FEATURES.map(({ icon, title, description }) => (
-      <View key={title} className="flex-row items-center gap-3">
-        <View className="h-11 w-11 items-center justify-center rounded-xl bg-green-50">
-          <MaterialIcons name={icon} size={22} color={colors.green[700]} />
-        </View>
-        <View className="flex-1">
-          <Text className="text-base font-bold text-neutral-900">{title}</Text>
-          <Text className="text-sm text-neutral-500">{description}</Text>
-        </View>
-      </View>
-    ))}
-  </View>
-);
-
-const PriceBlock = ({ status }: { status: PassStatus }) => {
-  const { sales } = status;
-  const { price, original, badge, next } = formatSalesHeadline(sales);
-
-  return (
-    <View className="gap-2 border-t border-neutral-100 pt-6">
-      {sales.freeActive && (
-        <Text className="text-sm font-bold text-green-700">
-          지금은 무료 기간이에요 ({sales.freeDaysLeft}일 남음). 끝난 뒤에도 쓰려면 패스가 필요해요.
-        </Text>
-      )}
+const OptionCard = ({
+  option,
+  selected,
+  next,
+  onPress,
+}: {
+  option: PassOption;
+  selected: boolean;
+  next: string | null;
+  onPress(): void;
+}) => (
+  <TouchableOpacity
+    activeOpacity={0.8}
+    onPress={onPress}
+    accessibilityRole="radio"
+    accessibilityState={{ selected }}
+    className={`flex-row items-center gap-3 rounded-2xl border-2 px-4 py-4 ${
+      selected ? 'border-green-600 bg-green-50' : 'border-neutral-200 bg-white'
+    }`}>
+    <View className="flex-1 gap-1">
       <View className="flex-row items-center gap-2">
-        <Text className="text-3xl font-bold text-neutral-900">{price}</Text>
-        {original && <Text className="text-base text-neutral-400 line-through">{original}</Text>}
-        {badge && (
+        <Text className="text-base font-bold text-neutral-900">{option.title}</Text>
+        {option.recommended && (
           <View className="rounded-full bg-green-600 px-2 py-0.5">
-            <Text className="text-xs font-bold text-white">{badge}</Text>
+            <Text className="text-xs font-bold text-white">추천</Text>
           </View>
         )}
       </View>
-      {next && <Text className="text-sm text-neutral-500">{next}로 올라요</Text>}
-      <View className="mt-1 flex-row items-center gap-1">
-        <MaterialIcons name="check" size={16} color={colors.green[600]} />
-        <Text className="text-sm text-neutral-600">
-          한 번만 결제해요. 자동으로 다시 결제되지 않아요.
-        </Text>
+      <Text className="text-sm text-neutral-500">{option.subtitle}</Text>
+      <View className="mt-1 flex-row items-baseline gap-2">
+        <Text className="text-2xl font-bold text-neutral-900">{option.price}</Text>
+        {option.original && (
+          <Text className="text-sm text-neutral-400 line-through">{option.original}</Text>
+        )}
+        {option.badge && (
+          <View className="self-center rounded-full bg-green-600 px-2 py-0.5">
+            <Text className="text-xs font-bold text-white">{option.badge}</Text>
+          </View>
+        )}
       </View>
+      {option.perWeek && <Text className="text-sm text-neutral-500">{option.perWeek}</Text>}
+      {next && <Text className="text-xs text-neutral-500">{next}으로 올라요</Text>}
     </View>
-  );
+    <MaterialIcons
+      name={selected ? 'radio-button-checked' : 'radio-button-unchecked'}
+      size={24}
+      color={selected ? colors.green[600] : colors.neutral[300]}
+    />
+  </TouchableOpacity>
+);
+
+const FeatureRow = ({
+  icon,
+  title,
+  description,
+}: {
+  icon: React.ComponentProps<typeof MaterialIcons>['name'];
+  title: string;
+  description?: string;
+}) => (
+  <View className="flex-row items-center gap-3">
+    <View className="h-11 w-11 items-center justify-center rounded-xl bg-green-50">
+      <MaterialIcons name={icon} size={22} color={colors.green[700]} />
+    </View>
+    <View className="flex-1">
+      <Text className="text-base font-bold text-neutral-900">{title}</Text>
+      {description && <Text className="text-sm text-neutral-500">{description}</Text>}
+    </View>
+  </View>
+);
+
+const FeatureList = ({ recipeLine }: { recipeLine: string | null }) => (
+  <View className="gap-4 border-t border-neutral-100 pt-6">
+    <Text className="text-base font-bold text-neutral-900">패스로 쓸 수 있는 것</Text>
+    {PASS_FEATURES.map(({ icon, title, description }) => (
+      <FeatureRow key={title} icon={icon} title={title} description={description} />
+    ))}
+    {recipeLine && <FeatureRow icon="menu-book" title={recipeLine} />}
+  </View>
+);
+
+// 딥링크로 앱을 막 켜 이 화면부터 열리면 시작 화면(index)을 거치지 않아 유저를 불러오지 않는다.
+// 그때 여기서 불러온다 (불러오면 store가 바뀌어 화면이 다시 그려진다). 로그인이 안 돼 있으면 시작 화면으로
+const useLoadUserIfMissing = (uid: string) => {
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    if (uid) return;
+    let cancelled = false;
+    setFailed(false);
+    UserAPI.checkIsLoggedIn()
+      .then((isLoggedIn) => {
+        if (!cancelled && !isLoggedIn) router.replace('/');
+      })
+      .catch((error) => {
+        console.error('[PassScreen.loadUser]', error);
+        if (!cancelled) setFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [uid, attempt]);
+
+  return { failed, retry: () => setAttempt((n) => n + 1) };
 };
 
 export default function PassScreen() {
   const uid = useUserStore((state) => state.id);
+  const userLoad = useLoadUserIfMissing(uid);
   const { status, isLoading, refetch } = usePass();
   const billingAvailable = useBillingAvailable();
+  const { setting: quotaSetting } = useRecipeQuota();
+
+  // 고른 상품. 처음엔 추천 상품(null → 첫 상품)
+  const [selectedKind, setSelectedKind] = useState<PassOptionKind | null>(null);
+  // 4주차부터는 1주 패스를 추천·기본 선택한다. 딥링크·알림으로 앱을 막 켜 유저를 아직 불러오지 않았으면
+  // 주차를 모르므로('loading') 추천하지 않고, 불러오면 다시 그린다
+  const startDate = useUserStore((state) => state.start_date);
+  const programWeek = passProgramWeek({
+    userId: uid,
+    startDate,
+    today: getKoreanDateString({ formatType: 'date' }),
+  });
+  const scheduleLoading = programWeek === 'loading';
+  const options = status ? getPassOptions(status.sales, programWeek) : [];
+  const selected = selectPassOption(options, selectedKind);
+  // 주차를 모르는 동안 기본 선택(추천이 아닐 수 있음)으로는 결제하지 않는다. 직접 고른 상품은 그대로 살 수 있다
+  const canPurchase = canPurchasePassSelection(programWeek, selectedKind);
 
   // 결제/검증이 진행 중이면 다시 누를 수 없다 (상태 반영 전 연타도 ref로 막는다)
   const inFlightRef = useRef(false);
   const [purchasing, setPurchasing] = useState(false);
 
   const handlePurchase = async () => {
-    const productId = status?.sales.productId;
-    if (inFlightRef.current || !uid || !productId) return;
+    const productId = selected?.productId;
+    if (inFlightRef.current || !uid || !productId || !canPurchase) return;
 
     inFlightRef.current = true;
     setPurchasing(true);
@@ -215,7 +328,8 @@ export default function PassScreen() {
 
   const renderBody = () => {
     if (!status) {
-      if (isLoading) {
+      // 유저를 아직 불러오지 않았으면(딥링크·알림으로 앱을 막 켬) 패스 조회가 꺼져 있다 — 실패가 아니라 기다리는 중
+      if (isLoading || (scheduleLoading && !userLoad.failed)) {
         return (
           <Centered>
             <ActivityIndicator size={48} color={colors.green[600]} />
@@ -225,7 +339,10 @@ export default function PassScreen() {
       return (
         <Centered>
           <Text className="text-neutral-600">패스 정보를 불러오지 못했어요.</Text>
-          <RippleButton outerClassName="bg-green-600" className="px-5 py-2" onPress={refetch}>
+          <RippleButton
+            outerClassName="bg-green-600"
+            className="px-5 py-2"
+            onPress={scheduleLoading ? userLoad.retry : refetch}>
             <Text className="text-white">다시 시도</Text>
           </RippleButton>
         </Centered>
@@ -251,16 +368,42 @@ export default function PassScreen() {
       );
     }
 
+    if (!selected) {
+      return (
+        <Centered>
+          <MaterialIcons name="hourglass-empty" size={48} color={colors.neutral[400]} />
+          <Text className="text-lg font-bold text-neutral-700">스위치온 패스는 준비 중이에요</Text>
+          <Text className="text-neutral-500">곧 만나요 :)</Text>
+        </Centered>
+      );
+    }
+
     const hasPass = formatPassRemaining(status.passExpiresAt, new Date()) !== null;
-    const { price } = formatSalesHeadline(status.sales);
-    const disabled = purchasing || !status.sales.productId;
+    const { next } = formatSalesHeadline(status.sales);
+    const disabled = purchasing || !canPurchase;
 
     return (
       <>
         <ScrollView contentContainerClassName="gap-8 px-5 pb-6 pt-4">
-          <JourneyHero status={status} />
-          <FeatureList />
-          <PriceBlock status={status} />
+          <JourneyHero status={status} option={selected} scheduleLoading={scheduleLoading} />
+          <View className="gap-3" accessibilityRole="radiogroup">
+            {status.sales.freeActive && (
+              <Text className="text-sm font-bold text-green-700">
+                지금은 무료 기간이에요 ({status.sales.freeDaysLeft}일 남음). 끝난 뒤에도 쓰려면
+                패스가 필요해요.
+              </Text>
+            )}
+            {options.map((option) => (
+              <OptionCard
+                key={option.kind}
+                option={option}
+                selected={option.kind === selected.kind}
+                next={option.kind === 'fiveWeek' ? next : null}
+                onPress={() => setSelectedKind(option.kind)}
+              />
+            ))}
+          </View>
+          <FeatureList recipeLine={getPassRecipeLine(quotaSetting?.passDaily)} />
         </ScrollView>
         <View className="gap-2 border-t border-neutral-100 px-5 pb-6 pt-3">
           <RippleButton
@@ -272,12 +415,12 @@ export default function PassScreen() {
               <ActivityIndicator color={colors.white} />
             ) : (
               <Text className="text-lg font-bold text-white">
-                {price}으로 5주 {hasPass ? '연장하기' : '시작하기'}
+                {getPassCtaLabel(selected, hasPass)}
               </Text>
             )}
           </RippleButton>
           <Text className="text-center text-xs text-neutral-400">
-            Google Play로 결제되고, 결제하면 바로 적용돼요.
+            한 번만 결제해요. 자동으로 다시 결제되지 않아요. Google Play로 결제되고 바로 적용돼요.
           </Text>
         </View>
       </>

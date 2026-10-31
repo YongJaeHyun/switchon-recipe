@@ -1,4 +1,4 @@
-import { addDaysToDay, programWeekAndDay } from './programStart';
+import { addDaysToDay, programStartOf, programWeekAndDay } from './programStart';
 import { round1 } from './weight';
 
 // 2·3주차가 끝나 다음 주차로 넘어갈 때 "한 주 더 하기"를 제안할지 (근거·문구는 const/weekRepeat.ts).
@@ -22,17 +22,20 @@ export interface BodyCompLog {
 
 type MuscleLog = { day: string; muscle_kg: number; fat_kg: number | null };
 
-// 기준값 구간: 시작 7일 전 ~ 시작 2일 뒤 (시작 무렵 잰 인바디)
+// 기준값 구간: 회차 시작 7일 전 ~ 회차 시작 2일 뒤 (회차 시작 무렵 잰 인바디).
+// 회차 시작일(programStartOf)은 한 주 더 하기로 start_date가 미뤄져도 그대로다 (기준값이 따라 움직이지 않게)
 const BASELINE_BEFORE_DAYS = 7;
 const BASELINE_AFTER_DAYS = 2;
 
 export function weekRepeatAdvice({
   logs,
   startDate,
+  programStart,
   enteringWeek,
 }: {
   logs: BodyCompLog[];
   startDate: string | null | undefined;
+  programStart?: string | null; // user.program_start. 없으면 start_date가 회차 시작
   enteringWeek: number;
 }): WeekRepeatAdvice {
   if (!startDate || (enteringWeek !== 3 && enteringWeek !== 4)) return { kind: 'none' };
@@ -48,10 +51,11 @@ export function weekRepeatAdvice({
     .filter((l) => l.day <= lastWeekEnd)
     .sort((a, b) => a.day.localeCompare(b.day));
 
-  const windowFrom = addDaysToDay(start, -BASELINE_BEFORE_DAYS);
-  const windowTo = addDaysToDay(start, BASELINE_AFTER_DAYS);
+  const program = programStartOf(programStart, start) ?? start;
+  const windowFrom = addDaysToDay(program, -BASELINE_BEFORE_DAYS);
+  const windowTo = addDaysToDay(program, BASELINE_AFTER_DAYS);
   const inWindow = muscleLogs.filter((l) => l.day >= windowFrom && l.day <= windowTo);
-  const baseline = inWindow.at(-1) ?? muscleLogs.find((l) => l.day >= start);
+  const baseline = inWindow.at(-1) ?? muscleLogs.find((l) => l.day >= program);
   // 지난 주 마지막 기록, 없으면 그 전 주까지의 마지막 기록. 기준값과 같은 날(같은 기록)이면 비교할 수 없다
   const latest = muscleLogs.at(-1);
 

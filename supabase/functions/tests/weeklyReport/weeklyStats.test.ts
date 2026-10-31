@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  baselineStartOf,
   computeWeeklyStats,
   plannedFastingDays,
   weekRange,
@@ -96,6 +97,19 @@ describe('computeWeeklyStats: 체중', () => {
     expect(stats.range).toEqual({ from: '2026-10-09', to: '2026-10-15' });
     expect(stats.weight).toMatchObject({ start: 69.4, end: 60, daysLogged: 4 });
     expect(stats.weight.totalDiff).toBe(-9.4);
+  });
+
+  it('누적 기준 시작일(baselineStart, 회차 시작일)을 주면 그날 이후 첫 기록이 기준', () => {
+    // 회차 09-30, 한 주 더 하기 등으로 시작일 10-09
+    const stats = computeWeeklyStats(
+      base({
+        startDate: '2026-10-09',
+        weekIndex: 1,
+        baselineStart: '2026-09-30',
+        weights,
+      })
+    );
+    expect(stats.weight.totalDiff).toBe(-12); // 60 - 72 (09-30 기록)
   });
 });
 
@@ -498,5 +512,22 @@ describe('computeWeeklyStats: 반올림 (리뷰 M-6)', () => {
       })
     );
     expect(stats.weight.diff).toBe(-1.2);
+  });
+});
+
+describe('baselineStartOf (누적 체중 기준 = 회차 시작일)', () => {
+  it('program_start가 없거나 시작일보다 뒤면 start_date', () => {
+    expect(baselineStartOf(null, '2026-10-01')).toBe('2026-10-01');
+    expect(baselineStartOf('2026-10-08', '2026-10-01')).toBe('2026-10-01');
+  });
+
+  it('program_start가 시작일보다 56일 이내로 앞이면 program_start', () => {
+    expect(baselineStartOf('2026-09-24', '2026-10-01')).toBe('2026-09-24');
+    expect(baselineStartOf('2026-08-06', '2026-10-01')).toBe('2026-08-06'); // 56일 전
+  });
+
+  it('program_start가 시작일보다 56일 넘게 앞이면(구버전 앱의 다시 시작) start_date', () => {
+    expect(baselineStartOf('2026-08-05', '2026-10-01')).toBe('2026-10-01'); // 57일 전
+    expect(baselineStartOf('2026-01-01', '2026-10-01')).toBe('2026-10-01');
   });
 });

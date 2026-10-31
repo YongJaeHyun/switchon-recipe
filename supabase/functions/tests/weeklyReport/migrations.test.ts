@@ -6,6 +6,8 @@ import { describe, expect, it } from 'vitest';
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf-8');
 const schema = () => read('../../../migrations/20261021020000_weight_report.sql');
 const cron = () => read('../../../migrations/20261021020100_cron_weekly_report.sql');
+// 주간 리포트 DB 읽기·쓰기 구현 (cron·패스 구매 뒤 보충이 함께 씀)
+const reportDb = () => read('../../_shared/weeklyReportDb.ts');
 const flat = (sql: string) => sql.replace(/\s+/g, ' ');
 
 describe('weekly_report_candidates (리뷰 M1: 주차 일차 필터를 SQL로)', () => {
@@ -26,9 +28,14 @@ describe('weekly_report_candidates (리뷰 M1: 주차 일차 필터를 SQL로)',
   });
 
   it('엣지 함수는 user 테이블 전체 대신 rpc로 후보만 읽는다', () => {
-    const src = read('../../generate-weekly-reports/index.ts');
+    // 한 주 만들기의 DB 구현은 _shared/weeklyReportDb.ts (패스 구매 뒤 보충과 함께 씀)
+    const src = read('../../generate-weekly-reports/index.ts') + reportDb();
     expect(src).toContain(".rpc('weekly_report_candidates', { p_today: today })");
-    expect(src).not.toContain(".from('user')");
+    // user는 리포트를 만들 유저 한 명의 program_start(누적 체중 기준)·start_date(패스 구매 뒤 보충)만 읽는다
+    const perUser =
+      /\.from\('user'\)\s*\.select\('(program_start|start_date)'\)\s*\.eq\('id', uid\)\s*\.maybeSingle\(\)/g;
+    expect(src).toMatch(perUser);
+    expect(src.replace(perUser, '')).not.toContain(".from('user')");
   });
 });
 
@@ -71,7 +78,7 @@ describe('fasting_result.fasted_minutes (일찍 끝낸 단식의 단식 시간)'
   });
 
   it('엣지 함수가 fasted_minutes를 읽는다', () => {
-    const src = read('../../generate-weekly-reports/index.ts');
+    const src = reportDb();
     expect(src).toContain(".select('day, result, fasted_minutes')");
   });
 });
@@ -108,5 +115,54 @@ describe('fasting/fasting_plan.start_minutes (요일별 단식 시작 시각)', 
         `drop trigger if exists clear_stale_start_minutes on public.${table}; create trigger clear_stale_start_minutes before update on public.${table} for each row execute function public.clear_stale_fasting_start_minutes();`
       );
     }
+  });
+});
+
+describe('weekly_report.display_week (리포트 제목 = 실제로 지낸 주차)', () => {
+  const sql = () => flat(read('../../../migrations/20261031000000_weekly_report_display_week.sql'));
+
+  it('null 허용 열을 더하고 있던 행은 week_index로 채운다 (구버전 앱은 week_index만 읽는다)', () => {
+    expect(sql()).toContain(
+      'alter table public.weekly_report add column if not exists display_week integer null;'
+    );
+    expect(sql()).toContain(
+      'update public.weekly_report set display_week = week_index where display_week is null;'
+    );
+  });
+
+  it('엣지 함수가 표시 주차를 읽는다', () => {
+    const src = reportDb();
+    expect(src).toContain(".select('start_date, week_index, display_week')");
+  });
+
+  it('후보 함수가 다시 시작 직전 회차의 마지막 완료 주도 돌려준다 (감사 #3)', () => {
+    const s = sql();
+    expect(s).toMatch(
+      /create or replace function public\.weekly_report_candidates\(p_today date\) returns table \(uid uuid, start_date date\)/
+    );
+    expect(s).toMatch(/weekly_report_candidates[\s\S]*security definer/);
+    // 지난 시작일 = weekly_report·fasting_plan에 남은 시작일 중 회차 시작일 전 가장 최근
+    expect(s).toContain('from public.weekly_report');
+    expect(s).toContain('from public.fasting_plan');
+    expect(s).toMatch(/s\.start_date < e\.program/);
+    // 그 주가 끝난 뒤에 새 회차가 시작됐을 때만 (그 시작일로 지낸 마지막 주)
+    expect(s).toContain('p.program > p_today - (p_today - p.start_date) % 7 - 1');
+    expect(s).toContain(
+      'revoke all on function public.weekly_report_candidates(date) from public, anon, authenticated;'
+    );
+    expect(s).toContain(
+      'grant execute on function public.weekly_report_candidates(date) to service_role;'
+    );
+  });
+
+  it('후보 함수는 끝난 주차(week_index)가 유지기 1주차(5) 이하인 시작일만 돌려준다 (운영자 결정 2026-10-31)', () => {
+    const s = sql();
+    // 지금 시작일·다시 시작 직전 회차 보충 둘 다
+    expect(s).toContain(
+      'where e.start_date <= p_today - 7 and (p_today - e.start_date) % 7 < 3 and (p_today - e.start_date) / 7 <= 5'
+    );
+    expect(s).toContain(
+      'where p.start_date <= p_today - 7 and (p_today - p.start_date) % 7 < 3 and (p_today - p.start_date) / 7 <= 5'
+    );
   });
 });

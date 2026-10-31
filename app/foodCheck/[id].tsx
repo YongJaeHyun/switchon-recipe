@@ -1,6 +1,7 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { FoodCheckResultCard } from 'components/foodCheck/FoodCheckResultCard';
 import { Text } from 'components/common/Text';
+import { KakaoShareButton } from 'components/share/KakaoShareButton';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useFoodCheck } from 'hooks/useFoodChecks';
@@ -8,6 +9,7 @@ import { ActivityIndicator, ScrollView, TouchableOpacity, View } from 'react-nat
 import { SafeAreaView } from 'react-native-safe-area-context';
 import colors from 'tailwindcss/colors';
 import { formatKoreanDate } from 'utils/date';
+import { shareFoodCheck } from 'utils/shareKakao';
 
 const INPUT_TYPE_LABEL = { front: '제품 앞면', label: '성분표', text: '이름 입력' } as const;
 
@@ -71,6 +73,11 @@ export default function FoodCheckDetailScreen() {
           </View>
 
           <FoodCheckResultCard check={check} onCheckLabel={handleCheckLabel} />
+
+          {/* 판정이 나온 결과만 카톡으로 (받은 친구는 앱의 편의점 판정으로) */}
+          {check.verdict && (
+            <KakaoShareButton label="친구에게 알려주기" onPress={() => shareFoodCheck(check)} />
+          )}
         </ScrollView>
       )}
     </SafeAreaView>

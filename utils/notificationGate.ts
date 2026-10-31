@@ -34,3 +34,24 @@ export function startupPhase({
 }): AppRoutePhase {
   return !isFirstLaunch && isLoggedIn && isOnboarded ? 'starting' : 'outside';
 }
+
+// 로그인·온보딩 뒤로 미룬 이동 (카톡으로 받은 레시피 등, app/kakaolink). 알림과 달리 탭 밖에서도 버리지 않고
+// 로그인·온보딩을 마쳐 탭 화면이 뜰 때까지 기다린다
+export function afterLoginLinkAction({
+  phase,
+  userId,
+  isOnboarded,
+}: {
+  phase: AppRoutePhase;
+  userId: string | null | undefined;
+  isOnboarded: boolean | null | undefined;
+}): 'open' | 'wait' {
+  return phase === 'tabs' && userId && isOnboarded ? 'open' : 'wait';
+}
+
+// 로그인·온보딩 뒤로 미룬 카톡 링크·초대를 얼마나 들고 있을지. 그 안에 탭이 뜨지 않으면(로그인을 오래 미룸) 버린다
+export const DEFERRED_LINK_TTL_MS = 30 * 60 * 1000;
+
+export function isDeferredLinkFresh(at: number | null | undefined, now: number): boolean {
+  return at != null && now - at <= DEFERRED_LINK_TTL_MS;
+}

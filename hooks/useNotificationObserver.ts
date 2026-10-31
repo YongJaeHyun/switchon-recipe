@@ -1,9 +1,16 @@
 import * as Notifications from 'expo-notifications';
 import { Href, router } from 'expo-router';
 import { useEffect } from 'react';
+import { Alert } from 'react-native';
 import { useNotificationGateStore } from 'stores/notificationGateStore';
 import { useUserStore } from 'stores/userStore';
-import { notificationTapAction } from 'utils/notificationGate';
+import { getKoreanDateString } from 'utils/date';
+import { inviteNotice } from 'utils/kakaoShare';
+import {
+  afterLoginLinkAction,
+  isDeferredLinkFresh,
+  notificationTapAction,
+} from 'utils/notificationGate';
 import { captureError } from 'utils/sendError';
 import { Maybe } from '../types/common';
 import { resolveNotificationHref } from '../utils/notificationHref';
@@ -27,6 +34,39 @@ const flushPendingHref = () => {
   if (action === 'wait') return;
   setPendingHref(null);
   if (action === 'open') openHref(pendingHref);
+};
+
+// 로그인·온보딩 뒤로 미룬 이동 (카톡으로 받은 레시피, app/kakaolink): 탭 밖이면 버리지 않고 탭이 뜰 때까지 기다린다
+const flushAfterLoginHref = () => {
+  const { phase, afterLoginHref, afterLoginAt, setAfterLoginHref } =
+    useNotificationGateStore.getState();
+  if (!afterLoginHref) return;
+  const { id, is_onboarded } = useUserStore.getState();
+  if (afterLoginLinkAction({ phase, userId: id, isOnboarded: is_onboarded }) !== 'open') return;
+  setAfterLoginHref(null);
+  // 링크를 누르고 30분 넘게 지나 로그인했으면 열지 않는다
+  if (isDeferredLinkFresh(afterLoginAt, Date.now())) openHref(afterLoginHref);
+};
+
+// 카톡으로 받은 같이 하자 초대가 남았는데 탭이 떴으면 이미 시작일이 있는 사람이다 (새 사용자는 온보딩이 쓰고 지운다).
+// 시작일은 그대로 두고 친구 시작일만 알려 준다
+const flushPendingInvite = () => {
+  const { phase, pendingInvite, pendingInviteAt, setPendingInvite } =
+    useNotificationGateStore.getState();
+  if (!pendingInvite) return;
+  const { id, is_onboarded } = useUserStore.getState();
+  if (afterLoginLinkAction({ phase, userId: id, isOnboarded: is_onboarded }) !== 'open') return;
+  setPendingInvite(null);
+  if (!isDeferredLinkFresh(pendingInviteAt, Date.now())) return;
+  const notice = inviteNotice(pendingInvite, getKoreanDateString({ formatType: 'date' }));
+  // 토스트는 링크로 화면이 다시 그려질 때 사라질 수 있어 닫을 때까지 남는 알림창으로
+  if (notice) Alert.alert(notice.title, notice.subtitle, [{ text: '확인' }]);
+};
+
+const flushDeferredHrefs = () => {
+  flushPendingHref();
+  flushAfterLoginHref();
+  flushPendingInvite();
 };
 
 // 누른 알림 처리: 이동은 미뤄 두고, 같은 알림을 다시 처리하지 않게(개발 중 다시 불러오기·안드로이드 재실행) 지운다
@@ -66,9 +106,9 @@ export function useNotificationObserver() {
     const received = Notifications.addNotificationReceivedListener((notification) =>
       invalidateWeeklyReportsFor(notification.request.content.data?.href)
     );
-    // 탭 화면이 뜨거나(phase) 사용자 정보가 바뀌면 미뤄 둔 이동을 다시 본다
-    const unsubscribeGate = useNotificationGateStore.subscribe(flushPendingHref);
-    const unsubscribeUser = useUserStore.subscribe(flushPendingHref);
+    // 탭 화면이 뜨거나(phase) 사용자 정보가 바뀌면 미뤄 둔 이동(알림·카톡 링크)을 다시 본다
+    const unsubscribeGate = useNotificationGateStore.subscribe(flushDeferredHrefs);
+    const unsubscribeUser = useUserStore.subscribe(flushDeferredHrefs);
 
     terminatedObserver();
 

@@ -3,26 +3,32 @@ import { BottomSheetMethods } from '@gorhom/bottom-sheet/lib/typescript/types';
 import ConfirmModal from 'components/common/ConfirmModal';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
+import { WeightPlateauCard } from 'components/records/WeightPlateauCard';
 import { WeightChart } from 'components/weight/WeightChart';
 import { WeightInputSheet, type WeightInputTarget } from 'components/weight/WeightInputSheet';
+import { useLivedWeeks } from 'hooks/useLivedWeeks';
 import { useWeights } from 'hooks/useWeights';
 import { useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, TouchableOpacity, View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
+import { useWeightPlateauStore } from 'stores/weightPlateauStore';
 import colors from 'tailwindcss/colors';
 import type { WeightLogDB } from 'types/database';
 import { formatBodyComp, prefillBodyComp } from 'utils/bodyComp';
 import { getKoreanDateString } from 'utils/date';
 import { getWeekColorHex } from 'utils/getWeekColor';
 import { requireOnline } from 'utils/network';
+import { programStartOf } from 'utils/programStart';
 import {
   chartPoints,
   formatWeightDiff,
   prefillWeight,
-  weekOfDay,
+  weekOfLog,
   weightChange,
   weightsInPeriod,
+  type LivedWeeks,
 } from 'utils/weight';
+import { findWeightPlateau, isPlateauDismissed } from 'utils/weightPlateau';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -32,9 +38,19 @@ const formatDay = (day: string) => {
   return `${m}월 ${d}일 (${weekday})`;
 };
 
-const WeekBadge = ({ day, startDate }: { day: string; startDate: string | null }) => {
+const WeekBadge = ({
+  day,
+  startDate,
+  programStart,
+  lived,
+}: {
+  day: string;
+  startDate: string | null;
+  programStart: string | null;
+  lived: LivedWeeks;
+}) => {
   if (!startDate) return null;
-  const week = weekOfDay(day, startDate);
+  const week = weekOfLog(day, startDate, programStart, lived);
   if (week < 1) {
     return <Text className="text-xs text-neutral-400">시작 전</Text>;
   }
@@ -48,11 +64,15 @@ const WeekBadge = ({ day, startDate }: { day: string; startDate: string | null }
 const LogRow = ({
   log,
   startDate,
+  programStart,
+  lived,
   onEdit,
   onDelete,
 }: {
   log: WeightLogDB;
   startDate: string | null;
+  programStart: string | null;
+  lived: LivedWeeks;
   onEdit(): void;
   onDelete(): void;
 }) => {
@@ -61,7 +81,7 @@ const LogRow = ({
     <View className="flex-row items-center gap-3 rounded-xl border border-neutral-200 bg-white px-4 py-3">
       <View className="flex-1 gap-0.5">
         <Text className="font-bold text-neutral-800">{formatDay(log.day)}</Text>
-        <WeekBadge day={log.day} startDate={startDate} />
+        <WeekBadge day={log.day} startDate={startDate} programStart={programStart} lived={lived} />
       </View>
       {/* 인바디 값이 있으면 체중 아래 작은 글씨 */}
       <View className="items-end">
@@ -81,24 +101,39 @@ const LogRow = ({
 // 기록 탭 > 체중 칸: 그래프·오늘 기록 버튼·날짜별 기록 목록
 export function WeightSection() {
   const startDate = useUserStore((state) => state.start_date) || null;
+  const programStart = useUserStore((state) => state.program_start) || null;
   const { logs, isLoading, deleteWeight, isDeleting } = useWeights();
+  // 주차 배지·점 색 = 실제로 지낸 주차 (한 주 더 하기 뒤 같은 회차의 앞 주가 "1주차"로 두 번 나오지 않게)
+  const lived = useLivedWeeks();
   const sheetRef = useRef<BottomSheetMethods>(null);
 
   const [allPeriod, setAllPeriod] = useState(false);
   const [target, setTarget] = useState<WeightInputTarget | null>(null);
   const [deleting, setDeleting] = useState<WeightLogDB | null>(null);
 
-  const opts = useMemo(() => ({ allPeriod }), [allPeriod]);
+  // 기간은 회차 시작일부터 (한 주 더 하기·주차 맞추기로 시작일이 미뤄져도 같은 회차 기록을 빼지 않는다)
+  const opts = useMemo(
+    () => ({ allPeriod, programStart, lived }),
+    [allPeriod, programStart, lived]
+  );
   const points = useMemo(() => chartPoints(logs, startDate, opts), [logs, startDate, opts]);
   const change = useMemo(() => weightChange(logs, startDate, opts), [logs, startDate, opts]);
   const listed = useMemo(
     () => weightsInPeriod(logs, startDate, opts).reverse(),
     [logs, startDate, opts]
   );
-  const hasEarlier = useMemo(
-    () => !!startDate && logs.some((log) => log.day < startDate.slice(0, 10)),
-    [logs, startDate]
+  // 정체기 안내: 지금 회차의 최근 연속 기록이 3일 이상 0.2kg 이내. 닫은 날은 숨김
+  const today = getKoreanDateString({ formatType: 'date' });
+  const plateauDismissedDay = useWeightPlateauStore((state) => state.dismissedDay);
+  const plateau = useMemo(
+    () => findWeightPlateau(logs, { startDate, programStart, today }),
+    [logs, startDate, programStart, today]
   );
+  const showPlateau = !!plateau && !isPlateauDismissed(plateauDismissedDay, today);
+  const hasEarlier = useMemo(() => {
+    const periodStart = programStartOf(programStart, startDate);
+    return !!periodStart && logs.some((log) => log.day < periodStart);
+  }, [logs, startDate, programStart]);
 
   const openInput = (day: string) => {
     const today = getKoreanDateString({ formatType: 'date' });
@@ -172,6 +207,8 @@ export function WeightSection() {
           )}
         </View>
 
+        {showPlateau && plateau && <WeightPlateauCard plateau={plateau} today={today} />}
+
         <RippleButton
           className="w-full flex-row gap-2 bg-green-600 py-4"
           onPress={() => openInput(getKoreanDateString({ formatType: 'date' }))}>
@@ -187,6 +224,8 @@ export function WeightSection() {
                   key={log.day}
                   log={log}
                   startDate={startDate}
+                  programStart={programStart}
+                  lived={lived}
                   onEdit={() => openInput(log.day)}
                   onDelete={() => setDeleting(log)}
                 />

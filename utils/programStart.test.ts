@@ -10,6 +10,8 @@ import {
   nextProgramStart,
   planToTouch,
   startDateChange,
+  dayProgramBase,
+  onboardingNeedsCleanup,
   PROGRAM_CHAIN_DAYS,
   programStartOf,
   isBeforeStart,
@@ -572,6 +574,12 @@ describe('programStartOf (회차 시작일)', () => {
     expect(programStartOf('2026-10-08', '2026-10-01')).toBe('2026-10-01');
   });
 
+  it('program_start가 start_date보다 56일 넘게 앞이면(구버전 앱의 다시 시작이 남긴 옛 값) start_date', () => {
+    expect(programStartOf('2026-08-06', '2026-10-01')).toBe('2026-08-06'); // 56일 전 = 같은 회차
+    expect(programStartOf('2026-08-05', '2026-10-01')).toBe('2026-10-01'); // 57일 전
+    expect(programStartOf('2026-01-01T00:00:00+09:00', '2026-10-01')).toBe('2026-10-01');
+  });
+
   it('시작일을 모르면 null', () => {
     expect(programStartOf(null, null)).toBeNull();
     expect(programStartOf(null, '')).toBeNull();
@@ -768,5 +776,87 @@ describe('planToTouch (시작일을 바꾼 뒤 표시할 이번 주차 단식 �
       start_date: '2026-10-01',
       week_index: 3,
     });
+  });
+});
+
+// 같은 날 주차 맞추기로 앞당겼다가 되돌리면 회차 시작일도 오늘 첫 변경 전 값으로 돌아간다 (앞당긴 날짜에 묶이지 않게)
+describe('주차 맞추기 되돌리기 (오늘 첫 변경 전 회차 시작일)', () => {
+  it('앞당겼다가 같은 날 되돌리면 원래 회차 시작일', () => {
+    const base = dayProgramBase(null, { uid: 'u', today: '2026-10-31' }, '2026-10-17');
+    expect(base).toEqual({ uid: 'u', day: '2026-10-31', program: '2026-10-17' });
+    // 2주차 → 4주차: 시작일·회차 시작일 10-03
+    expect(
+      startDateChange({
+        kind: 'align',
+        startDate: '2026-10-17',
+        programStart: '2026-10-17',
+        newStart: '2026-10-03',
+        alignBase: base.program,
+      })
+    ).toEqual({ programStart: '2026-10-03', startChanged: true });
+    // 같은 날 다시 2주차로: 회차 시작일도 10-17
+    const again = dayProgramBase(base, { uid: 'u', today: '2026-10-31' }, '2026-10-03');
+    expect(again).toBe(base);
+    expect(
+      startDateChange({
+        kind: 'align',
+        startDate: '2026-10-03',
+        programStart: '2026-10-03',
+        newStart: '2026-10-17',
+        alignBase: again.program,
+      })
+    ).toEqual({ programStart: '2026-10-17', startChanged: true });
+  });
+
+  it('다른 날이거나 다른 유저면 지금 회차 시작일부터 새로', () => {
+    const base = { uid: 'u', day: '2026-10-30', program: '2026-10-17' };
+    expect(dayProgramBase(base, { uid: 'u', today: '2026-10-31' }, '2026-10-03')).toEqual({
+      uid: 'u',
+      day: '2026-10-31',
+      program: '2026-10-03',
+    });
+    expect(dayProgramBase(base, { uid: 'v', today: '2026-10-30' }, '2026-10-03').program).toBe(
+      '2026-10-03'
+    );
+  });
+
+  it('미루기는 기준보다 늦으면 기준 그대로 (앞 주차 기록을 회차에서 빼지 않는다)', () => {
+    expect(
+      startDateChange({
+        kind: 'align',
+        startDate: '2026-10-17',
+        programStart: '2026-10-17',
+        newStart: '2026-10-24',
+        alignBase: '2026-10-17',
+      })
+    ).toEqual({ programStart: '2026-10-17', startChanged: true });
+  });
+
+  it('기준은 주차 맞추기에만 쓴다 (한 주 더 하기는 지금 회차 시작일 그대로)', () => {
+    expect(
+      startDateChange({
+        kind: 'repeat',
+        startDate: '2026-10-03',
+        programStart: '2026-10-03',
+        newStart: '2026-10-10',
+        alignBase: '2026-10-17',
+      })
+    ).toEqual({ programStart: '2026-10-03', startChanged: true });
+  });
+});
+
+// 온보딩은 UserAPI.updateOnboarding으로 따로 저장한다. 이미 시작일이 있던 유저(온보딩을 안 끝낸 옛 행)만 정리한다
+describe('onboardingNeedsCleanup', () => {
+  it('처음 정하는 시작일이면 정리할 것이 없다', () => {
+    expect(onboardingNeedsCleanup(null, '2026-11-01')).toBe(false);
+    expect(onboardingNeedsCleanup('', '2026-11-01')).toBe(false);
+  });
+
+  it('같은 시작일이면 정리하지 않는다', () => {
+    expect(onboardingNeedsCleanup('2026-11-01T00:00:00+09:00', '2026-11-01')).toBe(false);
+  });
+
+  it('다른 시작일이 있었으면 정리한다 (통계·재료·단식 계획)', () => {
+    expect(onboardingNeedsCleanup('2026-09-01', '2026-11-01')).toBe(true);
   });
 });

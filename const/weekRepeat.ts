@@ -90,11 +90,17 @@ export function weekRepeatCopy(
   };
 }
 
-// "한 주 더 하기" 성공 토스트 (UserAPI.updateStartDate의 기본 "시작날짜 재설정" 문구 대신)
-export function weekRepeatToast(repeatWeek: number, newStartDate: string) {
+// "한 주 더 하기" 성공 토스트 (UserAPI.updateStartDate의 기본 "시작날짜 재설정" 문구 대신).
+// 패스도 7일 늘었으면(passExtended) 같은 토스트를 그 문구로 다시 띄운다
+export function weekRepeatToast(
+  repeatWeek: number,
+  newStartDate: string,
+  options?: { passExtended?: boolean }
+) {
   const [, m, d] = newStartDate.slice(0, 10).split('-').map(Number);
+  const moved = `시작일을 ${m}월 ${d}일로 옮겼어요`;
   return {
     title: `${repeatWeek}주차를 한 주 더 해요`,
-    subtitle: `시작일을 ${m}월 ${d}일로 옮겼어요`,
+    subtitle: options?.passExtended ? `${moved}. 패스도 한 주 늘었어요` : moved,
   };
 }

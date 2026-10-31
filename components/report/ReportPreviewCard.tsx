@@ -15,6 +15,16 @@ export function ReportPreviewCard() {
   if (!shouldShowReportPreview(status, billingAvailable)) return null;
 
   return (
+    <ReportPassCard
+      title="이번 주 리포트를 받아보세요"
+      description="한 주 기록을 정리해 잘한 점과 다음 주 할 일을 알려드려요"
+    />
+  );
+}
+
+// 리포트 패스 안내 카드 모양 (누르면 결제 화면). 보일지는 부르는 쪽이 정한다
+export function ReportPassCard({ title, description }: { title: string; description: string }) {
+  return (
     <RippleButton
       outerClassName="border border-green-200 bg-green-50"
       className="w-full flex-row !justify-between px-4 py-3"
@@ -25,10 +35,8 @@ export function ReportPreviewCard() {
           <MaterialIcons name="insights" size={24} color={colors.green[600]} />
         </View>
         <View className="flex-1">
-          <Text className="text-base font-bold text-neutral-800">이번 주 리포트를 받아보세요</Text>
-          <Text className="text-sm text-neutral-500">
-            한 주 기록을 정리해 잘한 점과 다음 주 할 일을 알려드려요
-          </Text>
+          <Text className="text-base font-bold text-neutral-800">{title}</Text>
+          <Text className="text-sm text-neutral-500">{description}</Text>
         </View>
       </View>
       <View className="flex-row items-center gap-0.5 rounded-full bg-green-600 px-3 py-1">

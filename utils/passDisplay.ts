@@ -5,7 +5,7 @@ import { REGULAR_PRICE_KRW, type SalesState } from 'types/pass';
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Intl 지원 여부와 무관하게 천 단위 쉼표
-const formatKrw = (krw: number) => `${String(krw).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}원`;
+export const formatKrw = (krw: number) => `${String(krw).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}원`;
 
 const kstYmd = (date: Date) => formatInTimeZone(date, TIME_ZONE, 'yyyy-MM-dd');
 const kstMonthDay = (date: Date) => formatInTimeZone(date, TIME_ZONE, 'M월 d일');

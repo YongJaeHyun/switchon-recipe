@@ -1,6 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
+import { KakaoShareButton } from 'components/share/KakaoShareButton';
 import { FIRST_DAYS_RULES_TIP, PREP_ITEMS } from 'const/week1Guide';
 import { Checkbox } from 'expo-checkbox';
 import { router } from 'expo-router';
@@ -15,6 +16,7 @@ import { getWeekColorHex } from 'utils/getWeekColor';
 import { showNotificationPermissionAlert } from 'utils/notifications';
 import { prepChecksFor } from 'utils/prepChecks';
 import { startCountdownLabel } from 'utils/programStart';
+import { shareInvite } from 'utils/shareKakao';
 
 const WEEK1_COLOR = getWeekColorHex(1);
 
@@ -97,6 +99,11 @@ export function BeforeStartCard({ daysUntil }: { daysUntil: number }) {
           </TouchableWithoutFeedback>
         );
       })}
+
+      {/* 같은 날 시작할 친구 부르기 (카톡 초대, 친구는 온보딩에서 이 날짜를 고른다) */}
+      <View className="mb-2 mt-2 border-t border-neutral-100 pt-3">
+        <KakaoShareButton label="👥 같이 할 사람 초대하기" onPress={shareInvite} />
+      </View>
     </View>
   );
 }

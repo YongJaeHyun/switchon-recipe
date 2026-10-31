@@ -27,7 +27,11 @@ export function interpretFoodCheckResponse(status: number, body: unknown): FoodC
   const b = asObject(body);
 
   if (status === 200) {
-    if (b?.status === 'ok' && isRecord(b.check)) return { status: 'ok', check: b.check };
+    if (b?.status === 'ok' && isRecord(b.check)) {
+      return typeof b.trialRemaining === 'number'
+        ? { status: 'ok', check: b.check, trialRemaining: b.trialRemaining }
+        : { status: 'ok', check: b.check };
+    }
     if (b?.status === 'unrecognized') {
       return {
         status: 'unrecognized',

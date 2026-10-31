@@ -110,6 +110,14 @@ describe('getUnconsumedPassPurchases', () => {
     ]);
   });
 
+  it('1주 패스(switchon_pass_1w_1500) 미소비 구매도 복구 대상이다', async () => {
+    iap.getAvailablePurchases.mockResolvedValue([purchase('switchon_pass_1w_1500', 'token-week')]);
+
+    expect(await getUnconsumedPassPurchases(UID)).toEqual([
+      { productId: 'switchon_pass_1w_1500', purchaseToken: 'token-week' },
+    ]);
+  });
+
   it('obfuscatedAccountIdAndroid가 현재 uid와 다르거나 없으면 제외한다', async () => {
     iap.getAvailablePurchases.mockResolvedValue([
       purchase('switchon_pass_5w_1900', 'token-mine'),
@@ -163,6 +171,19 @@ describe('purchasePass', () => {
       request: {
         android: { skus: ['switchon_pass_5w_1900'], obfuscatedAccountIdAndroid: 'uid-1' },
       },
+      type: 'inapp',
+    });
+  });
+
+  it('1주 패스도 같은 흐름으로 결제한다', async () => {
+    iap.requestPurchase.mockResolvedValue([purchase('switchon_pass_1w_1500', 'token-week')]);
+
+    expect(await purchasePass('switchon_pass_1w_1500', 'uid-1')).toEqual({
+      productId: 'switchon_pass_1w_1500',
+      purchaseToken: 'token-week',
+    });
+    expect(iap.fetchProducts).toHaveBeenCalledWith({
+      skus: ['switchon_pass_1w_1500'],
       type: 'inapp',
     });
   });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseSimilarResponse } from './similarResponse';
+import { parseSimilarResponse, similarWeekOf } from './similarResponse';
 
 const row = {
   id: 7,
@@ -61,5 +61,19 @@ describe('parseSimilarResponse', () => {
     expect(parseSimilarResponse(null)).toBeNull();
     expect(parseSimilarResponse({ recipes: 'x' })).toBeNull();
     expect(parseSimilarResponse([])).toBeNull();
+  });
+});
+
+// 캐시 키에 넣는 주차: 서버가 후보를 이 주차까지로 자르므로 (similar-recipes MAX_SIMILAR_WEEK = 4)
+describe('similarWeekOf', () => {
+  it('지금 주차, 4주차 위는 4, 시작 전·시작일 없음은 1', () => {
+    expect(similarWeekOf('2026-10-01', '2026-10-17')).toBe(3);
+    expect(similarWeekOf('2026-08-01', '2026-10-17')).toBe(4);
+    expect(similarWeekOf('2026-10-20', '2026-10-17')).toBe(1);
+    expect(similarWeekOf(null, '2026-10-17')).toBe(1);
+  });
+
+  it('한 주 더 하기로 시작일이 미뤄지면 주차가 바뀐다 (키가 바뀌어 새로 받는다)', () => {
+    expect(similarWeekOf('2026-10-08', '2026-10-17')).toBe(2);
   });
 });

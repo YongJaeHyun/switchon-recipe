@@ -1,5 +1,6 @@
 import colors from 'tailwindcss/colors';
 import { getWeekColorHex } from './getWeekColor';
+import { programStartOf } from './programStart';
 
 export const MIN_WEIGHT_KG = 20;
 export const MAX_WEIGHT_KG = 300;
@@ -10,11 +11,30 @@ export interface WeightPoint {
 }
 
 interface PeriodOptions {
-  // true면 start_date 이전 기록도 포함한다 ([전체 기간 보기])
+  // true면 회차 시작일 이전 기록도 포함한다 ([전체 기간 보기])
   allPeriod?: boolean;
+  // user.program_start. 기간은 회차 시작일(programStartOf)부터 본다: 한 주 더 하기·주차 맞추기로
+  // start_date가 미뤄져도 같은 회차의 앞 주차 기록을 빼지 않는다. 없으면 start_date부터
+  programStart?: string | null;
+  // 실제로 지낸 주차 기록 (weekOfLog). 없으면 시작일·회차 시작일로만 센다
+  lived?: LivedWeeks;
 }
 
-// 시작일 이전 기록(이전 차수) 점 색
+// 어떤 7일을 몇 주차로 지냈는지의 기록. start_date = 그때 시작일, from = 그 주 첫날, week = 지낸 주차,
+// at = 기록 시각(ms, 겹치면 늦은 쪽이 이긴다)
+export interface LivedPeriod {
+  start_date: string;
+  from: string;
+  week: number;
+  at: number;
+}
+
+export interface LivedWeeks {
+  periods: LivedPeriod[];
+  today: string; // KST yyyy-MM-dd. 이번 주는 언제나 지금 시작일로 센다
+}
+
+// 회차 시작일 이전 기록(이전 차수) 점 색
 const BEFORE_START_COLOR = colors.neutral[400];
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -49,13 +69,86 @@ export function weekOfDay(day: string, startDate: string): number {
   return Math.floor(diffDays / 7) + 1;
 }
 
-// 기간 필터 + 날짜순 정렬
+// 실제로 지낸 주차 기록: 단식 계획 행 (start_date, week_index) = 그 시작일의 그 주차를 지냄 (앱은 지금 시작일의
+// 계획만 만들고 고친다), 주간 리포트 = 그 기간을 display_week주차로 지냄 (서버가 정한 실제 주차, 없으면 week_index).
+// 시각: 계획은 생성·수정 중 늦은 쪽, 리포트는 생성 시각. 시각이 없으면 0 (가장 약함)
+export function livedPeriodsOf(input: {
+  plans?: {
+    start_date: string;
+    week_index: number;
+    created_at?: string | null;
+    updated_at?: string | null;
+  }[];
+  reports?: {
+    start_date: string;
+    week_index: number;
+    display_week?: number | null;
+    created_at?: string | null;
+  }[];
+}): LivedPeriod[] {
+  const ms = (...isos: (string | null | undefined)[]) =>
+    Math.max(0, ...isos.map((iso) => (iso ? Date.parse(iso) : NaN)).filter(Number.isFinite));
+  const period = (start: string, weekIndex: number, week: number, at: number): LivedPeriod => ({
+    start_date: start.slice(0, 10),
+    from: shiftDay(start.slice(0, 10), 7 * (weekIndex - 1)),
+    week,
+    at,
+  });
+  return [
+    ...(input.plans ?? []).map((p) =>
+      period(p.start_date, p.week_index, p.week_index, ms(p.created_at, p.updated_at))
+    ),
+    ...(input.reports ?? []).map((r) =>
+      period(
+        r.start_date,
+        r.week_index,
+        typeof r.display_week === 'number' ? r.display_week : r.week_index,
+        ms(r.created_at)
+      )
+    ),
+  ];
+}
+
+// 기록 날짜의 주차 = 그날 실제로 지낸 주차.
+// - 회차 시작일 전: 0 이하 (시작 전)
+// - 이번 주(지금 시작일 기준 오늘이 든 주) 이후: 지금 시작일 기준
+// - 그 앞: 지금 회차의 기록(lived, 회차 시작일 이후 시작일)이 그날을 덮으면 가장 늦은 기록의 주차.
+//   한 주 더 하기 뒤 앞 시작일로 지낸 2주차가 "1주차"로 두 번 나오지 않게 한다
+// - 기록이 없으면 지금 시작일 뒤는 시작일 기준, 회차 시작일 ~ 시작일 전은 회차 시작일 기준.
+//   한계: 단식 계획도 리포트도 없는 주는 지금 시작일로 센다 (지난 시작일 변경 이력은 따로 저장하지 않는다)
+export function weekOfLog(
+  day: string,
+  startDate: string,
+  programStart: string | null | undefined,
+  lived?: LivedWeeks
+): number {
+  const d = day.slice(0, 10);
+  const start = startDate.slice(0, 10);
+  const program = programStartOf(programStart, start) ?? start;
+  if (d < program) return weekOfDay(d, program);
+
+  if (lived) {
+    const elapsed = weekOfDay(lived.today, start);
+    const thisWeekFrom = elapsed >= 1 ? shiftDay(start, 7 * (elapsed - 1)) : start;
+    if (d < thisWeekFrom) {
+      const covering = lived.periods
+        .filter((p) => p.start_date >= program && p.from <= d && d < shiftDay(p.from, 7))
+        .sort((a, b) => b.at - a.at);
+      if (covering.length > 0) return covering[0].week;
+    }
+  }
+
+  if (d >= start) return weekOfDay(d, start);
+  return weekOfDay(d, program);
+}
+
+// 기간 필터 + 날짜순 정렬. 기간 = 회차 시작일부터 (allPeriod면 전체)
 export function weightsInPeriod<T extends WeightPoint>(
   logs: T[],
   startDate: string | null,
   opts?: PeriodOptions
 ): T[] {
-  const start = startDate ? startDate.slice(0, 10) : null;
+  const start = programStartOf(opts?.programStart, startDate);
   return logs
     .filter((log) => opts?.allPeriod || !start || log.day >= start)
     .sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0));
@@ -74,16 +167,15 @@ export function weightChange(
   return { first, last, diff: round1(last - first) };
 }
 
-// 그래프 점. 색은 현재 start_date 기준 주차 색, 시작일 이전은 회색
+// 그래프 점. 색은 주차 색(weekOfLog), 회차 시작일 이전은 회색
 export function chartPoints(
   logs: WeightPoint[],
   startDate: string | null,
   opts?: PeriodOptions
 ): { value: number; label: string; dataPointColor: string }[] {
-  const start = startDate ? startDate.slice(0, 10) : null;
   return weightsInPeriod(logs, startDate, opts).map((log) => {
     const [, m, d] = log.day.slice(0, 10).split('-').map(Number);
-    const week = start ? weekOfDay(log.day, start) : 1;
+    const week = startDate ? weekOfLog(log.day, startDate, opts?.programStart, opts?.lived) : 1;
     return {
       value: Number(log.weight_kg),
       label: `${m}/${d}`,

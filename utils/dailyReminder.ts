@@ -51,7 +51,8 @@ export function nextMorningReminder({
 // 1주차(1~7일)에 오늘 할 일이 방금 100%가 됐고(prevRate < 100) 오늘(KST) 아직 축하를 안 봤으면 true.
 // prevRate = 같은 날 바로 전에 읽은 완료율, 처음 읽는 값이면 null → 아님 (앱을 열 때 이미 100%거나,
 // 자정에 초기화 전 어제 100%가 잠깐 남아 있을 때 축하하지 않게).
-// 보여줄 때 markCelebratedDay로 오늘을 남겨, 체크를 풀었다 다시 100%가 돼도 하루 한 번만
+// 보여줄 때 markCelebratedDay로 celebrationKey(오늘, 시작일)를 남겨, 체크를 풀었다 다시 100%가 돼도 하루 한 번만.
+// 시작일까지 키에 넣어, 축하를 본 날 처음부터 다시 시작하면(할 일이 초기화됨) 새 1일차를 끝냈을 때 다시 축하한다
 export function shouldCelebrate({
   week,
   day,
@@ -59,6 +60,7 @@ export function shouldCelebrate({
   prevRate,
   celebratedDays,
   today,
+  startDate,
 }: {
   week: number;
   day: number;
@@ -66,11 +68,18 @@ export function shouldCelebrate({
   prevRate: number | null;
   celebratedDays: string[];
   today: string;
+  startDate?: string | null;
 }): boolean {
   if (week !== 1 || day < 1 || day > 7) return false;
   if (completedRate !== 100) return false;
   if (prevRate === null || prevRate >= 100) return false;
-  return !celebratedDays.includes(today);
+  return !celebratedDays.includes(celebrationKey(today, startDate));
+}
+
+// 완주 축하 기록 키: "오늘@시작일" (시작일이 없으면 오늘만). 업데이트 전 기록(날짜만)과는 겹치지 않아,
+// 업데이트한 날 이미 본 축하를 한 번 더 볼 수 있다 (그날 하루뿐)
+export function celebrationKey(today: string, startDate?: string | null): string {
+  return startDate ? `${today}@${startDate.slice(0, 10)}` : today;
 }
 
 export function markCelebratedDay(celebratedDays: string[], day: string): string[] {

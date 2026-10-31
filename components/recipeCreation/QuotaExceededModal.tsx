@@ -1,52 +1,88 @@
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Text } from 'components/common/Text';
+import { useRef } from 'react';
 import { Modal, TouchableOpacity, View } from 'react-native';
-import type { QuotaModalAction } from 'utils/recipeQuota';
+import colors from 'tailwindcss/colors';
+import type { QuotaModalView } from 'utils/recipeQuota';
 
 type QuotaExceededModalProps = {
-  visible: boolean;
-  actions: QuotaModalAction[];
-  adBonusText: string | null;
+  // null이면 닫힌 상태
+  view: QuotaModalView | null;
   onWatchAd: () => void;
   onPass: () => void;
   onClose: () => void;
 };
 
+// 기능 이름 안에서는 줄이 바뀌지 않도록 이름 속 공백을 줄바꿈 없는 공백으로 바꾼다
+const passSummary = ({ lead, features }: NonNullable<QuotaModalView['pass']>) =>
+  `${lead} + ${features.map((f) => f.replace(/ /g, '\u00A0')).join(', ')}`;
+
 export default function QuotaExceededModal({
-  visible,
-  actions,
-  adBonusText,
+  view,
   onWatchAd,
   onPass,
   onClose,
 }: QuotaExceededModalProps) {
-  return (
-    <Modal animationType="fade" transparent visible={visible} onRequestClose={onClose}>
-      <View className="flex-1 items-center justify-center bg-black/40">
-        <View className="w-2/3 justify-between rounded-2xl bg-white p-6">
-          <Text className="mb-2 text-center text-xl font-bold">오늘 레시피를 모두 만들었어요</Text>
-          <Text className="mb-8 text-center text-gray-600">내일 다시 만들 수 있어요.</Text>
+  // 닫히는 페이드 동안 내용이 먼저 사라지지 않도록 마지막 내용을 유지한다
+  const lastView = useRef(view);
+  if (view) lastView.current = view;
+  const shown = view ?? lastView.current;
 
-          <View className="gap-3">
-            {actions.includes('watchAd') && (
-              <TouchableOpacity className="rounded-xl bg-green-600 py-3" onPress={onWatchAd}>
-                <Text className="text-center font-medium text-white">광고 보고 1개 더 만들기</Text>
-              </TouchableOpacity>
+  return (
+    <Modal animationType="fade" transparent visible={!!view} onRequestClose={onClose}>
+      <View className="flex-1 items-center justify-center bg-black/40 px-6">
+        {shown && (
+          <View className="w-full max-w-sm overflow-hidden rounded-3xl bg-white">
+            <View className="px-6 pb-5 pt-7">
+              <Text className="text-center text-xl font-bold text-neutral-900">
+                {shown.headline}
+              </Text>
+              {shown.note && (
+                <Text className="mt-1.5 text-center text-base text-neutral-500">{shown.note}</Text>
+              )}
+
+              {shown.ad && (
+                <View className="mt-6">
+                  <TouchableOpacity
+                    className="flex-row items-center justify-center gap-2 rounded-2xl bg-green-600 py-4"
+                    onPress={onWatchAd}>
+                    <MaterialIcons name="play-circle-filled" size={22} color="white" />
+                    <Text className="text-base font-bold text-white">광고 보고 1개 더 만들기</Text>
+                  </TouchableOpacity>
+                  {shown.ad.hint && (
+                    <Text className="mt-2 text-center text-sm text-neutral-500">
+                      {shown.ad.hint}
+                    </Text>
+                  )}
+                </View>
+              )}
+            </View>
+
+            {shown.pass && (
+              <View className="border-t border-neutral-100 bg-green-50/60 px-6 pb-5 pt-5">
+                <View className="flex-row items-center gap-1.5">
+                  <MaterialIcons name="diamond" size={18} color={colors.green[700]} />
+                  <Text className="text-base font-bold text-green-800">스위치온 패스</Text>
+                </View>
+                <Text className="mt-1.5 text-sm leading-5 text-neutral-600">
+                  {passSummary(shown.pass)}
+                </Text>
+                <TouchableOpacity
+                  className="mt-4 rounded-2xl border border-green-600 bg-white py-3"
+                  onPress={onPass}>
+                  <Text className="text-center text-base font-bold text-green-700">패스 보기</Text>
+                </TouchableOpacity>
+              </View>
             )}
-            {actions.includes('watchAd') && adBonusText && (
-              <Text className="-mt-1 text-center text-xs text-neutral-500">{adBonusText}</Text>
-            )}
-            {actions.includes('pass') && (
-              <TouchableOpacity
-                className="rounded-xl border border-green-600 py-3"
-                onPress={onPass}>
-                <Text className="text-center font-medium text-green-600">패스 보기</Text>
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity className="rounded-xl bg-gray-200 py-3" onPress={onClose}>
-              <Text className="text-center font-medium text-gray-700">닫기</Text>
+
+            <TouchableOpacity
+              className="border-t border-neutral-100 py-4"
+              onPress={onClose}
+              hitSlop={4}>
+              <Text className="text-center text-base text-neutral-500">닫기</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        )}
       </View>
     </Modal>
   );

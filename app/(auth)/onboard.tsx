@@ -6,6 +6,7 @@ import { WeekDayPicker } from 'components/program/WeekDayPicker';
 import { onboardQuestionImage } from 'const/assets';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
+import { useChangeStartDate } from 'hooks/useChangeStartDate';
 import { turnOnMealAlarm } from 'hooks/useMealAlarmSync';
 import useSteps from 'hooks/useSteps';
 import { useEffect, useState } from 'react';
@@ -13,16 +14,21 @@ import { View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMealAlarmStore } from 'stores/mealAlarmStore';
+import { useNotificationGateStore } from 'stores/notificationGateStore';
+import { useUserStore } from 'stores/userStore';
 import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
 import colors from 'tailwindcss/colors';
 import { getKoreanDateString, getKoreanDateWeeksAgo } from 'utils/date';
 import { getWeekColor } from 'utils/getWeekColor';
 import { formatMinutes } from 'utils/fastingSchedule';
+import { inviteStartChoice } from 'utils/kakaoShare';
+import { isDeferredLinkFresh } from 'utils/notificationGate';
 import { MEAL_KEYS, MEAL_LABELS } from 'utils/mealTimes';
 import { declaredWeekRepeatKey } from 'utils/weekRepeat';
 import {
   addDaysToDay,
   MAINTENANCE_WEEK,
+  onboardingNeedsCleanup,
   programWeekAndDay,
   startDateForWeekDay,
 } from 'utils/programStart';
@@ -41,6 +47,7 @@ export default function OnboardingScreen() {
   const mealTimes = useMealAlarmStore((state) => state.times);
   const setMealAlarmOn = useMealAlarmStore((state) => state.setOn);
   const [isAsking, setIsAsking] = useState(false);
+  const { cleanupAfterStartChange } = useChangeStartDate();
 
   const today = getKoreanDateString({ formatType: 'date' });
   const tomorrow = addDaysToDay(today, 1);
@@ -49,6 +56,12 @@ export default function OnboardingScreen() {
   const [weekDay, setWeekDay] = useState({ week: 1, day: 1 });
   const { week, day, beforeStart } = programWeekAndDay(selectedDate, today);
   const asksMealAlarm = beforeStart || week === 1;
+  // 카톡으로 받은 같이 하자 초대 (app/kakaolink): "언제부터 시작" 맨 위에 친구 날짜 (지났으면 같은 주차로 맞추기)
+  // 30분이 지난 초대는 버린다 (링크를 누르고 오래 뒤에 로그인)
+  const pendingInvite = useNotificationGateStore((state) =>
+    isDeferredLinkFresh(state.pendingInviteAt, Date.now()) ? state.pendingInvite : null
+  );
+  const inviteChoice = inviteStartChoice(pendingInvite, today);
 
   const setDateAndGoLastStep = (startDate: string) => {
     setSelectedDate(startDate);
@@ -65,7 +78,15 @@ export default function OnboardingScreen() {
     // 3·4주차라고 고르고 들어오면 그 전환에서 "한 주 더 하기"를 묻지 않는다 (홈에서 바로 열리는 주차 팝업보다 먼저)
     const declaredKey = declaredWeekRepeatKey(selectedDate, today);
     if (declaredKey) markRepeatAsked(declaredKey);
-    await UserAPI.updateOnboarding(selectedDate);
+    const previousStart = useUserStore.getState().start_date;
+    const ok = await UserAPI.updateOnboarding(selectedDate);
+    // 초대는 여기서 썼다 (안 골랐어도). 남겨 두면 탭이 뜰 때 이미 시작한 사람 안내가 뜬다.
+    // 저장에 실패하면 남겨 둔다 (다시 온보딩할 때 친구 날짜를 또 고를 수 있게)
+    if (ok) useNotificationGateStore.getState().setPendingInvite(null);
+    // 이미 다른 시작일로 기록이 남은 유저(온보딩을 안 끝낸 옛 행)면 시작일 변경과 같은 정리 (통계·재료·단식 계획).
+    // 할 일 통계는 주차 맞추기처럼 같은 날짜 칸으로 옮긴다 (옛 시작일 기준 칸에 남아 다른 날짜로 보이지 않게)
+    if (ok && previousStart && onboardingNeedsCleanup(previousStart, selectedDate))
+      await cleanupAfterStartChange(selectedDate, today, { alignedFrom: previousStart });
     router.replace('/(tabs)/home');
   };
   // 끼니 알림: 예 → 권한 요청(거부하면 꺼짐), 아니오 → 꺼짐. 나중에 내 정보에서 켤 수 있다
@@ -104,8 +125,11 @@ export default function OnboardingScreen() {
               <RippleButton
                 className="w-full py-5"
                 outerClassName="border border-green-600"
-                // 건너뛰어도 하루 준비하고 시작하도록 내일부터 (준비하고 시작한 사람이 더 오래 이어감)
-                onPress={() => setDateAndGoLastStep(tomorrow)}>
+                // 건너뛰어도 하루 준비하고 시작하도록 내일부터 (준비하고 시작한 사람이 더 오래 이어감).
+                // 친구 초대가 있으면 친구 날짜를 고를 수 있게 "언제부터 시작"으로
+                onPress={() =>
+                  inviteChoice ? goToStep(START_CHOICE_STEP) : setDateAndGoLastStep(tomorrow)
+                }>
                 <Text className="text-xl text-green-600">건너뛰기</Text>
               </RippleButton>
             </AnimatedTextView>
@@ -177,26 +201,49 @@ export default function OnboardingScreen() {
                 </Text>
               </AnimatedTextView>
               <AnimatedTextView delay={800}>
-                <Text className="text-lg font-medium text-neutral-500">
-                  하루 준비하고 시작한 분들이 더 오래 이어가요.
-                </Text>
-                <Text className="text-lg font-medium text-neutral-500">
-                  오늘은 쉐이크와 장보기를 챙기고, 내일 1주차 1일을 시작해 보세요.
-                </Text>
+                {inviteChoice ? (
+                  <Text className="text-lg font-medium text-neutral-500">
+                    친구가 같이 하자고 초대했어요. 같은 날로 맞추면 매일 같은 주차·일차로 함께 가요.
+                  </Text>
+                ) : (
+                  <>
+                    <Text className="text-lg font-medium text-neutral-500">
+                      하루 준비하고 시작한 분들이 더 오래 이어가요.
+                    </Text>
+                    <Text className="text-lg font-medium text-neutral-500">
+                      오늘은 쉐이크와 장보기를 챙기고, 내일 1주차 1일을 시작해 보세요.
+                    </Text>
+                  </>
+                )}
               </AnimatedTextView>
             </View>
             <AnimatedTextView className="gap-5" delay={1000}>
-              <RippleButton
-                className="w-full bg-green-600 py-5"
-                onPress={() => setDateAndGoLastStep(tomorrow)}>
-                <Text className="text-xl text-white">내일부터 시작 (추천)</Text>
-              </RippleButton>
-              <RippleButton
-                className="w-full py-5"
-                outerClassName="border border-green-600"
-                onPress={() => setDateAndGoLastStep(today)}>
-                <Text className="text-xl text-green-600">오늘부터 시작</Text>
-              </RippleButton>
+              {inviteChoice && (
+                <RippleButton
+                  className="w-full bg-green-600 py-5"
+                  onPress={() => setDateAndGoLastStep(inviteChoice.startDate)}>
+                  <Text className="text-xl text-white">{inviteChoice.label}</Text>
+                </RippleButton>
+              )}
+              {/* 친구 날짜가 내일·오늘이면 그 버튼은 친구 버튼이 대신한다 */}
+              {inviteChoice?.replaces !== 'tomorrow' && (
+                <RippleButton
+                  className={`w-full py-5 ${inviteChoice ? '' : 'bg-green-600'}`}
+                  outerClassName={inviteChoice ? 'border border-green-600' : ''}
+                  onPress={() => setDateAndGoLastStep(tomorrow)}>
+                  <Text className={`text-xl ${inviteChoice ? 'text-green-600' : 'text-white'}`}>
+                    {inviteChoice ? '내일부터 시작' : '내일부터 시작 (추천)'}
+                  </Text>
+                </RippleButton>
+              )}
+              {inviteChoice?.replaces !== 'today' && (
+                <RippleButton
+                  className="w-full py-5"
+                  outerClassName="border border-green-600"
+                  onPress={() => setDateAndGoLastStep(today)}>
+                  <Text className="text-xl text-green-600">오늘부터 시작</Text>
+                </RippleButton>
+              )}
             </AnimatedTextView>
           </>
         )}

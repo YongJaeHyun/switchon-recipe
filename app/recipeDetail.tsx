@@ -10,6 +10,7 @@ import { CarbBadge } from 'components/recipes/CarbBadge';
 import { ServingsStepper } from 'components/recipes/ServingsStepper';
 import { SimilarRecipes } from 'components/recipes/SimilarRecipes';
 import { logo } from 'const/assets';
+import { KAKAO_TEMPLATE_IDS } from 'const/kakaoTemplates';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -29,6 +30,7 @@ import { RecipeDB } from 'types/database';
 import { IngredientSchema, Recipe, RecipeIngredient } from 'types/recipe';
 import { carbTypeStyle } from 'utils/carbType';
 import { nutritionPerServing } from 'utils/nutritionPerServing';
+import { parseRecipeFields } from 'utils/recipeFields';
 import {
   SERVINGS_STEPPER_MIN,
   baseServingsOf,
@@ -56,14 +58,16 @@ export default function RecipeDetailScreen() {
   } = parsedRecipe;
   const carbType = carbTypeStyle(is_zero_carb);
 
-  const parsedIngredients: RecipeIngredient[] = JSON.parse(ingredients ?? '');
+  // 카톡 링크 등 밖에서 온 레시피도 열리므로 칸의 모양이 틀려도 빈 값으로 읽는다 (utils/recipeFields)
+  const fields = parseRecipeFields({ ingredients, cooking_steps, nutrition });
+  const parsedIngredients = fields.ingredients as RecipeIngredient[];
   parsedIngredients.sort((a: RecipeIngredient, b: RecipeIngredient) => {
     if (typeof a === 'string' || typeof b === 'string') return 0;
     if (a.isOptional === b.isOptional) return 0;
     return a.isOptional ? 1 : -1;
   });
 
-  const parsedCookingSteps: Recipe['cookingSteps'] = JSON.parse(cooking_steps ?? '');
+  const parsedCookingSteps = fields.cookingSteps as Recipe['cookingSteps'];
 
   // 기준 인분을 모르면(null) 인분 조절을 숨기고 재료 양을 그대로 보여 준다.
   // 비슷한 레시피로 이동해 같은 화면이 다른 레시피로 바뀌면 그 레시피의 기준 인분부터 다시 시작한다
@@ -72,10 +76,9 @@ export default function RecipeDetailScreen() {
   const servings = selected?.id === id ? selected.servings : (baseServings ?? 1);
   const servingsFactor = baseServings ? servings / baseServings : 1;
   // 영양 정보는 항상 1인분 기준 (재료 전체 양 기준으로 저장돼 있어 기준 인분으로 나눈다)
-  const parsedNutrition: Recipe['nutrition'] = nutritionPerServing(
-    JSON.parse(nutrition ?? ''),
-    baseServings
-  );
+  const parsedNutrition = nutritionPerServing(fields.nutrition, baseServings) as Partial<
+    Recipe['nutrition']
+  >;
 
   const { data: isSaved = false } = useQueryWith402Retry({
     queryKey: ['savedRecipe', id],
@@ -131,7 +134,7 @@ export default function RecipeDetailScreen() {
 
   const shareRecipeWithKakao = async () => {
     await shareCustomTemplate({
-      templateId: 122968,
+      templateId: KAKAO_TEMPLATE_IDS.recipe,
       templateArgs: {
         title: recipe_name ?? '',
         image_uri: image_uri ?? '',

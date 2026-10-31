@@ -23,4 +23,5 @@ export enum QueryKey {
   weeklyReports,
   fastingHistory,
   similarRecipes,
+  recipeQuotaSetting,
 }

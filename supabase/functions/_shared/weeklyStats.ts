@@ -14,6 +14,8 @@ const WEEKDAYS = ['일요일', '월요일', '화요일', '수요일', '목요일
 export interface WeeklyInputs {
   startDate: string;
   weekIndex: number; // 리포트 대상 주차
+  // 누적 변화(totalDiff) 기준 시작일 = 회차 시작일(baselineStartOf). 없으면 startDate
+  baselineStart?: string;
   weights: { day: string; weight_kg: number }[]; // 전체(누적 변화 계산용)
   todoDays: { day: string; items: string[]; checked: number[] }[];
   fastingPlannedDays: string[]; // 그 주에 계획된 단식 시작일들
@@ -41,7 +43,7 @@ export interface WeeklyStats {
     end: number | null;
     diff: number | null; // 기록 2일 이상일 때만
     daysLogged: number;
-    totalDiff: number | null; // 시작일 이후 첫 기록 대비
+    totalDiff: number | null; // 회차 시작일(없으면 시작일) 이후 첫 기록 대비
   };
   todo: {
     avgRate: number | null;
@@ -85,6 +87,34 @@ const weekdayOf = (day: string) => new Date(dayToUtc(day)).getUTCDay();
 const inRange = (day: string, range: { from: string; to: string }) =>
   day >= range.from && day <= range.to;
 
+// 앱 utils/programStart.ts PROGRAM_CHAIN_DAYS와 같은 값: 시작일보다 이만큼 넘게 앞선 program_start는 옛 회차 것
+const PROGRAM_CHAIN_DAYS = 56;
+
+// 누적 체중 기준 시작일 = 회차 시작일. 앱 utils/programStart.ts programStartOf와 같은 규칙:
+// program_start(한 주 더 하기·주차 맞추기로 start_date가 바뀌어도 그대로)가 없거나 날짜 꼴이 아니거나
+// start_date보다 뒤면(구버전 앱이 시작일을 앞당김) start_date. start_date보다 56일 넘게 앞이어도 start_date
+// (구버전 앱이 다시 시작하며 start_date만 바꿔 옛 회차의 program_start가 남은 경우). 지금 앱의 같은 회차도
+// 한 주 더 하기 아홉 번쯤, 또는 유지기 오래 지나 1·4주차로 주차 맞추기면 56일을 넘어 새 회차로 읽힌다 (받아들임)
+export function baselineStartOf(
+  programStart: string | null | undefined,
+  startDate: string
+): string {
+  const start = startDate.slice(0, 10);
+  const program = programStart?.slice(0, 10);
+  if (!program || !/^\d{4}-\d{2}-\d{2}$/.test(program) || program > start) return start;
+  return (dayToUtc(start) - dayToUtc(program)) / DAY_MS > PROGRAM_CHAIN_DAYS ? start : program;
+}
+
+// 두 날짜 범위가 겹치는 날 수 (0 = 안 겹침)
+export function overlapDays(
+  a: { from: string; to: string },
+  b: { from: string; to: string }
+): number {
+  const from = Math.max(dayToUtc(a.from), dayToUtc(b.from));
+  const to = Math.min(dayToUtc(a.to), dayToUtc(b.to));
+  return to < from ? 0 : Math.round((to - from) / DAY_MS) + 1;
+}
+
 // 시작일 기준 weekIndex주차의 7일 (KST 날짜)
 export function weekRange(startDate: string, weekIndex: number): { from: string; to: string } {
   const from = dayToUtc(startDate) + (weekIndex - 1) * 7 * DAY_MS;
@@ -111,7 +141,7 @@ const byDay = <T extends { day: string }>(a: T, b: T) =>
   a.day < b.day ? -1 : a.day > b.day ? 1 : 0;
 
 const weightStats = (input: WeeklyInputs, range: { from: string; to: string }) => {
-  const start = input.startDate.slice(0, 10);
+  const start = (input.baselineStart ?? input.startDate).slice(0, 10);
   const sorted = [...input.weights].sort(byDay);
   const week = sorted.filter((w) => inRange(w.day, range));
   if (week.length === 0) {

@@ -3,7 +3,7 @@
 // Deno 엣지 함수와 Vitest(node) 양쪽에서 로드되므로 URL import를 두지 않는다.
 
 import type { VoidedPurchase } from '../_shared/googlePlay.ts';
-import { computeExpiry, type PurchaseForExpiry } from '../_shared/pass.ts';
+import { computeExpiry, type ExtensionForExpiry, type PurchaseForExpiry } from '../_shared/pass.ts';
 
 export interface VoidedDeps {
   listVoided(sinceMillis: number): Promise<VoidedPurchase[]>;
@@ -12,6 +12,8 @@ export interface VoidedDeps {
   ): Promise<{ purchaseToken: string; uid: string | null; status: string }[]>;
   markVoided(tokens: string[]): Promise<void>;
   listUserPurchases(uid: string): Promise<PurchaseForExpiry[]>;
+  // 한 주 더 하기 연장 기록 (pass_extension). 정확한 값으로 덮어쓸 때 연장분이 지워지지 않게 함께 쌓는다
+  listUserExtensions(uid: string): Promise<ExtensionForExpiry[]>;
   // 환불 회수는 만료일을 낮추거나 패스를 없앨 수 있어야 하므로 raise가 아니라 정확한 값으로 쓴다
   setPassExpiry(uid: string, expiresAt: Date | null): Promise<void>;
 }
@@ -38,8 +40,11 @@ export async function syncVoided(
   // 탈퇴(uid null)한 구매는 voided 표시만 하고 재계산 대상에서 제외한다.
   const uids = [...new Set(found.map((f) => f.uid).filter((uid): uid is string => uid !== null))];
   for (const uid of uids) {
-    const purchases = await deps.listUserPurchases(uid);
-    const expiry = computeExpiry(purchases);
+    const [purchases, extensions] = await Promise.all([
+      deps.listUserPurchases(uid),
+      deps.listUserExtensions(uid),
+    ]);
+    const expiry = computeExpiry(purchases, extensions);
     await deps.setPassExpiry(uid, expiry);
   }
 

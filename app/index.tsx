@@ -92,5 +92,7 @@ export default function Index() {
   if (!isReady) return null;
   if (isFirstLaunch) return <Redirect href={'/(greet)'} />;
   if (!isLoggedIn) return <Redirect href={'/(auth)'} />;
-  return isOnboarded ? <Redirect href={'/(tabs)'} /> : <Redirect href={'/(auth)/onboard'} />;
+  // 오늘 탭으로 바로 간다. '/(tabs)'로 가면 (tabs)/index의 <Redirect>가 나중에 replace를 불러, 탭이 뜨자마자 연
+  // 알림·링크 화면(useNotificationObserver의 push)을 오늘 탭으로 덮어썼다
+  return isOnboarded ? <Redirect href={'/(tabs)/home'} /> : <Redirect href={'/(auth)/onboard'} />;
 }

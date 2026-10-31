@@ -10,7 +10,7 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { requireEnv } from '../_shared/auth.ts';
 import { createGooglePlayClient, parseServiceAccount } from '../_shared/googlePlay.ts';
-import type { PurchaseForExpiry } from '../_shared/pass.ts';
+import type { ExtensionForExpiry, PurchaseForExpiry } from '../_shared/pass.ts';
 import { isServiceRoleRequest } from '../_shared/serviceRole.ts';
 import { syncVoided, type VoidedDeps } from './handler.ts';
 
@@ -65,12 +65,33 @@ const deps = (): VoidedDeps => ({
   async listUserPurchases(uid: string): Promise<PurchaseForExpiry[]> {
     const { data, error } = await supabase
       .from('pass_purchase')
-      .select('purchased_at, status')
+      .select('purchase_token, product_id, purchased_at, status')
       .eq('uid', uid);
     if (error) throw error;
-    return data.map((row: { purchased_at: string; status: PurchaseForExpiry['status'] }) => ({
-      purchasedAt: new Date(row.purchased_at),
-      status: row.status,
+    return data.map(
+      (row: {
+        purchase_token: string;
+        product_id: string;
+        purchased_at: string;
+        status: PurchaseForExpiry['status'];
+      }) => ({
+        purchaseToken: row.purchase_token,
+        productId: row.product_id,
+        purchasedAt: new Date(row.purchased_at),
+        status: row.status,
+      })
+    );
+  },
+
+  async listUserExtensions(uid: string): Promise<ExtensionForExpiry[]> {
+    const { data, error } = await supabase
+      .from('pass_extension')
+      .select('extended_at, purchase_token')
+      .eq('uid', uid);
+    if (error) throw error;
+    return data.map((row: { extended_at: string; purchase_token: string }) => ({
+      extendedAt: new Date(row.extended_at),
+      purchaseToken: row.purchase_token,
     }));
   },
 

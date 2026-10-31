@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useFirstWeekStore } from 'stores/firstWeekStore';
-import { shouldCelebrate } from 'utils/dailyReminder';
+import { useUserStore } from 'stores/userStore';
+import { celebrationKey, shouldCelebrate } from 'utils/dailyReminder';
 
-// 1주차 그날 할 일을 방금 100% 끝내면 완주 축하 시트를 하루 한 번 연다 (본 날은 firstWeekStore에 남김).
+// 1주차 그날 할 일을 방금 100% 끝내면 완주 축하 시트를 하루 한 번 연다 (본 날·시작일은 firstWeekStore에 남김).
 // currentRate = 오늘 체크가 오늘 것일 때의 완료율 (useTodos), 아니면 null.
 // 돌려주는 day가 있으면 그 일차의 축하 시트를 보여준다
 export function useDayCelebration({
@@ -16,6 +17,7 @@ export function useDayCelebration({
   today: string;
   currentRate: number | null;
 }) {
+  const startDate = useUserStore((state) => state.start_date);
   const celebratedDays = useFirstWeekStore((state) => state.celebratedDays);
   const markCelebrated = useFirstWeekStore((state) => state.markCelebrated);
   const [hydrated, setHydrated] = useState(() => useFirstWeekStore.persist.hasHydrated());
@@ -39,12 +41,20 @@ export function useDayCelebration({
     const prevRate = prev.current?.today === today ? prev.current.rate : null;
     prev.current = { today, rate: currentRate };
     if (
-      !shouldCelebrate({ week, day, completedRate: currentRate, prevRate, celebratedDays, today })
+      !shouldCelebrate({
+        week,
+        day,
+        completedRate: currentRate,
+        prevRate,
+        celebratedDays,
+        today,
+        startDate,
+      })
     )
       return;
-    markCelebrated(today);
+    markCelebrated(celebrationKey(today, startDate));
     setCelebrateDay(day);
-  }, [hydrated, week, day, today, currentRate, celebratedDays, markCelebrated]);
+  }, [hydrated, week, day, today, startDate, currentRate, celebratedDays, markCelebrated]);
 
   return { celebrateDay, closeCelebration: () => setCelebrateDay(null) };
 }

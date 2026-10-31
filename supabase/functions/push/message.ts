@@ -1,9 +1,11 @@
-// notifications.type. WEEKLY_REPORT·WEIGHT_REMINDER는 cron 배치(generate-weekly-reports, weight-reminder)가 넣는다
+// notifications.type. WEEKLY_REPORT·WEIGHT_REMINDER·REPORT_EVE_REMINDER는 cron 배치
+// (generate-weekly-reports, weight-reminder, report-eve-reminder)가 넣는다
 export type NotificationType =
   | 'INQUIRY'
   | 'INGREDIENT_REQUEST'
   | 'WEEKLY_REPORT'
-  | 'WEIGHT_REMINDER';
+  | 'WEIGHT_REMINDER'
+  | 'REPORT_EVE_REMINDER';
 // Android 알림 채널 (앱 const/channels.ts와 같은 값)
 export type ChannelType = 'INQUIRY' | 'FASTING' | 'INGREDIENT' | 'REPORT';
 

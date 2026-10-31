@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
+  celebrationKey,
   markCelebratedDay,
   nextMorningReminder,
   shouldCelebrate,
@@ -220,6 +221,28 @@ describe('shouldCelebrate (1주차 완주 축하는 하루 한 번)', () => {
       prevRate = completedRate;
     }
     expect(shown).toBe(1);
+  });
+});
+
+describe('완주 축하: 같은 날 처음부터 다시 시작하면 새 1일차로 다시 축하', () => {
+  const base = {
+    week: 1,
+    day: 1,
+    completedRate: 100,
+    prevRate: 50 as number | null,
+    today: '2026-11-01',
+  };
+
+  it('축하 기록은 날짜 + 시작일 (오늘 다시 시작하면 다른 키)', () => {
+    expect(celebrationKey('2026-11-01', '2026-10-30')).toBe('2026-11-01@2026-10-30');
+    expect(celebrationKey('2026-11-01', '2026-10-30T00:00:00+09:00')).toBe('2026-11-01@2026-10-30');
+    expect(celebrationKey('2026-11-01', null)).toBe('2026-11-01');
+  });
+
+  it('3일차에 축하를 봤어도, 오늘부터 다시 시작해 1일차를 끝내면 다시 축하', () => {
+    const celebratedDays = [celebrationKey('2026-11-01', '2026-10-30')];
+    expect(shouldCelebrate({ ...base, celebratedDays, startDate: '2026-11-01' })).toBe(true);
+    expect(shouldCelebrate({ ...base, celebratedDays, startDate: '2026-10-30' })).toBe(false);
   });
 });
 

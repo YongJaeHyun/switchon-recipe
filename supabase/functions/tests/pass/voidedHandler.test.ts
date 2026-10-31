@@ -10,6 +10,7 @@ interface Row {
   uid: string | null;
   status: string;
   purchasedAt: Date;
+  productId?: string; // 기본 5주 정가
 }
 
 const voided = (overrides: Partial<VoidedPurchase> = {}): VoidedPurchase => ({
@@ -19,7 +20,11 @@ const voided = (overrides: Partial<VoidedPurchase> = {}): VoidedPurchase => ({
   ...overrides,
 });
 
-const createFakeDeps = (rows: Row[], voidedPurchases: VoidedPurchase[]) => {
+const createFakeDeps = (
+  rows: Row[],
+  voidedPurchases: VoidedPurchase[],
+  extensions: { uid: string; extendedAt: Date; purchaseToken: string }[] = []
+) => {
   const expiries = new Map<string, Date | null>();
 
   const deps: VoidedDeps = {
@@ -40,7 +45,18 @@ const createFakeDeps = (rows: Row[], voidedPurchases: VoidedPurchase[]) => {
     listUserPurchases: vi.fn(async (uid: string) =>
       rows
         .filter((r) => r.uid === uid)
-        .map((r) => ({ purchasedAt: r.purchasedAt, status: r.status as 'granted' | 'voided' }))
+        .map((r) => ({
+          purchaseToken: r.purchaseToken,
+          productId: r.productId ?? 'switchon_pass_5w_4900',
+          purchasedAt: r.purchasedAt,
+          status: r.status as 'granted' | 'voided',
+        }))
+    ),
+
+    listUserExtensions: vi.fn(async (uid: string) =>
+      extensions
+        .filter((e) => e.uid === uid)
+        .map((e) => ({ extendedAt: e.extendedAt, purchaseToken: e.purchaseToken }))
     ),
 
     setPassExpiry: vi.fn(async (uid: string, expiresAt: Date | null) => {
@@ -51,7 +67,108 @@ const createFakeDeps = (rows: Row[], voidedPurchases: VoidedPurchase[]) => {
   return { deps, rows, expiries };
 };
 
+describe('syncVoided: 한 주 더 하기 연장', () => {
+  const DAY = 24 * 60 * 60 * 1000;
+  const p1 = new Date('2026-11-01T00:00:00.000Z');
+
+  it('다른 구매가 환불돼도 남은 패스 기간 안의 연장 7일은 그대로 둔다', async () => {
+    const rows: Row[] = [
+      { purchaseToken: 't1', uid: 'u1', status: 'granted', purchasedAt: p1 },
+      {
+        purchaseToken: 't2',
+        uid: 'u1',
+        status: 'granted',
+        purchasedAt: new Date('2026-11-25T00:00:00.000Z'),
+        productId: 'switchon_pass_1w_1500',
+      },
+    ];
+    const { deps, expiries } = createFakeDeps(
+      rows,
+      [voided({ purchaseToken: 't2' })],
+      [{ uid: 'u1', extendedAt: new Date('2026-11-20T00:00:00.000Z'), purchaseToken: 't1' }]
+    );
+
+    await syncVoided(deps, SINCE);
+
+    expect(expiries.get('u1')).toEqual(new Date(p1.getTime() + 42 * DAY));
+  });
+
+  it('연장이 묶인 구매가 환불되면 다른 구매가 남아 있어도 그 연장은 빠진다', async () => {
+    const rows: Row[] = [
+      { purchaseToken: 't1', uid: 'u1', status: 'granted', purchasedAt: p1 },
+      {
+        purchaseToken: 't2',
+        uid: 'u1',
+        status: 'granted',
+        purchasedAt: new Date('2026-11-10T00:00:00.000Z'),
+      },
+    ];
+    const { deps, expiries } = createFakeDeps(
+      rows,
+      [voided({ purchaseToken: 't2' })],
+      [{ uid: 'u1', extendedAt: new Date('2026-11-20T00:00:00.000Z'), purchaseToken: 't2' }]
+    );
+
+    await syncVoided(deps, SINCE);
+
+    expect(expiries.get('u1')).toEqual(new Date(p1.getTime() + 35 * DAY));
+  });
+
+  it('연장의 바탕이 된 구매가 환불되면 연장도 없어진다', async () => {
+    const rows: Row[] = [{ purchaseToken: 't1', uid: 'u1', status: 'granted', purchasedAt: p1 }];
+    const { deps, expiries } = createFakeDeps(
+      rows,
+      [voided({ purchaseToken: 't1' })],
+      [{ uid: 'u1', extendedAt: new Date('2026-11-20T00:00:00.000Z'), purchaseToken: 't1' }]
+    );
+
+    await syncVoided(deps, SINCE);
+
+    expect(expiries.get('u1')).toBeNull();
+  });
+});
+
 describe('syncVoided', () => {
+  it('1주 패스가 환불되면 그 7일만 빠진다 (5주 패스는 35일 그대로)', async () => {
+    const p1 = new Date('2026-11-01T00:00:00.000Z');
+    const p2 = new Date('2026-11-10T00:00:00.000Z');
+    const rows: Row[] = [
+      { purchaseToken: 't1', uid: 'u1', status: 'granted', purchasedAt: p1 },
+      {
+        purchaseToken: 't2',
+        uid: 'u1',
+        status: 'granted',
+        purchasedAt: p2,
+        productId: 'switchon_pass_1w_1500',
+      },
+    ];
+    const { deps, expiries } = createFakeDeps(rows, [voided({ purchaseToken: 't2' })]);
+
+    await syncVoided(deps, SINCE);
+
+    expect(expiries.get('u1')).toEqual(new Date(p1.getTime() + 35 * 24 * 60 * 60 * 1000));
+  });
+
+  it('5주 패스가 환불되고 1주 패스만 남으면 1주 패스 구매 시각 + 7일', async () => {
+    const p1 = new Date('2026-11-01T00:00:00.000Z');
+    const p2 = new Date('2026-11-10T00:00:00.000Z');
+    const rows: Row[] = [
+      { purchaseToken: 't1', uid: 'u1', status: 'granted', purchasedAt: p1 },
+      {
+        purchaseToken: 't2',
+        uid: 'u1',
+        status: 'granted',
+        purchasedAt: p2,
+        productId: 'switchon_pass_1w_1500',
+      },
+    ];
+    const { deps, expiries } = createFakeDeps(rows, [voided({ purchaseToken: 't1' })]);
+
+    await syncVoided(deps, SINCE);
+
+    expect(expiries.get('u1')).toEqual(new Date(p2.getTime() + 7 * 24 * 60 * 60 * 1000));
+  });
+
   it('환불된 granted 구매는 voided로 표시하고 유저 만료일을 재계산한다', async () => {
     const purchasedAt = new Date('2026-10-01T00:00:00.000Z');
     const rows: Row[] = [{ purchaseToken: 't1', uid: 'u1', status: 'granted', purchasedAt }];
@@ -81,7 +198,9 @@ describe('syncVoided', () => {
 
     const result = await syncVoided(deps, SINCE);
 
-    const expected = computeExpiry([{ purchasedAt: p2, status: 'granted' }]);
+    const expected = computeExpiry([
+      { productId: 'switchon_pass_5w_4900', purchasedAt: p2, status: 'granted' },
+    ]);
     expect(result).toEqual({ voided: 1, usersUpdated: 1 });
     expect(expiries.get('u1')).toEqual(expected);
   });
@@ -121,7 +240,9 @@ describe('syncVoided', () => {
 
     const result = await syncVoided(deps, SINCE);
 
-    const expected = computeExpiry([{ purchasedAt: p2, status: 'granted' }]);
+    const expected = computeExpiry([
+      { productId: 'switchon_pass_5w_4900', purchasedAt: p2, status: 'granted' },
+    ]);
     expect(result).toEqual({ voided: 0, usersUpdated: 1 });
     expect(deps.markVoided).not.toHaveBeenCalled();
     expect(deps.setPassExpiry).toHaveBeenCalledWith('u1', expected);

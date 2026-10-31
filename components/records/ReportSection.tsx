@@ -8,8 +8,14 @@ import { CHANNELS } from 'const/channels';
 import { router } from 'expo-router';
 import { useBillingAvailable } from 'hooks/useBillingAvailable';
 import { usePass } from 'hooks/usePass';
-import { useWeeklyReports } from 'hooks/useWeeklyReports';
-import { useEffect, useMemo } from 'react';
+import {
+  cacheGeneratedReport,
+  useOnDemandLimitStore,
+  useReportRecordDays,
+  useWeeklyReports,
+} from 'hooks/useWeeklyReports';
+import { WeeklyReportAPI } from 'api/WeeklyReportAPI';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, TouchableOpacity, View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
@@ -23,9 +29,30 @@ import {
   formatReportRange,
   groupReportsByProgram,
   isEmptyReport,
+  reportDisplayWeek,
+  reportWeekLabel,
 } from 'utils/reportDisplay';
+import {
+  isOnDemandLimitedToday,
+  kstDayOf,
+  missingReportTitle,
+  missingReportWeeks,
+  ON_DEMAND_MESSAGES,
+  weekHasRecords,
+  type WeekRange,
+} from 'utils/reportOnDemand';
+import { showNetworkErrorToast } from 'utils/network';
 
-const ReportRow = ({ report, muted }: { report: WeeklyReport; muted?: boolean }) => {
+// programReports = 같은 회차의 리포트 (한 주 더 하기로 다시 지낸 주면 "N주차 · 한 번 더")
+const ReportRow = ({
+  report,
+  programReports,
+  muted,
+}: {
+  report: WeeklyReport;
+  programReports: WeeklyReport[];
+  muted?: boolean;
+}) => {
   const empty = isEmptyReport(report);
   const preview = empty ? '이번 주는 기록이 없어요' : report.content?.summary;
 
@@ -39,8 +66,10 @@ const ReportRow = ({ report, muted }: { report: WeeklyReport; muted?: boolean })
         <View className="flex-row items-center gap-2">
           <Text
             className="font-bold"
-            style={{ color: muted ? colors.neutral[500] : getWeekColorHex(report.week_index) }}>
-            {report.week_index}주차
+            style={{
+              color: muted ? colors.neutral[500] : getWeekColorHex(reportDisplayWeek(report)),
+            }}>
+            {reportWeekLabel(report, programReports)}
           </Text>
           {report.stats && (
             <Text className="text-xs text-neutral-400">
@@ -60,6 +89,75 @@ const ReportRow = ({ report, muted }: { report: WeeklyReport; muted?: boolean })
     </RippleButton>
   );
 };
+
+// 리포트가 없는 끝난 주 (패스 유저, 지금 회차). 리포트가 있는 줄과 같은 자리에 점선 빈 칸으로 놓고 [지금 만들기].
+// noRecords: 그 주 기록이 없다는 걸 알 때 (앱이 읽은 기록, 또는 서버가 no_records로 답함) → 버튼을 막고 안내.
+// limited: 오늘 하루 상한을 다 씀 → 버튼을 막고 error에 안내
+const MissingReportRow = ({
+  weekIndex,
+  range,
+  noRecords,
+  limited,
+  pending,
+  disabled,
+  error,
+  onCreate,
+}: {
+  weekIndex: number;
+  range: WeekRange;
+  noRecords: boolean;
+  limited: boolean;
+  pending: boolean;
+  disabled: boolean;
+  error: string | null;
+  onCreate(): void;
+}) => {
+  const blocked = noRecords || limited || disabled;
+  return (
+    <View className="gap-2 rounded-xl border border-dashed border-neutral-300 px-4 py-3">
+      <View className="flex-row items-center gap-3">
+        <View className="flex-1 gap-0.5">
+          <View className="flex-row items-center gap-2">
+            <Text className="font-bold text-neutral-400">{weekIndex}주차</Text>
+            <Text className="text-xs text-neutral-400">{formatReportRange(range)}</Text>
+          </View>
+          <Text className="text-sm text-neutral-500">
+            {pending ? '한 주 기록을 정리하고 있어요' : missingReportTitle(noRecords)}
+          </Text>
+        </View>
+        {pending ? (
+          <View className="flex-row items-center gap-1.5 px-1 py-2">
+            <ActivityIndicator size="small" color={colors.green[600]} />
+            <Text className="text-sm font-semibold text-green-700">만드는 중</Text>
+          </View>
+        ) : (
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityState={{ disabled: blocked }}
+            disabled={blocked}
+            onPress={onCreate}
+            className={`rounded-full px-3.5 py-2 ${blocked ? 'bg-neutral-200' : 'bg-green-600'}`}>
+            <Text className={`text-sm font-bold ${blocked ? 'text-neutral-400' : 'text-white'}`}>
+              지금 만들기
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
+      {noRecords ? (
+        <Text className="text-xs text-neutral-400">{ON_DEMAND_MESSAGES.no_records}</Text>
+      ) : limited ? (
+        <Text className="text-xs text-neutral-500">{ON_DEMAND_MESSAGES.daily_limit}</Text>
+      ) : (
+        !!error && <Text className="text-xs text-red-600">{error}</Text>
+      )}
+    </View>
+  );
+};
+
+const keyOf = (startDate: string, weekIndex: number) => `${startDate}-${weekIndex}`;
+// 리포트 기간 첫날 (UTC ms)
+const periodFrom = (r: { start_date: string; week_index: number }) =>
+  Date.parse(`${r.start_date.slice(0, 10)}T00:00:00Z`) + (r.week_index - 1) * 7 * 86_400_000;
 
 // 기록 탭 > 리포트 칸: 나의 4주 리포트 + 주간 리포트 목록(무료 유저는 미리보기 카드)
 export function ReportSection() {
@@ -86,6 +184,72 @@ export function ReportSection() {
     if (hasAccess) registerChannelIfPermitted(CHANNELS.REPORT);
   }, [hasAccess]);
 
+  // 패스 유저: 지금 회차의 끝난 주 중 리포트가 없는 주 (기록이 없어 cron이 만들지 않은 주). 목록을 받은 뒤에만
+  const missing = useMemo(
+    () =>
+      hasAccess && !isLoading && !isError ? missingReportWeeks(startDate, reports, new Date()) : [],
+    [hasAccess, isLoading, isError, startDate, reports]
+  );
+  // 빈 칸 기간의 기록이 있는 날 (모르면 null → 버튼을 열어 두고 서버 답으로 막는다)
+  const recordDays = useReportRecordDays(
+    missing.length > 0
+      ? { from: missing[missing.length - 1].range.from, to: missing[0].range.to }
+      : null
+  );
+  // 서버가 no_records로 답한 주 (이 화면에 있는 동안)
+  const [serverNoRecords, setServerNoRecords] = useState<string[]>([]);
+  const [creating, setCreating] = useState<string | null>(null);
+  const [createError, setCreateError] = useState<{ key: string; message: string } | null>(null);
+  const { limitedDay, setLimitedDay } = useOnDemandLimitStore();
+  const limited = isOnDemandLimitedToday(limitedDay, new Date());
+
+  const createReport = async (weekIndex: number) => {
+    if (!startDate || creating) return;
+    const key = keyOf(startDate, weekIndex);
+    setCreating(key);
+    setCreateError(null);
+    const outcome = await WeeklyReportAPI.generate(startDate, weekIndex, 'create');
+    setCreating(null);
+    if (outcome.status === 'ok') {
+      cacheGeneratedReport(outcome.report);
+      router.push(`/report/${outcome.report.start_date}/${outcome.report.week_index}`);
+      return;
+    }
+    if (outcome.status === 'no_records') {
+      setServerNoRecords((prev) => [...prev, key]);
+      return;
+    }
+    if (outcome.status === 'network') {
+      showNetworkErrorToast();
+      return;
+    }
+    if (outcome.status === 'daily_limit') {
+      setLimitedDay(kstDayOf(new Date()));
+      return;
+    }
+    setCreateError({ key, message: ON_DEMAND_MESSAGES[outcome.status] });
+  };
+
+  // 이번 회차 목록: 리포트와 빈 칸을 기간 최신 순으로 함께 (빈 칸은 지금 시작일 기준이라 기간 시작일로 비교)
+  const currentItems = useMemo(() => {
+    const items: (
+      | { kind: 'report'; at: number; report: WeeklyReport }
+      | { kind: 'missing'; at: number; weekIndex: number; range: WeekRange }
+    )[] = [
+      ...current.map((report) => ({ kind: 'report' as const, at: periodFrom(report), report })),
+      ...missing.map((m) => ({
+        kind: 'missing' as const,
+        at: Date.parse(`${m.range.from}T00:00:00Z`),
+        weekIndex: m.weekIndex,
+        range: m.range,
+      })),
+    ];
+    // 같은 기간이면 리포트 먼저 (정렬은 안정적이라 current의 순서를 지킨다)
+    return items.sort(
+      (a, b) => b.at - a.at || (a.kind === b.kind ? 0 : a.kind === 'report' ? -1 : 1)
+    );
+  }, [current, missing]);
+
   return (
     <ScrollView
       contentContainerClassName="gap-6 px-5 pb-10 pt-2"
@@ -109,7 +273,7 @@ export function ReportSection() {
             <Text className="text-sm text-neutral-600">다시 시도</Text>
           </TouchableOpacity>
         </View>
-      ) : reports.length === 0 ? (
+      ) : reports.length === 0 && missing.length === 0 ? (
         <View className="items-center gap-1 py-10">
           <Text className="text-neutral-500">아직 받은 리포트가 없어요</Text>
           {hasAccess && (
@@ -120,12 +284,37 @@ export function ReportSection() {
         </View>
       ) : (
         <>
-          {current.length > 0 && (
+          {currentItems.length > 0 && (
             <View className="gap-3">
               <Text className="text-lg font-bold text-neutral-800">이번 회차</Text>
-              {current.map((report) => (
-                <ReportRow key={`${report.start_date}-${report.week_index}`} report={report} />
-              ))}
+              {currentItems.map((item) => {
+                if (item.kind === 'report') {
+                  return (
+                    <ReportRow
+                      key={keyOf(item.report.start_date, item.report.week_index)}
+                      report={item.report}
+                      programReports={current}
+                    />
+                  );
+                }
+                const key = keyOf(startDate ?? '', item.weekIndex);
+                return (
+                  <MissingReportRow
+                    key={`missing-${key}`}
+                    weekIndex={item.weekIndex}
+                    range={item.range}
+                    noRecords={
+                      serverNoRecords.includes(key) ||
+                      (recordDays !== null && !weekHasRecords(item.range, recordDays))
+                    }
+                    limited={limited}
+                    pending={creating === key}
+                    disabled={creating !== null}
+                    error={createError?.key === key ? createError.message : null}
+                    onCreate={() => void createReport(item.weekIndex)}
+                  />
+                );
+              })}
             </View>
           )}
           {previous.map((group) => (
@@ -146,6 +335,7 @@ export function ReportSection() {
                 <ReportRow
                   key={`${report.start_date}-${report.week_index}`}
                   report={report}
+                  programReports={group.reports}
                   muted={programKnown}
                 />
               ))}

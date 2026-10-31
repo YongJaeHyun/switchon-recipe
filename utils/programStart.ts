@@ -186,8 +186,16 @@ export function isSameStartDate(current: string | null | undefined, next: string
 // ── 회차(program): 다시 시작·온보딩으로 시작한 한 묶음. 한 주 더 하기·주차 맞추기로 시작일(start_date)이
 // 바뀌어도 같은 회차다. 회차 시작일은 user.program_start에 둔다 (구버전 앱은 모르는 칸이라 null일 수 있다)
 
+// 지난 회차를 묶는 기준: 바로 앞 시작일과 8주(56일) 이내면 같은 회차
+export const PROGRAM_CHAIN_DAYS = 56;
+
 // 지금 회차 시작일. program_start가 없거나(구버전 앱·마이그레이션 전) 시작일보다 뒤면
-// (구버전 앱이 시작일을 앞당김) 시작일로 본다. 둘 다 없으면 null
+// (구버전 앱이 시작일을 앞당김) 시작일로 본다. 시작일보다 PROGRAM_CHAIN_DAYS(56일) 넘게 앞이어도 시작일로 본다:
+// 구버전 앱(5.x)은 다시 시작할 때 start_date만 쓰므로 옛 회차의 program_start가 남는다.
+// 지금 앱의 같은 회차도 56일을 넘으면 새 회차로 읽힌다 (받아들임, 저장된 program_start는 그대로라 되돌리면 돌아온다):
+// - 한 주 더 하기를 아홉 번쯤 (+7일씩, 횟수 제한 없음)
+// - 유지기 오래(9주차 2일 이후) 지나 1주차로, 또는 12주차 2일 이후 4주차로 주차 맞추기 (사실상 다시 시작으로 본다)
+// 서버 _shared/weeklyStats.ts baselineStartOf와 같은 규칙. 둘 다 없으면 null
 export function programStartOf(
   programStart: string | null | undefined,
   startDate: string | null | undefined
@@ -195,7 +203,8 @@ export function programStartOf(
   const start = startDate ? startDate.slice(0, 10) : null;
   const program = programStart ? programStart.slice(0, 10) : null;
   if (!start) return program;
-  return program && program <= start ? program : start;
+  if (!program || program > start) return start;
+  return (dayToUtc(start) - dayToUtc(program)) / DAY_MS > PROGRAM_CHAIN_DAYS ? start : program;
 }
 
 // 시작일을 바꾸는 이유: 다시 시작(온보딩 포함) / 주차 맞추기 / 한 주 더 하기
@@ -217,9 +226,6 @@ export function nextProgramStart(
   if (kind === 'align') return next < program ? next : program;
   return program;
 }
-
-// 지난 회차를 묶는 기준: 바로 앞 시작일과 8주(56일) 이내면 같은 회차
-export const PROGRAM_CHAIN_DAYS = 56;
 
 // 지난 회차 묶기. 회차 시작일(programStart) 전의 시작일들을 정렬해, 바로 앞 시작일과 PROGRAM_CHAIN_DAYS 이내로
 // 이어지면 같은 회차로 묶는다 (한 주 더 하기 +7일, 주차 맞추기는 몇 주 안쪽으로 움직인다).
@@ -244,18 +250,35 @@ export function groupPastStarts(starts: string[], programStart: string | null): 
 
 // 시작일 변경으로 저장할 것. 할 것이 없으면 null (같은 시작일, 같은 회차 시작일).
 // startChanged = 시작일이 바뀜 (재료·통계 정리도 한다). 같은 날 다시 시작인데 회차 시작일만 다르면
-// (한 주 더 하기 뒤 오늘이 1주차 1일인 날 등) 회차 시작일만 바꾸고 정리하지 않는다
+// (한 주 더 하기 뒤 오늘이 1주차 1일인 날 등) 회차 시작일만 바꾸고 정리하지 않는다.
+// alignBase = 오늘 첫 변경 전 회차 시작일 (dayProgramBase). 주차 맞추기는 지금 회차 시작일 대신 이것과 비교한다:
+// 앞당겼다가 같은 날 되돌리면 회차 시작일도 돌아간다 (앞당긴 날짜에 묶이면 그 사이 날들이 이번 회차로 섞인다)
 export function startDateChange(input: {
   kind: StartDateChangeKind;
   startDate: string | null | undefined;
   programStart: string | null | undefined;
   newStart: string;
+  alignBase?: string | null;
 }): { programStart: string; startChanged: boolean } | null {
   const current = programStartOf(input.programStart, input.startDate);
-  const programStart = nextProgramStart(input.kind, current, input.newStart);
+  const basis = input.kind === 'align' && input.alignBase ? input.alignBase : current;
+  const programStart = nextProgramStart(input.kind, basis, input.newStart);
   const startChanged = !isSameStartDate(input.startDate, input.newStart);
   if (!startChanged && programStart === current) return null;
   return { programStart, startChanged };
+}
+
+// 오늘(KST) 첫 시작일 변경 전 회차 시작일 기록. 같은 유저·같은 날이면 그대로, 아니면 지금 회차 시작일로 새로 연다.
+// 기기 메모리에만 둔다 (앱을 다시 켜면 그 뒤 변경부터 센다)
+export type DayProgramBase = { uid: string; day: string; program: string | null };
+
+export function dayProgramBase(
+  base: DayProgramBase | null,
+  now: { uid: string; today: string },
+  currentProgram: string | null
+): DayProgramBase {
+  if (base && base.uid === now.uid && base.day === now.today) return base;
+  return { uid: now.uid, day: now.today, program: currentProgram };
 }
 
 // 시작일을 바꾼 뒤 updated_at을 새로 찍을 단식 계획 행: 새 시작일의 오늘 주차 (단식이 있는 2주차부터, 시작 전이면 없음).
@@ -268,4 +291,13 @@ export function planToTouch(
   const { week, beforeStart } = programWeekAndDay(newStart, todayKst);
   if (beforeStart || week < 2) return null;
   return { start_date: newStart.slice(0, 10), week_index: week };
+}
+
+// 온보딩으로 시작일을 저장한 뒤 시작일 변경 정리(useChangeStartDate cleanup)가 필요한지: 이미 다른 시작일이 있던 유저
+// (온보딩을 끝내지 않은 채 기록이 남은 옛 행)만. 처음 시작일을 정하는 새 유저는 지울 것이 없다
+export function onboardingNeedsCleanup(
+  previousStart: string | null | undefined,
+  newStart: string
+): boolean {
+  return !!previousStart && !isSameStartDate(previousStart, newStart);
 }

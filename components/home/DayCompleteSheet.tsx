@@ -1,12 +1,21 @@
 import { BottomSheetView } from '@gorhom/bottom-sheet';
 import { BottomSheetMethods } from '@gorhom/bottom-sheet/lib/typescript/types';
+import { StatisticsAPI } from 'api/StatisticsAPI';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
+import { KakaoShareButton } from 'components/share/KakaoShareButton';
+import { WeightLossCheckbox } from 'components/share/WeightLossCheckbox';
 import { weekCompleteLottie } from 'const/assets';
+import { QueryKey } from 'const/queryKey';
+import { useQueryWith402Retry } from 'hooks/useCustomQuery';
+import { useProgramWeightLoss } from 'hooks/useWeights';
 import LottieView from 'lottie-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
+import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
+import { dayFullCount } from 'utils/kakaoShare';
+import { shareCompletion, shareInvite } from 'utils/shareKakao';
 import { week1GuideFor } from 'utils/week1Guide';
 import { CustomBottomSheet } from '../common/CustomBottomSheet';
 
@@ -16,7 +25,12 @@ export function DayCompleteSheet({ day, onClose }: { day: number | null; onClose
   const sheetRef = useRef<BottomSheetMethods>(null);
   // 닫히는 동안에도 내용이 남아 있게 마지막 일차를 둔다
   const [shownDay, setShownDay] = useState(day);
-  if (day !== null && day !== shownDay) setShownDay(day);
+  // 체중 보내기는 시트를 열 때마다 꺼진 채로 (전에 켠 것이 다음 날 시트에 남지 않게)
+  const [withWeight, setWithWeight] = useState(false);
+  if (day !== null && day !== shownDay) {
+    setShownDay(day);
+    setWithWeight(false);
+  }
 
   useEffect(() => {
     if (day !== null) sheetRef.current?.expand();
@@ -24,8 +38,30 @@ export function DayCompleteSheet({ day, onClose }: { day: number | null; onClose
 
   const guide = shownDay === null ? null : week1GuideFor(1, shownDay);
 
+  // 자랑하기: 이번 주 완주한 날 (완주 달력과 같은 통계) + 켠 경우만 감량 체중
+  const uid = useUserStore((state) => state.id);
+  const { data: rates } = useQueryWith402Retry({
+    queryKey: [QueryKey.todoRateStatistics, uid],
+    queryFn: StatisticsAPI.getTodoRatesByWeeks,
+    enabled: shownDay !== null,
+  });
+  const weightLossKg = useProgramWeightLoss();
+  const brag = () => {
+    if (shownDay === null) return;
+    const fullDays = dayFullCount(rates?.weeks[0]?.todoRatesByWeek, shownDay);
+    shareCompletion(
+      { kind: 'day', week: 1, day: shownDay, fullDays },
+      withWeight ? weightLossKg : null
+    );
+  };
+
   return (
-    <CustomBottomSheet ref={sheetRef} onClose={onClose}>
+    <CustomBottomSheet
+      ref={sheetRef}
+      onClose={() => {
+        setWithWeight(false);
+        onClose();
+      }}>
       <BottomSheetView className="items-center px-5 pb-4">
         {shownDay !== null && (
           <>
@@ -48,6 +84,27 @@ export function DayCompleteSheet({ day, onClose }: { day: number | null; onClose
                 <Text className="text-neutral-700">{guide.tomorrow}</Text>
               </View>
             )}
+
+            {/* 카톡으로: 자랑하기(완주 인증) · 초대하기(같이 하자) */}
+            <View className="w-full flex-row gap-2">
+              <KakaoShareButton label="🔥 자랑하기" onPress={brag} className="flex-1" compact />
+              <KakaoShareButton
+                label="👥 초대하기"
+                accessibilityLabel="같이 할 사람 초대하기"
+                onPress={shareInvite}
+                className="flex-1"
+                compact
+              />
+            </View>
+            <View className="mb-4 mt-1 w-full">
+              {weightLossKg !== null && (
+                <WeightLossCheckbox
+                  lossKg={weightLossKg}
+                  value={withWeight}
+                  onChange={setWithWeight}
+                />
+              )}
+            </View>
 
             <RippleButton
               onPress={() => sheetRef.current?.close()}

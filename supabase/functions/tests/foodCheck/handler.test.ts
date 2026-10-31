@@ -28,6 +28,9 @@ const makeDeps = (o: Partial<FoodCheckDeps> = {}) => {
     premiumClient: { rpc: vi.fn(async () => ({ data: true, error: null })) },
     consume: vi.fn(async () => ({ allowed: true, remaining: 29, limit: 30 })),
     release: vi.fn(async () => undefined),
+    // 기본: 무료 체험 다 씀 (패스 사용자는 부르지 않는다)
+    consumeTrial: vi.fn(async () => -1),
+    releaseTrial: vi.fn(async () => undefined),
     getStartDate: vi.fn(async () => '2026-10-01'),
     now: () => new Date('2026-10-20T03:00:00Z'),
     askGemini: vi.fn(async () => geminiOk()),
@@ -78,8 +81,10 @@ describe('handleFoodCheck', () => {
     const res = await handleFoodCheck(req(textBody), deps);
     expect(res.status).toBe(402);
     expect(deps.premiumClient.rpc).toHaveBeenCalledWith('has_premium_access_for', { p_uid: UID });
+    expect(deps.consumeTrial).toHaveBeenCalledWith(UID);
     expect(deps.consume).not.toHaveBeenCalled();
     expect(deps.askGemini).not.toHaveBeenCalled();
+    expect(deps.releaseTrial).not.toHaveBeenCalled();
   });
 
   it('한도 초과면 429 본문 정확히 일치, Gemini 호출 안 함', async () => {
@@ -353,5 +358,173 @@ describe('handleFoodCheck', () => {
 
   it('MAX_BODY_BYTES는 4MB', () => {
     expect(MAX_BODY_BYTES).toBe(4 * 1024 * 1024);
+  });
+});
+
+describe('handleFoodCheck 무료 체험 (패스 없음)', () => {
+  const noPass = (o: Partial<FoodCheckDeps> = {}) =>
+    makeDeps({
+      premiumClient: { rpc: vi.fn(async () => ({ data: false, error: null })) },
+      consumeTrial: vi.fn(async () => 2),
+      ...o,
+    });
+
+  it('패스 사용자는 무료 체험을 쓰지 않고 응답에 trialRemaining이 없다', async () => {
+    const deps = makeDeps();
+    const res = await handleFoodCheck(req(textBody), deps);
+    expect(res.status).toBe(200);
+    expect(deps.consumeTrial).not.toHaveBeenCalled();
+    expect(await res.json()).not.toHaveProperty('trialRemaining');
+  });
+
+  it('남아 있으면 하루 한도도 차감하고 판정, 200에 trialRemaining', async () => {
+    const deps = noPass();
+    const res = await handleFoodCheck(req(textBody), deps);
+    expect(res.status).toBe(200);
+    expect(deps.consumeTrial).toHaveBeenCalledWith(UID);
+    expect(deps.consume).toHaveBeenCalledTimes(1);
+    expect(deps.askGemini).toHaveBeenCalledTimes(1);
+    const body = await res.json();
+    expect(body.status).toBe('ok');
+    expect(body.trialRemaining).toBe(2);
+    expect(deps.releaseTrial).not.toHaveBeenCalled();
+    expect(deps.release).not.toHaveBeenCalled();
+  });
+
+  it('마지막 1번을 쓰면 trialRemaining 0', async () => {
+    const deps = noPass({ consumeTrial: vi.fn(async () => 0) });
+    const res = await handleFoodCheck(req(textBody), deps);
+    expect(res.status).toBe(200);
+    expect((await res.json()).trialRemaining).toBe(0);
+  });
+
+  it('인식 못 하면 무료 체험은 되돌리고 하루 한도는 되돌리지 않는다 (Gemini 호출을 하루 한도로 묶음)', async () => {
+    const deps = noPass({ askGemini: vi.fn(async () => JSON.stringify({ recognized: false })) });
+    const res = await handleFoodCheck(req(photoBody), deps);
+    expect(res.status).toBe(200);
+    expect((await res.json()).status).toBe('unrecognized');
+    expect(deps.release).not.toHaveBeenCalled();
+    expect(deps.releaseTrial).toHaveBeenCalledTimes(1);
+    expect(deps.releaseTrial).toHaveBeenCalledWith(UID);
+  });
+
+  it('Gemini가 실패하면 500 + 무료 체험만 되돌림 (하루 한도는 그대로)', async () => {
+    const deps = noPass({
+      askGemini: vi.fn(async () => {
+        throw new Error('timeout');
+      }),
+    });
+    const res = await handleFoodCheck(req(textBody), deps);
+    expect(res.status).toBe(500);
+    expect(deps.release).not.toHaveBeenCalled();
+    expect(deps.releaseTrial).toHaveBeenCalledTimes(1);
+  });
+
+  it('Gemini 응답 형식이 잘못되면 500 + 무료 체험만 되돌림 (하루 한도는 그대로)', async () => {
+    const deps = noPass({ askGemini: vi.fn(async () => 'not json') });
+    const res = await handleFoodCheck(req(textBody), deps);
+    expect(res.status).toBe(500);
+    expect(deps.release).not.toHaveBeenCalled();
+    expect(deps.releaseTrial).toHaveBeenCalledTimes(1);
+  });
+
+  it('인식 실패를 되풀이해도 하루 한도가 차면 Gemini를 더 부르지 않는다', async () => {
+    let used = 0;
+    const deps = noPass({
+      consume: vi.fn(async () => {
+        const allowed = used < 2;
+        if (allowed) used++;
+        return { allowed, remaining: 2 - used, limit: 2 };
+      }),
+      release: vi.fn(async () => {
+        used--;
+      }),
+      askGemini: vi.fn(async () => JSON.stringify({ recognized: false })),
+    });
+    for (let i = 0; i < 5; i++) await handleFoodCheck(req(textBody), deps);
+    expect(deps.askGemini).toHaveBeenCalledTimes(2);
+  });
+
+  it('패스 사용자는 인식 실패 시 지금처럼 하루 한도를 되돌린다', async () => {
+    const deps = makeDeps({ askGemini: vi.fn(async () => JSON.stringify({ recognized: false })) });
+    await handleFoodCheck(req(textBody), deps);
+    expect(deps.release).toHaveBeenCalledTimes(1);
+    expect(deps.releaseTrial).not.toHaveBeenCalled();
+  });
+
+  it('사진 저장이 실패하면 500 + 무료 체험 되돌림', async () => {
+    const deps = noPass({
+      storeImages: vi.fn(async () => {
+        throw new Error('upload failed');
+      }),
+    });
+    const res = await handleFoodCheck(req(photoBody), deps);
+    expect(res.status).toBe(500);
+    expect(deps.releaseTrial).toHaveBeenCalledTimes(1);
+  });
+
+  it('하루 한도를 넘으면 429 + 무료 체험 되돌림 (Gemini 호출 안 함)', async () => {
+    const deps = noPass({
+      consume: vi.fn(async () => ({ allowed: false, remaining: 0, limit: 30 })),
+    });
+    const res = await handleFoodCheck(req(textBody), deps);
+    expect(res.status).toBe(429);
+    expect(deps.askGemini).not.toHaveBeenCalled();
+    expect(deps.releaseTrial).toHaveBeenCalledTimes(1);
+  });
+
+  it('하루 한도 확인이 실패하면 500 + 무료 체험 되돌림', async () => {
+    const deps = noPass({
+      consume: vi.fn(async () => {
+        throw new Error('rpc down');
+      }),
+    });
+    const res = await handleFoodCheck(req(textBody), deps);
+    expect(res.status).toBe(500);
+    expect(deps.releaseTrial).toHaveBeenCalledTimes(1);
+  });
+
+  it('무료 체험 되돌리기가 실패해도 원래 응답을 돌려준다', async () => {
+    const deps = noPass({
+      askGemini: vi.fn(async () => JSON.stringify({ recognized: false })),
+      releaseTrial: vi.fn(async () => {
+        throw new Error('release failed');
+      }),
+    });
+    const res = await handleFoodCheck(req(photoBody), deps);
+    expect(res.status).toBe(200);
+    expect((await res.json()).status).toBe('unrecognized');
+  });
+
+  it('썸네일 URL 실패는 판정 성공이므로 무료 체험을 되돌리지 않는다', async () => {
+    const deps = noPass({
+      signThumbUrl: vi.fn(async () => {
+        throw new Error('sign failed');
+      }),
+    });
+    const res = await handleFoodCheck(req(photoBody), deps);
+    expect(res.status).toBe(200);
+    expect(deps.releaseTrial).not.toHaveBeenCalled();
+  });
+
+  it('무료 체험 확인 자체가 실패하면 500, 한도 차감 안 함', async () => {
+    const deps = noPass({
+      consumeTrial: vi.fn(async () => {
+        throw new Error('rpc down');
+      }),
+    });
+    const res = await handleFoodCheck(req(textBody), deps);
+    expect(res.status).toBe(500);
+    expect(deps.consume).not.toHaveBeenCalled();
+    expect(deps.releaseTrial).not.toHaveBeenCalled();
+  });
+
+  it('패스 확인 rpc가 실패하면 무료 체험을 쓰지 않고 500', async () => {
+    const deps = noPass({
+      premiumClient: { rpc: vi.fn(async () => ({ data: null, error: new Error('down') })) },
+    });
+    const res = await handleFoodCheck(req(textBody), deps);
+    expect(res.status).toBe(500);
+    expect(deps.consumeTrial).not.toHaveBeenCalled();
   });
 });

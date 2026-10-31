@@ -1,5 +1,6 @@
 // similar-recipes 엣지 함수 응답 해석 (순수 함수)
 import type { RecipeWithIsSavedDB } from 'types/database';
+import { programWeekAndDay } from './programStart';
 import { baseServingsOf } from './scaleAmount';
 
 const asObject = (value: unknown): Record<string, unknown> | null =>
@@ -40,3 +41,9 @@ export function parseSimilarResponse(body: unknown): RecipeWithIsSavedDB[] | nul
   if (!b || !Array.isArray(b.recipes)) return null;
   return b.recipes.map(toRecipe).filter((r): r is RecipeWithIsSavedDB => r !== null);
 }
+
+// 비슷한 레시피 캐시 키의 주차. 서버는 후보를 min(주차, 4)까지로 자르므로(similar-recipes MAX_SIMILAR_WEEK),
+// 시작일 변경으로 주차가 바뀌면 다른 결과다. 시작 전·시작일 없음은 1주차 (서버 programWeekOf와 같다)
+export const SIMILAR_MAX_WEEK = 4;
+export const similarWeekOf = (startDate: string | null | undefined, todayKst: string): number =>
+  Math.min(programWeekAndDay(startDate, todayKst).week, SIMILAR_MAX_WEEK);

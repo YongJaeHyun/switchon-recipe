@@ -173,6 +173,10 @@ const weightLines = (w: WeeklyStats['weight']): string[] => {
   return lines;
 };
 
+// 프롬프트에 넣는 할 일 수 상한 (이름은 cleanName으로 40자). 할 일은 사용자가 마음대로 늘릴 수 있어
+// 요청당 토큰이 끝없이 커지지 않게 한다. 가장 약한·꾸준한 할 일은 전체에서 골라 따로 적는다
+export const PROMPT_TODO_ITEMS = 15;
+
 const todoLines = (t: WeeklyStats['todo']): string[] => {
   if (t.avgRate === null) return ['- 할 일: 이번 주 기록 없음'];
   const lines = [`- 할 일 평균 완료율: ${t.avgRate}%`];
@@ -180,12 +184,15 @@ const todoLines = (t: WeeklyStats['todo']): string[] => {
   if (t.worst) lines.push(`- 완료율이 가장 낮은 날: ${t.worst.weekday} ${t.worst.rate}%`);
   if (t.items.length > 0) {
     lines.push('- 할 일별 달성 (나온 날 중 지킨 날):');
-    for (const i of t.items) {
+    for (const i of t.items.slice(0, PROMPT_TODO_ITEMS)) {
       const missed = i.appeared - i.done;
       lines.push(
         `  - "${cleanName(i.name)}": ${i.appeared}일 중 ${i.done}일` +
           (missed > 0 ? ` (${missed}일 놓침)` : ' (모두 지킴)')
       );
+    }
+    if (t.items.length > PROMPT_TODO_ITEMS) {
+      lines.push(`  - 그 밖의 할 일 ${t.items.length - PROMPT_TODO_ITEMS}개`);
     }
     const weak = weakestItem(t.items);
     if (weak) lines.push(`- 가장 약한 할 일: "${cleanName(weak.name)}"`);

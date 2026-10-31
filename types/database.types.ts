@@ -349,6 +349,42 @@ export type Database = {
           },
         ];
       };
+      pass_extension: {
+        Row: {
+          extended_at: string;
+          new_start_date: string;
+          purchase_token: string;
+          uid: string;
+        };
+        Insert: {
+          extended_at?: string;
+          new_start_date: string;
+          purchase_token: string;
+          uid: string;
+        };
+        Update: {
+          extended_at?: string;
+          new_start_date?: string;
+          purchase_token?: string;
+          uid?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'pass_extension_purchase_token_fkey';
+            columns: ['purchase_token'];
+            isOneToOne: false;
+            referencedRelation: 'pass_purchase';
+            referencedColumns: ['purchase_token'];
+          },
+          {
+            foreignKeyName: 'pass_extension_uid_fkey';
+            columns: ['uid'];
+            isOneToOne: false;
+            referencedRelation: 'user';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       pass_purchase: {
         Row: {
           created_at: string;
@@ -417,6 +453,27 @@ export type Database = {
           free_end?: string | null;
           free_start?: string | null;
           id?: number;
+        };
+        Relationships: [];
+      };
+      quota_setting: {
+        Row: {
+          ad_bonus_daily: number;
+          free_daily: number;
+          id: number;
+          pass_daily: number;
+        };
+        Insert: {
+          ad_bonus_daily?: number;
+          free_daily?: number;
+          id?: number;
+          pass_daily?: number;
+        };
+        Update: {
+          ad_bonus_daily?: number;
+          free_daily?: number;
+          id?: number;
+          pass_daily?: number;
         };
         Relationships: [];
       };
@@ -860,18 +917,21 @@ export type Database = {
       };
       user_setting: {
         Row: {
+          report_reminder: boolean;
           uid: string;
           updated_at: string;
           weight_reminder: boolean;
           weight_reminder_asked: boolean;
         };
         Insert: {
+          report_reminder?: boolean;
           uid: string;
           updated_at?: string;
           weight_reminder?: boolean;
           weight_reminder_asked?: boolean;
         };
         Update: {
+          report_reminder?: boolean;
           uid?: string;
           updated_at?: string;
           weight_reminder?: boolean;
@@ -909,6 +969,8 @@ export type Database = {
         Row: {
           content: Json | null;
           created_at: string;
+          display_week: number | null;
+          is_trial: boolean;
           start_date: string;
           stats: Json;
           status: string;
@@ -918,6 +980,8 @@ export type Database = {
         Insert: {
           content?: Json | null;
           created_at?: string;
+          display_week?: number | null;
+          is_trial?: boolean;
           start_date: string;
           stats: Json;
           status?: string;
@@ -927,6 +991,8 @@ export type Database = {
         Update: {
           content?: Json | null;
           created_at?: string;
+          display_week?: number | null;
+          is_trial?: boolean;
           start_date?: string;
           stats?: Json;
           status?: string;
@@ -1050,6 +1116,10 @@ export type Database = {
       };
     };
     Functions: {
+      extend_pass_for_week_repeat: {
+        Args: { p_new_start: string };
+        Returns: string;
+      };
       get_recent_keywords: {
         Args: { uid_input: string };
         Returns: {

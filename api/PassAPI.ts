@@ -28,7 +28,22 @@ const verify = async (input: PassPurchase): Promise<VerifyResult> => {
   return data;
 };
 
+// 한 주 더 하기로 시작일을 저장한 뒤 부른다. 서버가 패스를 7일 늘렸으면 새 만료일(ISO), 아니면 null
+// (패스 없음, 다시 시작, 이미 늘림, 이번 회차 4번 다 씀). 실패 시 throw
+const extendForWeekRepeat = async (newStartDate: string): Promise<string | null> => {
+  const { data, error } = await supabase.rpc('extend_pass_for_week_repeat', {
+    p_new_start: newStartDate,
+  });
+
+  if (error) {
+    captureError({ error, prefix: '[PassAPI.extendForWeekRepeat]: ' });
+    throw error;
+  }
+  return typeof data === 'string' ? data : null;
+};
+
 export const PassAPI = {
   getStatus,
   verify,
+  extendForWeekRepeat,
 };

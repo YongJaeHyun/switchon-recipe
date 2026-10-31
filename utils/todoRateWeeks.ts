@@ -39,3 +39,20 @@ export function buildTodoRateWeeks(
   }
   return weeks;
 }
+
+// 주차 맞추기 뒤 할 일 통계 행 옮기기. 행의 (주차, 일차)는 저장할 때 시작일 기준이라, 시작일이 deltaDays일 앞당겨지면(양수)
+// 같은 날짜가 새 시작일로는 deltaDays일 뒤 칸이다 (미루면 음수). 새 시작일 전으로 가는 행과, 오늘 칸(cut = 새 시작일 기준
+// 오늘 주차·일차)부터의 행은 뺀다 (오늘부터는 새로 쌓는다). 주차·일차가 없는 행도 뺀다
+export function shiftStatistics<T extends { week: number | null; day: number | null }>(
+  rows: T[],
+  deltaDays: number,
+  cut: { week: number; day: number }
+): (Omit<T, 'week' | 'day'> & { week: number; day: number })[] {
+  const cutIndex = (cut.week - 1) * 7 + (cut.day - 1);
+  return rows.flatMap((row) => {
+    if (row.week === null || row.day === null) return [];
+    const index = (row.week - 1) * 7 + (row.day - 1) + deltaDays;
+    if (index < 0 || index >= cutIndex) return [];
+    return [{ ...row, week: Math.floor(index / 7) + 1, day: (index % 7) + 1 }];
+  });
+}
