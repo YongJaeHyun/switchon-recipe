@@ -17,6 +17,14 @@ describe('isNetworkError', () => {
     ).toBe(true);
   });
 
+  it('supabase.functions.invoke가 요청을 못 보냈을 때의 FunctionsFetchError (GitHub #30)', () => {
+    const error = Object.assign(new Error('Failed to send a request to the Edge Function'), {
+      name: 'FunctionsFetchError',
+      context: new TypeError('Network request failed'),
+    });
+    expect(isNetworkError(error)).toBe(true);
+  });
+
   it('다른 오류는 아님', () => {
     expect(isNetworkError(new Error('permission denied'))).toBe(false);
     expect(isNetworkError({ message: 'JWT expired', code: 'PGRST301' })).toBe(false);
