@@ -4,8 +4,10 @@
 import { weekRuleText } from './foodCheck.ts';
 import { programDayOf, programWeekOf } from './week.ts';
 
-// 이름 판정은 이미지 없이 텍스트만, 가장 싼 flash-lite 계열로 한 번 부른다
-export const RECIPE_NAME_CHECK_MODEL = 'gemini-2.5-flash-lite';
+// 이름 판정은 이미지 없이 텍스트만, 생각(thinking) 없이 한 번 부른다.
+// gemini-2.5-flash-lite는 이 프로젝트 키에서 404(모델 없음)로 실패해(2026-11-01 내부 테스트) 다른 기능이 쓰는
+// gemini-2.5-flash로 바꿨다. 입력이 짧아 한 번에 1원 남짓
+export const RECIPE_NAME_CHECK_MODEL = 'gemini-2.5-flash';
 
 export const DISH_NAME_MAX = 30;
 // 패스 없이 써 볼 수 있는 횟수 (사용자당 평생). 앱 utils/recipeByName.ts와 같은 값

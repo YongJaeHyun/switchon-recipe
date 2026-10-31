@@ -5,6 +5,7 @@ import { InbodyAPI } from 'api/InbodyAPI';
 import ConfirmModal from 'components/common/ConfirmModal';
 import { PassBadge } from 'components/common/PassBadge';
 import { CustomBottomSheet } from 'components/common/CustomBottomSheet';
+import { useBlurOnKeyboardHide } from 'hooks/useBlurOnKeyboardHide';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import { FlashField, InbodyPhotoPanel, type PhotoSource } from 'components/weight/InbodyPhotoPanel';
@@ -160,6 +161,8 @@ const formatDayLabel = (day: string) => {
 // 맨 위 날짜 줄에서 (회차 시작 7일 전 ~ 오늘) 다른 날을 고르면 시트가 그날을 겨눈다 (그날 값으로 다시 채움,
 // 결과지를 읽은 뒤면 읽은 값 + 그날 기존 값). 여는 쪽(target)은 처음 겨눌 날만 정한다
 export function WeightInputSheet({ bottomSheetRef, target: openedTarget }: WeightInputSheetProps) {
+  // 키보드를 닫으면 시트도 원래 높이로 (이름으로 만들기 시트와 같다)
+  useBlurOnKeyboardHide();
   const { logs, isLogsFetched, saveWeight, isSaving } = useWeights();
   const { setting, isFetched, isError, updateSetting } = useUserSetting();
   const { status: passStatus } = usePass();
@@ -462,7 +465,7 @@ export function WeightInputSheet({ bottomSheetRef, target: openedTarget }: Weigh
 
   return (
     <>
-      <CustomBottomSheet ref={bottomSheetRef}>
+      <CustomBottomSheet ref={bottomSheetRef} keyboard={{ keyboardBlurBehavior: 'restore' }}>
         <BottomSheetView className="px-5">
           <Text className="mb-3 text-2xl font-bold">체중 기록</Text>
           {target && (

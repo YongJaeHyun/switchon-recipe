@@ -11,6 +11,7 @@ import QuotaExceededModal from 'components/recipeCreation/QuotaExceededModal';
 import { WeekChips } from 'components/recipeCreation/WeekChips';
 import { useBillingAvailable } from 'hooks/useBillingAvailable';
 import { usePass } from 'hooks/usePass';
+import { useBlurOnKeyboardHide } from 'hooks/useBlurOnKeyboardHide';
 import { useRecipeByName } from 'hooks/useRecipeByName';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, Keyboard, type TextInput, TouchableOpacity, View } from 'react-native';
@@ -82,14 +83,7 @@ export function RecipeByNameSheet({ request }: RecipeByNameSheetProps) {
   const currentChoiceRef = useRef(currentChoice);
   currentChoiceRef.current = currentChoice;
 
-  // 뒤로 가기 등으로 키보드만 닫혀도 입력칸이 포커스를 잃지 않아 시트가 올라간 채 남는다.
-  // 키보드가 닫히면 포커스를 풀어 시트가 원래 높이로 내려오게 한다 (keyboardBlurBehavior: 'restore')
-  useEffect(() => {
-    const subscription = Keyboard.addListener('keyboardDidHide', () => {
-      inputRef.current?.blur();
-    });
-    return () => subscription.remove();
-  }, []);
+  useBlurOnKeyboardHide();
 
   // 여는 요청이 바뀔 때만 채운다 (다른 값이 바뀔 때 다시 돌면 입력 중인 이름이 지워진다)
   useEffect(() => {

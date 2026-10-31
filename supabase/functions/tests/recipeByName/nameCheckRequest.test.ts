@@ -8,8 +8,8 @@ const okResponse = (text: string) =>
   });
 
 describe('requestNameCheck', () => {
-  it('flash-lite 텍스트 모델에 프롬프트만 보낸다 (이미지 없음)', async () => {
-    expect(RECIPE_NAME_CHECK_MODEL).toMatch(/flash-lite/);
+  it('다른 기능과 같은 flash 텍스트 모델에 프롬프트만 보낸다 (이미지 없음)', async () => {
+    expect(RECIPE_NAME_CHECK_MODEL).toBe('gemini-2.5-flash');
     expect(RECIPE_NAME_CHECK_MODEL).not.toMatch(/image/);
     const fetchFn = vi.fn(async () => okResponse('{"verdict":"ok"}'));
     const text = await requestNameCheck('프롬프트', 'KEY', fetchFn as unknown as typeof fetch);
