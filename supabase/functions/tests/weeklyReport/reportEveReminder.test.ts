@@ -48,6 +48,7 @@ const makeDeps = (
     fetchProgramStart: vi.fn(async () => null),
     hasPremiumAccess: vi.fn(async (uid: string) => uid === 'a'),
     fetchFreeReportUsedUids: vi.fn(async () => new Set<string>()),
+    fetchReportReminderOffUids: vi.fn(async () => new Set<string>()),
     claimReminders: vi.fn(async (uids: string[], day: string) => {
       await Promise.resolve();
       const claimed = new Set<string>();
@@ -103,6 +104,17 @@ describe('sendReportEveReminders', () => {
       expect.objectContaining({ uid: 'b', title: '내일 아침 1주차 리포트가 나와요' }),
     ]);
     expect(result).toMatchObject({ today: TODAY, tomorrow: TOMORROW, candidates: 2, sent: 2 });
+  });
+
+  it('리포트 알림을 끈 유저(user_setting.report_reminder = false)는 건너뛴다', async () => {
+    const { deps, db } = makeDeps({
+      fetchReportReminderOffUids: vi.fn(async () => new Set(['a'])),
+    });
+    const result = await sendReportEveReminders(deps, TODAY);
+    expect(deps.fetchReportReminderOffUids).toHaveBeenCalledWith(['a', 'b']);
+    expect(db.notifications.map((n) => n.uid)).toEqual(['b']);
+    expect(deps.fetchReportPeriods).not.toHaveBeenCalledWith('a');
+    expect(result).toMatchObject({ muted: 1, sent: 1 });
   });
 
   it('오늘 체중을 기록한 유저·푸시 토큰 없는 유저는 건너뛴다', async () => {

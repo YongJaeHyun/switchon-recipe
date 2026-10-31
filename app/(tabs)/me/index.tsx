@@ -11,6 +11,7 @@ import AllNoticesModal from 'components/home/AllNoticesModal';
 import { StartDateBottomSheet } from 'components/home/StartDateBottomSheet';
 import { MealAlarmSetting } from 'components/me/MealAlarmSetting';
 import { StartDateRow } from 'components/me/StartDateRow';
+import { ReportReminderToggle } from 'components/me/ReportReminderToggle';
 import { WeightReminderToggle } from 'components/me/WeightReminderToggle';
 import { baseProfile, googleIcon, kakaoIconSmall } from 'const/assets';
 import { APP_VERSION, GOOGLE_WEB_CLIENT_ID } from 'const/const';
@@ -141,6 +142,7 @@ export default function MeScreen() {
           <View className="gap-4">
             <StartDateRow onPress={() => startDateSheetRef.current?.expand()} />
             <WeightReminderToggle />
+            <ReportReminderToggle />
             <MealAlarmSetting />
             <MenuButton
               title="같이 할 사람 초대하기"

@@ -7,7 +7,7 @@
 //   - 같은 키의 리포트가 아직 없고, 표시 주차(resolveDisplayWeek) 1~MAX_REPORT_WEEK, 주차 맞추기로 건너뛸 기간이 아님
 //     (_shared/weeklyReportGenerate.ts generateWeekReport와 같은 규칙)
 //   - 패스 이용 권한이 있거나, 무료 1주차 리포트 대상 (표시 주차 1, user_trial.free_report_at 없음)
-//   - 오늘 weight_log가 없고 푸시 토큰이 있음
+//   - 오늘 weight_log가 없고 푸시 토큰이 있음, 리포트 알림을 끄지 않음 (user_setting.report_reminder, 행 없으면 켜짐)
 // 내일 실행은 그 주 기록이 하나도 없으면 리포트를 만들지 않지만, 이 알림은 기록을 남기게 하려는 것이라 기록 여부를 보지 않는다.
 // 한계: 20:00 뒤 08:00 전에 한 주 더 하기·주차 맞추기·다시 시작을 하면 내일 리포트 주차가 달라지거나 만들어지지 않을 수 있다.
 // 같은 날 다시(또는 동시에) 실행해도 한 번만 보낸다: report_eve_reminder_sent(uid, day)에
@@ -52,6 +52,8 @@ export interface ReportEveReminderDeps {
   hasPremiumAccess(uid: string): Promise<boolean>;
   // uids 중 무료 1주차 리포트를 이미 쓴 유저 (user_trial.free_report_at not null)
   fetchFreeReportUsedUids(uids: string[]): Promise<Set<string>>;
+  // uids 중 리포트 알림을 끈 유저 (user_setting.report_reminder = false, _shared/weeklyReportDb.ts)
+  fetchReportReminderOffUids(uids: string[]): Promise<Set<string>>;
   // report_eve_reminder_sent에 (uid, day)를 넣고(충돌 시 무시) 새로 들어간 유저만 돌려준다
   claimReminders(uids: string[], day: string): Promise<Set<string>>;
   insertNotifications(rows: EveReminderNotificationRow[]): Promise<void>;
@@ -61,6 +63,7 @@ export interface EveReminderResult {
   today: string;
   tomorrow: string;
   candidates: number; // 내일이 새 주차 1일차인 유저
+  muted: number; // 리포트 알림을 끔
   existing: number;
   capped: number;
   alignedAhead: number;
@@ -151,6 +154,7 @@ export async function sendReportEveReminders(
     today,
     tomorrow,
     candidates: uids.length,
+    muted: 0,
     existing: 0,
     capped: 0,
     alignedAhead: 0,
@@ -167,6 +171,11 @@ export async function sendReportEveReminders(
 
     const pushable = await deps.fetchPushableUids(targets);
     targets = targets.filter((uid) => pushable.has(uid));
+    if (targets.length === 0) continue;
+
+    const muted = await deps.fetchReportReminderOffUids(targets);
+    result.muted += targets.filter((uid) => muted.has(uid)).length;
+    targets = targets.filter((uid) => !muted.has(uid));
     if (targets.length === 0) continue;
 
     const freeUsed = await deps.fetchFreeReportUsedUids(targets);

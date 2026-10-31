@@ -917,18 +917,21 @@ export type Database = {
       };
       user_setting: {
         Row: {
+          report_reminder: boolean;
           uid: string;
           updated_at: string;
           weight_reminder: boolean;
           weight_reminder_asked: boolean;
         };
         Insert: {
+          report_reminder?: boolean;
           uid: string;
           updated_at?: string;
           weight_reminder?: boolean;
           weight_reminder_asked?: boolean;
         };
         Update: {
+          report_reminder?: boolean;
           uid?: string;
           updated_at?: string;
           weight_reminder?: boolean;

@@ -24,6 +24,7 @@ const deps: ReportEveReminderDeps = {
   fetchReportPeriods: reportDeps.fetchReportPeriods,
   fetchProgramStart: reportDeps.fetchProgramStart,
   hasPremiumAccess: reportDeps.hasPremiumAccess,
+  fetchReportReminderOffUids: reportDeps.fetchReportReminderOffUids,
 
   fetchCandidates(day) {
     // 내일 08:00 실행과 같은 후보 (service role 전용 함수, 마이그레이션 20261031000000)

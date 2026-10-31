@@ -6,6 +6,7 @@
 //   오래된 주부터 차례로 만든다 (앞 주 리포트가 있어야 다음 주 표시 주차가 이어진다). 한 번에 최대 4개.
 //   다시 시작 전 회차의 주와, 한 주 더 하기·주차 미루기 전의 옛 시작일 키로 지낸 주는 보지 않는다.
 // - 푸시는 묶어서 한 번 ("지난 1~3주차 리포트도 만들어 뒀어요"). 문장까지 만든 리포트(ready)가 없으면 보내지 않는다.
+//   리포트 알림을 끈 유저(user_setting.report_reminder = false)에게는 보내지 않는다 (리포트는 만든다).
 // - 멱등: 같은 키의 리포트가 있으면 AI 전에 건너뛰고 저장은 키 충돌 시 무시하므로, 검증 재시도·cron과 겹쳐도
 //   리포트가 늘지 않는다. 푸시는 이 실행이 실제로 저장한 주만 말한다.
 // - 반복 악용 막기 (최종 리뷰 #3 I-1: 시작일을 바꿔 가며 옛 토큰으로 검증을 반복하면 키가 매번 새로워 Gemini가 계속
@@ -49,6 +50,9 @@ export interface BackfillDeps extends ReportGenerationDeps {
   insertNotification(row: NotificationRow): Promise<void>;
   // 이 유저의 weekly_report 중 created_at >= since 인 행 수
   countReportsCreatedSince(uid: string, since: Date): Promise<number>;
+  // uids 중 리포트 알림을 끈 유저 (user_setting.report_reminder = false, _shared/weeklyReportDb.ts).
+  // 끈 유저도 리포트는 만들고 푸시만 보내지 않는다. 없으면(테스트) 켜짐
+  fetchReportReminderOffUids?(uids: string[]): Promise<Set<string>>;
 }
 
 export interface BackfillResult {
@@ -137,6 +141,8 @@ export async function backfillPastReports(
 
   if (ready.length === 0) return result;
   try {
+    // 리포트 알림을 끈 유저에게는 보내지 않는다 (못 읽으면 보내지 않고 실패로 센다)
+    if ((await deps.fetchReportReminderOffUids?.([uid]))?.has(uid)) return result;
     await deps.insertNotification({
       uid,
       title: `지난 ${weekLabel(ready.map((r) => r.displayWeek))}주차 리포트도 만들어 뒀어요`,

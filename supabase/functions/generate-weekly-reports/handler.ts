@@ -13,6 +13,7 @@
 // 후보 SQL(weekly_report_candidates)은 패스 여부를 보지 않는다. 패스 없는 유저는 generateWeekReport의 권한 rpc에서
 // 건너뛰되, 표시 주차 1 리포트는 사용자당 평생 한 번 무료로 만든다 (claimFreeReport, is_trial 행, 푸시는 같은 규칙).
 // 그래서 Gemini는 패스 없는 유저 한 명당 평생 최대 1번 불린다
+// 리포트 알림을 끈 유저(user_setting.report_reminder = false)는 리포트만 만들고 도착 푸시는 보내지 않는다 (muted)
 
 import { isServiceRoleRequest } from '../_shared/serviceRole.ts';
 import { resolveToday } from '../_shared/kstToday.ts';
@@ -57,6 +58,9 @@ export interface GenerateReportsDeps extends ReportGenerationDeps {
   // 무료 1주차 리포트 (SQL 함수 claim_free_report / release_free_report, FreeReportTrial)
   claimFreeReport(uid: string): Promise<boolean>;
   releaseFreeReport(uid: string): Promise<void>;
+  // 후보 중 리포트 알림을 끈 유저 (user_setting.report_reminder = false, _shared/weeklyReportDb.ts). 실행마다 한 번 읽는다.
+  // 끈 유저도 리포트는 만들고 도착 푸시(무료 1주차 포함)만 보내지 않는다. 없으면(테스트) 모두 켜짐
+  fetchReportReminderOffUids?(uids: string[]): Promise<Set<string>>;
 }
 
 export interface GenerateResult {
@@ -71,6 +75,7 @@ export interface GenerateResult {
   empty: number; // 체중·할 일 기록이 없어 만들지 않음 (빈 리포트는 저장하지 않는다. 앱 [지금 만들기])
   skipped: number; // 그 주 기록이 하나도 없어 만들지 않음
   notified: number;
+  muted: number; // 리포트는 만들었지만 리포트 알림을 꺼서 푸시하지 않음
   failed: number;
 }
 
@@ -94,8 +99,15 @@ const processUser = async (
   deps: GenerateReportsDeps,
   uid: string,
   startDate: string,
-  weekIndex: number
-): Promise<{ outcome: ReportOutcome; trial: boolean; notified: boolean; failed: boolean }> => {
+  weekIndex: number,
+  muted: boolean
+): Promise<{
+  outcome: ReportOutcome;
+  trial: boolean;
+  notified: boolean;
+  muted: boolean;
+  failed: boolean;
+}> => {
   const { outcome, displayWeek, trial } = await generateWeekReport(
     deps,
     uid,
@@ -105,7 +117,10 @@ const processUser = async (
   );
   const isTrial = outcome === 'generated' && trial === true;
   // 문장까지 만든 리포트만 푸시한다 (empty는 저장하지 않음, 키 충돌이면 먼저 저장한 실행이 푸시)
-  if (outcome !== 'generated') return { outcome, trial: false, notified: false, failed: false };
+  if (outcome !== 'generated') {
+    return { outcome, trial: false, notified: false, muted: false, failed: false };
+  }
+  if (muted) return { outcome, trial: isTrial, notified: false, muted: true, failed: false };
 
   try {
     await deps.insertNotification({
@@ -116,10 +131,10 @@ const processUser = async (
       channel_id: REPORT_CHANNEL,
       type: 'WEEKLY_REPORT',
     });
-    return { outcome: 'generated', trial: isTrial, notified: true, failed: false };
+    return { outcome: 'generated', trial: isTrial, notified: true, muted: false, failed: false };
   } catch (error) {
     console.error(`리포트 알림 저장 실패 (${uid}, ${weekIndex}주차):`, error);
-    return { outcome: 'generated', trial: isTrial, notified: false, failed: true };
+    return { outcome: 'generated', trial: isTrial, notified: false, muted: false, failed: true };
   }
 };
 
@@ -146,6 +161,12 @@ export async function generateWeeklyReports(
       : [{ uid: u.id, startDate: u.start_date.slice(0, 10), weekIndex }];
   });
 
+  // 리포트 알림을 끈 유저를 한 번에 읽는다. 못 읽으면 실행 실패 (08:30 재시도가 다시 만든다)
+  const mutedUids =
+    targets.length > 0 && deps.fetchReportReminderOffUids
+      ? await deps.fetchReportReminderOffUids([...new Set(targets.map((t) => t.uid))])
+      : new Set<string>();
+
   const result: GenerateResult = {
     today,
     candidates: targets.length,
@@ -158,20 +179,23 @@ export async function generateWeeklyReports(
     empty: 0,
     skipped: 0,
     notified: 0,
+    muted: 0,
     failed: 0,
   };
 
   await forEachLimited(targets, CONCURRENCY, async ({ uid, startDate, weekIndex }) => {
     try {
-      const { outcome, trial, notified, failed } = await processUser(
+      const { outcome, trial, notified, muted, failed } = await processUser(
         deps,
         uid,
         startDate,
-        weekIndex
+        weekIndex,
+        mutedUids.has(uid)
       );
       result[outcome] += 1;
       if (trial) result.trial += 1;
       if (notified) result.notified += 1;
+      if (muted) result.muted += 1;
       if (failed) result.failed += 1;
     } catch (error) {
       console.error(`리포트 생성 실패 (${uid}, ${weekIndex}주차):`, error);

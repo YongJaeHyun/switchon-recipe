@@ -17,7 +17,13 @@ export type WeeklyReportDbDeps = ReportGenerationDeps & {
   // user.start_date (yyyy-MM-dd). 없으면 null
   fetchStartDate(uid: string): Promise<string | null>;
   insertNotification(row: NotificationRow): Promise<void>;
+  // uids 중 리포트 알림을 끈 유저 (user_setting.report_reminder = false). 행이 없으면 켜짐.
+  // 리포트 도착 푸시(cron·패스 구매 뒤 보충)와 전날 기록 알림(report-eve-reminder)이 함께 쓴다
+  fetchReportReminderOffUids(uids: string[]): Promise<Set<string>>;
 };
+
+// .in() 한 번에 넣는 uid 수 (URL 길이)
+const REMINDER_SETTING_CHUNK = 100;
 
 // functionName: Gemini 장애 Slack 알림에 붙는 함수 이름 (_shared/providerAlert.ts)
 export function createWeeklyReportDeps(
@@ -34,6 +40,21 @@ export function createWeeklyReportDeps(
 
   return {
     now: () => new Date(),
+
+    async fetchReportReminderOffUids(uids) {
+      const off = new Set<string>();
+      for (let i = 0; i < uids.length; i += REMINDER_SETTING_CHUNK) {
+        const chunk = uids.slice(i, i + REMINDER_SETTING_CHUNK);
+        const { data, error } = await supabase
+          .from('user_setting')
+          .select('uid')
+          .in('uid', chunk)
+          .eq('report_reminder', false);
+        if (error) throw error;
+        for (const row of (data ?? []) as { uid: string }[]) off.add(row.uid);
+      }
+      return off;
+    },
 
     async fetchStartDate(uid) {
       const { data, error } = await supabase

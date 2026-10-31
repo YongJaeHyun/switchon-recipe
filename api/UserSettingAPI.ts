@@ -5,7 +5,7 @@ import { UserSettingDB } from 'types/database';
 import { captureError, sendError } from 'utils/sendError';
 
 export type UserSettingPatch = Partial<
-  Pick<UserSettingDB, 'weight_reminder' | 'weight_reminder_asked'>
+  Pick<UserSettingDB, 'weight_reminder' | 'weight_reminder_asked' | 'report_reminder'>
 >;
 
 // 내 설정. 행이 없으면 null(=기본값). 실패 시 throw
