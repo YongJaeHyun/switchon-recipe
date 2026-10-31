@@ -68,7 +68,6 @@
     "react": "19.0.0",
     "react-native": "0.79.6",
     "react-native-animated-numbers": "^0.6.3",
-    "react-native-calendars": "^1.1313.0",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-gifted-charts": "^1.4.81",
     "react-native-google-mobile-ads": "~15.8.0",

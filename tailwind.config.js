@@ -3,7 +3,7 @@ import { platformSelect } from 'nativewind/theme';
 import colors from 'tailwindcss/colors';
 
 module.exports = {
-  content: ['./app/**/*.{js,ts,tsx}', './components/**/*.{js,ts,tsx}'],
+  content: ['./app/**/*.{js,ts,tsx}', './components/**/*.{js,ts,tsx}', './utils/carbType.ts'],
   safelist: [
     'font-bold',
     'bg-green-600',

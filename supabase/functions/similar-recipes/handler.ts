@@ -35,6 +35,8 @@ export interface SimilarCardRow {
   week: number | null;
   created_at: string;
   uid: string | null;
+  // 기준 인분 (모르면 null, 상세 화면 인분 조절에 쓴다)
+  servings: number | null;
 }
 
 // 앱 RecipeWithIsSavedDB와 같은 모양

@@ -19,7 +19,7 @@ const BEFORE_START_COLOR = colors.neutral[400];
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // 소수 한 자리 반올림. 'e' 표기로 올려 부동소수 오차(65.05*10=650.4999…)를 피한다
-const round1 = (n: number) => Math.round(Number(`${n}e1`)) / 10;
+export const round1 = (n: number) => Math.round(Number(`${n}e1`)) / 10;
 
 // yyyy-MM-dd → UTC 자정 시각(ms). 날짜끼리만 비교하므로 시간대와 무관하다
 const dayToUtc = (day: string) => {

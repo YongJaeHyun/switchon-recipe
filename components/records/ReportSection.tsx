@@ -17,6 +17,7 @@ import type { WeeklyReport } from 'types/report';
 import { getWeekColorHex } from 'utils/getWeekColor';
 import { registerChannelIfPermitted } from 'utils/notifications';
 import { shouldShowPremiumEntry } from 'utils/passScreen';
+import { programStartOf } from 'utils/programStart';
 import {
   formatProgramStart,
   formatReportRange,
@@ -63,12 +64,14 @@ const ReportRow = ({ report, muted }: { report: WeeklyReport; muted?: boolean })
 // 기록 탭 > 리포트 칸: 나의 4주 리포트 + 주간 리포트 목록(무료 유저는 미리보기 카드)
 export function ReportSection() {
   const startDate = useUserStore((state) => state.start_date) || null;
+  const programStart = useUserStore((state) => state.program_start);
   const { status } = usePass();
   const { reports, isLoading, isError, refetch } = useWeeklyReports({ refetchOnMount: 'always' });
-  // 시작일을 바꾸면 예전 시작일의 리포트는 지우지 않고 "이전 프로그램"으로 내려간다
+  // 회차 시작일(program_start, 없으면 시작일) 이후 리포트가 이번 회차. 한 주 더 하기·주차 맞추기로
+  // 시작일이 바뀌어도 이어지고, 다시 시작하면 예전 리포트는 지우지 않고 "이전 회차"로 내려간다
   const { current, previous } = useMemo(
-    () => groupReportsByProgram(reports, startDate),
-    [reports, startDate]
+    () => groupReportsByProgram(reports, programStartOf(programStart, startDate)),
+    [reports, programStart, startDate]
   );
 
   // 시작일을 아직 모르면(사용자 정보 불러오는 중) 이번/이전을 나누지 않고 시작일만 보여준다
@@ -119,9 +122,9 @@ export function ReportSection() {
         <>
           {current.length > 0 && (
             <View className="gap-3">
-              <Text className="text-lg font-bold text-neutral-800">이번 프로그램</Text>
+              <Text className="text-lg font-bold text-neutral-800">이번 회차</Text>
               {current.map((report) => (
-                <ReportRow key={report.week_index} report={report} />
+                <ReportRow key={`${report.start_date}-${report.week_index}`} report={report} />
               ))}
             </View>
           )}
@@ -129,7 +132,7 @@ export function ReportSection() {
             <View key={group.startDate} className="gap-3">
               {programKnown ? (
                 <View className="gap-0.5">
-                  <Text className="text-lg font-bold text-neutral-800">이전 프로그램</Text>
+                  <Text className="text-lg font-bold text-neutral-800">이전 회차</Text>
                   <Text className="text-sm text-neutral-500">
                     {formatProgramStart(group.startDate)}
                   </Text>
@@ -140,7 +143,11 @@ export function ReportSection() {
                 </Text>
               )}
               {group.reports.map((report) => (
-                <ReportRow key={report.week_index} report={report} muted={programKnown} />
+                <ReportRow
+                  key={`${report.start_date}-${report.week_index}`}
+                  report={report}
+                  muted={programKnown}
+                />
               ))}
             </View>
           ))}

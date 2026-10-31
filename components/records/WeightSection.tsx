@@ -11,6 +11,7 @@ import { ActivityIndicator, ScrollView, TouchableOpacity, View } from 'react-nat
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import type { WeightLogDB } from 'types/database';
+import { formatBodyComp, prefillBodyComp } from 'utils/bodyComp';
 import { getKoreanDateString } from 'utils/date';
 import { getWeekColorHex } from 'utils/getWeekColor';
 import { requireOnline } from 'utils/network';
@@ -54,21 +55,28 @@ const LogRow = ({
   startDate: string | null;
   onEdit(): void;
   onDelete(): void;
-}) => (
-  <View className="flex-row items-center gap-3 rounded-xl border border-neutral-200 bg-white px-4 py-3">
-    <View className="flex-1 gap-0.5">
-      <Text className="font-bold text-neutral-800">{formatDay(log.day)}</Text>
-      <WeekBadge day={log.day} startDate={startDate} />
+}) => {
+  const bodyComp = formatBodyComp(log);
+  return (
+    <View className="flex-row items-center gap-3 rounded-xl border border-neutral-200 bg-white px-4 py-3">
+      <View className="flex-1 gap-0.5">
+        <Text className="font-bold text-neutral-800">{formatDay(log.day)}</Text>
+        <WeekBadge day={log.day} startDate={startDate} />
+      </View>
+      {/* 인바디 값이 있으면 체중 아래 작은 글씨 */}
+      <View className="items-end">
+        <Text className="text-lg font-bold text-neutral-800">{log.weight_kg.toFixed(1)}kg</Text>
+        {bodyComp && <Text className="text-xs text-neutral-500">{bodyComp}</Text>}
+      </View>
+      <TouchableOpacity onPress={onEdit} hitSlop={8}>
+        <MaterialIcons name="edit" size={20} color={colors.neutral[500]} />
+      </TouchableOpacity>
+      <TouchableOpacity onPress={onDelete} hitSlop={8}>
+        <MaterialIcons name="delete-outline" size={22} color={colors.neutral[500]} />
+      </TouchableOpacity>
     </View>
-    <Text className="text-lg font-bold text-neutral-800">{log.weight_kg.toFixed(1)}kg</Text>
-    <TouchableOpacity onPress={onEdit} hitSlop={8}>
-      <MaterialIcons name="edit" size={20} color={colors.neutral[500]} />
-    </TouchableOpacity>
-    <TouchableOpacity onPress={onDelete} hitSlop={8}>
-      <MaterialIcons name="delete-outline" size={22} color={colors.neutral[500]} />
-    </TouchableOpacity>
-  </View>
-);
+  );
+};
 
 // 기록 탭 > 체중 칸: 그래프·오늘 기록 버튼·날짜별 기록 목록
 export function WeightSection() {
@@ -94,7 +102,12 @@ export function WeightSection() {
 
   const openInput = (day: string) => {
     const today = getKoreanDateString({ formatType: 'date' });
-    setTarget({ day, initial: prefillWeight(logs, day), isToday: day === today });
+    setTarget({
+      day,
+      initial: prefillWeight(logs, day),
+      initialBodyComp: prefillBodyComp(logs, day),
+      isToday: day === today,
+    });
     sheetRef.current?.expand();
   };
 

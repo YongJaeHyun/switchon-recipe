@@ -9,6 +9,7 @@ import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import AllNoticesModal from 'components/home/AllNoticesModal';
 import { StartDateBottomSheet } from 'components/home/StartDateBottomSheet';
+import { MealAlarmSetting } from 'components/me/MealAlarmSetting';
 import { StartDateRow } from 'components/me/StartDateRow';
 import { WeightReminderToggle } from 'components/me/WeightReminderToggle';
 import { baseProfile, googleIcon, kakaoIconSmall } from 'const/assets';
@@ -20,9 +21,11 @@ import { usePass } from 'hooks/usePass';
 import { queryClient } from 'lib/queryClient';
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
+import { useMealAlarmStore } from 'stores/mealAlarmStore';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import { requireOnline } from 'utils/network';
+import { cancelAccountAlarms } from 'utils/notifications';
 import { formatPassRemaining } from 'utils/passDisplay';
 import { getDeleteAccountMessage, getPassRemainingDays, isPassOnSale } from 'utils/passScreen';
 import { clearCachedUser } from 'utils/userCache';
@@ -68,6 +71,10 @@ export default function MeScreen() {
   const handleConfirm = async () => {
     await UserAPI.deleteOne();
     await clearCachedUser();
+    // 탈퇴한 계정 기준으로 걸어 둔 아침 리마인드·끼니·단식 알림이 남지 않게
+    await cancelAccountAlarms();
+    // 끼니 알림 설정·시각은 기기에 남으니 다음 계정이 깨끗하게 시작하도록 초기화
+    useMealAlarmStore.getState().reset();
 
     if (provider === 'google') await GoogleSignin.signOut();
     if (provider === 'kakao') await unlink();
@@ -76,6 +83,14 @@ export default function MeScreen() {
     router.replace('/(auth)');
 
     queryClient.clear();
+  };
+
+  // 로그아웃: 이 계정 기준 로컬 알림을 지우고, 기기에 남는 끼니 알림 설정을 초기화하고 나간다
+  // (다시 로그인하면 아침 리마인드는 앱을 열 때 다시 걸리고, 끼니 알림은 다시 켜야 한다)
+  const handleLogout = async () => {
+    await cancelAccountAlarms();
+    useMealAlarmStore.getState().reset();
+    await UserAPI.logout();
   };
 
   useEffect(() => {
@@ -125,6 +140,7 @@ export default function MeScreen() {
           <View className="gap-4">
             <StartDateRow onPress={() => startDateSheetRef.current?.expand()} />
             <WeightReminderToggle />
+            <MealAlarmSetting />
             <MenuButton
               title="공지사항"
               icon={<MaterialIcons name="campaign" size={24} color={colors.neutral[600]} />}
@@ -141,7 +157,7 @@ export default function MeScreen() {
               icon={
                 <MaterialIcons name="power-settings-new" size={24} color={colors.neutral[600]} />
               }
-              onPress={requireOnline(UserAPI.logout)}
+              onPress={requireOnline(handleLogout)}
             />
           </View>
         </View>

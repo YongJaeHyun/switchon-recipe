@@ -1,4 +1,4 @@
-import { fetchWithRetry } from './http.ts';
+import { fetchWithRetry, type RetryOptions } from './http.ts';
 import type { CandidateIngredient, ImageSource } from './types.ts';
 
 const MAX_PIXABAY_CANDIDATES = 5;
@@ -96,12 +96,22 @@ const fromBase64 = (base64: string) => Uint8Array.from(atob(base64), (c) => c.ch
 const geminiUrl = (model: string, method: string) =>
   `https://generativelanguage.googleapis.com/v1beta/models/${model}:${method}`;
 
-const postJson = async (url: string, apiKey: string, body: unknown, label: string) => {
-  const res = await fetchWithRetry(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-    body: JSON.stringify(body),
-  });
+const postJson = async (
+  url: string,
+  apiKey: string,
+  body: unknown,
+  label: string,
+  onFinalResponse: RetryOptions['onFinalResponse']
+) => {
+  const res = await fetchWithRetry(
+    url,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      body: JSON.stringify(body),
+    },
+    { onFinalResponse }
+  );
   if (!res.ok) throw new Error(`${label} 실패 (${res.status}): ${await res.text()}`);
   return res.json();
 };
@@ -121,12 +131,16 @@ const generatePrompt = (name: string, queryEn: string) =>
   'Uncooked, whole ingredient as the clear main subject, centered, simple bright plain background, ' +
   'soft natural light, square composition, no text, no logo, no other foods.';
 
+// onFinalResponse: Pixabay 검색·Gemini 호출의 최종 응답을 받는다 (index.ts는 장애 알림을 넘긴다).
+// 이미지 다운로드(Pixabay CDN)는 이미지 하나의 문제일 수 있어 넘기지 않는다
 export const createImageDeps = ({
   pixabayKey,
   geminiKey,
+  onFinalResponse,
 }: {
   pixabayKey: string;
   geminiKey: string;
+  onFinalResponse?: RetryOptions['onFinalResponse'];
 }): ImageDeps => ({
   search: async (query, lang) => {
     const params = new URLSearchParams({
@@ -137,7 +151,7 @@ export const createImageDeps = ({
       per_page: '10',
       lang,
     });
-    const res = await fetchWithRetry(`https://pixabay.com/api/?${params}`, {});
+    const res = await fetchWithRetry(`https://pixabay.com/api/?${params}`, {}, { onFinalResponse });
     if (!res.ok) throw new Error(`Pixabay 검색 실패 (${res.status}): ${await res.text()}`);
     return ((await res.json()).hits ?? []) as PixabayHit[];
   },
@@ -175,7 +189,8 @@ export const createImageDeps = ({
           },
         },
       },
-      'Gemini 이미지 검증'
+      'Gemini 이미지 검증',
+      onFinalResponse
     );
     const text = json?.candidates?.[0]?.content?.parts?.[0]?.text ?? '{}';
     const { matches, reason } = JSON.parse(text);
@@ -190,7 +205,8 @@ export const createImageDeps = ({
         contents: [{ role: 'user', parts: [{ text: generatePrompt(name, queryEn) }] }],
         generationConfig: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: '1:1' } },
       },
-      '이미지 생성'
+      '이미지 생성',
+      onFinalResponse
     );
     const parts: { inlineData?: { mimeType: string; data: string } }[] =
       json?.candidates?.[0]?.content?.parts ?? [];

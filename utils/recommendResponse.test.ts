@@ -16,6 +16,7 @@ const row = {
   is_saved: true,
   saved_at: '2026-10-02T00:00:00Z',
   saved_count: 3,
+  servings: 2,
 };
 
 describe('interpretRecommendResponse', () => {
@@ -43,6 +44,7 @@ describe('interpretRecommendResponse', () => {
           ingredient_tags: [],
           is_saved: true,
           saved_count: 3,
+          servings: 2,
         },
       ],
     });

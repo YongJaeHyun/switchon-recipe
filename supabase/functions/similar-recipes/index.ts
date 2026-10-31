@@ -16,7 +16,7 @@ import { handleSimilar, type SaveRow, type SimilarCardRow, type SimilarDeps } fr
 // 점수에 필요한 열만 (조리 순서·영양 정보는 상위 6개만 fetchCards로)
 const CANDIDATE_COLUMNS = 'id, recipe_name, ingredients, cuisine, method, spicy';
 const CARD_COLUMNS =
-  'id, recipe_name, image_uri, ingredients, cooking_steps, cooking_time, nutrition, is_zero_carb, week, created_at, uid';
+  'id, recipe_name, image_uri, ingredients, cooking_steps, cooking_time, nutrition, is_zero_carb, week, created_at, uid, servings';
 // in() 목록이 URL에 실리므로 나눠 조회한다
 const IN_CHUNK = 200;
 

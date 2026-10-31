@@ -431,6 +431,13 @@ verify_jwt = true
 import_map = "./functions/tag-recipes/deno.json"
 entrypoint = "./functions/tag-recipes/index.ts"
 
+# 기존 레시피 기준 인분 백필: service role 키로만 호출 (JWT 서명은 게이트웨이, role은 함수 안에서 확인)
+[functions.estimate-recipe-servings]
+enabled = true
+verify_jwt = true
+import_map = "./functions/estimate-recipe-servings/deno.json"
+entrypoint = "./functions/estimate-recipe-servings/index.ts"
+
 # 주간 리포트 생성 배치: 매일 08:00 KST cron이 service role 키로 호출 (JWT 서명은 게이트웨이, role은 함수 안에서 확인)
 [functions.generate-weekly-reports]
 enabled = true
@@ -450,3 +457,10 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/sentry-to-github/deno.json"
 entrypoint = "./functions/sentry-to-github/index.ts"
+
+# 인바디 결과지 사진 읽기: 스위치온 패스 전용 (하루 10회, premium_usage feature 'inbody_read'). 사진·결과는 저장하지 않음
+[functions.read-inbody]
+enabled = true
+verify_jwt = true
+import_map = "./functions/read-inbody/deno.json"
+entrypoint = "./functions/read-inbody/index.ts"

@@ -33,6 +33,11 @@ const PREMIUM_FEATURES = [
     description: '먹고 싶은 걸 고르면 레시피를 골라 드려요',
   },
   { icon: 'insights', title: 'AI 주간 리포트', description: '체중·식단·단식을 한 주씩 정리' },
+  {
+    icon: 'photo-camera',
+    title: '인바디 결과지 인식',
+    description: '사진만 찍으면 골격근량·체지방량을 기록해요',
+  },
 ] as const;
 
 const weekLabel = (week: number) => (week >= 5 ? '유지기' : `${week}주차`);

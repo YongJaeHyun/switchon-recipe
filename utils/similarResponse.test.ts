@@ -16,6 +16,7 @@ const row = {
   is_saved: true,
   saved_at: '2026-10-02T00:00:00Z',
   saved_count: 3,
+  servings: 2,
 };
 
 describe('parseSimilarResponse', () => {
@@ -29,6 +30,8 @@ describe('parseSimilarResponse', () => {
         { ...row, id: '7' },
         { ...row, ingredients: null },
         { id: 8, ingredients: '[]' },
+        // 범위 밖·정수가 아닌 인분은 null
+        { id: 9, ingredients: '[]', servings: 1.5 },
         null,
       ],
     });
@@ -48,7 +51,9 @@ describe('parseSimilarResponse', () => {
         is_saved: false,
         saved_at: null,
         saved_count: 0,
+        servings: null,
       },
+      expect.objectContaining({ id: 9, servings: null }),
     ]);
   });
 

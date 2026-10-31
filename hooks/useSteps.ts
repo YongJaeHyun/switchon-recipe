@@ -6,6 +6,7 @@ export default function useSteps(totalSteps: number) {
   const goNextStep = () => setStep((prev) => (prev < totalSteps ? prev + 1 : prev));
   const goLastStep = () => setStep(totalSteps);
   const resetStep = () => setStep(1);
+  const goToStep = (target: number) => setStep(Math.min(Math.max(target, 1), totalSteps));
 
-  return { step, goNextStep, goLastStep, resetStep };
+  return { step, goNextStep, goLastStep, goToStep, resetStep };
 }

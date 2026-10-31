@@ -19,7 +19,7 @@ import {
 const CANDIDATE_COLUMNS =
   'id, week, is_zero_carb, cooking_time, ingredients, spicy, cuisine, method';
 const CARD_COLUMNS =
-  'id, recipe_name, image_uri, ingredients, cooking_steps, cooking_time, nutrition, is_zero_carb, week, created_at, uid';
+  'id, recipe_name, image_uri, ingredients, cooking_steps, cooking_time, nutrition, is_zero_carb, week, created_at, uid, servings';
 
 const supabase = createClient(requireEnv('SUPABASE_URL'), requireEnv('SUPABASE_SERVICE_ROLE_KEY'));
 

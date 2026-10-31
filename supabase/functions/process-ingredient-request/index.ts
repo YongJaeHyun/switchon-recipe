@@ -3,6 +3,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { Image } from 'https://deno.land/x/imagescript@1.2.15/mod.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createProviderAlertMonitor } from '../_shared/providerAlert.ts';
 import { isServiceRoleRequest } from '../_shared/serviceRole.ts';
 import {
   buildRequesterNotification,
@@ -44,6 +45,14 @@ const requireEnv = (key: string) => {
 };
 
 const supabase = createClient(requireEnv('SUPABASE_URL'), requireEnv('SUPABASE_SERVICE_ROLE_KEY'));
+
+// Gemini·Pixabay가 결제·키·장애로 실패하면 운영자 Slack 알림 (_shared/providerAlert.ts). 재료 처리 결과·보고는 그대로다.
+// fetchWithRetry가 재시도까지 끝낸 최종 응답만 넘긴다
+const providerMonitor = createProviderAlertMonitor({
+  functionName: 'process-ingredient-request',
+  client: supabase,
+  webhookUrl: Deno.env.get('SLACK_WEBHOOK_URL'),
+});
 
 const loadExistingIngredients = async (): Promise<ExistingIngredient[]> => {
   const { data, error } = await supabase
@@ -172,7 +181,9 @@ const buildReport = async (
   }
 
   const geminiKey = requireEnv('GEMINI_API_KEY');
-  const judgement = await judgeIngredient(record.name, existing, geminiKey);
+  const judgement = await judgeIngredient(record.name, existing, geminiKey, {
+    onFinalResponse: providerMonitor.observe,
+  });
 
   if (judgement.decision === 'reject') {
     return { ...base, status: 'rejected', reason: judgement.reason };
@@ -188,7 +199,11 @@ const buildReport = async (
     };
   }
 
-  const imageDeps = createImageDeps({ geminiKey, pixabayKey: requireEnv('PIXABAY_API_KEY') });
+  const imageDeps = createImageDeps({
+    geminiKey,
+    pixabayKey: requireEnv('PIXABAY_API_KEY'),
+    onFinalResponse: providerMonitor.observe,
+  });
   const baseSortOrder = await loadNextSortOrder();
 
   // 후보는 최대 4개라 병렬 처리 (순차 처리 시 실행 시간 제한을 넘을 수 있음)

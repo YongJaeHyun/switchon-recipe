@@ -7,14 +7,16 @@ import { FASTING_DAYS, FastingDay } from 'const/fastingDays';
 import { useFasting } from 'hooks/useFasting';
 import { RefObject, useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
-import {
-  DEFAULT_START_MINUTES,
-  fastingDayRowLabel,
-  sheetDaysOrdered,
-  withNewDays,
-} from 'utils/fastingDaySheet';
+import { fastingDayRowLabel, sheetDaysOrdered, withNewDays } from 'utils/fastingDaySheet';
 import { nextFastingDays } from 'utils/fastingDaySelect';
-import { FASTING_START_RANGE, QUICK_TIMES, type FastingSchedule } from 'utils/fastingSchedule';
+import { FASTING_START_RANGE, type FastingSchedule } from 'utils/fastingSchedule';
+import {
+  defaultFastingStart,
+  quickTimes,
+  snapLegacyMinutes,
+  type MealTimes,
+} from 'utils/mealTimes';
+import { useMealAlarmStore } from 'stores/mealAlarmStore';
 import { Nullable } from '../../types/common';
 import { CustomBottomSheet } from '../common/CustomBottomSheet';
 
@@ -33,6 +35,8 @@ interface DayStartTimeRowProps {
   day: number;
   minutes: number;
   onChange: (day: number, minutes: number) => void;
+  quick: { label: string; minutes: number }[];
+  mealTimes: MealTimes;
 }
 
 const displayDays = [...FASTING_DAYS.slice(1), FASTING_DAYS[0]];
@@ -51,7 +55,15 @@ const DayButton = ({ day, isSelected, disabled, onPress }: DayButtonProps) => {
 };
 
 // 요일 하나의 시작 시각: "목요일 · 19:00 시작 → 금 19:00 끝", 시·분 휠, 빠른 선택
-const DayStartTimeRow = ({ day, minutes, onChange }: DayStartTimeRowProps) => {
+const DayStartTimeRow = ({
+  day,
+  minutes,
+  onChange,
+  quick: quickOptions,
+  mealTimes,
+}: DayStartTimeRowProps) => {
+  // 옛 식후 라벨 시각(540 등)으로 저장된 값도 그 식후 버튼이 골라진 것으로 보인다
+  const shownQuick = snapLegacyMinutes(minutes, mealTimes);
   return (
     <View className="gap-1 rounded-xl border border-neutral-100 bg-white px-3 py-3">
       <Text className="text-sm font-bold text-neutral-800">{fastingDayRowLabel(day, minutes)}</Text>
@@ -64,8 +76,8 @@ const DayStartTimeRow = ({ day, minutes, onChange }: DayStartTimeRowProps) => {
         accessibilityLabel={`${FASTING_DAYS[day]}요일 단식 시작`}
       />
       <View className="w-full flex-row gap-2">
-        {QUICK_TIMES.map((quick) => {
-          const isSelected = quick.minutes === minutes;
+        {quickOptions.map((quick) => {
+          const isSelected = quick.minutes === shownQuick;
           return (
             <RippleButton
               key={`fasting-quick-time-${day}-${quick.label}`}
@@ -88,13 +100,17 @@ const DayStartTimeRow = ({ day, minutes, onChange }: DayStartTimeRowProps) => {
 // 단식 요일 설정 시트. 여는 줄은 FastingDayLine (오늘 탭 목록 아래)
 export const FastingDayBottomSheet = ({ bottomSheetRef, week }: FastingDayBottomSheetProps) => {
   const { days, schedule, upsertFasting } = useFasting();
+  // 빠른 선택(○○ 식후)과 새 요일 기본값(저녁 식후)은 사용자 끼니 시각 + 30분
+  const mealTimes = useMealAlarmStore((state) => state.times);
+  const quick = quickTimes(mealTimes);
+  const fallbackStart = defaultFastingStart(mealTimes);
 
   const selectableDayNum = week - 1; // ex. 2주차 -> 1개 선택 가능
   const [selectedDays, setSelectedDays] = useState<number[]>(days);
   const [selectedSchedule, setSelectedSchedule] = useState<FastingSchedule>(() =>
-    withNewDays(schedule, days, undefined)
+    withNewDays(schedule, days, undefined, fallbackStart)
   );
-  // 이 시트에서 직전에 정한 시각. 새 요일의 기본값 (없으면 19:00)
+  // 이 시트에서 직전에 정한 시각. 새 요일의 기본값 (없으면 저녁 식후)
   const [lastSetMinutes, setLastSetMinutes] = useState<number | undefined>(undefined);
   const isAllSelected = selectedDays.length >= selectableDayNum;
 
@@ -103,7 +119,7 @@ export const FastingDayBottomSheet = ({ bottomSheetRef, week }: FastingDayBottom
     const next = nextFastingDays(selectedDays, day, selectableDayNum);
     if (!next) return;
     setSelectedDays(next);
-    setSelectedSchedule((prev) => withNewDays(prev, next, lastSetMinutes));
+    setSelectedSchedule((prev) => withNewDays(prev, next, lastSetMinutes, fallbackStart));
   };
   const changeStartTime = (day: number, minutes: number) => {
     setSelectedSchedule((prev) => ({ ...prev, [day]: minutes }));
@@ -113,7 +129,7 @@ export const FastingDayBottomSheet = ({ bottomSheetRef, week }: FastingDayBottom
   const saveFastingDays = () => {
     upsertFasting({
       days: selectedDays,
-      schedule: withNewDays(selectedSchedule, selectedDays, lastSetMinutes),
+      schedule: withNewDays(selectedSchedule, selectedDays, lastSetMinutes, fallbackStart),
     });
     bottomSheetRef.current?.close();
   };
@@ -127,9 +143,9 @@ export const FastingDayBottomSheet = ({ bottomSheetRef, week }: FastingDayBottom
   // 저장된 값이 바뀌면
   const resetToSaved = useCallback(() => {
     setSelectedDays(days);
-    setSelectedSchedule(withNewDays(schedule, days, undefined));
+    setSelectedSchedule(withNewDays(schedule, days, undefined, fallbackStart));
     setLastSetMinutes(undefined);
-  }, [days, schedule]);
+  }, [days, schedule, fallbackStart]);
   useEffect(() => resetToSaved(), [resetToSaved]);
 
   return (
@@ -182,8 +198,10 @@ export const FastingDayBottomSheet = ({ bottomSheetRef, week }: FastingDayBottom
               <DayStartTimeRow
                 key={`fasting-start-time-row-${day}`}
                 day={day}
-                minutes={selectedSchedule[day] ?? lastSetMinutes ?? DEFAULT_START_MINUTES}
+                minutes={selectedSchedule[day] ?? lastSetMinutes ?? fallbackStart}
                 onChange={changeStartTime}
+                quick={quick}
+                mealTimes={mealTimes}
               />
             ))}
           </View>

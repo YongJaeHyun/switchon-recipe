@@ -33,4 +33,9 @@ describe('withNewDays', () => {
   it('이미 시각이 있는 요일은 그대로, 빠진 요일은 지운다', () => {
     expect(withNewDays({ 1: 780, 3: 540 }, [3, 5], undefined)).toEqual({ 3: 540, 5: 1140 });
   });
+
+  it('정한 시각이 없을 때 기본값은 사용자 저녁 식후', () => {
+    expect(withNewDays({}, [3], undefined, 1170)).toEqual({ 3: 1170 });
+    expect(withNewDays({}, [3], 810, 1170)).toEqual({ 3: 810 });
+  });
 });

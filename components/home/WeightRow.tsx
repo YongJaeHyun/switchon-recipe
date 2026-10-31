@@ -9,6 +9,7 @@ import { useWeights } from 'hooks/useWeights';
 import { useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import colors from 'tailwindcss/colors';
+import { prefillBodyComp } from 'utils/bodyComp';
 import { getKoreanDateString } from 'utils/date';
 import { prefillWeight } from 'utils/weight';
 
@@ -25,7 +26,12 @@ export function WeightRow() {
 
   const openInput = () => {
     const day = getKoreanDateString({ formatType: 'date' });
-    setTarget({ day, initial: prefillWeight(logs, day), isToday: true });
+    setTarget({
+      day,
+      initial: prefillWeight(logs, day),
+      initialBodyComp: prefillBodyComp(logs, day),
+      isToday: true,
+    });
     sheetRef.current?.expand();
   };
 

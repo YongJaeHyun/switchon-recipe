@@ -1,6 +1,10 @@
 import * as Notifications from 'expo-notifications';
 import { Href, router } from 'expo-router';
 import { useEffect } from 'react';
+import { useNotificationGateStore } from 'stores/notificationGateStore';
+import { useUserStore } from 'stores/userStore';
+import { notificationTapAction } from 'utils/notificationGate';
+import { captureError } from 'utils/sendError';
 import { Maybe } from '../types/common';
 import { resolveNotificationHref } from '../utils/notificationHref';
 import { invalidateWeeklyReportsFor } from './useWeeklyReports';
@@ -13,22 +17,37 @@ const openHref = (raw: Href) => {
   else router.push(href);
 };
 
-const foregroundAndBackgroundObserver = () => {
-  const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
-    const href = response.notification.request.content.data?.href as Maybe<Href>;
-    invalidateWeeklyReportsFor(href);
-    if (href) openHref(href);
-  });
-
-  return subscription;
+// 미뤄 둔 알림 이동을 지금 할 수 있으면 한다: 사용자 정보를 불러와 탭 화면이 뜬 뒤에만 (utils/notificationGate).
+// 탭 밖(로그인·온보딩)이면 버린다
+const flushPendingHref = () => {
+  const { phase, pendingHref, setPendingHref } = useNotificationGateStore.getState();
+  if (!pendingHref) return;
+  const { id, is_onboarded } = useUserStore.getState();
+  const action = notificationTapAction({ phase, userId: id, isOnboarded: is_onboarded });
+  if (action === 'wait') return;
+  setPendingHref(null);
+  if (action === 'open') openHref(pendingHref);
 };
+
+// 누른 알림 처리: 이동은 미뤄 두고, 같은 알림을 다시 처리하지 않게(개발 중 다시 불러오기·안드로이드 재실행) 지운다
+const handleTap = (response: Notifications.NotificationResponse) => {
+  const href = response.notification.request.content.data?.href as Maybe<Href>;
+  invalidateWeeklyReportsFor(href);
+  if (href) {
+    useNotificationGateStore.getState().setPendingHref(href);
+    flushPendingHref();
+  }
+  Notifications.clearLastNotificationResponseAsync().catch((error) =>
+    captureError({ error, prefix: '[clearLastNotificationResponse]: ' })
+  );
+};
+
+const foregroundAndBackgroundObserver = () =>
+  Notifications.addNotificationResponseReceivedListener(handleTap);
 
 const terminatedObserver = async () => {
   const lastResponse = await Notifications.getLastNotificationResponseAsync();
-  if (lastResponse) {
-    const href = lastResponse.notification.request.content.data?.href as Maybe<Href>;
-    if (href) openHref(href);
-  }
+  if (lastResponse) handleTap(lastResponse);
 };
 
 export function useNotificationObserver() {
@@ -47,12 +66,17 @@ export function useNotificationObserver() {
     const received = Notifications.addNotificationReceivedListener((notification) =>
       invalidateWeeklyReportsFor(notification.request.content.data?.href)
     );
+    // 탭 화면이 뜨거나(phase) 사용자 정보가 바뀌면 미뤄 둔 이동을 다시 본다
+    const unsubscribeGate = useNotificationGateStore.subscribe(flushPendingHref);
+    const unsubscribeUser = useUserStore.subscribe(flushPendingHref);
 
     terminatedObserver();
 
     return () => {
       subscription.remove();
       received.remove();
+      unsubscribeGate();
+      unsubscribeUser();
     };
   }, []);
 }

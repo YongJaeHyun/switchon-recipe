@@ -1,9 +1,22 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import RippleButton from 'components/common/RippleButton';
 import { Tabs } from 'expo-router';
+import { useDailyReminderSync } from 'hooks/useDailyReminderSync';
+import { useEffect } from 'react';
+import { useNotificationGateStore } from 'stores/notificationGateStore';
 import colors from 'tailwindcss/colors';
 
 function TabLayout() {
+  // 다음 날 아침 리마인드 (그날 앱을 안 연 사람에게만)
+  useDailyReminderSync();
+
+  // 눌러 연 알림의 이동은 탭 화면이 뜬 뒤에 한다 (hooks/useNotificationObserver). 로그아웃으로 나가면 탭 밖
+  useEffect(() => {
+    const { setPhase } = useNotificationGateStore.getState();
+    setPhase('tabs');
+    return () => setPhase('outside');
+  }, []);
+
   return (
     <Tabs
       screenOptions={{

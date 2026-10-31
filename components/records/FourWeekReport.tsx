@@ -1,158 +1,144 @@
 import { StatisticsAPI } from 'api/StatisticsAPI';
 import { Text } from 'components/common/Text';
 import { QueryKey } from 'const/queryKey';
-import { BlurView } from 'expo-blur';
 import { useQueryWith402Retry } from 'hooks/useCustomQuery';
-import React, { useState } from 'react';
-import { ActivityIndicator, TouchableWithoutFeedback, View } from 'react-native';
-import Animated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
+import React from 'react';
+import { View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
-import { Nullable } from 'types/common';
-import { getWeekAndDay } from 'utils/date';
-import { getWeekColor } from 'utils/getWeekColor';
+import { buildCompletionCalendar, type CalendarWeek, type DayMark } from 'utils/completionCalendar';
+import { getKoreanDateString } from 'utils/date';
+import { getWeekInkHex } from 'utils/getWeekColor';
+import { programWeekAndDay } from 'utils/programStart';
 
-interface WeekProps {
-  week: number;
-  average: number;
-  todoRatesByWeek: Nullable<number>[];
-}
+const MARK = 16;
+const CELL = 28;
+const INK = colors.green[600];
 
-interface DayProps {
-  week: number;
-  day: number;
-  todoRate: Nullable<number>;
-}
+const MARK_LABEL: Record<DayMark, string> = {
+  full: '100%',
+  partial: '일부',
+  missed: '못 함',
+  upcoming: '아직',
+};
 
-const Week = React.memo(({ week, todoRatesByWeek, average }: WeekProps) => {
-  return (
-    <View className="mb-2 gap-2">
-      <View className="flex-row items-center justify-between">
-        <Text className={`text-lg font-bold ${getWeekColor(week)}`}>{week}주차</Text>
-        {average > 0 && (
-          <Text className="text-sm">
-            평균 완료율: <Text className="font-bold">{average}%</Text>
-          </Text>
-        )}
-      </View>
-      <View className="mb-2 flex-row items-center justify-center gap-1">
-        {todoRatesByWeek.map((todoRate, index) => {
-          const day = index + 1;
-          return <Day key={`statistics-day-${day}`} week={week} day={day} todoRate={todoRate} />;
-        })}
-      </View>
-    </View>
-  );
-});
-
-const Day = ({ week, day, todoRate }: DayProps) => {
-  const MIN_BOOST = 5;
-  const MAX_BAR_HEIGHT = 36;
-
-  const [showBlur, setShowBlur] = useState(false);
-
-  const start_date = useUserStore((state) => state.start_date);
-  const { week: currentWeek, day: currentDay } = getWeekAndDay(start_date);
-
-  const safeRate = todoRate === null ? 0 : todoRate + MIN_BOOST;
-  const barHeight = (safeRate / 100) * MAX_BAR_HEIGHT;
-
-  const isToday = week === currentWeek && day === currentDay;
-
-  const blurOpacity = useSharedValue(0);
-  const blurStyle = useAnimatedStyle(() => ({
-    opacity: blurOpacity.value,
-  }));
-
-  const appearTodoRate = () => {
-    setShowBlur(true);
-
-    blurOpacity.value = withTiming(1, { duration: 250 });
-  };
-
-  const disappearTodoRate = () => {
-    blurOpacity.value = withTiming(0, { duration: 250 }, () => {
-      runOnJS(() => setShowBlur(false));
-    });
-  };
-
-  const handlePressDay = () => {
-    appearTodoRate();
-
-    setTimeout(() => {
-      disappearTodoRate();
-    }, 1500);
-  };
-
-  return (
-    <TouchableWithoutFeedback onPress={handlePressDay}>
+// ● 완주 / ◐ 일부 / ○ 못 함 / · 아직. 글리프는 글꼴마다 크기가 달라 View로 그린다
+const Mark = ({ mark, size = MARK }: { mark: DayMark; size?: number }) => {
+  if (mark === 'upcoming') {
+    return <View className="rounded-full bg-neutral-300" style={{ width: 4, height: 4 }} />;
+  }
+  if (mark === 'full') {
+    return (
+      <View className="rounded-full" style={{ width: size, height: size, backgroundColor: INK }} />
+    );
+  }
+  if (mark === 'partial') {
+    return (
       <View
-        className={`relative flex h-14 w-14 items-center justify-center rounded-full 
-          ${isToday && 'bg-green-200/50'}`}>
-        <Text className="absolute left-3 top-1 text-sm">{day}</Text>
-
-        <View
-          style={{ height: barHeight }}
-          className="absolute bottom-1 right-3 flex-1 rounded-md border-r-8 border-green-500"
-        />
-
-        {showBlur && (
-          <Animated.View
-            className="absolute inset-0 z-10 overflow-hidden rounded-full border border-neutral-100"
-            style={blurStyle}>
-            <BlurView
-              intensity={10}
-              tint="light"
-              experimentalBlurMethod="dimezisBlurView"
-              className="absolute inset-0 rounded-full"
-            />
-
-            <View className="absolute inset-0 items-center justify-center">
-              <Text className="text-sm text-neutral-800">{todoRate}%</Text>
-            </View>
-          </Animated.View>
-        )}
+        className="overflow-hidden rounded-full"
+        style={{ width: size, height: size, borderWidth: 1.5, borderColor: INK }}>
+        <View className="absolute bottom-0 left-0 top-0 w-1/2" style={{ backgroundColor: INK }} />
       </View>
-    </TouchableWithoutFeedback>
+    );
+  }
+  return (
+    <View
+      className="rounded-full"
+      style={{ width: size, height: size, borderWidth: 1.5, borderColor: colors.neutral[400] }}
+    />
   );
 };
 
-// 나의 4주 리포트: 주차별 일자 할 일 완료율 막대
+const weekLabel = ({ week, counts }: CalendarWeek) => {
+  const parts = [
+    counts.full && `완주 ${counts.full}일`,
+    counts.partial && `일부 ${counts.partial}일`,
+    counts.missed && `못 함 ${counts.missed}일`,
+  ].filter(Boolean);
+  return `${week}주차, ${parts.length ? parts.join(', ') : '아직 기록 없음'}`;
+};
+
+const WeekRow = React.memo(({ calendarWeek }: { calendarWeek: CalendarWeek }) => (
+  <View className="flex-row items-center" accessible accessibilityLabel={weekLabel(calendarWeek)}>
+    <Text
+      className="w-14 text-sm font-bold"
+      style={{ color: getWeekInkHex(calendarWeek.week) }}
+      maxFontSizeMultiplier={1.4}>
+      {calendarWeek.week}주차
+    </Text>
+    <View className="flex-1 flex-row justify-between">
+      {calendarWeek.days.map(({ day, mark, isToday }) => (
+        <View
+          key={day}
+          className="items-center justify-center"
+          style={{
+            width: CELL,
+            height: CELL,
+            borderRadius: CELL / 2,
+            borderWidth: isToday ? 1.5 : 0,
+            borderColor: colors.neutral[800],
+          }}>
+          <Mark mark={mark} />
+        </View>
+      ))}
+    </View>
+  </View>
+));
+
+const LEGEND: DayMark[] = ['full', 'partial', 'missed', 'upcoming'];
+
+// 나의 4주 완주 달력: 주차별 하루 할 일 완료 여부를 점으로
 export function FourWeekReport() {
   const id = useUserStore((state) => state.id);
+  const startDate = useUserStore((state) => state.start_date);
 
-  const { data: todoRateStatistics, isLoading } = useQueryWith402Retry({
+  const { data, isLoading } = useQueryWith402Retry({
     queryKey: [QueryKey.todoRateStatistics, id],
     queryFn: StatisticsAPI.getTodoRatesByWeeks,
   });
 
-  return (
-    <View className="min-h-[30.3rem] flex-1">
-      <Text className="mb-6 text-lg font-bold">나의 4주 리포트</Text>
-      {isLoading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size={56} color={colors.emerald[300]} />
-        </View>
-      ) : (
-        todoRateStatistics?.weeks.map((statistic, index) => {
-          const { average, todoRatesByWeek } = statistic;
-          const week = index + 1;
+  const progress = programWeekAndDay(startDate, getKoreanDateString({ formatType: 'date' }));
+  // 시작일이 없거나 시작 전이면 어떤 날도 지나지 않았다. 불러오는 중에도 빈 달력으로 자리를 잡아 둔다
+  const notStarted = !startDate || progress.beforeStart;
+  const calendar = buildCompletionCalendar(
+    isLoading ? undefined : data?.weeks.map((w) => w.todoRatesByWeek),
+    notStarted || isLoading ? { ...progress, beforeStart: true } : progress
+  );
 
-          return (
-            <Week
-              key={`statistics-week-${week}`}
-              week={week}
-              average={average}
-              todoRatesByWeek={todoRatesByWeek}
-            />
-          );
-        })
+  return (
+    <View className="gap-4">
+      <View className="flex-row items-baseline justify-between">
+        <Text className="text-lg font-bold">4주 완주 달력</Text>
+        {!isLoading && !notStarted && (
+          <Text className="text-sm text-neutral-500">
+            <Text className="font-bold text-neutral-900">{calendar.fullCount}일</Text> 완주
+          </Text>
+        )}
+      </View>
+
+      {notStarted && !isLoading && (
+        <Text className="-mt-2 text-sm text-neutral-500">프로그램이 시작되면 하루씩 채워져요</Text>
       )}
+
+      <View className="gap-2">
+        {calendar.weeks.map((calendarWeek) => (
+          <WeekRow key={calendarWeek.week} calendarWeek={calendarWeek} />
+        ))}
+      </View>
+
+      <View
+        className="flex-row flex-wrap items-center gap-x-4 gap-y-1"
+        accessible
+        accessibilityLabel="채운 점 100%, 반쪽 점 일부, 빈 원 못 함, 작은 점 아직">
+        {LEGEND.map((mark) => (
+          <View key={mark} className="flex-row items-center gap-1.5">
+            <View className="items-center justify-center" style={{ width: 12, height: 12 }}>
+              <Mark mark={mark} size={12} />
+            </View>
+            <Text className="text-xs text-neutral-500">{MARK_LABEL[mark]}</Text>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }

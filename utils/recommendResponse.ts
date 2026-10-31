@@ -1,6 +1,7 @@
 // recommend-recipes 엣지 함수 응답 해석 (순수 함수)
 import type { RecipeDB } from 'types/database';
 import type { RecommendOutcome } from 'types/recommend';
+import { baseServingsOf } from './scaleAmount';
 
 export const RECOMMEND_ERROR_MESSAGE = '추천에 실패했어요. 잠시 후 다시 시도해 주세요';
 const INVALID_FALLBACK = '조건을 확인해 주세요';
@@ -34,6 +35,7 @@ const toRecipe = (value: unknown): RecipeDB | null => {
     ingredient_tags: [],
     is_saved: r.is_saved === true,
     saved_count: num(r.saved_count) ?? 0,
+    servings: baseServingsOf(r),
   };
 };
 

@@ -9,7 +9,7 @@ import useKoreanToday from 'hooks/useKoreanToday';
 import React, { RefObject } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
-import { getWeekAndDay } from 'utils/date';
+import { programWeekAndDay } from 'utils/programStart';
 import { getWeekBGColor, getWeekBorderColor, getWeekColor } from 'utils/getWeekColor';
 import { Nullable } from '../../types/common';
 
@@ -21,7 +21,14 @@ export const HomeHeader = ({ bottomSheetRef }: HomeHeaderProps) => {
   const { start_date, avatar_url } = useUserStore((state) => state);
   const today = useKoreanToday();
 
-  const { week, day } = getWeekAndDay(start_date ?? today);
+  // 시작 전이면 1주차 점은 모두 비워 두고, 1일 자리에 D-n을 보여준다
+  const {
+    week,
+    day: programDay,
+    beforeStart,
+    daysUntilStart,
+  } = programWeekAndDay(start_date, today);
+  const day = beforeStart ? 0 : programDay;
   return (
     <View>
       <View className="mb-1 mt-4 flex-row items-center justify-between">
@@ -36,6 +43,9 @@ export const HomeHeader = ({ bottomSheetRef }: HomeHeaderProps) => {
         <View className="flex-row items-end gap-2">
           <Text className={`text-4xl font-bold ${getWeekColor(week)}`}>{week}주차</Text>
           {week >= 5 && <Text className={`text-lg font-bold ${getWeekColor(week)}`}>(유지기)</Text>}
+          {beforeStart && (
+            <Text className="text-lg font-bold text-neutral-500">D-{daysUntilStart}</Text>
+          )}
         </View>
         <Pressable onPress={() => bottomSheetRef.current?.expand()}>
           <Feather name="settings" size={18} />
@@ -52,7 +62,7 @@ export const HomeHeader = ({ bottomSheetRef }: HomeHeaderProps) => {
           <View
             className={`absolute left-0 top-[1.125rem] z-[1] mx-1 h-0.5 border-t bg-transparent ${getWeekBorderColor(week)}`}
             style={{
-              width: day === 1 ? 0 : (day - 1) * 50,
+              width: day <= 1 ? 0 : (day - 1) * 50,
             }}
           />
           <View className="flex-row gap-4">
@@ -61,17 +71,27 @@ export const HomeHeader = ({ bottomSheetRef }: HomeHeaderProps) => {
               .map((_, i) => {
                 const isCompleted = i + 1 < day;
                 const isToday = i + 1 === day;
+                const isStartDay = beforeStart && i === 0;
 
                 return (
                   <View key={`${week}주차 ${i + 1}일`} className="z-10 items-center gap-1.5">
                     <View
                       className={`h-9 w-9 items-center justify-center rounded-full ${
-                        isCompleted || isToday ? getWeekBGColor(week) : 'bg-neutral-300'
+                        isCompleted || isToday
+                          ? getWeekBGColor(week)
+                          : isStartDay
+                            ? `border-2 bg-white ${getWeekBorderColor(week)}`
+                            : 'bg-neutral-300'
                       }`}>
                       {isCompleted && <MaterialIcons name="check" size={22} color="white" />}
                     </View>
-                    <Text className={`text-sm ${isToday && `font-bold ${getWeekColor(week)}`}`}>
-                      {isToday ? 'Today' : `${i + 1}일`}
+                    <Text
+                      className={`text-sm ${(isToday || isStartDay) && `font-bold ${getWeekColor(week)}`}`}>
+                      {isToday
+                        ? 'Today'
+                        : isStartDay && daysUntilStart === 1
+                          ? '내일'
+                          : `${i + 1}일`}
                     </Text>
                   </View>
                 );

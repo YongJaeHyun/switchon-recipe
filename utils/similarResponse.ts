@@ -1,5 +1,6 @@
 // similar-recipes 엣지 함수 응답 해석 (순수 함수)
 import type { RecipeWithIsSavedDB } from 'types/database';
+import { baseServingsOf } from './scaleAmount';
 
 const asObject = (value: unknown): Record<string, unknown> | null =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -29,6 +30,7 @@ const toRecipe = (value: unknown): RecipeWithIsSavedDB | null => {
     is_saved: r.is_saved === true,
     saved_at: str(r.saved_at),
     saved_count: num(r.saved_count) ?? 0,
+    servings: baseServingsOf(r),
   };
 };
 

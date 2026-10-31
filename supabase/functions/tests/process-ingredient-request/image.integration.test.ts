@@ -24,7 +24,11 @@ const save = (name: string, bytes: Uint8Array, mimeType: string) => {
   writeFileSync(join(OUTPUT_DIR, `${name}.${mimeType === 'image/png' ? 'png' : 'jpg'}`), bytes);
 };
 
-describe.skipIf(!geminiKey || !pixabayKey)('findIngredientImage (real APIs)', () => {
+// 실제 Gemini를 호출해 비용이 들므로 평소 테스트에서는 건너뛴다.
+// 실행: RUN_PAID_TESTS=1 npx vitest run supabase/functions/tests/process-ingredient-request
+const runPaid = process.env.RUN_PAID_TESTS === '1';
+
+describe.skipIf(!runPaid || !geminiKey || !pixabayKey)('findIngredientImage (real APIs)', () => {
   const deps = createImageDeps({ geminiKey, pixabayKey });
 
   it(

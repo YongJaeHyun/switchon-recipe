@@ -32,7 +32,11 @@ const existing: ExistingIngredient[] = [
 
 const judge = (name: string) => judgeIngredient(name, existing, geminiKey);
 
-describe.skipIf(!geminiKey)('judgeIngredient', () => {
+// 실제 Gemini를 호출해 비용이 들므로 평소 테스트에서는 건너뛴다.
+// 실행: RUN_PAID_TESTS=1 npx vitest run supabase/functions/tests/process-ingredient-request
+const runPaid = process.env.RUN_PAID_TESTS === '1';
+
+describe.skipIf(!runPaid || !geminiKey)('judgeIngredient', () => {
   it(
     'treats a spelling variant as duplicate',
     async () => {

@@ -10,8 +10,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import type { ReportContent } from 'types/report';
+import { programStartOf } from 'utils/programStart';
 import { MEAL_LABELS } from 'utils/recommendForm';
-import { formatProgramStart, formatReportRange, isEmptyReport } from 'utils/reportDisplay';
+import {
+  formatProgramStart,
+  formatReportRange,
+  isEmptyReport,
+  isPreviousProgramReport,
+} from 'utils/reportDisplay';
 
 type IconName = ComponentProps<typeof MaterialIcons>['name'];
 
@@ -73,12 +79,16 @@ export default function ReportDetailScreen() {
   const params = useLocalSearchParams<{ startDate: string; week: string }>();
   const startDate = String(params.startDate ?? '');
   const weekIndex = Number(params.week);
-  const currentStartDate = (useUserStore((state) => state.start_date) || '').slice(0, 10);
+  const currentStartDate = useUserStore((state) => state.start_date) || null;
+  const programStart = useUserStore((state) => state.program_start);
   const { report, isLoading, isError, refetch } = useWeeklyReport(startDate, weekIndex);
 
   const title = Number.isInteger(weekIndex) ? `${weekIndex}주차 리포트` : '주간 리포트';
-  // 시작일을 아직 모르면(사용자 정보 불러오는 중) 이전 프로그램으로 표시하지 않는다
-  const isPrevious = !!report && !!currentStartDate && report.start_date !== currentStartDate;
+  // 지금 회차 시작일 전 리포트만 이전 회차 (한 주 더 하기·주차 맞추기로 시작일이 바뀌어도 이번 회차).
+  // 시작일을 아직 모르면(사용자 정보 불러오는 중) 표시하지 않는다
+  const isPrevious =
+    !!report &&
+    isPreviousProgramReport(report.start_date, programStartOf(programStart, currentStartDate));
   // 문장이 없거나 깨진 행이어도 숫자는 보여준다 (빈 칸은 숨김)
   const content = report?.content ?? EMPTY_CONTENT;
 
@@ -182,7 +192,7 @@ export default function ReportDetailScreen() {
             {isPrevious && (
               <View className="rounded-full bg-neutral-200 px-2 py-0.5">
                 <Text className="text-xs text-neutral-600">
-                  이전 프로그램 · {formatProgramStart(report.start_date)}
+                  이전 회차 · {formatProgramStart(report.start_date)}
                 </Text>
               </View>
             )}

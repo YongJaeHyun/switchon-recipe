@@ -2,7 +2,8 @@
 import { FASTING_DAYS } from 'const/fastingDays';
 import { formatMinutes, type FastingSchedule } from 'utils/fastingSchedule';
 
-export const DEFAULT_START_MINUTES = 1140; // 정한 시각이 없을 때 19:00
+// 정한 시각이 없을 때 19:00 (기본 끼니 시각의 저녁 식후). 시트는 사용자 저녁 식후(utils/mealTimes)를 넘긴다
+export const DEFAULT_START_MINUTES = 1140;
 
 // 월→일 순서 (일요일이 마지막)
 export const sheetDaysOrdered = (days: number[]): number[] =>
@@ -14,13 +15,14 @@ export function fastingDayRowLabel(day: number, minutes: number): string {
   return `${FASTING_DAYS[day]}요일 · ${time} 시작 → ${FASTING_DAYS[(day + 1) % 7]} ${time} 끝`;
 }
 
-// 고른 요일만 남기고, 시각이 없는 새 요일은 직전에 정한 시각(없으면 19:00)으로
+// 고른 요일만 남기고, 시각이 없는 새 요일은 직전에 정한 시각(없으면 fallback = 저녁 식후)으로
 export function withNewDays(
   schedule: FastingSchedule,
   days: number[],
-  lastSet: number | undefined
+  lastSet: number | undefined,
+  fallback: number = DEFAULT_START_MINUTES
 ): FastingSchedule {
   const next: FastingSchedule = {};
-  for (const day of days) next[day] = schedule[day] ?? lastSet ?? DEFAULT_START_MINUTES;
+  for (const day of days) next[day] = schedule[day] ?? lastSet ?? fallback;
   return next;
 }

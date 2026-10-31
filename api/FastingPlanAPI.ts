@@ -16,6 +16,7 @@ interface PlanBody {
 }
 
 // ignoreDuplicates = true면 이미 있는 계획은 그대로 둔다 (insert-if-absent).
+// created_at은 보내지 않는다 (새 행은 DB 기본값 now(), 있던 행은 그대로: 기록 탭이 시작일 바뀐 때를 어림하는 데 쓴다).
 // 요일별 시각(start_minutes)과 옛 라벨(start_time)을 함께 쓴다
 const write = async (
   { start_date, week_index, days, schedule }: PlanBody,
@@ -43,6 +44,33 @@ const write = async (
 };
 
 const upsert = (body: PlanBody) => write(body, false);
+
+// 행이 있으면 updated_at만 새로 찍는다 (없으면 아무것도 안 함). 시작일을 바꾼 직후 "지금 이 시작일이 쓰인다"는 표시.
+// days·start_time·start_minutes를 건드리지 않아 clear_stale_start_minutes 트리거(요일·라벨이 바뀌었을 때만
+// start_minutes를 지움)가 start_minutes를 지우지 않는다. 실패해도 조용히 넘어간다 (기록 탭 표시만 늦어짐)
+const touch = async ({
+  start_date,
+  week_index,
+}: {
+  start_date: string;
+  week_index: number;
+}): Promise<void> => {
+  try {
+    const uid = useUserStore.getState().id;
+    if (!uid) return;
+
+    const { error } = await supabase
+      .from('fasting_plan')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('uid', uid)
+      .eq('start_date', start_date)
+      .eq('week_index', week_index);
+
+    if (error) throw error;
+  } catch (error) {
+    if (!isNetworkError(error)) captureError({ error, prefix: '[FastingPlanAPI.touch]: ' });
+  }
+};
 const insertIfAbsent = (body: PlanBody) => write(body, true);
 
 // 그 주차의 단식 계획. 없으면 null. 실패 시 throw (React Query가 재시도/무시)
@@ -87,4 +115,35 @@ const selectAll = async (
   return data ?? [];
 };
 
-export const FastingPlanAPI = { upsert, insertIfAbsent, selectOne, selectAll };
+// 모든 시작일의 계획 (기록 탭 > 단식: 지금 회차와 지난 회차). 실패 시 throw
+const selectEvery = async (): Promise<
+  {
+    start_date: string;
+    week_index: number;
+    days: number[];
+    start_time: string | null;
+    start_minutes: Json | null;
+    created_at: string | null;
+    updated_at: string;
+  }[]
+> => {
+  const uid = useUserStore.getState().id;
+  if (!uid) return [];
+
+  const { data, error } = await supabase
+    .from('fasting_plan')
+    .select('start_date, week_index, days, start_time, start_minutes, created_at, updated_at')
+    .eq('uid', uid);
+
+  if (error) throw error;
+  return data ?? [];
+};
+
+export const FastingPlanAPI = {
+  upsert,
+  insertIfAbsent,
+  touch,
+  selectOne,
+  selectAll,
+  selectEvery,
+};

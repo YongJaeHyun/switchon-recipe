@@ -48,6 +48,7 @@ export type Database = {
       };
       fasting_plan: {
         Row: {
+          created_at: string | null;
           days: number[];
           start_date: string;
           start_minutes: Json | null;
@@ -57,6 +58,7 @@ export type Database = {
           week_index: number;
         };
         Insert: {
+          created_at?: string | null;
           days: number[];
           start_date: string;
           start_minutes?: Json | null;
@@ -66,6 +68,7 @@ export type Database = {
           week_index: number;
         };
         Update: {
+          created_at?: string | null;
           days?: number[];
           start_date?: string;
           start_minutes?: Json | null;
@@ -431,6 +434,7 @@ export type Database = {
           method: string | null;
           nutrition: string | null;
           recipe_name: string | null;
+          servings: number | null;
           spicy: boolean | null;
           uid: string | null;
           week: number | null;
@@ -448,6 +452,7 @@ export type Database = {
           method?: string | null;
           nutrition?: string | null;
           recipe_name?: string | null;
+          servings?: number | null;
           spicy?: boolean | null;
           uid?: string | null;
           week?: number | null;
@@ -465,6 +470,7 @@ export type Database = {
           method?: string | null;
           nutrition?: string | null;
           recipe_name?: string | null;
+          servings?: number | null;
           spicy?: boolean | null;
           uid?: string | null;
           week?: number | null;
@@ -713,6 +719,7 @@ export type Database = {
           email: string | null;
           id: string;
           is_onboarded: boolean | null;
+          program_start: string | null;
           provider: string | null;
           push_token: string | null;
           start_date: string | null;
@@ -723,6 +730,7 @@ export type Database = {
           email?: string | null;
           id?: string;
           is_onboarded?: boolean | null;
+          program_start?: string | null;
           provider?: string | null;
           push_token?: string | null;
           start_date?: string | null;
@@ -733,6 +741,7 @@ export type Database = {
           email?: string | null;
           id?: string;
           is_onboarded?: boolean | null;
+          program_start?: string | null;
           provider?: string | null;
           push_token?: string | null;
           start_date?: string | null;
@@ -937,18 +946,24 @@ export type Database = {
       weight_log: {
         Row: {
           day: string;
+          fat_kg: number | null;
+          muscle_kg: number | null;
           uid: string;
           updated_at: string;
           weight_kg: number;
         };
         Insert: {
           day: string;
+          fat_kg?: number | null;
+          muscle_kg?: number | null;
           uid: string;
           updated_at?: string;
           weight_kg: number;
         };
         Update: {
           day?: string;
+          fat_kg?: number | null;
+          muscle_kg?: number | null;
           uid?: string;
           updated_at?: string;
           weight_kg?: number;
@@ -1019,6 +1034,7 @@ export type Database = {
           recipe_name: string | null;
           saved_at: string | null;
           saved_count: number | null;
+          servings: number | null;
           uid: string | null;
           week: number | null;
         };
@@ -1075,6 +1091,7 @@ export type Database = {
           recipe_name: string;
           saved_at: string;
           saved_count: number;
+          servings: number;
           week: number;
         }[];
       };
@@ -1093,6 +1110,7 @@ export type Database = {
           recipe_name: string;
           saved_at: string;
           saved_count: number;
+          servings: number;
           uid: string;
           week: number;
         }[];

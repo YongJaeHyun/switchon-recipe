@@ -3,6 +3,7 @@ import { useUserStore } from 'stores/userStore';
 import { Maybe } from 'types/common';
 import { FastingResultDB } from 'types/database';
 import { fastingResultRecord as recordOf, fastingResultUpsertRow } from 'utils/fastingResultRecord';
+import { fetchAllPages } from 'utils/fetchAllPages';
 import { captureError, sendError } from 'utils/sendError';
 
 export type FastingResult = 'success' | 'broken';
@@ -58,19 +59,24 @@ const upsert = async ({
     return data;
   });
 
-// fromDay(포함) 이후의 단식 결과. 실패 시 throw
+// fromDay(포함) 이후의 단식 결과, 최근순. 서버 최대 행 수(1000)를 넘으면 쪽으로 나눠 다 받는다. 실패 시 throw
 const selectSince = async (fromDay: string): Promise<({ day: string } & FastingResultRecord)[]> => {
   const uid = useUserStore.getState().id;
   if (!uid) return [];
 
-  const { data, error } = await supabase
-    .from('fasting_result')
-    .select('day, result, fasted_minutes')
-    .eq('uid', uid)
-    .gte('day', fromDay);
+  const rows = await fetchAllPages(async (from, to) => {
+    const { data, error } = await supabase
+      .from('fasting_result')
+      .select('day, result, fasted_minutes')
+      .eq('uid', uid)
+      .gte('day', fromDay)
+      .order('day', { ascending: false })
+      .range(from, to);
 
-  if (error) throw error;
-  return (data ?? []).map((row) => ({ day: row.day, ...recordOf(row) }));
+    if (error) throw error;
+    return data ?? [];
+  });
+  return rows.map((row) => ({ day: row.day, ...recordOf(row) }));
 };
 
 // 그날 결과를 지운다 (진행 중에 일찍 끝냈다가 취소). 실패하면 토스트 후 undefined, 성공하면 true

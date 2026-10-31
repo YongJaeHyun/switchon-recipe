@@ -4,6 +4,7 @@ import {
   formatItemRate,
   formatWeightDiff,
   groupReportsByProgram,
+  isPreviousProgramReport,
   isEmptyReport,
   isReportHref,
   parseReportContent,
@@ -26,36 +27,96 @@ describe('formatItemRate', () => {
 
 describe('groupReportsByProgram', () => {
   const reports = [
-    { start_date: '2026-09-01', week_index: 1 },
+    { start_date: '2026-06-01', week_index: 1 },
     { start_date: '2026-10-01', week_index: 1 },
-    { start_date: '2026-08-01', week_index: 2 },
+    { start_date: '2026-03-01', week_index: 2 },
     { start_date: '2026-10-01', week_index: 2 },
-    { start_date: '2026-09-01', week_index: 3 },
+    { start_date: '2026-06-01', week_index: 3 },
   ];
 
-  it('지금 시작일 리포트는 current, 나머지는 시작일별 previous (최신 먼저)', () => {
+  it('회차 시작일 이후 리포트는 current, 나머지는 지난 회차별 previous (최신 먼저)', () => {
     const { current, previous } = groupReportsByProgram(reports, '2026-10-01');
     expect(current.map((r) => r.week_index)).toEqual([2, 1]);
-    expect(previous.map((g) => g.startDate)).toEqual(['2026-09-01', '2026-08-01']);
+    expect(previous.map((g) => g.startDate)).toEqual(['2026-06-01', '2026-03-01']);
     expect(previous[0].reports.map((r) => r.week_index)).toEqual([3, 1]);
     expect(previous[1].reports.map((r) => r.week_index)).toEqual([2]);
   });
 
-  it('시작일을 바꾸면 이전 리포트는 사라지지 않고 previous로 간다', () => {
+  it('다시 시작하면 이전 리포트는 사라지지 않고 previous로 간다', () => {
     const { current, previous } = groupReportsByProgram(reports, '2026-10-20');
     expect(current).toEqual([]);
     expect(previous.flatMap((g) => g.reports)).toHaveLength(reports.length);
   });
 
-  it('시작일에 시각이 붙어 있어도 날짜로 비교한다', () => {
+  it('회차 시작일에 시각이 붙어 있어도 날짜로 비교한다', () => {
     const { current } = groupReportsByProgram(reports, '2026-10-01T00:00:00+09:00');
     expect(current).toHaveLength(2);
   });
 
-  it('시작일이 없으면 전부 previous', () => {
+  it('회차 시작일을 모르면 전부 previous', () => {
     const { current, previous } = groupReportsByProgram(reports, null);
     expect(current).toEqual([]);
     expect(previous).toHaveLength(3);
+  });
+
+  it('한 주 더 하기로 시작일이 밀려도 리포트는 지금 회차에 남고, 기간 순(최신 먼저)이다', () => {
+    const shifted = [
+      { start_date: '2026-10-01', week_index: 1 }, // 10/1~
+      { start_date: '2026-10-01', week_index: 2 }, // 10/8~
+      { start_date: '2026-10-08', week_index: 2 }, // 10/15~ (2주차 한 번 더)
+    ];
+    const { current, previous } = groupReportsByProgram(shifted, '2026-10-01');
+    expect(previous).toEqual([]);
+    expect(current).toEqual([
+      { start_date: '2026-10-08', week_index: 2 },
+      { start_date: '2026-10-01', week_index: 2 },
+      { start_date: '2026-10-01', week_index: 1 },
+    ]);
+  });
+
+  it('주차 맞추기로 시작일을 앞당기면(회차 시작일도 앞당김) 예전 시작일 리포트도 지금 회차', () => {
+    const { current, previous } = groupReportsByProgram(
+      [{ start_date: '2026-10-15', week_index: 1 }],
+      '2026-10-08'
+    );
+    expect(current).toHaveLength(1);
+    expect(previous).toEqual([]);
+  });
+
+  it('지난 회차는 8주 이내로 이어지는 시작일을 한 묶음으로, 가장 이른 시작일을 이름으로 쓴다', () => {
+    const { previous } = groupReportsByProgram(
+      [
+        { start_date: '2025-08-04', week_index: 1 },
+        { start_date: '2025-08-04', week_index: 2 },
+        { start_date: '2025-08-11', week_index: 2 },
+        { start_date: '2025-08-11', week_index: 3 },
+      ],
+      '2026-10-01'
+    );
+    expect(previous).toEqual([
+      {
+        startDate: '2025-08-04',
+        reports: [
+          { start_date: '2025-08-11', week_index: 3 },
+          { start_date: '2025-08-11', week_index: 2 },
+          { start_date: '2025-08-04', week_index: 2 },
+          { start_date: '2025-08-04', week_index: 1 },
+        ],
+      },
+    ]);
+  });
+});
+
+describe('isPreviousProgramReport', () => {
+  it('회차 시작일 전 시작일의 리포트만 이전 회차', () => {
+    expect(isPreviousProgramReport('2026-09-01', '2026-10-01')).toBe(true);
+    expect(isPreviousProgramReport('2026-10-01', '2026-10-01')).toBe(false);
+    // 한 주 더 하기로 시작일이 10/8이 돼도 10/1 시작 리포트는 이번 회차
+    expect(isPreviousProgramReport('2026-10-08', '2026-10-01T00:00:00+09:00')).toBe(false);
+  });
+
+  it('회차 시작일을 모르면(불러오는 중) 이전 회차로 표시하지 않는다', () => {
+    expect(isPreviousProgramReport('2026-09-01', null)).toBe(false);
   });
 });
 

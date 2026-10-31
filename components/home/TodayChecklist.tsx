@@ -1,8 +1,10 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { Text } from 'components/common/Text';
 import { useFasting, useFastingAlarmSync } from 'hooks/useFasting';
+import useKoreanToday from 'hooks/useKoreanToday';
 import { useFastingPlanBackfill, useFastingWeekContext } from 'hooks/useFastingPlan';
 import { useFastingResult } from 'hooks/useFastingResult';
+import { useDayCelebration } from 'hooks/useDayCelebration';
 import { useTodos } from 'hooks/useTodos';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, View } from 'react-native';
@@ -14,24 +16,54 @@ import { getWeekAndDay } from 'utils/date';
 import { getFastingStatus, WEEK_CHANGES } from 'utils/dietGuide';
 import { fastingDayOf } from 'utils/fastingEarlyEnd';
 import { getWeekColor, getWeekColorHex } from 'utils/getWeekColor';
+import { daysUntilStart, programWeekAndDay } from 'utils/programStart';
 import { todayExtraRows, weekStepLabel } from 'utils/todayRows';
+import { BeforeStartCard } from './BeforeStartCard';
+import { DayCompleteSheet } from './DayCompleteSheet';
 import { FastingDayLine } from './FastingDayLine';
 import { FastingProgressLine } from './FastingProgressLine';
 import { FastingResultRow } from './FastingResultRow';
 import { TipBottomSheet } from './TipBottomSheet';
 import { Todo } from './Todo';
+import { Week1GuideCard } from './Week1GuideCard';
 import { WeightRow } from './WeightRow';
 
 const MINUTE_MS = 60 * 1000;
 
 // 오늘 탭의 할 일 목록 하나: (단식 중이면 남은 시간 줄) → 식단 할 일 → 단식 결과 → 체중 → (아래) 단식 요일.
 // 진행 중에 일찍 끝냈으면 남은 시간 줄 자리에 그 단식의 결과 카드 (할 일 목록은 그대로).
-// 완료율(%)은 식단 할 일만 센다
+// 완료율(%)은 식단 할 일만 센다.
+// 시작일이 미래(시작 전)면 할 일·단식 대신 '시작 전' 준비 카드 (할 일·단식 훅을 아예 돌리지 않는다)
 export function TodayChecklist() {
+  const startDate = useUserStore((state) => state.start_date);
+  const today = useKoreanToday();
+  const until = daysUntilStart(startDate, today);
+
+  if (until > 0) {
+    return (
+      <View className="gap-3">
+        <BeforeStartCard daysUntil={until} />
+        {/* 시작 전 체중도 남길 수 있게 (기록 탭에서 '시작 전'으로 보인다) */}
+        <View className="rounded-xl border border-neutral-200 bg-white px-4 py-1">
+          <WeightRow />
+        </View>
+        <TipBottomSheet />
+      </View>
+    );
+  }
+  return <ProgramChecklist today={today} />;
+}
+
+function ProgramChecklist({ today }: { today: string }) {
   const startDate = useUserStore((state) => state.start_date);
 
   // 화면에 하나뿐이라 여기서 못 보낸 todo_daily 다시 보내기를 켠다
-  const { todos, completedRate, isLoading: isTodosLoading } = useTodos({ syncTodoDaily: true });
+  const {
+    todos,
+    completedRate,
+    currentRate,
+    isLoading: isTodosLoading,
+  } = useTodos({ syncTodoDaily: true });
   const { days, schedule, isLoading: isFastingLoading } = useFasting();
   const weekContext = useFastingWeekContext();
   useFastingPlanBackfill();
@@ -45,6 +77,14 @@ export function TodayChecklist() {
   }, []);
 
   const { week, day } = getWeekAndDay(startDate);
+  const guideDay = programWeekAndDay(startDate, today);
+  // 1주차 그날 할 일을 방금 다 끝냈으면 하루 한 번 완주 축하 (안내 카드와 같은 today 기준 일차)
+  const { celebrateDay, closeCelebration } = useDayCelebration({
+    week: guideDay.week,
+    day: guideDay.day,
+    today,
+    currentRate,
+  });
   const stepLabel = weekStepLabel(week, day);
   const isMaintenance = week >= 5;
   const status = getFastingStatus(now, schedule, weekContext);
@@ -82,6 +122,10 @@ export function TodayChecklist() {
       {rows.fastingDayLine === 'unset' && (
         <FastingDayLine state="unset" week={week} days={days} schedule={schedule} />
       )}
+
+      {/* 1주차 1~7일 그날 한 줄 안내 (닫으면 그날 숨김). 닫기 키와 같은 today로 일차를 정해
+          자정 직후 재검증 전에도 카드 일차와 닫은 날이 어긋나지 않게 한다 */}
+      <Week1GuideCard week={guideDay.week} day={guideDay.day} today={today} />
 
       <View className="rounded-xl border border-neutral-200 bg-white px-4 pb-2 pt-4">
         <View className="mb-1 flex-row items-center justify-between">
@@ -142,6 +186,7 @@ export function TodayChecklist() {
       )}
 
       <TipBottomSheet />
+      <DayCompleteSheet day={celebrateDay} onClose={closeCelebration} />
     </View>
   );
 }
