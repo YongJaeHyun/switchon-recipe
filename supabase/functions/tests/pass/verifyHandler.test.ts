@@ -238,11 +238,13 @@ describe('verifyPurchase: 한 주 더 하기 연장', () => {
 });
 
 describe('verifyPurchase: Play 응답의 상품', () => {
-  it('Play 응답에 productId가 없으면 invalid (요청한 상품과 같은지 확인할 수 없음)', async () => {
+  // Play 응답의 productId는 "없을 수도 있다"(Google 문서). 조회 주소가 이미 상품별이라
+  // (purchases/products/{productId}/tokens/{token}) 다른 상품의 토큰이면 Play가 응답하지 않는다
+  it('Play 응답에 productId가 없어도 요청한 상품으로 지급한다', async () => {
     const { deps, rows } = createFakeDeps({ playPurchase: purchase({ productId: undefined }) });
 
-    expect(await verifyPurchase(deps, input)).toEqual({ status: 'invalid' });
-    expect(rows).toHaveLength(0);
+    expect((await verifyPurchase(deps, input)).status).toBe('granted');
+    expect(rows).toHaveLength(1);
   });
 
   it('Play 응답의 productId가 요청과 다르면 invalid', async () => {

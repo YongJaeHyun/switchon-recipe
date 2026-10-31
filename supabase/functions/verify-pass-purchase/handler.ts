@@ -121,8 +121,9 @@ const alreadyProcessed = async (
 const isValidPurchase = (purchase: ProductPurchase, input: VerifyInput) =>
   purchase.purchaseState === PURCHASED &&
   purchase.obfuscatedExternalAccountId === input.uid &&
-  // 응답에 상품이 없으면 요청한 상품(가격·일수를 정함)과 같은지 확인할 수 없으므로 받지 않는다
-  purchase.productId === input.productId;
+  // Play 응답의 productId는 없을 수도 있다(Google 문서). 조회 주소가 상품별이라 다른 상품의 토큰은
+  // Play가 응답하지 않으므로, 없으면 요청한 상품으로 보고 있으면 같아야 한다
+  (purchase.productId === undefined || purchase.productId === input.productId);
 
 // 이 구매가 더해 주는 구간: 이 구매 이전의 granted 구매·연장으로 만든 만료일 뒤에 상품 일수만큼 이어 붙인다
 const grantedInterval = (
