@@ -10,6 +10,7 @@ import { WeeklyReportAPI } from 'api/WeeklyReportAPI';
 import {
   cacheGeneratedReport,
   useCanRegenerateReport,
+  useOnDemandLimitStore,
   useWeeklyReport,
   useWeeklyReports,
 } from 'hooks/useWeeklyReports';
@@ -32,7 +33,7 @@ import {
   shouldShowTrialPassCard,
 } from 'utils/reportDisplay';
 import { showNetworkErrorToast } from 'utils/network';
-import { ON_DEMAND_MESSAGES } from 'utils/reportOnDemand';
+import { isOnDemandLimitedToday, kstDayOf, ON_DEMAND_MESSAGES } from 'utils/reportOnDemand';
 import { showSuccessToast } from 'utils/showToast';
 
 type IconName = ComponentProps<typeof MaterialIcons>['name'];
@@ -92,13 +93,16 @@ const Message = ({ text, onRetry }: { text: string; onRetry?(): void }) => (
 );
 
 // 리포트를 만든 뒤 그 주 기록이 더해졌을 때 [다시 만들기] (패스, 리포트당 하루 1번. 보일지는 서버 check가 정한다)
-// error.retryable이 false면(오늘 이미 다시 만듦·바뀐 기록 없음 등) 버튼 없이 안내만
+// error.retryable이 false면(오늘 이미 다시 만듦·바뀐 기록 없음 등) 버튼 없이 안내만.
+// limited(오늘 하루 상한을 다 씀)면 버튼을 막고 안내
 const RegenerateBanner = ({
   pending,
+  limited,
   error,
   onPress,
 }: {
   pending: boolean;
+  limited: boolean;
   error: { message: string; retryable: boolean } | null;
   onPress(): void;
 }) => (
@@ -117,17 +121,26 @@ const RegenerateBanner = ({
     {error && !error.retryable ? null : (
       <TouchableOpacity
         accessibilityRole="button"
-        accessibilityState={{ disabled: pending, busy: pending }}
-        disabled={pending}
+        accessibilityState={{ disabled: pending || limited, busy: pending }}
+        disabled={pending || limited}
         onPress={onPress}
-        className={`flex-row items-center justify-center gap-2 rounded-lg py-3 ${pending ? 'bg-green-100' : 'bg-green-600'}`}>
+        className={`flex-row items-center justify-center gap-2 rounded-lg py-3 ${
+          pending ? 'bg-green-100' : limited ? 'bg-neutral-200' : 'bg-green-600'
+        }`}>
         {pending && <ActivityIndicator size="small" color={colors.green[700]} />}
-        <Text className={`font-bold ${pending ? 'text-green-700' : 'text-white'}`}>
+        <Text
+          className={`font-bold ${
+            pending ? 'text-green-700' : limited ? 'text-neutral-400' : 'text-white'
+          }`}>
           {pending ? '다시 만드는 중' : '다시 만들기'}
         </Text>
       </TouchableOpacity>
     )}
-    {!!error && <Text className="text-sm text-red-600">{error.message}</Text>}
+    {limited ? (
+      <Text className="text-sm text-neutral-500">{ON_DEMAND_MESSAGES.daily_limit}</Text>
+    ) : (
+      !!error && <Text className="text-sm text-red-600">{error.message}</Text>
+    )}
   </View>
 );
 
@@ -168,8 +181,10 @@ export default function ReportDetailScreen() {
     message: string;
     retryable: boolean;
   } | null>(null);
+  const { limitedDay, setLimitedDay } = useOnDemandLimitStore();
+  const limited = isOnDemandLimitedToday(limitedDay, new Date());
   const regenerate = async () => {
-    if (regenerating) return;
+    if (regenerating || limited) return;
     setRegenerating(true);
     setRegenerateError(null);
     const outcome = await WeeklyReportAPI.generate(startDate, weekIndex, 'regenerate');
@@ -181,6 +196,10 @@ export default function ReportDetailScreen() {
     }
     if (outcome.status === 'network') {
       showNetworkErrorToast();
+      return;
+    }
+    if (outcome.status === 'daily_limit') {
+      setLimitedDay(kstDayOf(new Date()));
       return;
     }
     setRegenerateError({
@@ -319,6 +338,7 @@ export default function ReportDetailScreen() {
         {showRegenerate && (
           <RegenerateBanner
             pending={regenerating}
+            limited={limited}
             error={regenerateError}
             onPress={() => void regenerate()}
           />

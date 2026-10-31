@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { WeekData, WeeklyReportRow } from '../../_shared/weeklyReportGenerate.ts';
 import {
-  CREATE_DAILY_LIMIT,
   handleGenerateMyReport,
   type MyReportDeps,
   type MyReportRow,
@@ -84,7 +83,8 @@ const makeDeps = (o: Partial<MyReportDeps> = {}, reports: MyReportRow[] = []) =>
       return true;
     }),
     fetchReport: vi.fn(async (_uid: string, s: string, w: number) => find(s, w)),
-    countReportsCreatedSince: vi.fn(async () => 0),
+    consumeOnDemandQuota: vi.fn(async () => true),
+    releaseOnDemandQuota: vi.fn(async () => {}),
     recordsChangedSince: vi.fn(async () => true),
     claimRegeneration: vi.fn(async (_uid, s, w, at, dayStartIso) => {
       const r = find(s, w);
@@ -190,6 +190,20 @@ describe('generate-my-report: 지금 만들기 (mode 생략 = create)', () => {
     expect(res.body.report.content.summary).toBe('이번 주 체중 1kg 감량했어요');
     expect(db.reports).toHaveLength(1);
     expect(deps.askGemini).toHaveBeenCalledTimes(1);
+    // 하루 상한을 Gemini 전에 쓰고, 기본 문장으로 행을 먼저 차지한 뒤 Gemini 문장으로 갱신한다
+    expect(deps.consumeOnDemandQuota).toHaveBeenCalledWith(UID);
+    const inserted = vi.mocked(deps.insertReport).mock.calls[0][0];
+    expect(inserted.content?.summary).not.toBe('이번 주 체중 1kg 감량했어요');
+    expect(inserted.status).toBe('ready');
+    expect(vi.mocked(deps.consumeOnDemandQuota).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(deps.insertReport).mock.invocationCallOrder[0]
+    );
+    expect(vi.mocked(deps.insertReport).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(deps.askGemini).mock.invocationCallOrder[0]
+    );
+    expect(deps.updateReport).toHaveBeenCalledWith(UID, START, 2, {
+      content: expect.objectContaining({ summary: '이번 주 체중 1kg 감량했어요' }),
+    });
     expect(deps.fetchWeekData).toHaveBeenCalledWith(
       expect.objectContaining({ uid: UID, startDate: START, weekIndex: 2 })
     );
@@ -277,20 +291,40 @@ describe('generate-my-report: 지금 만들기 (mode 생략 = create)', () => {
     expect(db.reports).toHaveLength(1);
   });
 
-  it('최근 24시간에 만든 리포트가 CREATE_DAILY_LIMIT개면 429 daily_limit (Gemini 없음)', async () => {
-    const { deps } = makeDeps({ countReportsCreatedSince: vi.fn(async () => CREATE_DAILY_LIMIT) });
+  it('하루 직접 만들기 상한(다시 만들기와 합친 시도 수, KST 하루 5번)을 다 썼으면 429 daily_limit, 저장·Gemini 없음', async () => {
+    const { deps, db } = makeDeps({ consumeOnDemandQuota: vi.fn(async () => false) });
     expect(await call(deps, { start_date: START, week_index: 2 })).toEqual({
       status: 429,
       body: { error: 'daily_limit' },
     });
-    expect(deps.countReportsCreatedSince).toHaveBeenCalledWith(
-      UID,
-      new Date(NOW.getTime() - 24 * 60 * 60 * 1000)
-    );
     expect(deps.askGemini).not.toHaveBeenCalled();
+    expect(db.reports).toHaveLength(0);
   });
 
-  it('Gemini가 실패해도 기본 문장으로 만든다 (cron과 같다)', async () => {
+  it('기록이 없으면 상한을 쓰지 않는다', async () => {
+    const { deps } = makeDeps({ fetchWeekData: vi.fn(async () => emptyWeek()) });
+    await call(deps, { start_date: START, week_index: 2 });
+    expect(deps.consumeOnDemandQuota).not.toHaveBeenCalled();
+  });
+
+  it('같은 키를 동시에 만들면 행을 먼저 넣은 요청만 Gemini를 부르고, 나머지는 있던 행을 돌려주며 상한을 돌려받는다', async () => {
+    const other = row(2, { content: { summary: '먼저 만든 리포트' } as MyReportRow['content'] });
+    const { deps, db } = makeDeps({
+      // 확인 뒤 저장 전에 다른 요청이 같은 키를 넣었다
+      insertReport: vi.fn(async () => {
+        db.reports.push(other);
+        return false;
+      }),
+    });
+    const res = await call(deps, { start_date: START, week_index: 2 });
+    expect(res.status).toBe(200);
+    expect(res.body.report.content.summary).toBe('먼저 만든 리포트');
+    expect(deps.askGemini).not.toHaveBeenCalled();
+    expect(deps.updateReport).not.toHaveBeenCalled();
+    expect(deps.releaseOnDemandQuota).toHaveBeenCalledWith(UID);
+  });
+
+  it('Gemini가 실패하면 먼저 넣은 기본 문장 리포트가 남고, 상한은 돌려주지 않는다', async () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { deps } = makeDeps({
       askGemini: vi.fn(async () => {
@@ -302,6 +336,8 @@ describe('generate-my-report: 지금 만들기 (mode 생략 = create)', () => {
     expect(res.status).toBe(200);
     expect(res.body.report.status).toBe('ready');
     expect(res.body.report.content.summary).toBeTruthy();
+    expect(deps.updateReport).not.toHaveBeenCalled();
+    expect(deps.releaseOnDemandQuota).not.toHaveBeenCalled();
   });
 });
 
@@ -323,6 +359,8 @@ describe('generate-my-report: 다시 만들기 (mode regenerate)', () => {
         startDate: START,
         weekIndex: 2,
         range: { from: '2026-10-08', to: '2026-10-14' },
+        // 미래 시각(updated_at > 지금)은 바뀐 것으로 보지 않게 지금 시각을 넘긴다
+        now: NOW.toISOString(),
       }),
       old.created_at
     );
@@ -420,13 +458,24 @@ describe('generate-my-report: 다시 만들기 (mode regenerate)', () => {
     expect(db.reports[0].status).toBe('ready');
   });
 
-  it('동시에 다른 요청이 먼저 차지하면 429, Gemini 없음', async () => {
+  it('동시에 다른 요청이 먼저 차지하면 429, Gemini·상한 없음', async () => {
     const { deps } = makeDeps({ claimRegeneration: vi.fn(async () => false) }, [row(2)]);
     expect((await call(deps, regen)).status).toBe(429);
     expect(deps.askGemini).not.toHaveBeenCalled();
+    expect(deps.consumeOnDemandQuota).not.toHaveBeenCalled();
   });
 
-  it('Gemini가 실패하면 기존 리포트를 그대로 두고 502 generation_failed, 하루 1번을 되돌린다', async () => {
+  it('하루 상한을 다 썼으면 429 daily_limit, 리포트의 오늘 다시 만들기 차지는 되돌린다 (Gemini 없음)', async () => {
+    const { deps, db } = makeDeps({ consumeOnDemandQuota: vi.fn(async () => false) }, [row(2)]);
+    expect(await call(deps, regen)).toEqual({ status: 429, body: { error: 'daily_limit' } });
+    expect(deps.askGemini).not.toHaveBeenCalled();
+    expect(db.reports[0].regenerated_at).toBeNull();
+    expect(vi.mocked(deps.claimRegeneration).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(deps.consumeOnDemandQuota).mock.invocationCallOrder[0]
+    );
+  });
+
+  it('Gemini가 실패하면 기존 리포트를 그대로 두고 502 generation_failed: 오늘 다시 만들기는 돌려주고(다시 시도 가능) 상한은 쓴 것으로 남는다', async () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const old = row(2, {
       content: { summary: '옛 리포트' } as MyReportRow['content'],
@@ -448,9 +497,11 @@ describe('generate-my-report: 다시 만들기 (mode regenerate)', () => {
     expect(db.reports[0].content?.summary).toBe('옛 리포트');
     expect(db.reports[0].regenerated_at).toBe('2026-10-14T01:00:00.000Z');
     expect(deps.updateReport).not.toHaveBeenCalled();
+    expect(deps.consumeOnDemandQuota).toHaveBeenCalledTimes(1);
+    expect(deps.releaseOnDemandQuota).not.toHaveBeenCalled();
   });
 
-  it('갱신 저장이 실패하면 되돌리고 500', async () => {
+  it('갱신 저장이 실패하면 500, 오늘 다시 만들기는 돌려주고 상한은 남긴다', async () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { deps, db } = makeDeps(
       {
@@ -463,6 +514,7 @@ describe('generate-my-report: 다시 만들기 (mode regenerate)', () => {
     expect((await call(deps, regen)).status).toBe(500);
     spy.mockRestore();
     expect(db.reports[0].regenerated_at).toBeNull();
+    expect(deps.releaseOnDemandQuota).not.toHaveBeenCalled();
   });
 });
 

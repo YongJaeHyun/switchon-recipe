@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   interpretGenerateMyReport,
+  isOnDemandLimitedToday,
+  missingReportTitle,
   missingReportWeeks,
   ON_DEMAND_MESSAGES,
   weekHasRecords,
@@ -100,6 +102,27 @@ describe('interpretGenerateMyReport', () => {
 
   it('결과마다 안내 문구가 있다 (해요체)', () => {
     expect(ON_DEMAND_MESSAGES.no_records).toBe('그 주 체중이나 할 일을 기록하면 만들 수 있어요');
+    expect(ON_DEMAND_MESSAGES.daily_limit).toBe(
+      '오늘은 더 만들 수 없어요. 내일 다시 시도해 주세요'
+    );
     for (const message of Object.values(ON_DEMAND_MESSAGES)) expect(message).toMatch(/요$/);
+  });
+});
+
+describe('missingReportTitle (빈 칸 제목)', () => {
+  it('기록이 없다는 걸 알 때만 "기록이 없어서", 기록이 있거나 모르면 "아직 없어요"', () => {
+    expect(missingReportTitle(true)).toBe('기록이 없어서 아직 리포트가 없어요');
+    expect(missingReportTitle(false)).toBe('이 주 리포트가 아직 없어요');
+  });
+});
+
+describe('isOnDemandLimitedToday (하루 상한을 다 쓴 날)', () => {
+  it('상한에 걸린 날(KST)이 오늘이면 true, 다음 날이면 false', () => {
+    expect(isOnDemandLimitedToday('2026-10-16', NOON)).toBe(true);
+    expect(isOnDemandLimitedToday('2026-10-15', NOON)).toBe(false);
+    expect(isOnDemandLimitedToday(null, NOON)).toBe(false);
+    // 10-16 23:30 KST
+    expect(isOnDemandLimitedToday('2026-10-16', new Date('2026-10-16T14:30:00Z'))).toBe(true);
+    expect(isOnDemandLimitedToday('2026-10-16', new Date('2026-10-16T15:00:00Z'))).toBe(false);
   });
 });

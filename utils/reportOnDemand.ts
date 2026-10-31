@@ -77,7 +77,7 @@ export const ON_DEMAND_MESSAGES: Record<
 > = {
   no_records: '그 주 체중이나 할 일을 기록하면 만들 수 있어요',
   pass_required: '스위치온 패스로 리포트를 직접 만들 수 있어요',
-  daily_limit: '오늘은 리포트를 더 만들 수 없어요. 내일 다시 만들어 주세요',
+  daily_limit: '오늘은 더 만들 수 없어요. 내일 다시 시도해 주세요',
   regenerated_today: '다시 만들기는 리포트마다 하루에 한 번 할 수 있어요',
   not_changed: '리포트를 만든 뒤 바뀐 기록이 없어요',
   not_available: '이 주는 리포트를 만들 수 없어요',
@@ -110,4 +110,18 @@ export function interpretGenerateMyReport(status: number, data: unknown): Genera
     default:
       return { status: 'error' };
   }
+}
+
+// 기록 탭 빈 칸 제목. noRecords = 그 주 기록이 없다는 걸 알 때 (앱이 읽은 기록, 또는 서버 no_records)
+export function missingReportTitle(noRecords: boolean): string {
+  return noRecords ? '기록이 없어서 아직 리포트가 없어요' : '이 주 리포트가 아직 없어요';
+}
+
+// 오늘(KST) 날짜 (yyyy-MM-dd)
+export const kstDayOf = (now: Date): string =>
+  new Date(now.getTime() + KST_OFFSET_MS).toISOString().slice(0, 10);
+
+// 하루 상한(서버 daily_limit, 직접 만들기·다시 만들기 합쳐 KST 하루 5번)에 걸린 날이 오늘인지. 오늘이면 버튼을 막는다
+export function isOnDemandLimitedToday(limitedDay: string | null, now: Date): boolean {
+  return !!limitedDay && limitedDay === kstDayOf(now);
 }

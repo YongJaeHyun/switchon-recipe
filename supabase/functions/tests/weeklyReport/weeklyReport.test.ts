@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { WeeklyStats } from '../../_shared/weeklyStats.ts';
 import {
   buildReportPrompt,
+  PROMPT_TODO_ITEMS,
   fallbackContent,
   MAX_FIELD_LENGTH,
   nextWeekChangesFor,
@@ -564,6 +565,22 @@ describe('buildReportPrompt', () => {
       []
     );
     expect(p).toContain(WEIGHT_NOTE_TOO_FEW);
+  });
+
+  it('할 일 이름은 40자로 자르고, 목록은 PROMPT_TODO_ITEMS개까지만 넣는다 (토큰 상한)', () => {
+    const items = Array.from({ length: 50 }, (_, n) => ({
+      name: `${'가'.repeat(100)}${n}`,
+      done: 1,
+      appeared: 2,
+    }));
+    const p = buildReportPrompt(
+      stats({ todo: { avgRate: 50, best: null, worst: null, items } }),
+      []
+    );
+    expect(p).not.toContain('가'.repeat(41));
+    expect(p.split('\n').filter((l) => l.startsWith('  - "')).length).toBe(PROMPT_TODO_ITEMS);
+    expect(p).toContain(`  - 그 밖의 할 일 ${50 - PROMPT_TODO_ITEMS}개`);
+    expect(p.length).toBeLessThan(6000);
   });
 
   it('할 일 이름은 데이터로만 다룬다 (지시문 무시)', () => {

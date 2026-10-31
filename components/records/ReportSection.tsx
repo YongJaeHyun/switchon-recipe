@@ -10,6 +10,7 @@ import { useBillingAvailable } from 'hooks/useBillingAvailable';
 import { usePass } from 'hooks/usePass';
 import {
   cacheGeneratedReport,
+  useOnDemandLimitStore,
   useReportRecordDays,
   useWeeklyReports,
 } from 'hooks/useWeeklyReports';
@@ -32,6 +33,9 @@ import {
   reportWeekLabel,
 } from 'utils/reportDisplay';
 import {
+  isOnDemandLimitedToday,
+  kstDayOf,
+  missingReportTitle,
   missingReportWeeks,
   ON_DEMAND_MESSAGES,
   weekHasRecords,
@@ -87,11 +91,13 @@ const ReportRow = ({
 };
 
 // 리포트가 없는 끝난 주 (패스 유저, 지금 회차). 리포트가 있는 줄과 같은 자리에 점선 빈 칸으로 놓고 [지금 만들기].
-// noRecords: 그 주 기록이 없다는 걸 알 때 (앱이 읽은 기록, 또는 서버가 no_records로 답함) → 버튼을 막고 안내
+// noRecords: 그 주 기록이 없다는 걸 알 때 (앱이 읽은 기록, 또는 서버가 no_records로 답함) → 버튼을 막고 안내.
+// limited: 오늘 하루 상한을 다 씀 → 버튼을 막고 error에 안내
 const MissingReportRow = ({
   weekIndex,
   range,
   noRecords,
+  limited,
   pending,
   disabled,
   error,
@@ -100,12 +106,13 @@ const MissingReportRow = ({
   weekIndex: number;
   range: WeekRange;
   noRecords: boolean;
+  limited: boolean;
   pending: boolean;
   disabled: boolean;
   error: string | null;
   onCreate(): void;
 }) => {
-  const blocked = noRecords || disabled;
+  const blocked = noRecords || limited || disabled;
   return (
     <View className="gap-2 rounded-xl border border-dashed border-neutral-300 px-4 py-3">
       <View className="flex-row items-center gap-3">
@@ -115,7 +122,7 @@ const MissingReportRow = ({
             <Text className="text-xs text-neutral-400">{formatReportRange(range)}</Text>
           </View>
           <Text className="text-sm text-neutral-500">
-            {pending ? '한 주 기록을 정리하고 있어요' : '기록이 없어서 아직 리포트가 없어요'}
+            {pending ? '한 주 기록을 정리하고 있어요' : missingReportTitle(noRecords)}
           </Text>
         </View>
         {pending ? (
@@ -138,6 +145,8 @@ const MissingReportRow = ({
       </View>
       {noRecords ? (
         <Text className="text-xs text-neutral-400">{ON_DEMAND_MESSAGES.no_records}</Text>
+      ) : limited ? (
+        <Text className="text-xs text-neutral-500">{ON_DEMAND_MESSAGES.daily_limit}</Text>
       ) : (
         !!error && <Text className="text-xs text-red-600">{error}</Text>
       )}
@@ -191,6 +200,8 @@ export function ReportSection() {
   const [serverNoRecords, setServerNoRecords] = useState<string[]>([]);
   const [creating, setCreating] = useState<string | null>(null);
   const [createError, setCreateError] = useState<{ key: string; message: string } | null>(null);
+  const { limitedDay, setLimitedDay } = useOnDemandLimitStore();
+  const limited = isOnDemandLimitedToday(limitedDay, new Date());
 
   const createReport = async (weekIndex: number) => {
     if (!startDate || creating) return;
@@ -210,6 +221,10 @@ export function ReportSection() {
     }
     if (outcome.status === 'network') {
       showNetworkErrorToast();
+      return;
+    }
+    if (outcome.status === 'daily_limit') {
+      setLimitedDay(kstDayOf(new Date()));
       return;
     }
     setCreateError({ key, message: ON_DEMAND_MESSAGES[outcome.status] });
@@ -292,6 +307,7 @@ export function ReportSection() {
                       serverNoRecords.includes(key) ||
                       (recordDays !== null && !weekHasRecords(item.range, recordDays))
                     }
+                    limited={limited}
                     pending={creating === key}
                     disabled={creating !== null}
                     error={createError?.key === key ? createError.message : null}

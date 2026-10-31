@@ -7,8 +7,14 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getUid, requireEnv } from '../_shared/auth.ts';
+import { parsePremiumQuota } from '../_shared/premiumQuota.ts';
 import { createWeeklyReportDeps } from '../_shared/weeklyReportDb.ts';
-import { handleGenerateMyReport, type MyReportDeps, type MyReportRow } from './handler.ts';
+import {
+  handleGenerateMyReport,
+  ON_DEMAND_FEATURE,
+  type MyReportDeps,
+  type MyReportRow,
+} from './handler.ts';
 
 const supabase = createClient(requireEnv('SUPABASE_URL'), requireEnv('SUPABASE_SERVICE_ROLE_KEY'));
 
@@ -36,21 +42,27 @@ const deps: MyReportDeps = {
     return (data as MyReportRow | null) ?? null;
   },
 
-  // 직접 만들기 반복 악용 막기 (handler CREATE_DAILY_LIMIT)
-  async countReportsCreatedSince(uid, since) {
-    const { count, error } = await supabase
-      .from('weekly_report')
-      .select('uid', { count: 'exact', head: true })
-      .eq('uid', uid)
-      .gte('created_at', since.toISOString());
+  // 직접 만들기·다시 만들기 하루 상한 (KST 하루, 원자적. 마이그레이션 20261031030000의 premium_quota_setting 행)
+  async consumeOnDemandQuota(uid) {
+    const { data, error } = await supabase.rpc('consume_premium_quota', {
+      p_uid: uid,
+      p_feature: ON_DEMAND_FEATURE,
+    });
     if (error) throw error;
-    if (typeof count !== 'number') throw new Error('weekly_report count 없음');
-    return count;
+    return parsePremiumQuota(data).allowed;
+  },
+
+  async releaseOnDemandQuota(uid) {
+    const { error } = await supabase.rpc('release_premium_quota', {
+      p_uid: uid,
+      p_feature: ON_DEMAND_FEATURE,
+    });
+    if (error) throw error;
   },
 
   // 마지막 생성 뒤 그 주 기록이 바뀌었는지: 앱이 저장할 때 보내는 updated_at으로 본다 (트리거 없음, 기기 시각).
-  // 기록 삭제는 알 수 없다 (행이 없어진다)
-  async recordsChangedSince({ uid, startDate, weekIndex, range }, since) {
+  // 기록 삭제는 알 수 없다 (행이 없어진다). 미래 시각(updated_at > 지금)은 무시한다
+  async recordsChangedSince({ uid, startDate, weekIndex, range, now }, since) {
     const results = await Promise.all([
       exists(
         supabase
@@ -60,6 +72,7 @@ const deps: MyReportDeps = {
           .gte('day', range.from)
           .lte('day', range.to)
           .gt('updated_at', since)
+          .lte('updated_at', now)
           .limit(1)
       ),
       exists(
@@ -70,6 +83,7 @@ const deps: MyReportDeps = {
           .gte('day', range.from)
           .lte('day', range.to)
           .gt('updated_at', since)
+          .lte('updated_at', now)
           .limit(1)
       ),
       exists(
@@ -80,6 +94,7 @@ const deps: MyReportDeps = {
           .gte('day', range.from)
           .lte('day', range.to)
           .gt('updated_at', since)
+          .lte('updated_at', now)
           .limit(1)
       ),
       exists(
@@ -90,6 +105,7 @@ const deps: MyReportDeps = {
           .eq('start_date', startDate)
           .eq('week_index', weekIndex)
           .gt('updated_at', since)
+          .lte('updated_at', now)
           .limit(1)
       ),
     ]);

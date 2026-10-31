@@ -6,13 +6,18 @@
 // 요청: POST { start_date: 'yyyy-MM-dd', week_index: n, mode?: 'create' | 'regenerate' | 'check' } (mode 생략 = create)
 // - create (기록 탭 [지금 만들기], 리포트가 없는 주): 키 시작일 = 지금 시작일(user.start_date), 오늘(KST) 전에 끝난 주,
 //   키 ≤ MAX_REPORT_WEEK, 이미 있는 리포트와 같은 주(OVERLAP_MIN_DAYS 이상 겹침)가 아니고, 표시 주차 ≤ MAX_REPORT_WEEK,
-//   주차 맞추기로 건너뛴 기간이 아님 → 패스 → 최근 24시간 만든 리포트 < CREATE_DAILY_LIMIT → 체중·할 일 기록
-//   (없으면 400 no_records, Gemini 없음) → 문장(Gemini, 실패하면 cron처럼 기본 문장) → 저장 → { report }.
-//   같은 키가 이미 있으면 새로 만들지 않고 그 행을 돌려준다 (두 번 눌러도 한 번).
+//   주차 맞추기로 건너뛴 기간이 아님 → 패스 → 체중·할 일 기록 (없으면 400 no_records, Gemini 없음)
+//   → 하루 상한 1번 차감 → 기본 문장으로 행을 먼저 insert(on conflict do nothing) → 이 요청이 넣었을 때만 Gemini
+//   → 문장 갱신 → { report }. 같은 키가 이미 있거나 동시에 다른 요청이 먼저 넣었으면 Gemini 없이 그 행을 돌려준다
+//   (이때는 Gemini를 부르지 않았으므로 차감을 돌려준다). Gemini가 실패하면 기본 문장 리포트가 남는다 (cron과 같음).
 // - regenerate (리포트 상세 [다시 만들기]): 지금 회차 리포트, 표시 주차 ≤ MAX_REPORT_WEEK → 패스 → 오늘(KST) 다시 만든 적
 //   없음(regenerated_at) → 마지막 생성(coalesce(regenerated_at, created_at)) 뒤 그 주 기록이 바뀜(recordsChangedSince)
-//   → 체중·할 일 기록 있음 → regenerated_at을 조건부 update로 먼저 차지 (동시 요청은 하나만) → Gemini → 갱신 → { report }.
-//   Gemini가 실패하면(기본 문장) 있던 리포트를 덮지 않고 차지를 되돌린 뒤 502 generation_failed.
+//   → 체중·할 일 기록 있음 → regenerated_at을 조건부 update로 먼저 차지 (동시 요청은 하나만) → 하루 상한 1번 차감
+//   (다 썼으면 차지를 되돌리고 429 daily_limit) → Gemini → 갱신 → { report }.
+//   Gemini가 실패하면(기본 문장) 있던 리포트를 덮지 않고 오늘 다시 만들기 차지를 되돌린 뒤 502 generation_failed
+//   (운영자 결정: 다시 시도할 수 있게. 비용은 하루 상한이 시도 수로 막는다).
+// - 하루 상한 (비용): create·regenerate를 합쳐 사용자당 KST 하루 ON_DEMAND_DAILY_LIMIT번 시도. Gemini 전에 원자적으로
+//   차감하고(consume_premium_quota, feature 'report_on_demand'), Gemini가 실패해도 돌려주지 않는다.
 // - check (리포트 상세가 [다시 만들기]를 보일지): regenerate의 Gemini 전 조건만 본다 → { can_regenerate, reason }.
 //   앱 표시는 참고, 최종 판단은 regenerate가 다시 한다.
 // 무료 1주차 리포트(평생 1번)는 cron만 만든다: 여기는 패스가 있어야 한다.
@@ -20,6 +25,7 @@
 // 409 not_available·not_changed, 429 daily_limit·already_regenerated_today, 502 generation_failed, 500 internal
 
 import { kstMidnightIso, kstToday } from '../_shared/kstToday.ts';
+import { fallbackContent, nextWeekChangesFor } from '../_shared/weeklyReport.ts';
 import {
   alignedAheadOver,
   buildWeekStats,
@@ -38,10 +44,10 @@ import {
   type WeeklyStats,
 } from '../_shared/weeklyStats.ts';
 
-// 직접 만들기 반복 악용 막기: 최근 24시간에 만든 리포트(cron·보충 포함)가 이만큼이면 더 만들지 않는다.
-// 한 회차 리포트는 많아야 5개(MAX_REPORT_WEEK)라 정상 사용은 걸리지 않는다
-export const CREATE_DAILY_LIMIT = MAX_REPORT_WEEK;
-const DAY_MS = 24 * 60 * 60 * 1000;
+// 직접 만들기·다시 만들기 하루 상한(시도 수). 실제 값은 DB premium_quota_setting('report_on_demand')이고
+// 이 상수는 마이그레이션 20261031030000과 맞춘 기록용이다
+export const ON_DEMAND_DAILY_LIMIT = 5;
+export const ON_DEMAND_FEATURE = 'report_on_demand';
 
 // weekly_report 행 (select *)
 export interface MyReportRow extends Omit<WeeklyReportRow, 'display_week'> {
@@ -56,15 +62,19 @@ export interface MyReportDeps extends ReportGenerationDeps {
   // user.start_date (yyyy-MM-dd). 없으면 null
   fetchStartDate(uid: string): Promise<string | null>;
   fetchReport(uid: string, startDate: string, weekIndex: number): Promise<MyReportRow | null>;
-  // 이 유저의 weekly_report 중 created_at >= since 인 행 수
-  countReportsCreatedSince(uid: string, since: Date): Promise<number>;
-  // since 뒤에 그 주 기록이 바뀌었는지: weight_log·todo_daily·fasting_result(range 안 day)·fasting_plan(키)의 updated_at > since
+  // 하루 상한 1번 차감 (consume_premium_quota(uid, ON_DEMAND_FEATURE), KST 하루, 원자적). 남았으면 true
+  consumeOnDemandQuota(uid: string): Promise<boolean>;
+  // 차감 되돌리기 (Gemini를 부르지 않은 경우만: 같은 키를 다른 요청이 먼저 만듦)
+  releaseOnDemandQuota(uid: string): Promise<void>;
+  // since 뒤에 그 주 기록이 바뀌었는지: weight_log·todo_daily·fasting_result(range 안 day)·fasting_plan(키)의
+  // since < updated_at <= now (updated_at은 앱이 보내는 값이라 미래 시각은 무시한다)
   recordsChangedSince(
     query: {
       uid: string;
       startDate: string;
       weekIndex: number;
       range: { from: string; to: string };
+      now: string;
     },
     since: string
   ): Promise<boolean>;
@@ -88,7 +98,7 @@ export interface MyReportDeps extends ReportGenerationDeps {
     uid: string,
     startDate: string,
     weekIndex: number,
-    patch: { stats: WeeklyStats; content: WeeklyReportRow['content']; status: 'ready' }
+    patch: { stats?: WeeklyStats; content: WeeklyReportRow['content']; status?: 'ready' }
   ): Promise<MyReportRow | null>;
 }
 
@@ -168,7 +178,13 @@ const regenerationGate = async (
     return { ok: false, reason: 'already_regenerated_today' };
   }
   const changed = await deps.recordsChangedSince(
-    { uid, startDate, weekIndex, range: weekRange(startDate, weekIndex) },
+    {
+      uid,
+      startDate,
+      weekIndex,
+      range: weekRange(startDate, weekIndex),
+      now: deps.now().toISOString(),
+    },
     report.regenerated_at ?? report.created_at
   );
   if (!changed) return { ok: false, reason: 'not_changed' };
@@ -214,6 +230,19 @@ const regenerate = async (
     deps.releaseRegeneration(uid, startDate, weekIndex, at, previous).catch((e) => {
       console.error(`다시 만들기 되돌리기 실패 (${uid}, ${startDate}, ${weekIndex}):`, e);
     });
+
+  // 하루 상한: 차지 뒤에 차감한다 (동시 요청이 차지에서 떨어지면 차감하지 않게). 실패해도 돌려주지 않는다
+  let allowed: boolean;
+  try {
+    allowed = await deps.consumeOnDemandQuota(uid);
+  } catch (error) {
+    await release();
+    throw error;
+  }
+  if (!allowed) {
+    await release();
+    return fail('daily_limit');
+  }
 
   const { content, ai } = await writeReportContent(deps, stats, uid);
   if (!ai) {
@@ -274,8 +303,6 @@ const create = async (
   }
 
   if (!(await deps.hasPremiumAccess(uid))) return fail('pass_required');
-  const recent = await deps.countReportsCreatedSince(uid, new Date(deps.now().getTime() - DAY_MS));
-  if (recent >= CREATE_DAILY_LIMIT) return fail('daily_limit');
 
   const stats = await buildWeekStats(
     deps,
@@ -288,18 +315,44 @@ const create = async (
   );
   if (stats.isEmpty) return fail('no_records');
 
-  const { content } = await writeReportContent(deps, stats, uid);
-  // 키 충돌(동시에 만든 다른 요청·cron)이면 먼저 저장된 행을 돌려준다
-  await deps.insertReport({
-    uid,
-    start_date: startDate,
-    week_index: weekIndex,
-    display_week: displayWeek,
-    stats,
-    content,
-    status: 'ready',
-    is_trial: false,
-  });
+  if (!(await deps.consumeOnDemandQuota(uid))) return fail('daily_limit');
+
+  // 기본 문장으로 행을 먼저 차지한다: 같은 키 동시 요청 중 insert에 성공한 하나만 Gemini를 부른다
+  let inserted: boolean;
+  try {
+    inserted = await deps.insertReport({
+      uid,
+      start_date: startDate,
+      week_index: weekIndex,
+      display_week: displayWeek,
+      stats,
+      content: fallbackContent(stats, nextWeekChangesFor(stats.weekIndex)),
+      status: 'ready',
+      is_trial: false,
+    });
+  } catch (error) {
+    await deps.releaseOnDemandQuota(uid).catch(() => {});
+    throw error;
+  }
+  if (!inserted) {
+    // 다른 요청·cron이 먼저 저장했다 → Gemini 없이 그 행. 이 요청은 Gemini를 부르지 않았으니 차감을 돌려준다
+    await deps.releaseOnDemandQuota(uid).catch((e) => {
+      console.error(`직접 만들기 차감 되돌리기 실패 (${uid}):`, e);
+    });
+  } else {
+    const { content, ai } = await writeReportContent(deps, stats, uid);
+    // Gemini가 실패하면 기본 문장 리포트를 그대로 둔다 (차감은 돌려주지 않는다)
+    if (ai) {
+      try {
+        await deps.updateReport(uid, startDate, weekIndex, { content });
+      } catch (error) {
+        console.error(
+          `직접 만든 리포트 문장 저장 실패 (${uid}, ${startDate}, ${weekIndex}):`,
+          error
+        );
+      }
+    }
+  }
   const saved = await deps.fetchReport(uid, startDate, weekIndex);
   if (!saved) throw new Error('만든 리포트를 찾지 못했습니다');
   return json({ report: saved }, 200);

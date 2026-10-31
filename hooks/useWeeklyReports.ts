@@ -5,6 +5,7 @@ import { useUserStore } from 'stores/userStore';
 import type { WeeklyReport } from 'types/report';
 import { failFastWhenOffline } from 'utils/failFastWhenOffline';
 import { isReportHref } from 'utils/reportDisplay';
+import { create } from 'zustand';
 import { useQueryWith402Retry } from './useCustomQuery';
 
 // 내 주간 리포트 전체 (최신 먼저). 무효화는 [QueryKey.weeklyReports] 접두어로 한다
@@ -107,3 +108,13 @@ export const cacheGeneratedReport = (report: WeeklyReport) => {
   );
   void queryClient.invalidateQueries({ queryKey: [QueryKey.weeklyReports, uid], exact: true });
 };
+
+// 직접 만들기·다시 만들기 하루 상한(서버 daily_limit)에 걸린 날 (KST yyyy-MM-dd). 저장하지 않는다 (앱을 다시 켜면
+// 서버가 다시 알려준다). 기록 탭 [지금 만들기]·리포트 상세 [다시 만들기]가 함께 보고 그날 버튼을 막는다
+export const useOnDemandLimitStore = create<{
+  limitedDay: string | null;
+  setLimitedDay: (day: string) => void;
+}>()((set) => ({
+  limitedDay: null,
+  setLimitedDay: (day) => set({ limitedDay: day }),
+}));
