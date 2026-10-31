@@ -87,16 +87,21 @@ const weekdayOf = (day: string) => new Date(dayToUtc(day)).getUTCDay();
 const inRange = (day: string, range: { from: string; to: string }) =>
   day >= range.from && day <= range.to;
 
+// 앱 utils/programStart.ts PROGRAM_CHAIN_DAYS와 같은 값: 시작일보다 이만큼 넘게 앞선 program_start는 옛 회차 것
+const PROGRAM_CHAIN_DAYS = 56;
+
 // 누적 체중 기준 시작일 = 회차 시작일. 앱 utils/programStart.ts programStartOf와 같은 규칙:
 // program_start(한 주 더 하기·주차 맞추기로 start_date가 바뀌어도 그대로)가 없거나 날짜 꼴이 아니거나
-// start_date보다 뒤면(구버전 앱이 시작일을 앞당김) start_date
+// start_date보다 뒤면(구버전 앱이 시작일을 앞당김) start_date. start_date보다 56일 넘게 앞이어도 start_date
+// (구버전 앱이 다시 시작하며 start_date만 바꿔 옛 회차의 program_start가 남은 경우)
 export function baselineStartOf(
   programStart: string | null | undefined,
   startDate: string
 ): string {
   const start = startDate.slice(0, 10);
   const program = programStart?.slice(0, 10);
-  return program && /^\d{4}-\d{2}-\d{2}$/.test(program) && program <= start ? program : start;
+  if (!program || !/^\d{4}-\d{2}-\d{2}$/.test(program) || program > start) return start;
+  return (dayToUtc(start) - dayToUtc(program)) / DAY_MS > PROGRAM_CHAIN_DAYS ? start : program;
 }
 
 // 두 날짜 범위가 겹치는 날 수 (0 = 안 겹침)

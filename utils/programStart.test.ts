@@ -572,6 +572,12 @@ describe('programStartOf (회차 시작일)', () => {
     expect(programStartOf('2026-10-08', '2026-10-01')).toBe('2026-10-01');
   });
 
+  it('program_start가 start_date보다 56일 넘게 앞이면(구버전 앱의 다시 시작이 남긴 옛 값) start_date', () => {
+    expect(programStartOf('2026-08-06', '2026-10-01')).toBe('2026-08-06'); // 56일 전 = 같은 회차
+    expect(programStartOf('2026-08-05', '2026-10-01')).toBe('2026-10-01'); // 57일 전
+    expect(programStartOf('2026-01-01T00:00:00+09:00', '2026-10-01')).toBe('2026-10-01');
+  });
+
   it('시작일을 모르면 null', () => {
     expect(programStartOf(null, null)).toBeNull();
     expect(programStartOf(null, '')).toBeNull();

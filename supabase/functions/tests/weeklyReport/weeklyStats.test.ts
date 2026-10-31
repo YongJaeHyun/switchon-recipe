@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  baselineStartOf,
   computeWeeklyStats,
   plannedFastingDays,
   weekRange,
@@ -511,5 +512,22 @@ describe('computeWeeklyStats: 반올림 (리뷰 M-6)', () => {
       })
     );
     expect(stats.weight.diff).toBe(-1.2);
+  });
+});
+
+describe('baselineStartOf (누적 체중 기준 = 회차 시작일)', () => {
+  it('program_start가 없거나 시작일보다 뒤면 start_date', () => {
+    expect(baselineStartOf(null, '2026-10-01')).toBe('2026-10-01');
+    expect(baselineStartOf('2026-10-08', '2026-10-01')).toBe('2026-10-01');
+  });
+
+  it('program_start가 시작일보다 56일 이내로 앞이면 program_start', () => {
+    expect(baselineStartOf('2026-09-24', '2026-10-01')).toBe('2026-09-24');
+    expect(baselineStartOf('2026-08-06', '2026-10-01')).toBe('2026-08-06'); // 56일 전
+  });
+
+  it('program_start가 시작일보다 56일 넘게 앞이면(구버전 앱의 다시 시작) start_date', () => {
+    expect(baselineStartOf('2026-08-05', '2026-10-01')).toBe('2026-10-01'); // 57일 전
+    expect(baselineStartOf('2026-01-01', '2026-10-01')).toBe('2026-10-01');
   });
 });

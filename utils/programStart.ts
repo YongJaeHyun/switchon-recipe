@@ -186,8 +186,13 @@ export function isSameStartDate(current: string | null | undefined, next: string
 // ── 회차(program): 다시 시작·온보딩으로 시작한 한 묶음. 한 주 더 하기·주차 맞추기로 시작일(start_date)이
 // 바뀌어도 같은 회차다. 회차 시작일은 user.program_start에 둔다 (구버전 앱은 모르는 칸이라 null일 수 있다)
 
+// 지난 회차를 묶는 기준: 바로 앞 시작일과 8주(56일) 이내면 같은 회차
+export const PROGRAM_CHAIN_DAYS = 56;
+
 // 지금 회차 시작일. program_start가 없거나(구버전 앱·마이그레이션 전) 시작일보다 뒤면
-// (구버전 앱이 시작일을 앞당김) 시작일로 본다. 둘 다 없으면 null
+// (구버전 앱이 시작일을 앞당김) 시작일로 본다. 시작일보다 PROGRAM_CHAIN_DAYS(56일) 넘게 앞이어도 시작일로 본다:
+// 구버전 앱(5.x)은 다시 시작할 때 start_date만 쓰므로 옛 회차의 program_start가 남는다 (한 주 더 하기·주차 맞추기는
+// 8주 안쪽으로만 움직인다). 서버 _shared/weeklyStats.ts baselineStartOf와 같은 규칙. 둘 다 없으면 null
 export function programStartOf(
   programStart: string | null | undefined,
   startDate: string | null | undefined
@@ -195,7 +200,8 @@ export function programStartOf(
   const start = startDate ? startDate.slice(0, 10) : null;
   const program = programStart ? programStart.slice(0, 10) : null;
   if (!start) return program;
-  return program && program <= start ? program : start;
+  if (!program || program > start) return start;
+  return (dayToUtc(start) - dayToUtc(program)) / DAY_MS > PROGRAM_CHAIN_DAYS ? start : program;
 }
 
 // 시작일을 바꾸는 이유: 다시 시작(온보딩 포함) / 주차 맞추기 / 한 주 더 하기
@@ -217,9 +223,6 @@ export function nextProgramStart(
   if (kind === 'align') return next < program ? next : program;
   return program;
 }
-
-// 지난 회차를 묶는 기준: 바로 앞 시작일과 8주(56일) 이내면 같은 회차
-export const PROGRAM_CHAIN_DAYS = 56;
 
 // 지난 회차 묶기. 회차 시작일(programStart) 전의 시작일들을 정렬해, 바로 앞 시작일과 PROGRAM_CHAIN_DAYS 이내로
 // 이어지면 같은 회차로 묶는다 (한 주 더 하기 +7일, 주차 맞추기는 몇 주 안쪽으로 움직인다).
