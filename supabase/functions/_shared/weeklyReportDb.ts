@@ -174,7 +174,7 @@ export function createWeeklyReportDeps(
         fetchAllPages(async (from, to) => {
           const { data, error } = await supabase
             .from('food_check')
-            .select('created_at, verdict')
+            .select('created_at, verdict, score')
             .eq('uid', uid)
             .gte('created_at', fromIso)
             .lt('created_at', toIso)

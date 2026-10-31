@@ -425,6 +425,22 @@ describe('computeWeeklyStats: 레시피·판정 (UTC → KST 날짜)', () => {
     expect(stats.recipes).toEqual({ total: 1, low: 1, zero: 0 });
     expect(stats.foodChecks).toEqual({ total: 2, avoid: 1 });
   });
+
+  it('피하세요는 점수 3 이하만 센다 (4~6점은 앱에서 주의). 점수가 없으면 verdict로', () => {
+    const stats = computeWeeklyStats(
+      base({
+        startDate: '2026-10-05',
+        weekIndex: 1,
+        foodChecks: [
+          { created_at: '2026-10-06T03:00:00Z', verdict: 'avoid', score: 4 },
+          { created_at: '2026-10-06T04:00:00Z', verdict: 'avoid', score: 3 },
+          { created_at: '2026-10-06T05:00:00Z', verdict: 'avoid', score: null },
+          { created_at: '2026-10-06T06:00:00Z', verdict: 'ok', score: 6 },
+        ],
+      })
+    );
+    expect(stats.foodChecks).toEqual({ total: 4, avoid: 2 });
+  });
 });
 
 describe('computeWeeklyStats: isEmpty', () => {

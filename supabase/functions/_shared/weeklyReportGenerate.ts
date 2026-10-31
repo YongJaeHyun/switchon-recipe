@@ -48,7 +48,7 @@ export interface WeekData {
   fastingPlanStartMinutes?: unknown; // 같은 행의 start_minutes jsonb ({"<요일>": 분}). 우선 사용
   fastingResults: { day: string; result: string; fasted_minutes?: number | null }[]; // range 안
   recipes: { created_at: string; is_zero_carb: boolean | null }[]; // [fromIso, toIso)
-  foodChecks: { created_at: string; verdict: string | null }[]; // [fromIso, toIso)
+  foodChecks: { created_at: string; verdict: string | null; score?: number | null }[]; // [fromIso, toIso)
 }
 
 export interface WeeklyReportRow {
@@ -265,7 +265,7 @@ const normalizeWeekData = (data: WeekData) => ({
     })),
   recipes: data.recipes.map((r) => ({ created_at: r.created_at, is_zero_carb: !!r.is_zero_carb })),
   foodChecks: data.foodChecks.filter(
-    (c): c is { created_at: string; verdict: 'ok' | 'avoid' } =>
+    (c): c is { created_at: string; verdict: 'ok' | 'avoid'; score?: number | null } =>
       c.verdict === 'ok' || c.verdict === 'avoid'
   ),
 });
