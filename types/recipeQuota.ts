@@ -5,7 +5,7 @@ export interface RecipeQuota {
   remaining: number;
   adBonusLeft: number;
   isPass: boolean;
-  // 광고 보상을 뺀 기본 하루 한도(무료 5, 패스 20). 이전 서버 응답에는 없어서 선택값
+  // 광고 보상을 뺀 기본 하루 한도(무료 free_daily, 패스 pass_daily). 이전 서버 응답에는 없어서 선택값
   dailyLimit?: number;
 }
 
@@ -23,3 +23,10 @@ export const isQuotaExceeded = (result: unknown): result is QuotaExceeded =>
   result !== null &&
   'quotaExceeded' in result &&
   result.quotaExceeded === true;
+
+// quota_setting 행(누구나 조회 가능). 숫자는 DB에서 바꾸므로 앱에 하드코딩하지 않는다
+export interface RecipeQuotaSetting {
+  freeDaily: number;
+  passDaily: number;
+  adBonusDaily: number;
+}

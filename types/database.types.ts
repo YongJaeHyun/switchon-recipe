@@ -420,6 +420,27 @@ export type Database = {
         };
         Relationships: [];
       };
+      quota_setting: {
+        Row: {
+          ad_bonus_daily: number;
+          free_daily: number;
+          id: number;
+          pass_daily: number;
+        };
+        Insert: {
+          ad_bonus_daily?: number;
+          free_daily?: number;
+          id?: number;
+          pass_daily?: number;
+        };
+        Update: {
+          ad_bonus_daily?: number;
+          free_daily?: number;
+          id?: number;
+          pass_daily?: number;
+        };
+        Relationships: [];
+      };
       recipe: {
         Row: {
           cooking_steps: string | null;

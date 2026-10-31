@@ -27,20 +27,49 @@ export const formatAdBonusLeft = (
   return `광고 보고 ${q.adBonusLeft}개 더 만들 수 있어요`;
 };
 
-export type QuotaModalAction = 'watchAd' | 'pass';
+export type QuotaModalView = {
+  headline: string;
+  note: string | null;
+  // 광고 보고 1개 더 만들기 버튼. hint는 버튼 아래 오늘 남은 광고 수
+  ad: { hint: string | null } | null;
+  // 패스 안내. lead는 하루 개수, features는 패스 기능 이름 (화면에서 "lead + 기능, 기능"으로 잇는다)
+  pass: { lead: string; features: readonly string[] } | null;
+};
 
-export const getQuotaModalActions = (input: {
+const DONE_FOR_TODAY = { headline: '오늘은 여기까지예요', note: '내일 다시 만들 수 있어요' };
+
+// 한도 초과 모달에 보여줄 내용. 개수는 DB 설정(quota_setting)에서 온 값을 넘겨받고, 모르면 숫자를 뺀다
+export const getQuotaModalView = (input: {
   isPass: boolean;
   canWatchAd: boolean;
-  onSale: boolean;
   adsAvailable: boolean;
-}): QuotaModalAction[] => {
-  if (input.isPass) return [];
+  onSale: boolean;
+  freeDaily: number | null;
+  adBonusLeft: number | null;
+  passDaily: number | null;
+  passFeatures: readonly string[];
+}): QuotaModalView => {
+  if (input.isPass) return { ...DONE_FOR_TODAY, ad: null, pass: null };
 
-  const actions: QuotaModalAction[] = [];
-  if (input.canWatchAd && input.adsAvailable) actions.push('watchAd');
-  if (input.onSale) actions.push('pass');
-  return actions;
+  const pass = input.onSale
+    ? {
+        lead: input.passDaily ? `광고 없이 하루 ${input.passDaily}개` : '광고 없이 더 많은 레시피',
+        features: input.passFeatures,
+      }
+    : null;
+
+  if (!input.canWatchAd || !input.adsAvailable) return { ...DONE_FOR_TODAY, ad: null, pass };
+
+  return {
+    headline: input.freeDaily
+      ? `오늘 무료 레시피 ${input.freeDaily}개를 다 썼어요`
+      : '오늘 무료 레시피를 다 썼어요',
+    note: null,
+    ad: {
+      hint: input.adBonusLeft ? `오늘 광고로 ${input.adBonusLeft}개 더 만들 수 있어요` : null,
+    },
+    pass,
+  };
 };
 
 const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));

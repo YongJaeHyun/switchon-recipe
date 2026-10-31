@@ -72,9 +72,7 @@ export const useRecipeCreation = (buildRequest: () => RecipeCreationRequest) => 
     create: requireOnline(handleCreateRecipe),
     // QuotaExceededModal에 펼쳐 넘긴다
     quotaModalProps: {
-      visible: !!quotaGate.exceeded,
-      actions: quotaGate.actions,
-      adBonusText: quotaGate.adBonusText,
+      view: quotaGate.view,
       onWatchAd: requireOnline(() => void quotaGate.watchAd(handleCreateRecipe)),
       onPass: quotaGate.goPass,
       onClose: quotaGate.close,

@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { RecipeQuotaAPI } from 'api/RecipeQuotaAPI';
+import { PASS_QUOTA_MODAL_FEATURES } from 'const/passFeatures';
 import { QueryKey } from 'const/queryKey';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -9,7 +10,7 @@ import type { QuotaExceeded } from 'types/recipeQuota';
 import {
   formatAdBonusLeft,
   formatRemaining,
-  getQuotaModalActions,
+  getQuotaModalView,
   runAdBonusFlow,
   waitForAdBonus,
 } from 'utils/recipeQuota';
@@ -23,7 +24,7 @@ import { useRecipeQuota } from './useRecipeQuota';
 export const useQuotaGate = () => {
   const queryClient = useQueryClient();
   const uid = useUserStore((state) => state.id);
-  const { quota } = useRecipeQuota();
+  const { quota, setting } = useRecipeQuota();
   const { status } = usePass();
   const billingAvailable = useBillingAvailable();
 
@@ -60,14 +61,19 @@ export const useQuotaGate = () => {
     [queryClient]
   );
 
-  const actions = exceeded
-    ? getQuotaModalActions({
+  // 개수는 DB 값(get_recipe_quota, quota_setting)만 쓴다. 무료 이용자의 dailyLimit가 곧 free_daily
+  const view = exceeded
+    ? getQuotaModalView({
         isPass: exceeded.isPass,
         canWatchAd: exceeded.canWatchAd,
-        onSale,
         adsAvailable,
+        onSale,
+        freeDaily: (quota && !quota.isPass ? quota.dailyLimit : null) ?? setting?.freeDaily ?? null,
+        adBonusLeft: quota && !quota.isPass ? quota.adBonusLeft : null,
+        passDaily: setting?.passDaily ?? null,
+        passFeatures: PASS_QUOTA_MODAL_FEATURES,
       })
-    : [];
+    : null;
 
   const close = () => {
     if (!busy.current) setExceeded(null);
@@ -115,7 +121,7 @@ export const useQuotaGate = () => {
     adBonusText,
     exceeded,
     showExceeded: setExceeded,
-    actions,
+    view,
     isWaitingBonus,
     invalidateQuota,
     close,

@@ -2,6 +2,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { PassAPI } from 'api/PassAPI';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
+import { PASS_FEATURES } from 'const/passFeatures';
 import { QueryKey } from 'const/queryKey';
 import { TIME_ZONE } from 'const/const';
 import { formatInTimeZone } from 'date-fns-tz';
@@ -23,22 +24,6 @@ import { passJourney } from 'utils/passJourney';
 import { formatPassRemaining, formatSalesHeadline } from 'utils/passDisplay';
 import { getVerifyResultToast, isPassOnSale } from 'utils/passScreen';
 import { showErrorToast, showSuccessToast } from 'utils/showToast';
-
-// 패스로 쓸 수 있는 기능 (스펙 1절)
-const PREMIUM_FEATURES = [
-  { icon: 'storefront', title: '편의점 판정', description: '먹어도 되는지 바로 확인' },
-  {
-    icon: 'restaurant-menu',
-    title: '맞춤 레시피 추천',
-    description: '먹고 싶은 걸 고르면 레시피를 골라 드려요',
-  },
-  { icon: 'insights', title: 'AI 주간 리포트', description: '체중·식단·단식을 한 주씩 정리' },
-  {
-    icon: 'photo-camera',
-    title: '인바디 결과지 인식',
-    description: '사진만 찍으면 골격근량·체지방량을 기록해요',
-  },
-] as const;
 
 const weekLabel = (week: number) => (week >= 5 ? '유지기' : `${week}주차`);
 // 유지기는 앱의 5주차 색(검정) 대신 조금 부드러운 색
@@ -115,7 +100,7 @@ const JourneyHero = ({ status }: { status: PassStatus }) => {
 const FeatureList = () => (
   <View className="gap-4">
     <Text className="text-base font-bold text-neutral-900">패스로 쓸 수 있는 것</Text>
-    {PREMIUM_FEATURES.map(({ icon, title, description }) => (
+    {PASS_FEATURES.map(({ icon, title, description }) => (
       <View key={title} className="flex-row items-center gap-3">
         <View className="h-11 w-11 items-center justify-center rounded-xl bg-green-50">
           <MaterialIcons name={icon} size={22} color={colors.green[700]} />
