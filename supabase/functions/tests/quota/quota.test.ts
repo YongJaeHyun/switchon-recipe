@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   parseQuotaDecision,
+  passCapReachedMessage,
   QUOTA_EXCEEDED_MESSAGE,
   quotaExceededBody,
   runWithQuota,
@@ -137,5 +138,50 @@ describe('quotaExceededBody', () => {
       isPass: true,
     });
     expect(quotaExceededBody(decision).error).toBe(QUOTA_EXCEEDED_MESSAGE);
+  });
+});
+
+describe('패스당 레시피 총량 (passCapReached)', () => {
+  const capped = {
+    allowed: false,
+    remaining: 0,
+    limit: 5,
+    isPass: false,
+    canWatchAd: true,
+    passCapReached: true,
+    passTotalLimit: 180,
+    passTotalRemaining: 0,
+  };
+
+  it('parseQuotaDecision: 총량 필드가 있으면 같이 읽는다 (없는 옛 응답은 그대로)', () => {
+    expect(parseQuotaDecision(capped)).toEqual({
+      allowed: false,
+      remaining: 0,
+      limit: 5,
+      isPass: false,
+      canWatchAd: true,
+      passCapReached: true,
+      passTotalLimit: 180,
+    });
+    expect(parseQuotaDecision({ ...capped, passCapReached: 'yes', passTotalLimit: null })).toEqual({
+      allowed: false,
+      remaining: 0,
+      limit: 5,
+      isPass: false,
+      canWatchAd: true,
+    });
+  });
+
+  it('quotaExceededBody: 총량을 다 썼으면 그 안내와 총량을 더한다 (기존 필드는 그대로)', () => {
+    expect(quotaExceededBody(parseQuotaDecision(capped))).toEqual({
+      code: 'QUOTA_EXCEEDED',
+      error: '이번 패스로 만들 수 있는 레시피 180개를 모두 만들었어요.',
+      remaining: 0,
+      canWatchAd: true,
+      isPass: false,
+      passCapReached: true,
+      passTotalLimit: 180,
+    });
+    expect(passCapReachedMessage(null)).toBe('이번 패스로 만들 수 있는 레시피를 모두 만들었어요.');
   });
 });

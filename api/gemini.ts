@@ -1,6 +1,7 @@
 import axios, { isAxiosError, isCancel } from 'axios';
 import { RecipeDB } from 'types/database';
 import type { QuotaExceeded } from 'types/recipeQuota';
+import { quotaExceededFromBody } from 'utils/recipeQuota';
 import { isNetworkError } from 'utils/sendError';
 import { showErrorToast } from 'utils/showToast';
 import { Maybe } from '../types/common';
@@ -40,13 +41,7 @@ export const createRecipe = async ({
     // 하루 한도 초과(429)는 토스트 없이 호출부가 모달로 안내하도록 돌려준다
     if (isAxiosError(error) && error.response?.status === 429) {
       const body = error.response.data;
-      if (body?.code === 'QUOTA_EXCEEDED') {
-        return {
-          quotaExceeded: true,
-          canWatchAd: body.canWatchAd === true,
-          isPass: body.isPass === true,
-        };
-      }
+      if (body?.code === 'QUOTA_EXCEEDED') return quotaExceededFromBody(body);
     }
 
     if (isNetworkError(error)) {

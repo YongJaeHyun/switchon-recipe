@@ -63,9 +63,10 @@ export interface RecipeByNameDeps {
   getStartDate(uid: string): Promise<string | null>;
   now(): Date;
   // 이름 판정 Gemini 응답 텍스트
-  checkName(prompt: string): Promise<string>;
+  // uid: 요청한 유저 (Gemini 사용량 기록용)
+  checkName(prompt: string, uid: string): Promise<string>;
   // 기존 레시피 생성·이미지·저장. 저장된 recipe 행을 돌려준다
-  generate(input: RecipeByNameInput): Promise<unknown>;
+  generate(input: RecipeByNameInput, uid: string): Promise<unknown>;
 }
 
 const json = (body: unknown, status: number) =>
@@ -199,7 +200,8 @@ async function createWithLimits(
 
     checkCalled = true;
     const text = await deps.checkName(
-      buildNameCheckPrompt({ name: input.name, week, day, isZeroCarb: input.isZeroCarb })
+      buildNameCheckPrompt({ name: input.name, week, day, isZeroCarb: input.isZeroCarb }),
+      uid
     );
     const check = parseNameCheckResponse(text, input.name);
     if (check.status === 'invalid') {
@@ -214,13 +216,16 @@ async function createWithLimits(
 
     await releaseNameCheck();
 
-    const recipe = await deps.generate({
-      command: buildRecipeByNameCommand({ check, isZeroCarb: input.isZeroCarb, week }),
-      week: recipeWeekOf(week),
-      isZeroCarb: input.isZeroCarb,
-      recipeName: check.recipeName,
-      adaptNote: check.status === 'adapt' ? check.changes.join('\n') : null,
-    });
+    const recipe = await deps.generate(
+      {
+        command: buildRecipeByNameCommand({ check, isZeroCarb: input.isZeroCarb, week }),
+        week: recipeWeekOf(week),
+        isZeroCarb: input.isZeroCarb,
+        recipeName: check.recipeName,
+        adaptNote: check.status === 'adapt' ? check.changes.join('\n') : null,
+      },
+      uid
+    );
 
     const body =
       trialRemaining === null

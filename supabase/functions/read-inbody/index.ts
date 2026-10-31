@@ -7,6 +7,7 @@
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { aiUsageFetch } from '../_shared/aiUsage.ts';
 import { getUid, requireEnv } from '../_shared/auth.ts';
 import { createProviderAlertFetch } from '../_shared/providerAlert.ts';
 import { handleReadInbody, type InbodyImage, type ReadInbodyDeps } from './handler.ts';
@@ -19,7 +20,7 @@ const GEMINI_TIMEOUT_MS = 30_000;
 const supabase = createClient(requireEnv('SUPABASE_URL'), requireEnv('SUPABASE_SERVICE_ROLE_KEY'));
 
 // Gemini가 결제·키·장애로 실패하면 운영자 Slack 알림 (_shared/providerAlert.ts). 응답·오류 처리는 그대로다
-const providerFetch = createProviderAlertFetch({
+const alertFetch = createProviderAlertFetch({
   functionName: 'read-inbody',
   client: supabase,
   webhookUrl: Deno.env.get('SLACK_WEBHOOK_URL'),
@@ -27,8 +28,10 @@ const providerFetch = createProviderAlertFetch({
 
 const redactKey = (message: string) => message.replace(/key=[^&\s)]+/g, 'key=***');
 
-const askGemini = async (prompt: string, image: InbodyImage): Promise<string> => {
+const askGemini = async (prompt: string, image: InbodyImage, uid: string): Promise<string> => {
   const geminiKey = requireEnv('GEMINI_API_KEY');
+  // 장애 알림 fetch에 기능 이름·uid를 붙여 Gemini 사용량도 남긴다 (ai_usage, _shared/aiUsage.ts)
+  const providerFetch = aiUsageFetch(alertFetch, supabase, { feature: 'inbody_read', uid });
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
   try {

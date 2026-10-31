@@ -15,7 +15,8 @@ export interface CreateRecipeDeps {
   getUserId(): Promise<string | null>;
   consume(uid: string): Promise<QuotaDecision>;
   release(uid: string): Promise<void>;
-  generate(body: CreateRecipeBody): Promise<unknown>;
+  // uid: 요청한 유저 (Gemini 사용량 기록용)
+  generate(body: CreateRecipeBody, uid: string): Promise<unknown>;
 }
 
 const jsonHeaders = { 'Content-Type': 'application/json' };
@@ -32,7 +33,7 @@ export async function handleCreateRecipeRequest(
 
     const result = await runWithQuota(
       { consume: () => deps.consume(uid), release: () => deps.release(uid) },
-      () => deps.generate({ command, week, is_zero_carb })
+      () => deps.generate({ command, week, is_zero_carb }, uid)
     );
 
     if (result.status === 'exceeded') {

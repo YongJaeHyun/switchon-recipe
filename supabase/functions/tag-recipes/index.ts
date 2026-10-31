@@ -6,6 +6,7 @@
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { aiUsageFetch } from '../_shared/aiUsage.ts';
 import { requireEnv } from '../_shared/auth.ts';
 import { createProviderAlertFetch } from '../_shared/providerAlert.ts';
 import { RECIPE_TAG_BATCH_RESPONSE_SCHEMA } from '../_shared/recipeTags.ts';
@@ -16,11 +17,16 @@ const GEMINI_TIMEOUT_MS = 30_000;
 const supabase = createClient(requireEnv('SUPABASE_URL'), requireEnv('SUPABASE_SERVICE_ROLE_KEY'));
 
 // Gemini가 결제·키·장애로 실패하면 운영자 Slack 알림 (_shared/providerAlert.ts). 응답·오류 처리는 그대로다
-const providerFetch = createProviderAlertFetch({
-  functionName: 'tag-recipes',
-  client: supabase,
-  webhookUrl: Deno.env.get('SLACK_WEBHOOK_URL'),
-});
+// 호출마다 Gemini 사용량도 남긴다 (ai_usage, _shared/aiUsage.ts. 백필이라 uid 없음)
+const providerFetch = aiUsageFetch(
+  createProviderAlertFetch({
+    functionName: 'tag-recipes',
+    client: supabase,
+    webhookUrl: Deno.env.get('SLACK_WEBHOOK_URL'),
+  }),
+  supabase,
+  { feature: 'recipe_tags' }
+);
 
 const redactKey = (message: string) => message.replace(/key=[^&\s)]+/g, 'key=***');
 

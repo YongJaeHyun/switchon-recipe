@@ -40,7 +40,8 @@ export interface ReadInbodyDeps {
   // uid의 그날(KST) 사용량 행
   usageStore(uid: string, day: string): UsageStore;
   // Gemini 응답 텍스트를 돌려준다
-  askGemini(prompt: string, image: InbodyImage): Promise<string>;
+  // uid: 요청한 유저 (Gemini 사용량 기록용)
+  askGemini(prompt: string, image: InbodyImage, uid: string): Promise<string>;
 }
 
 const json = (body: unknown, status: number) =>
@@ -123,7 +124,7 @@ export async function handleReadInbody(req: Request, deps: ReadInbodyDeps): Prom
         release: () => releaseDailyUsage(store),
       },
       async () => {
-        const text = await deps.askGemini(buildInbodyPrompt(), image);
+        const text = await deps.askGemini(buildInbodyPrompt(), image, uid);
         const parsed = parseInbodyResponse(text, today);
         if (parsed.status === 'invalid') {
           // 원문은 결과지 숫자(건강 정보)라 로그에 남기지 않는다

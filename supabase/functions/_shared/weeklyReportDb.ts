@@ -5,6 +5,7 @@
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { requireEnv } from './auth.ts';
 import { fetchAllPages } from './pagination.ts';
+import { aiUsageFetch } from './aiUsage.ts';
 import { createProviderAlertFetch } from './providerAlert.ts';
 import { REPORT_RESPONSE_SCHEMA } from './weeklyReport.ts';
 import type { NotificationRow, ReportGenerationDeps } from './weeklyReportGenerate.ts';
@@ -32,7 +33,7 @@ export function createWeeklyReportDeps(
   functionName: string
 ): WeeklyReportDbDeps {
   // Gemini가 결제·키·장애로 실패하면 운영자 Slack 알림. 응답·오류 처리는 그대로다
-  const providerFetch = createProviderAlertFetch({
+  const alertFetch = createProviderAlertFetch({
     functionName,
     client: supabase,
     webhookUrl: Deno.env.get('SLACK_WEBHOOK_URL'),
@@ -199,8 +200,13 @@ export function createWeeklyReportDeps(
       };
     },
 
-    async askGemini(prompt) {
+    async askGemini(prompt, uid) {
       const geminiKey = requireEnv('GEMINI_API_KEY');
+      // Gemini 사용량도 남긴다 (ai_usage, _shared/aiUsage.ts). 직접 만들기·다시 만들기는 따로 센다
+      const providerFetch = aiUsageFetch(alertFetch, supabase, {
+        feature: functionName === 'generate-my-report' ? 'report_on_demand' : 'weekly_report',
+        uid: uid ?? null,
+      });
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
       try {

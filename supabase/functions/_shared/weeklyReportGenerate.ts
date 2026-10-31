@@ -98,8 +98,8 @@ export interface ReportGenerationDeps {
   // user.program_start (회차 시작일, yyyy-MM-dd). 없으면 null (구버전 앱·마이그레이션 전)
   fetchProgramStart(uid: string): Promise<string | null>;
   fetchWeekData(query: WeekQuery): Promise<WeekData>;
-  // Gemini 응답 텍스트. 실패하면 던진다
-  askGemini(prompt: string): Promise<string>;
+  // Gemini 응답 텍스트. 실패하면 던진다. uid: 리포트 주인 (Gemini 사용량 기록용)
+  askGemini(prompt: string, uid?: string): Promise<string>;
   // insert ... on conflict do nothing. 실제로 들어갔으면 true
   insertReport(row: WeeklyReportRow): Promise<boolean>;
 }
@@ -280,7 +280,7 @@ export const writeReportContent = async (
   const nextWeekChanges = nextWeekChangesFor(stats.weekIndex);
   try {
     const parsed = parseReportContent(
-      await deps.askGemini(buildReportPrompt(stats, nextWeekChanges))
+      await deps.askGemini(buildReportPrompt(stats, nextWeekChanges), uid)
     );
     if (parsed) return { content: sanitizeContent(parsed, stats, nextWeekChanges), ai: true };
     console.error(`리포트 응답 해석 실패 (${uid}, ${stats.weekIndex}주차)`);
