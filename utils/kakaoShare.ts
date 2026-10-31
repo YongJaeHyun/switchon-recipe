@@ -92,7 +92,19 @@ export function inviteMessage({
   };
 }
 
-export type InviteStartChoice = { kind: 'same' | 'align'; startDate: string; label: string };
+// 초대 날짜로 받는 가장 먼 날 (보낸 사람 시작일은 이보다 멀지 않다. 만든 링크로 먼 미래 시작일을 저장하지 않게)
+export const INVITE_MAX_DAYS_AHEAD = 60;
+
+const isInviteInRange = (invite: string, today: string) =>
+  daysUntilStart(invite, today) <= INVITE_MAX_DAYS_AHEAD;
+
+// replaces: 친구 날짜가 오늘·내일이면 그 기본 버튼("오늘부터/내일부터 시작")을 대신한다 (같은 날 버튼 두 개 대신 하나)
+export type InviteStartChoice = {
+  kind: 'same' | 'align';
+  startDate: string;
+  label: string;
+  replaces: 'today' | 'tomorrow' | null;
+};
 
 // 초대받은 새 사용자의 온보딩 "언제부터 시작" 맨 위 선택지.
 // 친구 시작일이 오늘·미래면 같은 날, 지났으면 친구와 같은 주차·일차(startDateForWeekDay, 시작일도 친구와 같다).
@@ -101,12 +113,22 @@ export function inviteStartChoice(
   invite: string | null | undefined,
   today: string
 ): InviteStartChoice | null {
-  if (!isDayString(invite)) return null;
-  if (daysUntilStart(invite, today) >= 0) {
+  if (!isDayString(invite) || !isInviteInRange(invite, today)) return null;
+  const until = daysUntilStart(invite, today);
+  if (until === 0 || until === 1) {
+    return {
+      kind: 'same',
+      startDate: invite,
+      label: `친구와 같이 ${until === 0 ? '오늘' : '내일'}부터 시작`,
+      replaces: until === 0 ? 'today' : 'tomorrow',
+    };
+  }
+  if (until > 1) {
     return {
       kind: 'same',
       startDate: invite,
       label: `친구와 같은 날 시작 (${slashLabel(invite)})`,
+      replaces: null,
     };
   }
   const { week, day } = programWeekAndDay(invite, today);
@@ -115,6 +137,7 @@ export function inviteStartChoice(
     kind: 'align',
     startDate: startDateForWeekDay(today, week, day),
     label: `친구와 같은 주차로 맞추기 (${week}주차 ${day}일)`,
+    replaces: null,
   };
 }
 
@@ -123,7 +146,7 @@ export function inviteNotice(
   invite: string | null | undefined,
   today: string
 ): { title: string; subtitle: string } | null {
-  if (!isDayString(invite)) return null;
+  if (!isDayString(invite) || !isInviteInRange(invite, today)) return null;
   const friend =
     daysUntilStart(invite, today) >= 0
       ? `친구는 ${monthDayLabel(invite)}부터 시작해요`
@@ -171,8 +194,10 @@ export function programWeightLoss(
 ): number | null {
   if (!startDate) return null;
   const change = weightChange(logs, startDate, { programStart });
-  if (!change || change.diff >= 0) return null;
-  return round1(-change.diff);
+  if (!change) return null;
+  // 반올림해 0.0kg 이하면 없음 (체크박스에 -0.0kg이 보이지 않게)
+  const loss = round1(-change.diff);
+  return loss > 0 ? loss : null;
 }
 
 // 완주 축하 시트: 오늘(day일차, 방금 100%)까지 이번 주 완주한 날. 오늘 통계는 아직 안 올라갔을 수 있어 오늘은 센다

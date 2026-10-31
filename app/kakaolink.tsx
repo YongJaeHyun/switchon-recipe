@@ -41,6 +41,8 @@ export default function RedirectKakaoLink() {
         }
         const isLoggedIn = target ? !!(await UserAPI.checkIsLoggedIn()) : false;
         const route = kakaoLinkRoute({
+          // 탭이 이미 떠 있을 때만 바로 이동 (앱을 막 켠 링크는 시작 화면 → 탭 위에 연다)
+          phase: useNotificationGateStore.getState().phase,
           target,
           isLoggedIn,
           isOnboarded: useUserStore.getState().is_onboarded,

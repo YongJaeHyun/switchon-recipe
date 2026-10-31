@@ -89,7 +89,12 @@ describe('parseKakaoLink: 앱만 여는 링크 (완주 인증 등)', () => {
 
   it('앱만 열면 시작 화면으로 (로그인했으면 홈)', () => {
     expect(
-      kakaoLinkRoute({ target: { type: 'open' }, isLoggedIn: true, isOnboarded: true })
+      kakaoLinkRoute({
+        phase: 'tabs',
+        target: { type: 'open' },
+        isLoggedIn: true,
+        isOnboarded: true,
+      })
     ).toEqual({ href: '/', afterLoginHref: null });
   });
 });
@@ -101,14 +106,69 @@ describe('parseKakaoLink: 편의점 판정 (foodCheck=1)', () => {
 
   it('로그인·온보딩을 마쳤으면 바로, 아니면 그 뒤에 판정 화면', () => {
     const target = { type: 'foodCheck' } as const;
-    expect(kakaoLinkRoute({ target, isLoggedIn: true, isOnboarded: true })).toEqual({
+    expect(kakaoLinkRoute({ phase: 'tabs', target, isLoggedIn: true, isOnboarded: true })).toEqual({
       href: '/foodCheck',
       afterLoginHref: null,
     });
-    expect(kakaoLinkRoute({ target, isLoggedIn: false, isOnboarded: null })).toEqual({
-      href: '/',
-      afterLoginHref: '/foodCheck',
-    });
+    expect(kakaoLinkRoute({ phase: 'tabs', target, isLoggedIn: false, isOnboarded: null })).toEqual(
+      {
+        href: '/',
+        afterLoginHref: '/foodCheck',
+      }
+    );
+  });
+});
+
+describe('parseKakaoLink: 레시피 모양 검사 (상세 화면이 죽지 않게)', () => {
+  const withFields = (fields: Record<string, unknown>) =>
+    link(`recipe=${encodeURIComponent(JSON.stringify({ ...JSON.parse(recipe), ...fields }))}`);
+
+  it('재료·조리 순서는 배열, 영양은 객체여야 한다', () => {
+    expect(
+      parseKakaoLink(
+        withFields({ id: 1, ingredients: 'null', cooking_steps: '5', nutrition: 'null' })
+      )
+    ).toBeNull();
+    expect(parseKakaoLink(withFields({ ingredients: '{}' }))).toBeNull();
+    expect(parseKakaoLink(withFields({ cooking_steps: '"굽는다"' }))).toBeNull();
+    expect(parseKakaoLink(withFields({ nutrition: '[]' }))).toBeNull();
+    expect(parseKakaoLink(withFields({ nutrition: '5' }))).toBeNull();
+  });
+
+  it('너무 긴 레시피는 받지 않는다', () => {
+    expect(parseKakaoLink(withFields({ recipe_name: 'a'.repeat(60_000) }))).toBeNull();
+  });
+});
+
+describe('kakaoLinkRoute: 탭이 떠 있을 때만 바로 이동 (앱을 막 켠 링크는 시작 화면을 거친다)', () => {
+  it('앱을 막 켰으면 로그인·온보딩을 마쳤어도 시작 화면 → 탭 위에 연다 (뒤로 가면 홈)', () => {
+    expect(
+      kakaoLinkRoute({
+        phase: 'starting',
+        target: { type: 'foodCheck' },
+        isLoggedIn: true,
+        isOnboarded: true,
+      })
+    ).toEqual({ href: '/', afterLoginHref: '/foodCheck' });
+    expect(
+      kakaoLinkRoute({
+        phase: 'outside',
+        target: { type: 'recipe', recipe },
+        isLoggedIn: true,
+        isOnboarded: true,
+      })
+    ).toEqual({ href: '/', afterLoginHref: recipeDetailHref(recipe) });
+  });
+
+  it('초대도 앱을 막 켰으면 시작 화면으로', () => {
+    expect(
+      kakaoLinkRoute({
+        phase: 'starting',
+        target: { type: 'invite', startDate: '2026-11-02' },
+        isLoggedIn: true,
+        isOnboarded: true,
+      })
+    ).toEqual({ href: '/', afterLoginHref: null, invite: '2026-11-02' });
   });
 });
 
@@ -124,25 +184,31 @@ describe('kakaoLinkRoute (받은 사람을 어디로 보낼지)', () => {
   const target = { type: 'recipe', recipe } as const;
 
   it('로그인·온보딩을 마친 사람은 바로 레시피로 (지금과 같다)', () => {
-    expect(kakaoLinkRoute({ target, isLoggedIn: true, isOnboarded: true })).toEqual({
+    expect(kakaoLinkRoute({ phase: 'tabs', target, isLoggedIn: true, isOnboarded: true })).toEqual({
       href: recipeDetailHref(recipe),
       afterLoginHref: null,
     });
   });
 
   it('로그인 안 했으면 시작 화면으로 보내고 레시피는 로그인·온보딩 뒤로 미룬다', () => {
-    expect(kakaoLinkRoute({ target, isLoggedIn: false, isOnboarded: null })).toEqual({
-      href: '/',
-      afterLoginHref: recipeDetailHref(recipe),
-    });
+    expect(kakaoLinkRoute({ phase: 'tabs', target, isLoggedIn: false, isOnboarded: null })).toEqual(
+      {
+        href: '/',
+        afterLoginHref: recipeDetailHref(recipe),
+      }
+    );
   });
 
   it('로그인했지만 온보딩 전이면 시작 화면(→ 온보딩)으로 보내고 레시피는 미룬다', () => {
-    expect(kakaoLinkRoute({ target, isLoggedIn: true, isOnboarded: false })).toEqual({
-      href: '/',
-      afterLoginHref: recipeDetailHref(recipe),
-    });
-    expect(kakaoLinkRoute({ target, isLoggedIn: true, isOnboarded: undefined })).toEqual({
+    expect(kakaoLinkRoute({ phase: 'tabs', target, isLoggedIn: true, isOnboarded: false })).toEqual(
+      {
+        href: '/',
+        afterLoginHref: recipeDetailHref(recipe),
+      }
+    );
+    expect(
+      kakaoLinkRoute({ phase: 'tabs', target, isLoggedIn: true, isOnboarded: undefined })
+    ).toEqual({
       href: '/',
       afterLoginHref: recipeDetailHref(recipe),
     });
@@ -150,17 +216,23 @@ describe('kakaoLinkRoute (받은 사람을 어디로 보낼지)', () => {
 
   it('초대: 이미 시작한 사람은 홈으로 (안내만), 아니면 시작 화면 → 온보딩에서 친구 시작일을 고른다', () => {
     const invite = { type: 'invite', startDate: '2026-11-02' } as const;
-    expect(kakaoLinkRoute({ target: invite, isLoggedIn: true, isOnboarded: true })).toEqual({
+    expect(
+      kakaoLinkRoute({ phase: 'tabs', target: invite, isLoggedIn: true, isOnboarded: true })
+    ).toEqual({
       href: '/(tabs)/home',
       afterLoginHref: null,
       invite: '2026-11-02',
     });
-    expect(kakaoLinkRoute({ target: invite, isLoggedIn: false, isOnboarded: null })).toEqual({
+    expect(
+      kakaoLinkRoute({ phase: 'tabs', target: invite, isLoggedIn: false, isOnboarded: null })
+    ).toEqual({
       href: '/',
       afterLoginHref: null,
       invite: '2026-11-02',
     });
-    expect(kakaoLinkRoute({ target: invite, isLoggedIn: true, isOnboarded: false })).toEqual({
+    expect(
+      kakaoLinkRoute({ phase: 'tabs', target: invite, isLoggedIn: true, isOnboarded: false })
+    ).toEqual({
       href: '/',
       afterLoginHref: null,
       invite: '2026-11-02',
@@ -168,11 +240,15 @@ describe('kakaoLinkRoute (받은 사람을 어디로 보낼지)', () => {
   });
 
   it('주소가 깨졌으면 시작 화면(로그인했으면 홈)으로, 미루는 것도 없다', () => {
-    expect(kakaoLinkRoute({ target: null, isLoggedIn: true, isOnboarded: true })).toEqual({
+    expect(
+      kakaoLinkRoute({ phase: 'tabs', target: null, isLoggedIn: true, isOnboarded: true })
+    ).toEqual({
       href: '/',
       afterLoginHref: null,
     });
-    expect(kakaoLinkRoute({ target: null, isLoggedIn: false, isOnboarded: null })).toEqual({
+    expect(
+      kakaoLinkRoute({ phase: 'tabs', target: null, isLoggedIn: false, isOnboarded: null })
+    ).toEqual({
       href: '/',
       afterLoginHref: null,
     });

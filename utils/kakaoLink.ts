@@ -7,6 +7,8 @@
 // 편의점 판정 결과(foodCheck=1)는 레시피처럼 판정 화면으로, 완주 인증 등 그 밖의 링크는 앱만 연다
 
 import { isDayString } from './kakaoShare';
+import type { AppRoutePhase } from './notificationGate';
+import { hasRecipeFieldShapes } from './recipeFields';
 
 export type KakaoLinkTarget =
   | { type: 'recipe'; recipe: string }
@@ -33,14 +35,15 @@ const parseJson = (text: string): unknown => {
   }
 };
 
-// 레시피 상세 화면(app/recipeDetail)이 JSON.parse로 여는 칸들이 다 멀쩡한지
-const RECIPE_JSON_FIELDS = ['ingredients', 'cooking_steps', 'nutrition'] as const;
+// 링크로 받는 레시피 JSON 최대 길이 (실제 레시피는 수 KB). 더 길면 만든 링크로 보고 받지 않는다
+const MAX_RECIPE_LENGTH = 50_000;
+
+// 레시피 상세 화면(app/recipeDetail)이 여는 칸들의 모양이 맞는지: id 숫자, 재료·조리 순서 배열, 영양 객체
 const isOpenableRecipe = (recipe: string) => {
+  if (recipe.length > MAX_RECIPE_LENGTH) return false;
   const parsed = parseJson(recipe);
   if (!isObject(parsed) || typeof parsed.id !== 'number') return false;
-  return RECIPE_JSON_FIELDS.every(
-    (field) => typeof parsed[field] === 'string' && parseJson(parsed[field]) !== undefined
-  );
+  return hasRecipeFieldShapes(parsed);
 };
 
 export function parseKakaoLink(url: string | null | undefined): KakaoLinkTarget | null {
@@ -83,18 +86,22 @@ const FOOD_CHECK_HREF = '/foodCheck';
 const targetHref = (target: Extract<KakaoLinkTarget, { type: 'recipe' | 'foodCheck' }>) =>
   target.type === 'recipe' ? recipeDetailHref(target.recipe) : FOOD_CHECK_HREF;
 
+// 바로 이동은 탭이 이미 떠 있을 때만 (앱을 쓰다 링크를 누름). 앱을 막 켠 링크는 로그인했어도 시작 화면(app/index)을
+// 거쳐 탭을 띄운 뒤 그 위에 연다: 바로 가면 그 화면 하나만 남아 뒤로 가기가 막히고 시작 준비도 건너뛴다
 export function kakaoLinkRoute({
+  phase,
   target,
   isLoggedIn,
   isOnboarded,
 }: {
+  phase: AppRoutePhase;
   target: KakaoLinkTarget | null;
   isLoggedIn: boolean;
   isOnboarded: boolean | null | undefined;
 }): KakaoLinkRoute {
   // 깨진 주소·앱만 여는 링크: 시작 화면이 로그인 여부에 따라 홈·로그인으로 보낸다
   if (!target || target.type === 'open') return { href: '/', afterLoginHref: null };
-  const ready = isLoggedIn && !!isOnboarded;
+  const ready = phase === 'tabs' && isLoggedIn && !!isOnboarded;
   if (target.type === 'invite') {
     return { href: ready ? '/(tabs)/home' : '/', afterLoginHref: null, invite: target.startDate };
   }

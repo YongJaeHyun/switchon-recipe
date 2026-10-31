@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { afterLoginLinkAction, notificationTapAction, startupPhase } from './notificationGate';
+import {
+  afterLoginLinkAction,
+  DEFERRED_LINK_TTL_MS,
+  isDeferredLinkFresh,
+  notificationTapAction,
+  startupPhase,
+} from './notificationGate';
 
 const user = { userId: 'u1', isOnboarded: true };
 
@@ -62,5 +68,18 @@ describe('afterLoginLinkAction (카톡 링크처럼 로그인·온보딩 뒤로 
     expect(afterLoginLinkAction({ phase: 'starting', ...user })).toBe('wait');
     expect(afterLoginLinkAction({ phase: 'tabs', userId: 'u1', isOnboarded: false })).toBe('wait');
     expect(afterLoginLinkAction({ phase: 'tabs', userId: null, isOnboarded: true })).toBe('wait');
+  });
+});
+
+describe('isDeferredLinkFresh (미뤄 둔 카톡 링크·초대는 30분만)', () => {
+  const now = 1_000_000_000;
+  it('30분 안이면 그대로', () => {
+    expect(DEFERRED_LINK_TTL_MS).toBe(30 * 60 * 1000);
+    expect(isDeferredLinkFresh(now - 29 * 60 * 1000, now)).toBe(true);
+    expect(isDeferredLinkFresh(now, now)).toBe(true);
+  });
+  it('30분이 지났거나 시각을 모르면 버린다', () => {
+    expect(isDeferredLinkFresh(now - 31 * 60 * 1000, now)).toBe(false);
+    expect(isDeferredLinkFresh(null, now)).toBe(false);
   });
 });

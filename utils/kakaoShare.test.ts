@@ -81,11 +81,7 @@ describe('inviteStartChoice (온보딩 "언제부터 시작"의 친구 선택지
       kind: 'same',
       startDate: '2026-11-02',
       label: '친구와 같은 날 시작 (11/2)',
-    });
-    expect(inviteStartChoice('2026-10-31', today)).toEqual({
-      kind: 'same',
-      startDate: '2026-10-31',
-      label: '친구와 같은 날 시작 (10/31)',
+      replaces: null,
     });
   });
 
@@ -94,7 +90,26 @@ describe('inviteStartChoice (온보딩 "언제부터 시작"의 친구 선택지
       kind: 'align',
       startDate: '2026-10-20',
       label: '친구와 같은 주차로 맞추기 (2주차 5일)',
+      replaces: null,
     });
+  });
+
+  it('친구 시작일이 오늘·내일이면 그 버튼을 대신한다 (같은 버튼 두 개 대신 하나)', () => {
+    expect(inviteStartChoice('2026-11-01', today)).toEqual({
+      kind: 'same',
+      startDate: '2026-11-01',
+      label: '친구와 같이 내일부터 시작',
+      replaces: 'tomorrow',
+    });
+    expect(inviteStartChoice('2026-10-31', today)?.label).toBe('친구와 같이 오늘부터 시작');
+    expect(inviteStartChoice('2026-10-31', today)?.replaces).toBe('today');
+  });
+
+  it('60일보다 먼 날짜는 무시한다 (만든 링크로 먼 미래 시작일 저장 막기)', () => {
+    expect(inviteStartChoice('2026-12-30', today)?.startDate).toBe('2026-12-30');
+    expect(inviteStartChoice('2026-12-31', today)).toBeNull();
+    expect(inviteStartChoice('2999-12-31', today)).toBeNull();
+    expect(inviteNotice('2999-12-31', today)).toBeNull();
   });
 
   it('친구가 유지기(4주 지남)면 선택지 없음', () => {
@@ -197,6 +212,19 @@ describe('programWeightLoss (회차 첫 기록 대비 최근 감량)', () => {
 
   it('회차 시작일(program_start)이 시작일보다 앞이면 그때부터', () => {
     expect(programWeightLoss(logs, '2026-10-14', '2026-10-07')).toBe(2.3);
+  });
+
+  it('반올림해 0.0kg이면 null (-0.0kg을 보이지 않게)', () => {
+    expect(
+      programWeightLoss(
+        [
+          { day: '2026-10-07', weight_kg: 70.04 },
+          { day: '2026-10-10', weight_kg: 70 },
+        ],
+        '2026-10-07',
+        null
+      )
+    ).toBeNull();
   });
 
   it('기록이 하나뿐이거나 줄지 않았으면 null (체크박스를 숨긴다)', () => {

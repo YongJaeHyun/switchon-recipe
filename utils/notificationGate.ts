@@ -48,3 +48,10 @@ export function afterLoginLinkAction({
 }): 'open' | 'wait' {
   return phase === 'tabs' && userId && isOnboarded ? 'open' : 'wait';
 }
+
+// 로그인·온보딩 뒤로 미룬 카톡 링크·초대를 얼마나 들고 있을지. 그 안에 탭이 뜨지 않으면(로그인을 오래 미룸) 버린다
+export const DEFERRED_LINK_TTL_MS = 30 * 60 * 1000;
+
+export function isDeferredLinkFresh(at: number | null | undefined, now: number): boolean {
+  return at != null && now - at <= DEFERRED_LINK_TTL_MS;
+}

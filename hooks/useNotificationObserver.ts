@@ -6,7 +6,11 @@ import { useNotificationGateStore } from 'stores/notificationGateStore';
 import { useUserStore } from 'stores/userStore';
 import { getKoreanDateString } from 'utils/date';
 import { inviteNotice } from 'utils/kakaoShare';
-import { afterLoginLinkAction, notificationTapAction } from 'utils/notificationGate';
+import {
+  afterLoginLinkAction,
+  isDeferredLinkFresh,
+  notificationTapAction,
+} from 'utils/notificationGate';
 import { captureError } from 'utils/sendError';
 import { Maybe } from '../types/common';
 import { resolveNotificationHref } from '../utils/notificationHref';
@@ -34,22 +38,26 @@ const flushPendingHref = () => {
 
 // 로그인·온보딩 뒤로 미룬 이동 (카톡으로 받은 레시피, app/kakaolink): 탭 밖이면 버리지 않고 탭이 뜰 때까지 기다린다
 const flushAfterLoginHref = () => {
-  const { phase, afterLoginHref, setAfterLoginHref } = useNotificationGateStore.getState();
+  const { phase, afterLoginHref, afterLoginAt, setAfterLoginHref } =
+    useNotificationGateStore.getState();
   if (!afterLoginHref) return;
   const { id, is_onboarded } = useUserStore.getState();
   if (afterLoginLinkAction({ phase, userId: id, isOnboarded: is_onboarded }) !== 'open') return;
   setAfterLoginHref(null);
-  openHref(afterLoginHref);
+  // 링크를 누르고 30분 넘게 지나 로그인했으면 열지 않는다
+  if (isDeferredLinkFresh(afterLoginAt, Date.now())) openHref(afterLoginHref);
 };
 
 // 카톡으로 받은 같이 하자 초대가 남았는데 탭이 떴으면 이미 시작일이 있는 사람이다 (새 사용자는 온보딩이 쓰고 지운다).
 // 시작일은 그대로 두고 친구 시작일만 알려 준다
 const flushPendingInvite = () => {
-  const { phase, pendingInvite, setPendingInvite } = useNotificationGateStore.getState();
+  const { phase, pendingInvite, pendingInviteAt, setPendingInvite } =
+    useNotificationGateStore.getState();
   if (!pendingInvite) return;
   const { id, is_onboarded } = useUserStore.getState();
   if (afterLoginLinkAction({ phase, userId: id, isOnboarded: is_onboarded }) !== 'open') return;
   setPendingInvite(null);
+  if (!isDeferredLinkFresh(pendingInviteAt, Date.now())) return;
   const notice = inviteNotice(pendingInvite, getKoreanDateString({ formatType: 'date' }));
   // 토스트는 링크로 화면이 다시 그려질 때 사라질 수 있어 닫을 때까지 남는 알림창으로
   if (notice) Alert.alert(notice.title, notice.subtitle, [{ text: '확인' }]);

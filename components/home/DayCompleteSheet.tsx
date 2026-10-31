@@ -25,7 +25,12 @@ export function DayCompleteSheet({ day, onClose }: { day: number | null; onClose
   const sheetRef = useRef<BottomSheetMethods>(null);
   // 닫히는 동안에도 내용이 남아 있게 마지막 일차를 둔다
   const [shownDay, setShownDay] = useState(day);
-  if (day !== null && day !== shownDay) setShownDay(day);
+  // 체중 보내기는 시트를 열 때마다 꺼진 채로 (전에 켠 것이 다음 날 시트에 남지 않게)
+  const [withWeight, setWithWeight] = useState(false);
+  if (day !== null && day !== shownDay) {
+    setShownDay(day);
+    setWithWeight(false);
+  }
 
   useEffect(() => {
     if (day !== null) sheetRef.current?.expand();
@@ -41,7 +46,6 @@ export function DayCompleteSheet({ day, onClose }: { day: number | null; onClose
     enabled: shownDay !== null,
   });
   const weightLossKg = useProgramWeightLoss();
-  const [withWeight, setWithWeight] = useState(false);
   const brag = () => {
     if (shownDay === null) return;
     const fullDays = dayFullCount(rates?.weeks[0]?.todoRatesByWeek, shownDay);
@@ -52,7 +56,12 @@ export function DayCompleteSheet({ day, onClose }: { day: number | null; onClose
   };
 
   return (
-    <CustomBottomSheet ref={sheetRef} onClose={onClose}>
+    <CustomBottomSheet
+      ref={sheetRef}
+      onClose={() => {
+        setWithWeight(false);
+        onClose();
+      }}>
       <BottomSheetView className="items-center px-5 pb-4">
         {shownDay !== null && (
           <>
