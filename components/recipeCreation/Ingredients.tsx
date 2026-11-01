@@ -7,7 +7,6 @@ import {
   type LayoutChangeEvent,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
-  Pressable,
   View,
 } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
@@ -17,7 +16,7 @@ import { RecipeType } from 'types/database';
 import { Ingredient as IngredientType } from 'types/recipe';
 import { chunkArray } from 'utils/chunkArray';
 import { getWeekColor } from 'utils/getWeekColor';
-import { nextPageOffset, rowScrollState, scrollHintLabel } from 'utils/ingredientRowScroll';
+import { rowScrollState } from 'utils/ingredientRowScroll';
 import Ingredient from './Ingredient';
 
 export interface IngredientsProps {
@@ -74,10 +73,6 @@ export default function Ingredients({
     refresh();
   };
 
-  const showNext = () => {
-    listRef.current?.scrollToOffset({ offset: nextPageOffset(metrics.current), animated: true });
-  };
-
   // 처음 연 날 한 번: 넘치는 첫 줄을 살짝 밀었다 되돌려 옆으로 넘어간다는 걸 보여 준다
   const reduceMotion = useReducedMotion();
   const nudgeHydrated = useIngredientScrollNudgeStore((s) => s.hydrated);
@@ -104,23 +99,7 @@ export default function Ingredients({
 
   return (
     <View className="gap-3">
-      <View className="flex-row items-end justify-between">
-        <Text className={`text-2xl font-bold ${getWeekColor(week)}`}>{title}</Text>
-        {scroll.overflows && (
-          <Pressable
-            onPress={showNext}
-            disabled={scroll.atEnd}
-            hitSlop={12}
-            accessibilityRole="button"
-            accessibilityLabel={`${title} ${ingredientList.length}개, 옆으로 넘겨 보기`}
-            accessibilityState={{ disabled: scroll.atEnd }}
-            className="mb-0.5">
-            <Text className="text-sm font-medium text-neutral-500">
-              {scroll.atEnd ? `${ingredientList.length}개` : scrollHintLabel(ingredientList.length)}
-            </Text>
-          </Pressable>
-        )}
-      </View>
+      <Text className={`text-2xl font-bold ${getWeekColor(week)}`}>{title}</Text>
       <View>
         <FlatList
           ref={listRef}
