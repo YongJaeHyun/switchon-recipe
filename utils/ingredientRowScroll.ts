@@ -17,12 +17,3 @@ export function rowScrollState({ contentWidth, viewportWidth, offset }: RowMetri
   const atEnd = !overflows || offset >= contentWidth - viewportWidth - EPSILON;
   return { overflows, atEnd };
 }
-
-export function scrollHintLabel(count: number) {
-  return `${count}개 · 넘겨 보기 ›`;
-}
-
-export function nextPageOffset({ contentWidth, viewportWidth, offset }: RowMetrics) {
-  const max = Math.max(0, contentWidth - viewportWidth);
-  return Math.min(max, Math.max(0, offset) + viewportWidth);
-}

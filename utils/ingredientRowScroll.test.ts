@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { nextPageOffset, rowScrollState, scrollHintLabel } from './ingredientRowScroll';
+import { rowScrollState } from './ingredientRowScroll';
 
 describe('rowScrollState', () => {
   it('아직 재지 못했으면 넘치지 않은 것으로 본다', () => {
@@ -37,26 +37,5 @@ describe('rowScrollState', () => {
 
   it('넘쳐 튕긴 위치(끝보다 큰 값)도 끝', () => {
     expect(rowScrollState({ contentWidth: 900, viewportWidth: 350, offset: 600 }).atEnd).toBe(true);
-  });
-});
-
-describe('scrollHintLabel', () => {
-  it('재료 수와 넘겨 보기', () => {
-    expect(scrollHintLabel(12)).toBe('12개 · 넘겨 보기 ›');
-  });
-});
-
-describe('nextPageOffset', () => {
-  it('한 화면만큼 오른쪽으로', () => {
-    expect(nextPageOffset({ contentWidth: 1200, viewportWidth: 350, offset: 0 })).toBe(350);
-    expect(nextPageOffset({ contentWidth: 1200, viewportWidth: 350, offset: 100 })).toBe(450);
-  });
-
-  it('끝을 넘지 않는다', () => {
-    expect(nextPageOffset({ contentWidth: 900, viewportWidth: 350, offset: 400 })).toBe(550);
-  });
-
-  it('넘치지 않으면 0', () => {
-    expect(nextPageOffset({ contentWidth: 300, viewportWidth: 350, offset: 0 })).toBe(0);
   });
 });
