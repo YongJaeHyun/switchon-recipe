@@ -3,6 +3,7 @@ import { initializeKakaoSDK } from '@react-native-kakao/core';
 import * as Sentry from '@sentry/react-native';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { RecipeJobBand } from 'components/common/RecipeJobBand';
+import { ReviewPromptModal } from 'components/common/ReviewPromptModal';
 import { WeekCompletePopup } from 'components/common/WeekCompletePopup';
 import { RecipeByNameSheet } from 'components/recipeByName/RecipeByNameSheet';
 import { toastConfig } from 'config/toastConfig';
@@ -96,6 +97,8 @@ function RootLayout() {
         </GestureHandlerRootView>
         <Toast config={toastConfig} />
         <WeekCompletePopup />
+        {/* 앱 리뷰 묻기 (좋은 순간에만, utils/reviewPrompt) */}
+        <ReviewPromptModal />
         <StatusBar style="dark" />
       </SafeAreaProvider>
     </QueryClientProvider>
