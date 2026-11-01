@@ -27,13 +27,7 @@ import {
   RECIPE_BY_NAME_TITLE,
   recipeByNameEntryState,
 } from 'utils/recipeByName';
-import {
-  defaultChosenWeek,
-  defaultNameWeekChoice,
-  NAME_WEEK_CHOICES,
-  nameRequestWeek,
-  nameWeekLabel,
-} from 'utils/recipeWeekChoice';
+import { defaultChosenWeek } from 'utils/recipeWeekChoice';
 
 const CARB_OPTIONS = [false, true] as const;
 
@@ -52,8 +46,8 @@ export function RecipeByNameSheet() {
   const [isZeroCarb, setIsZeroCarb] = useState(false);
   const startDate = useUserStore((state) => state.start_date);
   const currentWeek = defaultChosenWeek(getWeekAndDay(startDate).week);
-  const currentChoice = defaultNameWeekChoice(currentWeek);
-  const [week, setWeek] = useState(currentChoice);
+  // 실제 규칙 주차 (칸은 WeekChips가 1주차 / 2주차 / 3주차+로 보여 준다)
+  const [week, setWeek] = useState(currentWeek);
 
   const { status } = usePass();
   const billingAvailable = useBillingAvailable();
@@ -66,8 +60,8 @@ export function RecipeByNameSheet() {
   // 띠에서 "이름 고치기"로 다시 열 때 서버가 준 안내
   const [message, setMessage] = useState<string | null>(null);
   const clearMessage = () => setMessage(null);
-  const currentChoiceRef = useRef(currentChoice);
-  currentChoiceRef.current = currentChoice;
+  const currentWeekRef = useRef(currentWeek);
+  currentWeekRef.current = currentWeek;
 
   // 시트는 앱에 늘 붙어 있으므로 열려 있을 때만 키보드를 듣는다
   const [isOpen, setIsOpen] = useState(false);
@@ -84,7 +78,7 @@ export function RecipeByNameSheet() {
     nameRef.current = name;
     setHasName(name.trim().length > 0);
     setIsZeroCarb(request.isZeroCarb);
-    setWeek(request.weekChoice ?? currentChoiceRef.current);
+    setWeek(request.weekChoice ?? currentWeekRef.current);
     setMessage(request.message ?? null);
     setIsOpen(true);
     sheetRef.current?.expand();
@@ -98,7 +92,7 @@ export function RecipeByNameSheet() {
     runRecipeJob(
       {
         kind: 'byName',
-        request: { name, isZeroCarb, week: nameRequestWeek(week, currentWeek) },
+        request: { name, isZeroCarb, week },
         weekChoice: week,
       },
       { label: recipeJobLabel({ kind: 'byName', name }), origin: request?.origin ?? '' }
@@ -196,9 +190,7 @@ export function RecipeByNameSheet() {
           <WeekChips
             className="mb-3"
             value={week}
-            currentWeek={currentChoice}
-            choices={NAME_WEEK_CHOICES}
-            labelOf={nameWeekLabel}
+            currentWeek={currentWeek}
             onChange={(next) => {
               setWeek(next);
               if (message) clearMessage();
