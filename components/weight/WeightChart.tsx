@@ -21,7 +21,8 @@ interface WeightChartProps {
 const SECTIONS = 4;
 const Y_LABEL_WIDTH = 32;
 const SPACING = 44;
-const INITIAL_SPACING = 16;
+// 첫 날짜 글자("10/7")가 왼쪽에서 잘리지 않게 넉넉히 (16이면 "0/7"처럼 앞 글자가 잘렸다)
+const INITIAL_SPACING = 24;
 
 // y축 범위: 최저·최고에서 1kg씩 여유를 두고, 눈금이 정수가 되도록 4칸으로 맞춘다
 const yRange = (values: number[]) => {
