@@ -10,7 +10,9 @@ import { IngredientsLoadError } from 'components/recipeCreation/IngredientsLoadE
 import { router, useLocalSearchParams } from 'expo-router';
 import { useIngredients } from 'hooks/useIngredients';
 import { usePassOnlyPrompt } from 'hooks/usePassOnlyPrompt';
+import { PassBadge } from 'components/common/PassBadge';
 import { PassOnlyModal } from 'components/common/PassOnlyModal';
+import { PassTrialBanner } from 'components/common/PassTrialBanner';
 import { useRecipeCreation } from 'hooks/useRecipeCreation';
 import { useExcludedIngredients, useRecommend } from 'hooks/useRecommend';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -413,30 +415,34 @@ export function RecommendView({ embedded = false }: { embedded?: boolean }) {
   const disabledMeals = mealOptions.filter((m) => !m.enabled);
   const noMatches = result !== null && result.recipes.length === 0;
 
+  // 결과가 없을 때 크게 보이는 버튼: 패스가 없으면 다른 잠긴 버튼처럼 연한 초록 + 패스 배지
+  const createFilled = noMatches && !recommendPrompt.locked;
   const createButton = (
     <View className="gap-1">
       <RippleButton
-        outerClassName={`${noMatches ? 'bg-green-600' : 'border border-green-600 bg-white'} ${
-          creation.isCreating ? 'opacity-50' : ''
-        }`}
+        outerClassName={`${
+          createFilled
+            ? 'bg-green-600'
+            : noMatches
+              ? 'bg-green-100'
+              : 'border border-green-600 bg-white'
+        } ${creation.isCreating ? 'opacity-50' : ''}`}
         rounded="lg"
-        className={`w-full flex-row gap-1.5 ${noMatches ? 'py-5' : 'py-3.5'}`}
-        rippleColor={noMatches ? colors.green[700] : colors.green[100]}
+        className={`w-full flex-row gap-2 ${noMatches ? 'py-5' : 'py-3.5'}`}
+        rippleColor={createFilled ? colors.green[700] : colors.green[200]}
         disabled={busy || creation.isCreating}
         onPress={recommendPrompt.guard(creation.create)}>
-        {recommendPrompt.locked && (
-          <MaterialIcons
-            name="lock"
-            size={noMatches ? 20 : 18}
-            color={noMatches ? 'white' : colors.green[600]}
-          />
-        )}
         <Text
           className={
-            noMatches ? 'text-lg font-bold text-white' : 'text-base font-bold text-green-600'
+            createFilled
+              ? 'text-lg font-bold text-white'
+              : noMatches
+                ? 'text-lg font-bold text-green-800'
+                : 'text-base font-bold text-green-600'
           }>
           {creation.isCreating ? '만드는 중…' : '이 조건으로 새로 만들기'}
         </Text>
+        {recommendPrompt.locked && <PassBadge state={{ kind: 'locked' }} />}
       </RippleButton>
       {quotaGate.remainingText && (
         <View className="items-center gap-0.5">
@@ -526,13 +532,20 @@ export function RecommendView({ embedded = false }: { embedded?: boolean }) {
             <View className="flex-row items-center justify-between">
               <Text className="font-bold text-neutral-700">빼고 싶은 재료</Text>
               <RippleButton
-                outerClassName={`bg-green-600 ${saveDisabled ? 'opacity-40' : ''}`}
+                outerClassName={`${recommendPrompt.locked ? 'bg-green-100' : 'bg-green-600'} ${
+                  saveDisabled ? 'opacity-40' : ''
+                }`}
                 rounded="lg"
-                className="flex-row gap-0.5 px-3 py-1.5"
+                className="flex-row gap-1 px-3 py-1.5"
                 disabled={saveDisabled}
                 onPress={recommendPrompt.guard(handleSaveExclude)}>
-                {recommendPrompt.locked && <MaterialIcons name="lock" size={14} color="white" />}
-                <Text className="text-sm font-bold text-white">저장</Text>
+                <Text
+                  className={`text-sm font-bold ${
+                    recommendPrompt.locked ? 'text-green-800' : 'text-white'
+                  }`}>
+                  저장
+                </Text>
+                {recommendPrompt.locked && <PassBadge state={{ kind: 'locked' }} />}
               </RippleButton>
             </View>
             <SelectedIngredients
@@ -549,14 +562,23 @@ export function RecommendView({ embedded = false }: { embedded?: boolean }) {
           </View>
         </View>
 
+        {recommendPrompt.locked && (
+          <PassTrialBanner variant="locked" detail="조건은 미리 골라 볼 수 있어요" />
+        )}
         <RippleButton
-          outerClassName={`bg-green-600 ${busy ? 'opacity-50' : ''}`}
+          outerClassName={`${recommendPrompt.locked ? 'bg-green-100' : 'bg-green-600'} ${
+            busy ? 'opacity-50' : ''
+          }`}
           rounded="lg"
-          className="w-full flex-row gap-1.5 py-4"
+          className="w-full flex-row gap-2 py-4"
+          rippleColor={recommendPrompt.locked ? colors.green[200] : undefined}
           disabled={busy}
           onPress={recommendPrompt.guard(handleRecommend)}>
-          {recommendPrompt.locked && <MaterialIcons name="lock" size={20} color="white" />}
-          <Text className="text-lg font-bold text-white">추천 받기</Text>
+          <Text
+            className={`text-lg font-bold ${recommendPrompt.locked ? 'text-green-800' : 'text-white'}`}>
+            추천 받기
+          </Text>
+          {recommendPrompt.locked && <PassBadge state={{ kind: 'locked' }} />}
         </RippleButton>
 
         {result && (
@@ -588,12 +610,9 @@ export function RecommendView({ embedded = false }: { embedded?: boolean }) {
                   rippleColor={colors.neutral[200]}
                   disabled={busy}
                   onPress={recommendPrompt.guard(handleRecommend)}>
-                  <MaterialIcons
-                    name={recommendPrompt.locked ? 'lock' : 'refresh'}
-                    size={20}
-                    color={colors.neutral[600]}
-                  />
+                  <MaterialIcons name="refresh" size={20} color={colors.neutral[600]} />
                   <Text className="text-base font-bold text-neutral-600">다른 추천 보기</Text>
+                  {recommendPrompt.locked && <PassBadge state={{ kind: 'locked' }} />}
                 </RippleButton>
               </>
             )}

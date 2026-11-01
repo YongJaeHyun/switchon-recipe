@@ -4,6 +4,7 @@ import {
   passBadgeLabel,
   passBadgeState,
   passGiftBannerText,
+  passLockedBannerText,
   passTrialBannerText,
 } from './passFeatureLabel';
 
@@ -71,6 +72,15 @@ describe('passGiftBannerText', () => {
     expect(passGiftBannerText()).toEqual({
       title: '스위치온 패스 기능을 무료로 받아 봤어요',
       detail: '무료 리포트는 한 번만 드려요',
+    });
+  });
+});
+
+describe('passLockedBannerText', () => {
+  it('패스가 필요한 기능 화면: 제목은 같고 설명은 화면마다', () => {
+    expect(passLockedBannerText('조건은 미리 골라 볼 수 있어요')).toEqual({
+      title: '스위치온 패스 기능이에요',
+      detail: '조건은 미리 골라 볼 수 있어요',
     });
   });
 });
