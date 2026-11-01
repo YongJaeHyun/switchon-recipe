@@ -420,10 +420,17 @@ export function RecommendView({ embedded = false }: { embedded?: boolean }) {
           creation.isCreating ? 'opacity-50' : ''
         }`}
         rounded="lg"
-        className={noMatches ? 'w-full py-5' : 'w-full py-3.5'}
+        className={`w-full flex-row gap-1.5 ${noMatches ? 'py-5' : 'py-3.5'}`}
         rippleColor={noMatches ? colors.green[700] : colors.green[100]}
         disabled={busy || creation.isCreating}
         onPress={recommendPrompt.guard(creation.create)}>
+        {recommendPrompt.locked && (
+          <MaterialIcons
+            name="lock"
+            size={noMatches ? 20 : 18}
+            color={noMatches ? 'white' : colors.green[600]}
+          />
+        )}
         <Text
           className={
             noMatches ? 'text-lg font-bold text-white' : 'text-base font-bold text-green-600'
@@ -521,9 +528,10 @@ export function RecommendView({ embedded = false }: { embedded?: boolean }) {
               <RippleButton
                 outerClassName={`bg-green-600 ${saveDisabled ? 'opacity-40' : ''}`}
                 rounded="lg"
-                className="px-3 py-1.5"
+                className="flex-row gap-0.5 px-3 py-1.5"
                 disabled={saveDisabled}
                 onPress={recommendPrompt.guard(handleSaveExclude)}>
+                {recommendPrompt.locked && <MaterialIcons name="lock" size={14} color="white" />}
                 <Text className="text-sm font-bold text-white">저장</Text>
               </RippleButton>
             </View>
@@ -544,9 +552,10 @@ export function RecommendView({ embedded = false }: { embedded?: boolean }) {
         <RippleButton
           outerClassName={`bg-green-600 ${busy ? 'opacity-50' : ''}`}
           rounded="lg"
-          className="w-full py-4"
+          className="w-full flex-row gap-1.5 py-4"
           disabled={busy}
           onPress={recommendPrompt.guard(handleRecommend)}>
+          {recommendPrompt.locked && <MaterialIcons name="lock" size={20} color="white" />}
           <Text className="text-lg font-bold text-white">추천 받기</Text>
         </RippleButton>
 
@@ -579,7 +588,11 @@ export function RecommendView({ embedded = false }: { embedded?: boolean }) {
                   rippleColor={colors.neutral[200]}
                   disabled={busy}
                   onPress={recommendPrompt.guard(handleRecommend)}>
-                  <MaterialIcons name="refresh" size={20} color={colors.neutral[600]} />
+                  <MaterialIcons
+                    name={recommendPrompt.locked ? 'lock' : 'refresh'}
+                    size={20}
+                    color={colors.neutral[600]}
+                  />
                   <Text className="text-base font-bold text-neutral-600">다른 추천 보기</Text>
                 </RippleButton>
               </>

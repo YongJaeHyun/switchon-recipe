@@ -28,6 +28,8 @@ export const usePassOnlyPrompt = (feature: string, description: string) => {
   return {
     guard,
     hasAccess: status?.hasAccess === true,
+    // 패스가 없다고 확인됐을 때만 true (로딩 중에는 잠금 표시를 띄우지 않는다)
+    locked: status?.hasAccess === false,
     modalProps: { view, onClose: () => setView(null) },
   };
 };
