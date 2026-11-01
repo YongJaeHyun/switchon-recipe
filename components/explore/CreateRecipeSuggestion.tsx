@@ -16,7 +16,7 @@ interface CreateRecipeSuggestionProps {
 
 const KEYWORD_MAX = 12;
 
-// 탐색 검색 결과가 없을 때: 찾던 이름 그대로 레시피를 만드는 패스 버튼(먹고 싶은 음식으로 만들기, 무료 체험 2번).
+// 탐색 검색 결과가 없을 때: 찾던 이름 그대로 레시피를 만드는 패스 버튼(먹고 싶은 음식으로 만들기, 무료 체험 3번).
 // 탐색은 레시피 이름으로 찾으므로 재료 골라 만들기는 두지 않는다 (운영자 결정 2026-11-01).
 // 패스·체험이 없으면 누를 때 "패스 기능이에요" 창으로 묻는다 (useRecipeByNameEntry). 시트에는 검색어와 필터의 탄수 종류를 미리 넣는다
 export function CreateRecipeSuggestion({ keyword, filter }: CreateRecipeSuggestionProps) {

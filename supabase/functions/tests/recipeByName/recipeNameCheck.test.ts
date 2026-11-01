@@ -36,11 +36,11 @@ describe('sanitizeDishName', () => {
 });
 
 describe('recipeByNameTrialRemaining', () => {
-  it('평생 2번에서 쓴 만큼 뺀다 (행 없음 = 안 씀)', () => {
-    expect(RECIPE_BY_NAME_TRIAL_LIMIT).toBe(2);
-    expect(recipeByNameTrialRemaining(null)).toBe(2);
-    expect(recipeByNameTrialRemaining(undefined)).toBe(2);
-    expect(recipeByNameTrialRemaining(1)).toBe(1);
+  it('평생 3번에서 쓴 만큼 뺀다 (행 없음 = 안 씀)', () => {
+    expect(RECIPE_BY_NAME_TRIAL_LIMIT).toBe(3);
+    expect(recipeByNameTrialRemaining(null)).toBe(3);
+    expect(recipeByNameTrialRemaining(undefined)).toBe(3);
+    expect(recipeByNameTrialRemaining(1)).toBe(2);
     expect(recipeByNameTrialRemaining(5)).toBe(0);
   });
 });

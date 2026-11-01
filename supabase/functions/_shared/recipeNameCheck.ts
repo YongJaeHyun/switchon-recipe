@@ -11,7 +11,7 @@ export const RECIPE_NAME_CHECK_MODEL = 'gemini-2.5-flash';
 
 export const DISH_NAME_MAX = 30;
 // 패스 없이 써 볼 수 있는 횟수 (사용자당 평생). 앱 utils/recipeByName.ts와 같은 값
-export const RECIPE_BY_NAME_TRIAL_LIMIT = 2;
+export const RECIPE_BY_NAME_TRIAL_LIMIT = 3;
 
 const REASON_MAX = 60;
 const CHANGE_MAX = 80;

@@ -7,7 +7,7 @@ import { type TrialEntryState, trialEntryState } from './passTrial';
 import { quotaExceededFromBody } from './recipeQuota';
 
 // 서버 _shared/recipeNameCheck.ts와 같은 값
-export const RECIPE_BY_NAME_TRIAL_LIMIT = 2;
+export const RECIPE_BY_NAME_TRIAL_LIMIT = 3;
 export const DISH_NAME_MAX = 30;
 
 export const RECIPE_BY_NAME_TITLE = '먹고 싶은 음식으로 만들기';

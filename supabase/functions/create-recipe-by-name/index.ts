@@ -1,6 +1,6 @@
 /// <reference lib="deno.ns" />
 
-// 먹고 싶은 음식 이름으로 레시피 만들기 (패스 기능, 무료 체험 2번): 실제 의존성을 연결해 handleRecipeByName을 서비스한다.
+// 먹고 싶은 음식 이름으로 레시피 만들기 (패스 기능, 무료 체험 3번): 실제 의존성을 연결해 handleRecipeByName을 서비스한다.
 // 패스 확인·체험·한도 rpc는 유저 헤더가 없는 service role 클라이언트로 하고(유저 JWT를 실으면 authenticated로
 // 처리되어 거부됨), 레시피 생성·이미지·저장은 기존 create-recipe-by-gemini와 같은 generateAndSaveRecipe를 쓴다.
 

@@ -346,7 +346,7 @@ entrypoint = "./functions/create-recipe-by-gemini/index.ts"
 enabled = true
 verify_jwt = true
 
-# 먹고 싶은 음식 이름으로 레시피 만들기 (패스 기능 + 무료 체험 2번, 유저 JWT)
+# 먹고 싶은 음식 이름으로 레시피 만들기 (패스 기능 + 무료 체험 3번, 유저 JWT)
 [functions.create-recipe-by-name]
 enabled = true
 verify_jwt = true

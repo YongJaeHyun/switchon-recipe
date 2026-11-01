@@ -27,8 +27,8 @@ const status = (o: Partial<PassStatus> = {}, onSale = true): PassStatus => ({
 });
 
 describe('recipeByNameEntryState', () => {
-  it('서버와 같은 평생 2번', () => {
-    expect(RECIPE_BY_NAME_TRIAL_LIMIT).toBe(2);
+  it('서버와 같은 평생 3번', () => {
+    expect(RECIPE_BY_NAME_TRIAL_LIMIT).toBe(3);
   });
 
   it('패스가 있으면 열림, 상태를 모르면 숨김', () => {
