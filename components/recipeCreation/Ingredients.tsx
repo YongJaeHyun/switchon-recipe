@@ -32,7 +32,8 @@ interface IngredientsSectionProps extends IngredientsProps {
 }
 
 // 오른쪽 끝 흰 그라데이션 폭: 다음 칸이 흐려지며 이어진다는 신호
-const FADE_WIDTH = 36;
+// 첫 화면에서 넷째 칸이 화면 끝에 딱 맞아도 "더 있다"가 보이게 넉넉히
+const FADE_WIDTH = 64;
 // 처음 한 번 살짝 밀어 보이는 거리와 시점
 const NUDGE_DISTANCE = 48;
 const NUDGE_DELAY_MS = 500;
