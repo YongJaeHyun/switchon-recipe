@@ -48,8 +48,3 @@ export function passGiftBannerText(): PassBannerText {
     detail: '무료 리포트는 한 번만 드려요',
   };
 }
-
-// 패스가 있어야 쓰는 기능 화면 (무료 체험 없음). detail은 패스 없이 할 수 있는 것을 화면마다 알려 준다
-export function passLockedBannerText(detail: string): PassBannerText {
-  return { title: '스위치온 패스 기능이에요', detail };
-}

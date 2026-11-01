@@ -12,7 +12,6 @@ import { useIngredients } from 'hooks/useIngredients';
 import { usePassOnlyPrompt } from 'hooks/usePassOnlyPrompt';
 import { PassBadge } from 'components/common/PassBadge';
 import { PassOnlyModal } from 'components/common/PassOnlyModal';
-import { PassTrialBanner } from 'components/common/PassTrialBanner';
 import { useRecipeCreation } from 'hooks/useRecipeCreation';
 import { useExcludedIngredients, useRecommend } from 'hooks/useRecommend';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -562,9 +561,6 @@ export function RecommendView({ embedded = false }: { embedded?: boolean }) {
           </View>
         </View>
 
-        {recommendPrompt.locked && (
-          <PassTrialBanner variant="locked" detail="조건은 미리 골라 볼 수 있어요" />
-        )}
         <RippleButton
           outerClassName={`${recommendPrompt.locked ? 'bg-green-100' : 'bg-green-600'} ${
             busy ? 'opacity-50' : ''
