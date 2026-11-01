@@ -3,20 +3,29 @@
 <title>스위치온 레시피 스크린샷 5</title>
 <style>
 @font-face{font-family:"Pretendard";src:url("PretendardVariable-Regular.ttf") format("truetype");font-weight:100 900}
-:root{--ink:#10291A;--green:#16A34A;--mint:#EEF8F1;--bezel:#141917}
+:root{--ink:#111827;--green:#16A34A;--gray:#6B7280;--bezel:#0E0F10}
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:1080px;height:1920px;overflow:hidden;background:#fff}
-body{font-family:"Pretendard",sans-serif;position:relative;color:var(--ink)}
-.ground{position:absolute;left:0;right:0;top:1040px;bottom:0;background:var(--mint)}
-.ground::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:var(--green);opacity:.18}
-h1{position:absolute;left:130px;right:100px;top:132px;font-size:80px;line-height:1.24;font-weight:800;letter-spacing:-.022em;word-break:keep-all}
-.phone{position:absolute;left:130px;top:430px;width:820px;height:1432px;border-radius:72px;background:var(--bezel);padding:18px;
- box-shadow:0 2px 0 1px #2b322e inset,0 50px 90px -20px rgba(16,80,40,.28),0 16px 34px rgba(0,0,0,.10)}
-.screen{width:784px;height:1396px;border-radius:56px;overflow:hidden;background:#fafafa;position:relative}
-.screen img{position:absolute;left:0;top:-8px;width:784px;height:auto;display:block}
+body{font-family:"Pretendard",sans-serif;position:relative;color:var(--ink);text-align:center}
+g{color:var(--green)}
+h1{position:absolute;left:60px;right:60px;top:120px;font-size:78px;line-height:1.26;font-weight:800;letter-spacing:-.025em;word-break:keep-all}
+.phone{position:absolute;left:198px;top:378px;width:684px;height:1196px;border-radius:84px;background:var(--bezel);padding:14px;
+ box-shadow:0 0 0 2px #2a2c2f inset,0 44px 70px -24px rgba(0,0,0,.26),0 14px 28px rgba(0,0,0,.08)}
+.btn{position:absolute;right:-5px;width:5px;background:#1f2123;border-radius:0 3px 3px 0}
+.b1{top:250px;height:86px}.b2{top:370px;height:150px}
+.screen{width:656px;height:1168px;border-radius:72px;overflow:hidden;background:#fafafa;position:relative}
+.screen img{position:absolute;left:0;top:6px;width:656px;height:auto;display:block}
+.sb{position:absolute;left:0;right:0;top:0;height:46px;background:#fafafa;display:flex;align-items:center;justify-content:space-between;padding:4px 64px 0 66px;font-size:22px;font-weight:600;color:#1f2937;letter-spacing:.01em}
+.sb svg{display:block}
+.cam{position:absolute;left:50%;top:13px;width:22px;height:22px;margin-left:-11px;border-radius:50%;background:#0b0c0d;box-shadow:0 0 0 2px #1d1f22}
+p.cap{position:absolute;left:150px;right:150px;top:1640px;font-size:38px;line-height:1.45;font-weight:500;color:var(--gray);letter-spacing:-.015em;word-break:keep-all}
+p.cap g{font-weight:700}
+.card{position:absolute;left:470px;top:1282px;width:500px;height:278px;border-radius:26px;overflow:hidden;background:#fafafa;box-shadow:0 28px 50px -16px rgba(0,0,0,.28),0 6px 16px rgba(0,0,0,.08)}
+.card img{position:absolute;left:-4px;top:-166px;width:516px;height:auto}
 </style></head>
 <body>
-<div class="ground"></div>
-<h1>한 주를 정리해<br>다음 주 할 일까지</h1>
-<div class="phone"><div class="screen"><img src="../raw/5-weekly-report.png" alt=""></div></div>
+<h1>한 주를 정리해<br><g>다음 주 할 일</g>까지</h1>
+<div class="phone"><span class="btn b1"></span><span class="btn b2"></span><div class="screen"><img src="../raw/5-weekly-report.png" alt=""><div class="sb"><span>9:41</span><svg width="56" height="22" viewBox="0 0 56 22"><path d="M2 8a16 16 0 0 1 24 0l-12 13z" fill="#1f2937"/><rect x="38" y="2" width="12" height="19" rx="2.5" fill="#1f2937"/><rect x="41" y="0" width="6" height="3" rx="1" fill="#1f2937"/></svg></div><span class="cam"></span></div></div>
+
+<p class="cap">할 일·단식·체중을 모아<br><g>주간 리포트</g>로 정리해 드려요</p>
 </body></html>
