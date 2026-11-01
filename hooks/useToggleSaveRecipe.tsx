@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { RecipeAPI } from 'api/RecipeAPI';
 import { queryClient } from 'lib/queryClient';
+import { askReviewAfterSave } from 'services/reviewPrompt';
 import { requireOnline } from 'utils/network';
 
 export function useToggleSaveRecipe({ id }: { id: number }) {
@@ -14,6 +15,8 @@ export function useToggleSaveRecipe({ id }: { id: number }) {
 
   const saveMutation = useMutation({
     mutationFn: () => RecipeAPI.insertSaved(id),
+    // 3개째 저장에 성공하면 리뷰를 묻는다
+    onSuccess: (inserted) => void askReviewAfterSave(inserted),
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ['savedRecipe', id] });
       const prev = queryClient.getQueryData<boolean>(['savedRecipe', id]);

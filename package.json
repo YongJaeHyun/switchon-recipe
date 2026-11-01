@@ -61,6 +61,7 @@
     "expo-router": "~5.1.6",
     "expo-splash-screen": "~0.30.10",
     "expo-status-bar": "~2.2.3",
+    "expo-store-review": "~8.1.5",
     "expo-updates": "~0.28.17",
     "lottie-react-native": "7.2.2",
     "nativewind": "~4.1.23",

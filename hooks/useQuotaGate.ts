@@ -5,6 +5,7 @@ import { QueryKey } from 'const/queryKey';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { isAdsAvailable, showRewardedAd } from 'services/ads';
+import { useReviewPromptStore } from 'stores/reviewPromptStore';
 import { useUserStore } from 'stores/userStore';
 import type { QuotaExceeded } from 'types/recipeQuota';
 import {
@@ -29,6 +30,10 @@ export const useQuotaGate = () => {
   const billingAvailable = useBillingAvailable();
 
   const [exceeded, setExceeded] = useState<QuotaExceeded | null>(null);
+  // 한도 초과를 겪은 실행에서는 리뷰를 묻지 않는다
+  useEffect(() => {
+    if (exceeded) useReviewPromptStore.getState().markFailure();
+  }, [exceeded]);
   const [adsAvailable, setAdsAvailable] = useState(false);
   const [isWaitingBonus, setIsWaitingBonus] = useState(false);
   const busy = useRef(false);

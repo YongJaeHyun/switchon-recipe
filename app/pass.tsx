@@ -17,6 +17,7 @@ import { ActivityIndicator, ScrollView, TouchableOpacity, View } from 'react-nat
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Defs, Line, Pattern, Rect } from 'react-native-svg';
 import { BillingUnavailableError, purchasePass } from 'services/billing';
+import { useReviewPromptStore } from 'stores/reviewPromptStore';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
 import type { PassStatus } from 'types/pass';
@@ -433,6 +434,7 @@ export default function PassScreen() {
         purchase = await purchasePass(productId, uid);
       } catch (error) {
         console.error('[PassScreen.purchasePass]', error);
+        useReviewPromptStore.getState().markFailure();
         showErrorToast({
           textType:
             error instanceof BillingUnavailableError
@@ -449,13 +451,17 @@ export default function PassScreen() {
         result = await PassAPI.verify(purchase);
       } catch {
         // 결제는 Play에 남아 있으므로 복구 흐름(usePassPurchaseRecovery)이 다시 검증한다
+        useReviewPromptStore.getState().markFailure();
         showErrorToast({ textType: 'PASS_VERIFY_DELAYED' });
         return;
       }
 
       const toast = getVerifyResultToast(result, new Date());
       if (toast.type === 'success') showSuccessToast({ textType: toast.textType });
-      else showErrorToast({ textType: toast.textType });
+      else {
+        showErrorToast({ textType: toast.textType });
+        useReviewPromptStore.getState().markFailure();
+      }
 
       // 만료일(granted)이나 가격 구간(price_changed)이 바뀌었을 수 있다
       await queryClient.invalidateQueries({ queryKey: [QueryKey.pass] });

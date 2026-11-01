@@ -1,4 +1,5 @@
 import { RecipeAPI } from 'api/RecipeAPI';
+import { askReviewAfterSave } from 'services/reviewPrompt';
 import { RecipeWithIsSavedDB } from 'types/database';
 import { create } from 'zustand';
 
@@ -24,7 +25,8 @@ export const useRecipeStore = create<RecipeState>()((set, get) => ({
       RecipeAPI.deleteSaved(id);
     } else {
       newMap[id] = true;
-      RecipeAPI.insertSaved(id);
+      // 3개째 저장에 성공하면 리뷰를 묻는다
+      void RecipeAPI.insertSaved(id).then(askReviewAfterSave);
     }
     set({ isSavedMap: newMap });
   },

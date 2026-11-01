@@ -485,3 +485,10 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/read-inbody/deno.json"
 entrypoint = "./functions/read-inbody/index.ts"
+
+# 앱 리뷰 묻기 [아쉬워요] 의견 받기: 유저 JWT, KST 하루 한 번, 운영자 Slack(SLACK_WEBHOOK_URL)으로 알림
+[functions.send-feedback]
+enabled = true
+verify_jwt = true
+import_map = "./functions/send-feedback/deno.json"
+entrypoint = "./functions/send-feedback/index.ts"

@@ -13,6 +13,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { requestReviewLater } from 'stores/reviewPromptStore';
 import { useUserStore } from 'stores/userStore';
 import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
 import colors from 'tailwindcss/colors';
@@ -25,6 +26,9 @@ import AnimatedTextView from './AnimatedTextView';
 import RippleButton from './RippleButton';
 import { Text } from './Text';
 import { WeekRepeatStep } from './WeekRepeatStep';
+
+// 팝업이 닫히는 페이드가 끝나고 잠깐 뒤
+const REVIEW_AFTER_POPUP_MS = 800;
 
 export function WeekCompletePopup() {
   const { close, week, visible, repeatAskedKeys, markRepeatAsked } = useWeekCompletePopupStore();
@@ -70,6 +74,8 @@ export function WeekCompletePopup() {
     if (review) markRepeatAsked(review.key);
     resetStep();
     close();
+    // 1주차를 마치고 2주차 진입 팝업을 닫은 순간: 팝업이 사라진 뒤 리뷰를 묻는다 (물어도 될 때만)
+    if (week === 2) requestReviewLater('week2', REVIEW_AFTER_POPUP_MS);
   };
 
   const openTrialReport = () => {

@@ -126,8 +126,22 @@ const insertSaved = async (recipeId: number) =>
       // 저장한 레시피 목록(레시피 탭·저장 탭)을 다시 받게 한다. 예전 키 [savedRecipes, recipeCards]는
       // 어떤 쿼리와도 맞지 않아 저장 탭이 갱신되지 않았다
       void queryClient.invalidateQueries({ queryKey: [QueryKey.savedRecipes] });
+      // 이번에 새로 저장했을 때만 true (이미 저장돼 있었으면 false, 실패면 sendError가 undefined)
+      return true;
     }
+    return false;
   });
+
+// 내가 저장한 레시피 수 (리뷰 묻기: 3개째 저장). 실패하면 null
+const countSaved = async (): Promise<number | null> => {
+  const userId = useUserStore.getState().id;
+  if (!userId) return null;
+  const { count, error } = await supabase
+    .from('saved_recipe')
+    .select('id', { count: 'exact', head: true })
+    .eq('uid', userId);
+  return error ? null : count;
+};
 
 const deleteSaved = async (recipeId: number) =>
   sendError(async () => {
@@ -148,6 +162,7 @@ export const RecipeAPI = {
   selectAllRecent,
   selectAllSavedByWeek,
   insertSaved,
+  countSaved,
   deleteSaved,
   selectAllSaved,
   checkIsSavedRecipe,
