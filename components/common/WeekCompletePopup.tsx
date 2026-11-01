@@ -110,7 +110,9 @@ export function WeekCompletePopup() {
           style={[
             animatedStyle,
             {
-              width: '66.6%',
+              // 화면 폭의 88% (태블릿에서는 420까지)
+              width: '88%',
+              maxWidth: 420,
               padding: 24,
               backgroundColor: 'white',
               borderRadius: 16,
@@ -134,8 +136,10 @@ export function WeekCompletePopup() {
                 style={{ width: '100%', height: 200 }}
                 loop={false}
                 autoPlay
+                // 처음 축하 애니메이션이 느리다는 운영자 의견(2026-11-01): 빠르게 돌리고 글자도 일찍 띄운다
+                speed={1.6}
               />
-              <AnimatedTextView className="w-full" delay={4000}>
+              <AnimatedTextView className="w-full" delay={1500}>
                 <Text className="mb-10 text-center text-2xl font-bold">
                   <Text className={getWeekColor(week)}>{week}주차</Text> 진입!
                 </Text>
@@ -158,7 +162,7 @@ export function WeekCompletePopup() {
                 className="w-full"
                 style={{ maxHeight: windowHeight * (trialReport ? 0.4 : 0.6) }}
                 showsVerticalScrollIndicator={false}>
-                <AnimatedTextView className="w-full" delay={500}>
+                <AnimatedTextView className="w-full" delay={300}>
                   <Text className="mb-2 text-2xl font-bold">
                     <Text className={getWeekColor(week)}>{week}주차</Text>에는...
                   </Text>
@@ -181,7 +185,7 @@ export function WeekCompletePopup() {
                   )}
                 </AnimatedTextView>
 
-                <AnimatedTextView className="w-full" delay={1250}>
+                <AnimatedTextView className="w-full" delay={700}>
                   <View className="mb-10 flex-row flex-wrap gap-3">
                     {week === 2 &&
                       ingredients
@@ -221,7 +225,7 @@ export function WeekCompletePopup() {
               </ScrollView>
 
               {trialReport && (
-                <AnimatedTextView className="mb-4 w-full" delay={1750}>
+                <AnimatedTextView className="mb-4 w-full" delay={1000}>
                   <View className="w-full gap-3 rounded-xl border border-green-200 bg-green-50 p-4">
                     <View className="flex-row items-start gap-2">
                       <MaterialIcons name="insights" size={22} color={colors.green[600]} />
@@ -245,7 +249,7 @@ export function WeekCompletePopup() {
                 </AnimatedTextView>
               )}
 
-              <AnimatedTextView className="w-full" delay={2000}>
+              <AnimatedTextView className="w-full" delay={1200}>
                 <RippleButton
                   outerClassName="w-full"
                   rippleColor={colors.green[700]}
