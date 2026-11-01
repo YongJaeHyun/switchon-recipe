@@ -1,7 +1,7 @@
 import { Text } from 'components/common/Text';
 import { useLastPathname } from 'hooks/useLastPathname';
 import { useSelectedIngredients } from 'hooks/useSelectedIngredients';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import {
   FlatList,
   type LayoutChangeEvent,
@@ -157,18 +157,20 @@ export default function Ingredients({
 
 // 오른쪽에 더 있을 때 끝을 흐리게 덮는다 (누름은 아래 재료로 그대로 간다)
 function RightFade() {
+  // 줄마다 그라데이션 id가 같으면 안드로이드에서 서로 섞여 경계가 딱딱하게 보인다 → 줄마다 다른 id
+  const id = `ingredientRowFade${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   return (
     <View
       pointerEvents="none"
       style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: FADE_WIDTH }}>
       <Svg width="100%" height="100%">
         <Defs>
-          <LinearGradient id="ingredientRowFade" x1="0" y1="0" x2="1" y2="0">
+          <LinearGradient id={id} x1="0" y1="0" x2="1" y2="0">
             <Stop offset="0" stopColor="#ffffff" stopOpacity="0" />
             <Stop offset="1" stopColor="#ffffff" stopOpacity="0.95" />
           </LinearGradient>
         </Defs>
-        <Rect width="100%" height="100%" fill="url(#ingredientRowFade)" />
+        <Rect width="100%" height="100%" fill={`url(#${id})`} />
       </Svg>
     </View>
   );
