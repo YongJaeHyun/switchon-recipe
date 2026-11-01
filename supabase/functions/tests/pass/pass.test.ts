@@ -5,7 +5,6 @@ import {
   GRACE_MS,
   hasUsedFirstPurchaseDiscount,
   getSalesState,
-  isFreeActive,
   isPurchaseEligible,
   PASS_DAYS,
   PASS_EXTENSION_DAYS,
@@ -112,8 +111,8 @@ describe('getSalesState', () => {
       tier: 'early2',
       productId: 'switchon_pass_5w_2900',
       priceKrw: 2900,
-      freeActive: true,
-      freeDaysLeft: 14,
+      freeActive: false,
+      freeDaysLeft: 0,
       firstPurchaseDiscount: true,
     });
     expect(state.nextTier).toEqual({
@@ -134,8 +133,8 @@ describe('getSalesState', () => {
   it('14일째 끝: 아직 2,900원', () => {
     const state = getSalesState(new Date('2026-11-14T14:59:59Z'), setting);
     expect(state.tier).toBe('early2');
-    expect(state.freeActive).toBe(true);
-    expect(state.freeDaysLeft).toBe(1);
+    expect(state.freeActive).toBe(false);
+    expect(state.freeDaysLeft).toBe(0);
   });
 
   it('15일째: 모두 4,900원, 할인 표시 없음', () => {
@@ -157,7 +156,7 @@ describe('getSalesState', () => {
     });
     expect(state).toMatchObject({
       onSale: true,
-      freeActive: true,
+      freeActive: false,
       tier: 'regular',
       productId: 'switchon_pass_5w_4900',
       priceKrw: 4900,
@@ -192,19 +191,6 @@ describe('hasUsedFirstPurchaseDiscount', () => {
       ])
     ).toBe(false);
     expect(hasUsedFirstPurchaseDiscount([])).toBe(false);
-  });
-});
-
-describe('isFreeActive', () => {
-  it('matches getSalesState.freeActive across boundaries', () => {
-    expect(isFreeActive(new Date('2026-10-31T14:59:59Z'), setting)).toBe(false);
-    expect(isFreeActive(new Date('2026-10-31T15:00:00Z'), setting)).toBe(true);
-    expect(isFreeActive(new Date('2026-11-14T14:59:59Z'), setting)).toBe(true);
-    expect(isFreeActive(new Date('2026-11-14T15:00:00Z'), setting)).toBe(false);
-  });
-
-  it('설정 없음이면 항상 false', () => {
-    expect(isFreeActive(new Date('2026-11-05T00:00:00Z'), noSetting)).toBe(false);
   });
 });
 

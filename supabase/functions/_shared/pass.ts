@@ -62,11 +62,12 @@ export interface PremiumSetting {
 
 export interface SalesState {
   onSale: boolean;
+  // 전원 무료 이용 기간은 없앴다(운영자 결정 2026-11-01): 6.0 앱이 읽는 필드라 남겨 두고 항상 false
   freeActive: boolean;
   tier: Tier | null;
   productId: string | null;
   priceKrw: number | null;
-  freeDaysLeft: number; // 오늘 포함, 무료 기간 아니면 0
+  freeDaysLeft: number; // 항상 0 (freeActive 참고)
   nextTier: { tier: Tier; priceKrw: number; startsAt: string } | null; // ISO, 다음 가격 변경 시각
   // 1주 패스: 판매 중이면 늘 같은 가격. 5주 패스(productId/priceKrw)와 함께 고를 수 있게 내려준다
   weekPass: typeof WEEK_PASS_PRODUCT | null;
@@ -116,19 +117,7 @@ const kstMidnightInstant = (dateStr: string, addDays = 0): Date => {
   return new Date(utcDateOnlyMs - KST_OFFSET_MS);
 };
 
-// now가 속한 KST 날짜를 'YYYY-MM-DD'로.
-const kstDateString = (now: Date): string =>
-  new Date(now.getTime() + KST_OFFSET_MS).toISOString().slice(0, 10);
-
-// 두 'YYYY-MM-DD' 날짜(캘린더 날짜, 타임존 무관) 사이의 일수 차이.
-const daysBetweenYmd = (fromStr: string, toStr: string): number => {
-  const from = parseYmd(fromStr);
-  const to = parseYmd(toStr);
-  const ms = Date.UTC(to.y, to.m - 1, to.d) - Date.UTC(from.y, from.m - 1, from.d);
-  return Math.round(ms / DAY_MS);
-};
-
-// 출시 할인 기간 = 무료 기간: free_start 00:00 KST ~ free_end 다음날 00:00 KST
+// 출시 할인 기간: free_start 00:00 KST ~ free_end 다음날 00:00 KST (이름과 달리 무료 이용은 없다)
 interface LaunchWindow {
   start: Date;
   end: Date;
@@ -141,13 +130,6 @@ const launchWindow = (setting: PremiumSetting): LaunchWindow | null => {
     end: kstMidnightInstant(setting.freeEnd, 1),
   };
 };
-
-export function isFreeActive(now: Date, setting: PremiumSetting): boolean {
-  const launch = launchWindow(setting);
-  if (!launch) return false;
-  const t = now.getTime();
-  return t >= launch.start.getTime() && t < launch.end.getTime();
-}
 
 // discountUsed: 이 유저가 5주 패스 첫 구매 할인을 이미 썼는지 (hasUsedFirstPurchaseDiscount)
 export function getSalesState(
@@ -173,7 +155,7 @@ export function getSalesState(
   const t = now.getTime();
   const launchTier: Tier = discountUsed ? 'regular' : FIRST_PURCHASE_DISCOUNT_TIER;
 
-  // 무료 기간 시작 전에는 팔지 않음: 하루 먼저 산 사람이 정가를 내는 일을 막기 위해 (운영자 결정)
+  // 할인 기간 시작 전에는 팔지 않음: 하루 먼저 산 사람이 정가를 내는 일을 막기 위해 (운영자 결정)
   if (t < launch.start.getTime()) {
     return {
       onSale: false,
@@ -192,13 +174,9 @@ export function getSalesState(
     };
   }
 
-  const freeActive = t < launch.end.getTime();
-  const tier: Tier = freeActive ? launchTier : 'regular';
+  const inLaunch = t < launch.end.getTime();
+  const tier: Tier = inLaunch ? launchTier : 'regular';
   const { productId, priceKrw } = PASS_PRODUCTS[tier];
-
-  const freeDaysLeft = freeActive
-    ? daysBetweenYmd(kstDateString(now), setting.freeEnd as string) + 1
-    : 0;
 
   // 할인가로 파는 동안만 다음 가격(할인 기간이 끝나면 4,900원)을 알려준다
   const nextTier: SalesState['nextTier'] =
@@ -212,11 +190,11 @@ export function getSalesState(
 
   return {
     onSale: true,
-    freeActive,
+    freeActive: false,
     tier,
     productId,
     priceKrw,
-    freeDaysLeft,
+    freeDaysLeft: 0,
     nextTier,
     weekPass: WEEK_PASS_PRODUCT,
     firstPurchaseDiscount: tier === FIRST_PURCHASE_DISCOUNT_TIER,
