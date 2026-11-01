@@ -25,7 +25,7 @@ const LABEL_FONT_SCALE_MAX = 1.2;
 const weekLabel = (week: number) => (week >= MAINTENANCE_WEEK ? '유지기' : `${week}주차`);
 
 // "지금 몇 주차 며칠인가요?" — 주차 칩(1~4주차·유지기)과 일차 칩(1~7일). 주차마다 그 주차 색을 쓴다
-// (테두리·채움은 주차 색, 채운 칸 글자는 흰색 getWeekOnColorHex, 빈 칸 글자는 getWeekInkHex).
+// (고른 주차 칸만 주차 색 채움 + 흰 글자, 안 고른 주차 칸은 회색. 일차 칸의 지난 날 글자는 getWeekInkHex).
 // 유지기는 일차를 따지지 않아 일차 칩 대신 안내 한 줄을 보여 준다 (5주차 1일로 계산)
 export function WeekDayPicker({ week, day, onChange, disabled }: WeekDayPickerProps) {
   const isMaintenance = week >= MAINTENANCE_WEEK;
@@ -43,14 +43,17 @@ export function WeekDayPicker({ week, day, onChange, disabled }: WeekDayPickerPr
               accessibilityState={{ checked: selected, disabled }}
               accessibilityLabel={weekLabel(w)}
               onPress={() => onChange({ week: w, day: w >= MAINTENANCE_WEEK ? 1 : day })}
-              className={`h-11 flex-1 items-center justify-center rounded-full border-2 ${getWeekBorderColor(w)} ${
-                selected ? getWeekBGColor(w) : 'bg-white'
+              // 고른 주차만 주차 색으로 채우고, 나머지는 회색 (운영자 결정 2026-11-01)
+              className={`h-11 flex-1 items-center justify-center rounded-full border-2 ${
+                selected
+                  ? `${getWeekBorderColor(w)} ${getWeekBGColor(w)}`
+                  : 'border-neutral-200 bg-white'
               }`}>
               <Text
                 numberOfLines={1}
                 maxFontSizeMultiplier={LABEL_FONT_SCALE_MAX}
-                className="text-base font-bold"
-                style={{ color: selected ? getWeekOnColorHex(w) : getWeekInkHex(w) }}>
+                className={selected ? 'text-base font-bold' : 'text-base font-medium'}
+                style={{ color: selected ? getWeekOnColorHex(w) : colors.neutral[400] }}>
                 {weekLabel(w)}
               </Text>
             </Pressable>
