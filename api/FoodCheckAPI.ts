@@ -142,4 +142,13 @@ const getQuota = async (): Promise<PremiumQuotaStatus> => {
   return quota;
 };
 
-export const FoodCheckAPI = { check, list, get, getQuota };
+// 원본 사진 signed URL (상세 화면에서 크게 보여 줄 때). 원본은 30일 뒤 지워지므로 없으면 null → 썸네일로 대신
+const signImage = async (path: string): Promise<string | null> => {
+  const { data, error } = await supabase.storage
+    .from(BUCKET)
+    .createSignedUrl(path, SIGNED_URL_EXPIRES_IN);
+  if (error || !data?.signedUrl) return null;
+  return data.signedUrl;
+};
+
+export const FoodCheckAPI = { check, list, get, getQuota, signImage };

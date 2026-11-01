@@ -1,9 +1,12 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useQuery } from '@tanstack/react-query';
+import { FoodCheckAPI } from 'api/FoodCheckAPI';
 import { FoodCheckResultCard } from 'components/foodCheck/FoodCheckResultCard';
 import { Text } from 'components/common/Text';
 import { KakaoShareButton } from 'components/share/KakaoShareButton';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
+import { QueryKey } from 'const/queryKey';
 import { useFoodCheck } from 'hooks/useFoodChecks';
 import { ActivityIndicator, ScrollView, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -31,6 +34,13 @@ const Header = () => (
 export default function FoodCheckDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: check, isLoading, isError } = useFoodCheck(Number(id));
+  // 원본 사진 (크게 보여 줄 때만 받는다)
+  const { data: photoUrl } = useQuery({
+    queryKey: [QueryKey.foodChecks, 'photo', check?.imagePath],
+    queryFn: () => FoodCheckAPI.signImage(check?.imagePath as string),
+    enabled: !!check?.imagePath,
+    staleTime: 50 * 60 * 1000,
+  });
 
   // 성분표 찍기: 입력 화면으로 돌아가 카메라를 연다 (새 사진 한 장으로 다시 판정)
   const handleCheckLabel = () =>
@@ -52,30 +62,42 @@ export default function FoodCheckDetailScreen() {
         </View>
       ) : (
         <ScrollView contentContainerClassName="gap-4 px-5 pb-10 pt-2">
-          <View className="flex-row items-center gap-3">
-            <View className="h-16 w-16 items-center justify-center overflow-hidden rounded-lg bg-neutral-100">
-              {check.thumbUrl ? (
+          {/* 사진으로 판정했으면 맨 위에 크게 (원본, 없으면 썸네일). 글자 입력이면 예전처럼 작은 아이콘 줄 */}
+          {check.thumbUrl ? (
+            <View className="gap-2">
+              <View className="aspect-[4/3] w-full overflow-hidden rounded-2xl bg-neutral-100">
                 <Image
-                  source={{ uri: check.thumbUrl }}
-                  style={{ width: 64, height: 64 }}
+                  source={{ uri: photoUrl ?? check.thumbUrl }}
+                  placeholder={{ uri: check.thumbUrl }}
+                  style={{ width: '100%', height: '100%' }}
                   contentFit="cover"
+                  transition={200}
                 />
-              ) : (
+              </View>
+              <Text className="text-xs text-neutral-400">
+                {INPUT_TYPE_LABEL[check.inputType]} · {formatKoreanDate(check.createdAt)}
+              </Text>
+            </View>
+          ) : (
+            <View className="flex-row items-center gap-3">
+              <View className="h-16 w-16 items-center justify-center overflow-hidden rounded-lg bg-neutral-100">
                 <MaterialIcons
                   name={check.inputType === 'text' ? 'edit-note' : 'image'}
                   size={32}
                   color={colors.neutral[400]}
                 />
-              )}
+              </View>
+              <View className="flex-1 gap-0.5">
+                <Text className="text-sm text-neutral-500">
+                  {INPUT_TYPE_LABEL[check.inputType]}
+                  {check.inputText ? ` · ${check.inputText}` : ''}
+                </Text>
+                <Text className="text-xs text-neutral-400">
+                  {formatKoreanDate(check.createdAt)}
+                </Text>
+              </View>
             </View>
-            <View className="flex-1 gap-0.5">
-              <Text className="text-sm text-neutral-500">
-                {INPUT_TYPE_LABEL[check.inputType]}
-                {check.inputText ? ` · ${check.inputText}` : ''}
-              </Text>
-              <Text className="text-xs text-neutral-400">{formatKoreanDate(check.createdAt)}</Text>
-            </View>
-          </View>
+          )}
 
           <FoodCheckResultCard check={check} onCheckLabel={handleCheckLabel} />
 
