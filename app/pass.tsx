@@ -4,6 +4,7 @@ import { UserAPI } from 'api/UserAPI';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import { PassFeatureGallery } from 'components/pass/PassFeatureGallery';
+import { RefundGuideModal } from 'components/pass/RefundGuideModal';
 import { type PassFeatureId, toPassFeatureId } from 'const/passFeatures';
 import { QueryKey } from 'const/queryKey';
 import { TIME_ZONE } from 'const/const';
@@ -414,6 +415,7 @@ export default function PassScreen() {
 
   // 고른 상품. 처음엔 추천 상품(null → 첫 상품)
   const [selectedKind, setSelectedKind] = useState<PassOptionKind | null>(null);
+  const [refundVisible, setRefundVisible] = useState(false);
   // 4주차부터는 1주 패스를 추천·기본 선택한다. 딥링크·알림으로 앱을 막 켜 유저를 아직 불러오지 않았으면
   // 주차를 모르므로('loading') 추천하지 않고, 불러오면 다시 그린다
   const startDate = useUserStore((state) => state.start_date);
@@ -582,6 +584,18 @@ export default function PassScreen() {
           <Text className="text-center text-xs text-neutral-400">
             패스 기능을 쓰기 시작하면 단순 변심으로는 환불되지 않아요. 구매 후 48시간 안에는 Play
             스토어에서 환불을 요청할 수 있어요.
+            {/* 환불 안내 창은 패스를 산 사람에게만 (제한 안내 문장은 결제 전에 모두가 봐야 해서 그대로) */}
+            {hasPass && (
+              <>
+                {' '}
+                <Text
+                  className="text-xs font-bold text-neutral-500 underline"
+                  onPress={() => setRefundVisible(true)}
+                  accessibilityRole="link">
+                  환불 안내
+                </Text>
+              </>
+            )}
           </Text>
         </View>
       </>
@@ -592,6 +606,7 @@ export default function PassScreen() {
     <SafeAreaView className="flex-1 bg-white">
       <Header />
       {renderBody()}
+      <RefundGuideModal visible={refundVisible} onClose={() => setRefundVisible(false)} />
     </SafeAreaView>
   );
 }

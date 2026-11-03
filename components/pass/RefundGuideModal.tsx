@@ -12,7 +12,7 @@ interface RefundGuideModalProps {
   onClose: () => void;
 }
 
-// 내 정보 탭 > 환불 안내. 결제는 Google Play가 처리해서 앱 안에서는 환불하지 않는다.
+// 패스 화면 결제 버튼 아래 [환불 안내]. 결제는 Google Play가 처리해서 앱 안에서는 환불하지 않는다.
 // 정책(운영자 2026-11-03): 48시간 안은 Play에서 직접, 그 뒤는 결제 오류·중복 결제 등 문제가 있을 때만.
 // 환불되면 서버(sync-voided-purchases)가 그 구매로 받은 패스 기간을 회수한다
 export function RefundGuideModal({ visible, onClose }: RefundGuideModalProps) {

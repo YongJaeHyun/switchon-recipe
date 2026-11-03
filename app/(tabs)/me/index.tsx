@@ -10,7 +10,6 @@ import { Text } from 'components/common/Text';
 import AllNoticesModal from 'components/home/AllNoticesModal';
 import { StartDateBottomSheet } from 'components/home/StartDateBottomSheet';
 import { MealAlarmSetting } from 'components/me/MealAlarmSetting';
-import { RefundGuideModal } from 'components/me/RefundGuideModal';
 import { StartDateRow } from 'components/me/StartDateRow';
 import { ReportReminderToggle } from 'components/me/ReportReminderToggle';
 import { WeightReminderToggle } from 'components/me/WeightReminderToggle';
@@ -62,7 +61,6 @@ export default function MeScreen() {
 
   const [isModalVisible, setModalVisible] = useState(false);
   const [isNoticesVisible, setNoticesVisible] = useState(false);
-  const [isRefundVisible, setRefundVisible] = useState(false);
   const startDateSheetRef = useRef<BottomSheet>(null);
 
   const { status: passStatus } = usePass();
@@ -161,13 +159,6 @@ export default function MeScreen() {
               icon={<MaterialIcons name="campaign" size={24} color={colors.neutral[600]} />}
               onPress={() => setNoticesVisible(true)}
             />
-            {(passRemaining || passOnSale) && (
-              <MenuButton
-                title="패스 환불 안내"
-                icon={<MaterialIcons name="receipt-long" size={24} color={colors.neutral[600]} />}
-                onPress={() => setRefundVisible(true)}
-              />
-            )}
             <Link href={'/(inquiry)'} asChild>
               <MenuButton
                 title="문의하기"
@@ -211,7 +202,6 @@ export default function MeScreen() {
       </ScrollView>
 
       <AllNoticesModal visible={isNoticesVisible} onClose={() => setNoticesVisible(false)} />
-      <RefundGuideModal visible={isRefundVisible} onClose={() => setRefundVisible(false)} />
       <StartDateBottomSheet bottomSheetRef={startDateSheetRef} />
     </View>
   );
