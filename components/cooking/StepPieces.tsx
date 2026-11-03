@@ -13,7 +13,6 @@ const MARK_CLASS: Record<Tone, Record<'amount' | 'heat', string>> = {
   dark: { amount: 'text-green-300', heat: 'text-amber-300' },
   // 팁 상자 안은 색 없이 굵게만
   tip: { amount: 'font-bold', heat: 'font-bold' },
-  // 끝낸 단계는 강조 없이 흐리게
 };
 
 export function StepPieces({
