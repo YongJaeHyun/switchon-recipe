@@ -120,7 +120,17 @@ export function getRepeatWeekNote(option: PassOption): string | null {
     : null;
 }
 
-// 패스 레시피 하루 한도 (quota_setting.pass_daily). 못 불러왔으면 줄을 숨긴다
-export function getPassRecipeLine(passDaily: number | undefined): string | null {
-  return passDaily === undefined ? null : `레시피 하루 ${passDaily}개, 광고 없이`;
+// 패스 레시피 줄 (quota_setting). 무료도 광고를 보면 같은 개수까지 만들 수 있어서
+// "광고 없이 바로"를 먼저 보이고, 아래에 패스가 없을 때와 비교한다. 못 불러왔으면 줄을 숨긴다
+export function getPassRecipeLine(
+  setting: { passDaily: number; freeDaily: number; adBonusDaily: number } | undefined
+): { title: string; description: string } | null {
+  if (!setting) return null;
+  return {
+    title: `광고 없이 바로, 레시피 하루 ${setting.passDaily}개`,
+    description:
+      setting.adBonusDaily > 0
+        ? `패스가 없으면 하루 ${setting.freeDaily}개, 더 만들려면 광고를 봐야 해요`
+        : `패스가 없으면 하루 ${setting.freeDaily}개까지 만들 수 있어요`,
+  };
 }

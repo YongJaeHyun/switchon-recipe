@@ -339,13 +339,15 @@ const FeatureList = ({
   recipeLine,
   initialId,
 }: {
-  recipeLine: string | null;
+  recipeLine: { title: string; description: string } | null;
   initialId: PassFeatureId | null;
 }) => (
   <View className="gap-4">
     <Text className="text-base font-bold text-neutral-900">패스로 쓸 수 있는 것</Text>
     <PassFeatureGallery initialId={initialId} />
-    {recipeLine && <FeatureRow icon="menu-book" title={recipeLine} />}
+    {recipeLine && (
+      <FeatureRow icon="menu-book" title={recipeLine.title} description={recipeLine.description} />
+    )}
   </View>
 );
 
@@ -539,10 +541,7 @@ export default function PassScreen() {
       <>
         <ScrollView contentContainerClassName="gap-8 px-5 pb-6 pt-4">
           <JourneyHero status={status} option={selected} scheduleLoading={scheduleLoading} />
-          <FeatureList
-            recipeLine={getPassRecipeLine(quotaSetting?.passDaily)}
-            initialId={featureId}
-          />
+          <FeatureList recipeLine={getPassRecipeLine(quotaSetting)} initialId={featureId} />
           <View className="gap-3" accessibilityRole="radiogroup">
             {status.sales.freeActive && (
               <Text className="text-sm font-bold text-green-700">

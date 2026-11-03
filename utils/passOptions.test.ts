@@ -248,9 +248,17 @@ describe('getRepeatWeekNote', () => {
 });
 
 describe('getPassRecipeLine', () => {
-  it('패스 하루 한도를 설정값으로 보여준다', () => {
-    expect(getPassRecipeLine(20)).toBe('레시피 하루 20개, 광고 없이');
-    expect(getPassRecipeLine(30)).toBe('레시피 하루 30개, 광고 없이');
+  it('광고 없이 바로가 먼저 보이고, 아래에 무료와 비교', () => {
+    expect(getPassRecipeLine({ passDaily: 10, freeDaily: 3, adBonusDaily: 7 })).toEqual({
+      title: '광고 없이 바로, 레시피 하루 10개',
+      description: '패스가 없으면 하루 3개, 더 만들려면 광고를 봐야 해요',
+    });
+  });
+
+  it('광고 보너스가 없으면 비교 문구에서 광고를 뺀다', () => {
+    expect(getPassRecipeLine({ passDaily: 10, freeDaily: 3, adBonusDaily: 0 })?.description).toBe(
+      '패스가 없으면 하루 3개까지 만들 수 있어요'
+    );
   });
 
   it('설정을 못 불러왔으면 null', () => {
