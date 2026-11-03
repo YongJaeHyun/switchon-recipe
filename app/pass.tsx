@@ -578,6 +578,11 @@ export default function PassScreen() {
           <Text className="text-center text-xs text-neutral-400">
             한 번만 결제해요. 자동으로 다시 결제되지 않아요. Google Play로 결제되고 바로 적용돼요.
           </Text>
+          {/* 디지털 콘텐츠 청약철회 제한 안내: 결제 전에 보이게 결제 버튼 바로 아래 (운영자 결정 2026-11-03) */}
+          <Text className="text-center text-xs text-neutral-400">
+            패스 기능을 쓰기 시작하면 단순 변심으로는 환불되지 않아요. 구매 후 48시간 안에는 Play
+            스토어에서 환불을 요청할 수 있어요.
+          </Text>
         </View>
       </>
     );

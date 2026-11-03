@@ -13,6 +13,7 @@ interface RefundGuideModalProps {
 }
 
 // 내 정보 탭 > 환불 안내. 결제는 Google Play가 처리해서 앱 안에서는 환불하지 않는다.
+// 정책(운영자 2026-11-03): 48시간 안은 Play에서 직접, 그 뒤는 결제 오류·중복 결제 등 문제가 있을 때만.
 // 환불되면 서버(sync-voided-purchases)가 그 구매로 받은 패스 기간을 회수한다
 export function RefundGuideModal({ visible, onClose }: RefundGuideModalProps) {
   const openInquiry = () => {
@@ -47,7 +48,8 @@ export function RefundGuideModal({ visible, onClose }: RefundGuideModalProps) {
             <View className="gap-1">
               <Text className="text-base font-bold text-neutral-800">48시간이 지났다면</Text>
               <Text className="text-sm leading-5 text-neutral-600">
-                문의사항에 환불 문의로 남겨 주세요. 확인한 뒤 답변으로 안내해 드려요.
+                단순 변심으로는 환불되지 않아요. 결제 오류나 중복 결제처럼 문제가 있었다면 환불
+                문의로 남겨 주세요. 확인해서 처리해 드려요.
               </Text>
             </View>
 
