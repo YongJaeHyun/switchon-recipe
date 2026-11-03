@@ -6,6 +6,7 @@ import {
   recipeRuleWeek,
   recipeSaveWeek,
   restoreChosenWeek,
+  ingredientRecipeWeek,
   weekChoiceLabel,
   weekPrunedMessage,
   NAME_WEEK_CHOICES,
@@ -146,5 +147,31 @@ describe('이름으로 만들기 주차 (1주차 / 2주차 / 3주차+)', () => {
     expect(nameRequestWeek(3, 7)).toBe(5);
     expect(nameRequestWeek(3, 1)).toBe(3);
     expect(nameRequestWeek(2, 4)).toBe(2);
+  });
+});
+
+describe('ingredientRecipeWeek', () => {
+  const w = (week: number) => ({ week });
+
+  it('고른 재료 중 가장 높은 주차 (지금 3주차라도 2주차 재료만이면 2주차)', () => {
+    expect(ingredientRecipeWeek([w(1), w(2)], 3)).toBe(2);
+    expect(ingredientRecipeWeek([w(1)], 5)).toBe(1);
+    expect(ingredientRecipeWeek([w(2), w(3)], 3)).toBe(3);
+  });
+
+  it('저탄수 탄수화물 재료(4)는 그대로 4 → 규칙 4주차, 저장 3주차', () => {
+    expect(ingredientRecipeWeek([w(2), w(4)], 4)).toBe(4);
+  });
+
+  it('고른 주차를 넘지 않는다', () => {
+    expect(ingredientRecipeWeek([w(3)], 2)).toBe(2);
+  });
+
+  it('재료 없이 아무거나 만들면 고른 주차', () => {
+    expect(ingredientRecipeWeek([], 3)).toBe(3);
+  });
+
+  it('주차를 모르는 재료는 1주차로 본다', () => {
+    expect(ingredientRecipeWeek([w(Number.NaN)], 3)).toBe(1);
   });
 });

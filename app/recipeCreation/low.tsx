@@ -26,7 +26,7 @@ import {
 import colors from 'tailwindcss/colors';
 import { RecipeCategory, RecipeMethod } from 'types/recipe';
 import { ingredientListsForWeek, ingredientsForWeek } from 'utils/ingredientLists';
-import { recipeRuleWeek, recipeSaveWeek } from 'utils/recipeWeekChoice';
+import { ingredientRecipeWeek, recipeRuleWeek, recipeSaveWeek } from 'utils/recipeWeekChoice';
 import { isCompletedHangul } from 'utils/hangul';
 
 export default function LowRecipeCreationScreen() {
@@ -88,8 +88,10 @@ export default function LowRecipeCreationScreen() {
     const usable = ingredientsForWeek(selectedIngredients, chosenWeek);
     const ingredients = usable.map((ingredient) => ingredient.name).join(', ');
 
-    const availableWeek = recipeRuleWeek(chosenWeek);
-    const recipeWeek = recipeSaveWeek(chosenWeek);
+    // 레시피 주차는 고른 재료 중 가장 높은 주차 (2주차 재료만이면 3주차에 만들어도 2주차 레시피)
+    const week = ingredientRecipeWeek(usable, chosenWeek);
+    const availableWeek = recipeRuleWeek(week);
+    const recipeWeek = recipeSaveWeek(week);
 
     let command = '';
 

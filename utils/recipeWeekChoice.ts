@@ -17,6 +17,18 @@ export const defaultChosenWeek = (currentWeek: number) => {
 export const recipeRuleWeek = (week: number) => Math.min(week, 4);
 export const recipeSaveWeek = (week: number) => Math.min(week, 3);
 
+// 재료로 만든 레시피의 주차 = 고른 재료 중 가장 높은 주차 (운영자 결정 2026-11-03).
+// 명령문에 주차별 규칙이 없어 같은 재료면 3주차에 만들어도 2주차 레시피와 같으므로, 2주차 사용자도 보게 한다.
+// 고른 주차는 넘지 않고, 재료 없이 아무거나 만들면 고른 주차. 결과는 recipeRuleWeek/recipeSaveWeek에 넣는다
+export const ingredientRecipeWeek = (selected: { week: number }[], chosenWeek: number) => {
+  if (selected.length === 0) return chosenWeek;
+  const highest = selected.reduce(
+    (max, i) => (Number.isFinite(i.week) && i.week > max ? i.week : max),
+    1
+  );
+  return Math.min(highest, chosenWeek);
+};
+
 // 주차를 바꿨을 때 그 주차에 못 쓰는 선택 재료를 뺀다
 export const pruneSelectionForWeek = <T extends { week: number }>(selected: T[], week: number) => {
   const kept = ingredientsForWeek(selected, week);
