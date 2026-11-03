@@ -3,12 +3,19 @@ import { BottomSheetMethods } from '@gorhom/bottom-sheet/lib/typescript/types';
 import ConfirmModal from 'components/common/ConfirmModal';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
+import { WeightGoalCard, WeightGoalPromptCard } from 'components/records/WeightGoalCard';
 import { WeightPlateauCard } from 'components/records/WeightPlateauCard';
 import { WeightChart } from 'components/weight/WeightChart';
-import { WeightInputSheet, type WeightInputTarget } from 'components/weight/WeightInputSheet';
+import { WeightGoalCelebration } from 'components/weight/WeightGoalCelebration';
+import {
+  type WeightGoalRequest,
+  WeightInputSheet,
+  type WeightInputTarget,
+} from 'components/weight/WeightInputSheet';
+import { useFocusEffect } from 'expo-router';
 import { useLivedWeeks } from 'hooks/useLivedWeeks';
-import { useWeights } from 'hooks/useWeights';
-import { useMemo, useRef, useState } from 'react';
+import { useWeightGoal, useWeights } from 'hooks/useWeights';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, TouchableOpacity, View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
 import { useWeightPlateauStore } from 'stores/weightPlateauStore';
@@ -28,6 +35,14 @@ import {
   weightsInPeriod,
   type LivedWeeks,
 } from 'utils/weight';
+import {
+  appendGoalHistory,
+  goalCelebrationTexts,
+  goalHistoryEntryToAdd,
+  goalMarks,
+  goalProgress,
+  inbodyGoalLines,
+} from 'utils/weightGoal';
 import { findWeightPlateau, isPlateauDismissed } from 'utils/weightPlateau';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -98,7 +113,8 @@ const LogRow = ({
   );
 };
 
-// 기록 탭 > 체중 칸: 그래프·오늘 기록 버튼·날짜별 기록 목록
+// 기록 탭 > 체중 칸: 목표 카드·그래프·오늘 기록 버튼·날짜별 기록 목록.
+// 목표 카드는 목표를 읽었을 때만 (열이 없거나 실패하면 숨김). 감량 목표에 처음 닿은 걸 보면 달성 기록에 넣고 한 번 축하한다
 export function WeightSection() {
   const startDate = useUserStore((state) => state.start_date) || null;
   const programStart = useUserStore((state) => state.program_start) || null;
@@ -110,6 +126,19 @@ export function WeightSection() {
   const [allPeriod, setAllPeriod] = useState(false);
   const [target, setTarget] = useState<WeightInputTarget | null>(null);
   const [deleting, setDeleting] = useState<WeightLogDB | null>(null);
+  const [goalRequest, setGoalRequest] = useState<WeightGoalRequest | null>(null);
+  const { goal, status: goalStatus, saveGoal } = useWeightGoal();
+  const [celebration, setCelebration] = useState<{ title: string; message: string } | null>(null);
+  // 이 화면이 보일 때만 달성을 확인한다 (다른 탭에서 저장해도 이 탭에 와서 축하)
+  const [focused, setFocused] = useState(false);
+  useFocusEffect(
+    useCallback(() => {
+      setFocused(true);
+      return () => setFocused(false);
+    }, [])
+  );
+  // 같은 달성을 저장하는 중에 두 번 넣지 않게
+  const recordingRef = useRef<string | null>(null);
 
   // 기간은 회차 시작일부터 (한 주 더 하기·주차 맞추기로 시작일이 미뤄져도 같은 회차 기록을 빼지 않는다)
   const opts = useMemo(
@@ -130,6 +159,47 @@ export function WeightSection() {
     [logs, startDate, programStart, today]
   );
   const showPlateau = !!plateau && !isPlateauDismissed(plateauDismissedDay, today);
+  const goalKg = goalStatus === 'set' ? (goal?.weight_goal_kg ?? null) : null;
+  const goalPeriod = useMemo(
+    () => ({ startDate, programStart, history: goal?.history ?? [] }),
+    [startDate, programStart, goal]
+  );
+  const progress = useMemo(
+    () => goalProgress(logs, goalKg, goalPeriod),
+    [logs, goalKg, goalPeriod]
+  );
+  const goalLines = useMemo(
+    () => (goal && goalKg !== null ? inbodyGoalLines(logs, goal, { startDate, programStart }) : []),
+    [logs, goal, goalKg, startDate, programStart]
+  );
+  // 그래프 점: 달성한 날에 "✓ 72kg 달성"
+  const markedPoints = useMemo(() => {
+    const marks = goalMarks(goal?.history ?? []);
+    const days = weightsInPeriod(logs, startDate, opts).map((log) => log.day);
+    return points.map((point, i) => (marks[days[i]] ? { ...point, mark: marks[days[i]] } : point));
+  }, [points, logs, startDate, opts, goal]);
+  const lastDay = useMemo(() => {
+    const inPeriod = weightsInPeriod(logs, startDate, { programStart });
+    return inPeriod[inPeriod.length - 1]?.day ?? null;
+  }, [logs, startDate, programStart]);
+
+  // 감량 목표에 닿았고 달성 기록에 없으면: 기록에 넣고 축하 (기록에 있으면 다시 축하하지 않는다)
+  useEffect(() => {
+    if (!focused || !goal || progress === null) return;
+    const entry = goalHistoryEntryToAdd(progress, lastDay);
+    if (!entry) return;
+    const key = `${entry.goal_kg}:${entry.reached_on}`;
+    if (recordingRef.current === key) return;
+    recordingRef.current = key;
+    setCelebration(goalCelebrationTexts(entry, progress.start));
+    void saveGoal({ weight_goal_history: appendGoalHistory(goal.history, entry) });
+  }, [focused, goal, progress, lastDay, saveGoal]);
+
+  const openGoal = (mode: WeightGoalRequest['mode']) => {
+    setGoalRequest({ mode, at: Date.now() });
+    sheetRef.current?.expand();
+  };
+
   const hasEarlier = useMemo(() => {
     const periodStart = programStartOf(programStart, startDate);
     return !!periodStart && logs.some((log) => log.day < periodStart);
@@ -158,6 +228,20 @@ export function WeightSection() {
       <ScrollView
         contentContainerClassName="gap-6 px-5 pb-10 pt-2"
         showsVerticalScrollIndicator={false}>
+        {!isLoading &&
+          goalStatus !== 'unknown' &&
+          (goalKg !== null ? (
+            <WeightGoalCard
+              goalKg={goalKg}
+              progress={progress}
+              inbodyLines={goalLines}
+              onEdit={() => openGoal('edit')}
+              onNewGoal={() => openGoal('next')}
+            />
+          ) : (
+            <WeightGoalPromptCard onPress={() => openGoal('set')} />
+          ))}
+
         <View className="gap-3 rounded-xl border border-neutral-200 bg-white p-4">
           <View className="flex-row items-end justify-between">
             <View className="gap-0.5">
@@ -189,7 +273,7 @@ export function WeightSection() {
           {isLoading ? (
             <ActivityIndicator color={colors.green[600]} />
           ) : points.length > 0 ? (
-            <WeightChart points={points} height={200} />
+            <WeightChart points={markedPoints} height={200} goalKg={goalKg} />
           ) : (
             <Text className="py-8 text-center text-neutral-400">
               {allPeriod ? '아직 체중 기록이 없어요' : '시작일 이후 체중 기록이 없어요'}
@@ -236,7 +320,16 @@ export function WeightSection() {
         </View>
       </ScrollView>
 
-      <WeightInputSheet bottomSheetRef={sheetRef} target={target} />
+      <WeightInputSheet bottomSheetRef={sheetRef} target={target} goalRequest={goalRequest} />
+
+      <WeightGoalCelebration
+        texts={celebration}
+        onClose={() => setCelebration(null)}
+        onNextGoal={() => {
+          setCelebration(null);
+          openGoal('next');
+        }}
+      />
 
       <ConfirmModal
         type="delete"

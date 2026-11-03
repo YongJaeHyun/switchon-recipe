@@ -10,6 +10,7 @@ import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import { FlashField, InbodyPhotoPanel, type PhotoSource } from 'components/weight/InbodyPhotoPanel';
 import { WeightDateStrip } from 'components/weight/WeightDateStrip';
+import { type WeightGoalMode, WeightGoalStep } from 'components/weight/WeightGoalStep';
 import { CHANNELS } from 'const/channels';
 import { QueryKey } from 'const/queryKey';
 import * as ImagePicker from 'expo-image-picker';
@@ -18,11 +19,12 @@ import { useBillingAvailable } from 'hooks/useBillingAvailable';
 import { usePass } from 'hooks/usePass';
 import { usePassOnlyPrompt } from 'hooks/usePassOnlyPrompt';
 import { PassOnlyModal } from 'components/common/PassOnlyModal';
-import { useUserSetting, useWeights } from 'hooks/useWeights';
+import { useUserSetting, useWeightGoal, useWeights } from 'hooks/useWeights';
 import { queryClient } from 'lib/queryClient';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Keyboard, TouchableOpacity, View } from 'react-native';
 import { useUserStore } from 'stores/userStore';
+import { useWeightGoalStore } from 'stores/weightGoalStore';
 import colors from 'tailwindcss/colors';
 import { Nullable } from 'types/common';
 import {
@@ -69,6 +71,12 @@ import {
   weightSheetSubtitle,
   weightTargetForDay,
 } from 'utils/weightDateStrip';
+import {
+  goalInputTexts,
+  type GoalInputTexts,
+  shouldAskGoalAfterSave,
+  type WeightGoal,
+} from 'utils/weightGoal';
 
 export type { WeightInputTarget };
 
@@ -142,9 +150,24 @@ const pickPhoto = async (source: PhotoSource) => {
   return { uri: asset.uri, image: { imageBase64: asset.base64, mimeType } };
 };
 
+// 목표 입력만 열 때 (기록 탭 [정하기]·"목표까지" 카드·다음 목표). at이 바뀔 때마다 목표 단계로 바꾼다
+export interface WeightGoalRequest {
+  mode: Exclude<WeightGoalMode, 'ask'>;
+  at: number;
+}
+
 interface WeightInputSheetProps {
   bottomSheetRef: React.RefObject<Nullable<BottomSheetMethods>>;
   target: Nullable<WeightInputTarget>;
+  goalRequest?: Nullable<WeightGoalRequest>;
+}
+
+// 목표 단계: 어떤 입력으로 열었는지와 처음 채울 칸. key는 열 때마다 칸을 새로 만든다
+interface GoalStepState {
+  mode: WeightGoalMode;
+  recordedKg?: number;
+  texts: GoalInputTexts;
+  key: number;
 }
 
 const formatDayLabel = (day: string) => {
@@ -160,12 +183,26 @@ const formatDayLabel = (day: string) => {
 // 결과지면 시트 날짜). 결과지 날짜로 저장할 때 못 읽은 칸은 그날 기존 값(없으면 빈칸)으로 맞춘다.
 // 사진 읽기는 스위치온 패스 전용 (패스가 없으면 결제 화면으로). 직접 입력은 누구나.
 // 맨 위 날짜 줄에서 (회차 시작 7일 전 ~ 오늘) 다른 날을 고르면 시트가 그날을 겨눈다 (그날 값으로 다시 채움,
-// 결과지를 읽은 뒤면 읽은 값 + 그날 기존 값). 여는 쪽(target)은 처음 겨눌 날만 정한다
-export function WeightInputSheet({ bottomSheetRef, target: openedTarget }: WeightInputSheetProps) {
+// 결과지를 읽은 뒤면 읽은 값 + 그날 기존 값). 여는 쪽(target)은 처음 겨눌 날만 정한다.
+// 처음 기록(저장 전 기록 0건)이고 목표가 없으면 저장 뒤 창을 닫지 않고 목표 묻기 단계로 바꾼다 ([나중에 정할게요]로
+// 넘기면 이 기기에서는 다시 자동으로 묻지 않는다). 아침 알림 질문은 목표 단계가 끝난 뒤에 묻는다.
+// goalRequest로 열면 처음부터 목표 단계 (기록 탭에서 목표를 정하거나 바꿀 때)
+export function WeightInputSheet({
+  bottomSheetRef,
+  target: openedTarget,
+  goalRequest,
+}: WeightInputSheetProps) {
   // 키보드를 닫으면 시트도 원래 높이로 (이름으로 만들기 시트와 같다)
   useBlurOnKeyboardHide();
   const { logs, isLogsFetched, saveWeight, isSaving } = useWeights();
   const { setting, isFetched, isError, updateSetting } = useUserSetting();
+  const { goal, status: goalStatus, saveGoal, isSavingGoal } = useWeightGoal();
+  const uid = useUserStore((state) => state.id);
+  const goalSkipped = useWeightGoalStore((state) => !!uid && state.skippedUids.includes(uid));
+  const markGoalSkipped = useWeightGoalStore((state) => state.markSkipped);
+  const [goalStep, setGoalStep] = useState<GoalStepState | null>(null);
+  // 목표 단계가 끝나면(저장·건너뛰기·창 닫기) 물을 아침 알림 질문
+  const pendingReminderRef = useRef(false);
   const { status: passStatus } = usePass();
   const startDate = useUserStore((state) => state.start_date) || null;
   const programStart = useUserStore((state) => state.program_start) || null;
@@ -246,7 +283,23 @@ export function WeightInputSheet({ bottomSheetRef, target: openedTarget }: Weigh
   useEffect(() => {
     setTarget(openedTarget);
     resetFor(openedTarget);
+    setGoalStep(null);
   }, [openedTarget]);
+
+  // 목표만 열기: 정하기·바꾸기는 지금 목표로, 다음 목표는 체중 칸만 비우고 인바디 목표는 그대로
+  useEffect(() => {
+    if (!goalRequest) return;
+    const texts = goalInputTexts(
+      goal ?? { weight_goal_kg: null, muscle_goal_kg: null, fat_goal_kg: null }
+    );
+    setGoalStep({
+      mode: goalRequest.mode,
+      texts: goalRequest.mode === 'next' ? { ...texts, weight: '' } : texts,
+      key: goalRequest.at,
+    });
+    // 열 때의 목표로만 채운다 (열린 동안 목표가 다시 받아져도 적던 칸을 덮지 않는다)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [goalRequest]);
 
   // 날짜 줄: 범위는 시트를 연 날 기준 (전체 기간 기록의 옛 날을 열면 그날부터), 고른 칸 = 저장할 날
   const range = useMemo(
@@ -439,6 +492,24 @@ export function WeightInputSheet({ bottomSheetRef, target: openedTarget }: Weigh
     if (!saved) return; // 실패 안내는 API가 했다
 
     Keyboard.dismiss();
+    const askReminderNext = shouldAskWeightReminder({
+      isFetched,
+      isError,
+      setting,
+      hadLogsBefore,
+    });
+    // 처음 기록이면 창을 닫지 않고 목표를 묻는다 ("✓ 기록했어요"가 창 안에 보이므로 토스트는 띄우지 않는다)
+    if (shouldAskGoalAfterSave({ hadLogsBefore, goalStatus, skipped: goalSkipped })) {
+      pendingReminderRef.current = askReminderNext;
+      setGoalStep({
+        mode: 'ask',
+        recordedKg: weight,
+        texts: { weight: '', muscle: '', fat: '' },
+        key: Date.now(),
+      });
+      return;
+    }
+
     bottomSheetRef.current?.close();
     showSuccessToast({
       textType: 'CUSTOM',
@@ -448,8 +519,36 @@ export function WeightInputSheet({ bottomSheetRef, target: openedTarget }: Weigh
           : `${formatDayLabel(saveDay)}에 ${weight.toFixed(1)}kg 기록했어요`,
     });
 
-    if (shouldAskWeightReminder({ isFetched, isError, setting, hadLogsBefore }))
+    if (askReminderNext) setAskReminder(true);
+  });
+
+  // 목표 단계를 마친다: 창을 닫는다 (미뤄 둔 아침 알림 질문은 창이 닫힐 때 묻는다)
+  const finishGoalStep = () => {
+    Keyboard.dismiss();
+    bottomSheetRef.current?.close();
+  };
+
+  // 창이 닫힐 때(목표 저장·건너뛰기·끌어내리기): 첫 기록 목표 묻기를 저장 없이 닫았으면 건너뛴 것으로 본다
+  const handleSheetClose = () => {
+    if (goalStep?.mode === 'ask' && uid && goalStatus !== 'set') markGoalSkipped(uid);
+    setGoalStep(null);
+    if (pendingReminderRef.current) {
+      pendingReminderRef.current = false;
       setAskReminder(true);
+    }
+  };
+
+  const handleSaveGoal = requireOnline(async (next: WeightGoal) => {
+    if (isSavingGoal) return;
+    const hadGoal = goal?.weight_goal_kg != null;
+    const saved = await saveGoal(next);
+    if (!saved) return; // 실패 안내는 API가 했다
+    finishGoalStep();
+    const kg = next.weight_goal_kg?.toFixed(1);
+    showSuccessToast({
+      textType: 'CUSTOM',
+      title: hadGoal ? `목표를 ${kg}kg으로 바꿨어요` : `목표 ${kg}kg을 정했어요`,
+    });
   });
 
   const answerReminder = async (on: boolean) => {
@@ -466,164 +565,182 @@ export function WeightInputSheet({ bottomSheetRef, target: openedTarget }: Weigh
 
   return (
     <>
-      <CustomBottomSheet ref={bottomSheetRef} keyboard={{ keyboardBlurBehavior: 'restore' }}>
-        <BottomSheetView className="px-5">
-          <Text className="mb-3 text-2xl font-bold">체중 기록</Text>
-          {target && (
-            <WeightDateStrip
-              chips={chips}
-              disabled={reading || isSaving}
-              placeKey={openedTarget}
-              onSelect={handleSelectDay}
+      <CustomBottomSheet
+        ref={bottomSheetRef}
+        onClose={handleSheetClose}
+        keyboard={{ keyboardBlurBehavior: 'restore' }}>
+        {goalStep ? (
+          <BottomSheetView className="px-5">
+            <WeightGoalStep
+              key={goalStep.key}
+              mode={goalStep.mode}
+              recordedKg={goalStep.recordedKg}
+              initialTexts={goalStep.texts}
+              saving={isSavingGoal}
+              onSave={(next) => void handleSaveGoal(next)}
+              onSkip={finishGoalStep}
             />
-          )}
-          <Text className="mb-4 text-neutral-500">
-            {saveDay ? weightSheetSubtitle(saveDay, todayKst) : ''}
-          </Text>
-
-          <FlashField
-            flashKey={flashKeys.weight}
-            borderColor={invalid ? colors.red[400] : colors.neutral[300]}
-            className="mb-2 flex-row items-center rounded-xl border px-4">
-            <BottomSheetTextInput
-              style={{ flex: 1, fontSize: 28, fontWeight: '700', paddingVertical: 12 }}
-              value={text}
-              onChangeText={handleChangeText}
-              onBlur={handleBlur}
-              editable={!reading}
-              keyboardType="decimal-pad"
-              placeholder="예: 65.5"
-              placeholderTextColor={colors.neutral[300]}
-              maxLength={6}
-              returnKeyType="done"
-              onSubmitEditing={handleSave}
-            />
-            <Text className="text-xl font-bold text-neutral-500">kg</Text>
-          </FlashField>
-          <Text className={`mb-6 text-sm ${invalid ? 'text-red-500' : 'text-neutral-400'}`}>
-            {invalid
-              ? `${MIN_WEIGHT_KG}~${MAX_WEIGHT_KG}kg 사이로 입력해 주세요`
-              : '소수점 한 자리까지 기록돼요'}
-          </Text>
-          {weightNeeded && saveDay && (
-            <Text className="-mt-4 mb-6 text-sm text-amber-600">
-              {`결과지에서 체중을 읽지 못했어요. ${formatReadDay(saveDay, todayKst)} 체중을 적어 주세요`}
-            </Text>
-          )}
-
-          {/* 인바디 (선택): 잰 날만 적는다. 비워 두면 저장하지 않는다 */}
-          <View className="mb-3 flex-row items-center gap-2">
-            <Text className="font-bold text-neutral-700">인바디</Text>
-            <Text className="text-sm text-neutral-400">(선택)</Text>
-            <View className="h-px flex-1 bg-neutral-200" />
-            {showPhotoButton && (
-              <TouchableOpacity
-                disabled={reading}
-                onPress={handlePhotoPress}
-                hitSlop={8}
-                accessibilityState={{ expanded: photoPanelOpen, disabled: reading }}
-                className={`flex-row items-center gap-1 rounded-full border border-green-600 py-1.5 pl-3 pr-1.5 ${
-                  photoPanelOpen ? 'bg-green-50' : ''
-                } ${reading ? 'opacity-50' : ''}`}>
-                <MaterialIcons name="photo-camera" size={16} color={colors.green[600]} />
-                <Text className="text-sm font-semibold text-green-600">결과지 사진으로 입력</Text>
-                <PassBadge state={passBadgeState(!photoLocked)} />
-              </TouchableOpacity>
+          </BottomSheetView>
+        ) : (
+          <BottomSheetView className="px-5">
+            <Text className="mb-3 text-2xl font-bold">체중 기록</Text>
+            {target && (
+              <WeightDateStrip
+                chips={chips}
+                disabled={reading || isSaving}
+                placeKey={openedTarget}
+                onSelect={handleSelectDay}
+              />
             )}
-          </View>
-          {photoPanelOpen && (
-            <InbodyPhotoPanel
-              readingUri={readingUri}
-              onPick={(source) => void handleReadPhoto(source)}
-              onClose={() => setPhotoPanelOpen(false)}
-            />
-          )}
-          {notice && (
-            <View className="mb-3 flex-row items-start gap-2 rounded-xl bg-neutral-100 px-3 py-2.5">
-              <MaterialIcons name="info-outline" size={18} color={colors.amber[600]} />
-              <Text className="flex-1 text-sm leading-5 text-neutral-700">{notice}</Text>
-            </View>
-          )}
-          <View className={`flex-row gap-3 ${measuredDay ? 'mb-4' : 'mb-6'}`}>
-            {BODY_COMP_FIELDS.map(({ kind, label, placeholder }) => {
-              const fieldInvalid = bodyInvalid(kind);
-              const { min, max } = BODY_COMP_RANGE[kind];
-              return (
-                <View key={kind} className="flex-1">
-                  <Text className="mb-1 text-sm text-neutral-500">{label}</Text>
-                  <FlashField
-                    flashKey={flashKeys[kind]}
-                    borderColor={fieldInvalid ? colors.red[400] : colors.neutral[300]}
-                    className="flex-row items-center rounded-xl border px-3">
-                    <BottomSheetTextInput
-                      style={{ flex: 1, fontSize: 20, fontWeight: '700', paddingVertical: 10 }}
-                      value={bodyText[kind]}
-                      onChangeText={(value) => handleChangeBodyText(kind, value)}
-                      onBlur={() => handleBodyBlur(kind)}
-                      editable={!reading}
-                      keyboardType="decimal-pad"
-                      placeholder={placeholder}
-                      placeholderTextColor={colors.neutral[300]}
-                      maxLength={5}
-                      returnKeyType="done"
-                      onSubmitEditing={handleSave}
-                    />
-                    <Text className="font-bold text-neutral-500">kg</Text>
-                  </FlashField>
-                  {fieldInvalid && (
-                    <Text className="mt-1 text-sm text-red-500">{`${min}~${max}kg 사이로`}</Text>
-                  )}
-                </View>
-              );
-            })}
-          </View>
-
-          {target && measuredDay && (
-            <View className="mb-6 rounded-xl bg-neutral-100 p-3">
-              <Text className="mb-2 text-sm text-neutral-600">
-                {measuredDayOld
-                  ? `결과지 날짜가 ${measuredLabel}로 오래됐어요 · 어느 날로 저장할까요?`
-                  : `결과지 날짜 ${measuredLabel} · 어느 날로 저장할까요?`}
-              </Text>
-              <View className="flex-row gap-2">
-                {[
-                  { use: true, label: `결과지 날짜(${measuredLabel})` },
-                  {
-                    use: false,
-                    label: target.isToday
-                      ? `오늘(${formatMonthDay(target.day)})`
-                      : formatMonthDay(target.day),
-                  },
-                ].map(({ use, label }) => {
-                  const selected = useMeasuredDay === use;
-                  return (
-                    <TouchableOpacity
-                      key={label}
-                      disabled={reading}
-                      onPress={() => readResult && chooseDay(readResult, measuredDay, use)}
-                      className={`flex-1 items-center rounded-xl border py-2.5 ${
-                        selected ? 'border-green-600 bg-green-50' : 'border-neutral-200 bg-white'
-                      }`}>
-                      <Text className={selected ? 'font-bold text-green-600' : 'text-neutral-500'}>
-                        {label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-          )}
-
-          <RippleButton
-            outerClassName={`mb-10 ${isSaving || reading || !text.trim() ? 'opacity-50' : ''}`}
-            className="w-full bg-green-600 py-4"
-            disabled={isSaving || reading || !text.trim()}
-            onPress={handleSave}>
-            <Text className="text-lg font-semibold text-white">
-              {isSaving ? '저장하는 중...' : '저장하기'}
+            <Text className="mb-4 text-neutral-500">
+              {saveDay ? weightSheetSubtitle(saveDay, todayKst) : ''}
             </Text>
-          </RippleButton>
-        </BottomSheetView>
+
+            <FlashField
+              flashKey={flashKeys.weight}
+              borderColor={invalid ? colors.red[400] : colors.neutral[300]}
+              className="mb-2 flex-row items-center rounded-xl border px-4">
+              <BottomSheetTextInput
+                style={{ flex: 1, fontSize: 28, fontWeight: '700', paddingVertical: 12 }}
+                value={text}
+                onChangeText={handleChangeText}
+                onBlur={handleBlur}
+                editable={!reading}
+                keyboardType="decimal-pad"
+                placeholder="예: 65.5"
+                placeholderTextColor={colors.neutral[300]}
+                maxLength={6}
+                returnKeyType="done"
+                onSubmitEditing={handleSave}
+              />
+              <Text className="text-xl font-bold text-neutral-500">kg</Text>
+            </FlashField>
+            <Text className={`mb-6 text-sm ${invalid ? 'text-red-500' : 'text-neutral-400'}`}>
+              {invalid
+                ? `${MIN_WEIGHT_KG}~${MAX_WEIGHT_KG}kg 사이로 입력해 주세요`
+                : '소수점 한 자리까지 기록돼요'}
+            </Text>
+            {weightNeeded && saveDay && (
+              <Text className="-mt-4 mb-6 text-sm text-amber-600">
+                {`결과지에서 체중을 읽지 못했어요. ${formatReadDay(saveDay, todayKst)} 체중을 적어 주세요`}
+              </Text>
+            )}
+
+            {/* 인바디 (선택): 잰 날만 적는다. 비워 두면 저장하지 않는다 */}
+            <View className="mb-3 flex-row items-center gap-2">
+              <Text className="font-bold text-neutral-700">인바디</Text>
+              <Text className="text-sm text-neutral-400">(선택)</Text>
+              <View className="h-px flex-1 bg-neutral-200" />
+              {showPhotoButton && (
+                <TouchableOpacity
+                  disabled={reading}
+                  onPress={handlePhotoPress}
+                  hitSlop={8}
+                  accessibilityState={{ expanded: photoPanelOpen, disabled: reading }}
+                  className={`flex-row items-center gap-1 rounded-full border border-green-600 py-1.5 pl-3 pr-1.5 ${
+                    photoPanelOpen ? 'bg-green-50' : ''
+                  } ${reading ? 'opacity-50' : ''}`}>
+                  <MaterialIcons name="photo-camera" size={16} color={colors.green[600]} />
+                  <Text className="text-sm font-semibold text-green-600">결과지 사진으로 입력</Text>
+                  <PassBadge state={passBadgeState(!photoLocked)} />
+                </TouchableOpacity>
+              )}
+            </View>
+            {photoPanelOpen && (
+              <InbodyPhotoPanel
+                readingUri={readingUri}
+                onPick={(source) => void handleReadPhoto(source)}
+                onClose={() => setPhotoPanelOpen(false)}
+              />
+            )}
+            {notice && (
+              <View className="mb-3 flex-row items-start gap-2 rounded-xl bg-neutral-100 px-3 py-2.5">
+                <MaterialIcons name="info-outline" size={18} color={colors.amber[600]} />
+                <Text className="flex-1 text-sm leading-5 text-neutral-700">{notice}</Text>
+              </View>
+            )}
+            <View className={`flex-row gap-3 ${measuredDay ? 'mb-4' : 'mb-6'}`}>
+              {BODY_COMP_FIELDS.map(({ kind, label, placeholder }) => {
+                const fieldInvalid = bodyInvalid(kind);
+                const { min, max } = BODY_COMP_RANGE[kind];
+                return (
+                  <View key={kind} className="flex-1">
+                    <Text className="mb-1 text-sm text-neutral-500">{label}</Text>
+                    <FlashField
+                      flashKey={flashKeys[kind]}
+                      borderColor={fieldInvalid ? colors.red[400] : colors.neutral[300]}
+                      className="flex-row items-center rounded-xl border px-3">
+                      <BottomSheetTextInput
+                        style={{ flex: 1, fontSize: 20, fontWeight: '700', paddingVertical: 10 }}
+                        value={bodyText[kind]}
+                        onChangeText={(value) => handleChangeBodyText(kind, value)}
+                        onBlur={() => handleBodyBlur(kind)}
+                        editable={!reading}
+                        keyboardType="decimal-pad"
+                        placeholder={placeholder}
+                        placeholderTextColor={colors.neutral[300]}
+                        maxLength={5}
+                        returnKeyType="done"
+                        onSubmitEditing={handleSave}
+                      />
+                      <Text className="font-bold text-neutral-500">kg</Text>
+                    </FlashField>
+                    {fieldInvalid && (
+                      <Text className="mt-1 text-sm text-red-500">{`${min}~${max}kg 사이로`}</Text>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+
+            {target && measuredDay && (
+              <View className="mb-6 rounded-xl bg-neutral-100 p-3">
+                <Text className="mb-2 text-sm text-neutral-600">
+                  {measuredDayOld
+                    ? `결과지 날짜가 ${measuredLabel}로 오래됐어요 · 어느 날로 저장할까요?`
+                    : `결과지 날짜 ${measuredLabel} · 어느 날로 저장할까요?`}
+                </Text>
+                <View className="flex-row gap-2">
+                  {[
+                    { use: true, label: `결과지 날짜(${measuredLabel})` },
+                    {
+                      use: false,
+                      label: target.isToday
+                        ? `오늘(${formatMonthDay(target.day)})`
+                        : formatMonthDay(target.day),
+                    },
+                  ].map(({ use, label }) => {
+                    const selected = useMeasuredDay === use;
+                    return (
+                      <TouchableOpacity
+                        key={label}
+                        disabled={reading}
+                        onPress={() => readResult && chooseDay(readResult, measuredDay, use)}
+                        className={`flex-1 items-center rounded-xl border py-2.5 ${
+                          selected ? 'border-green-600 bg-green-50' : 'border-neutral-200 bg-white'
+                        }`}>
+                        <Text
+                          className={selected ? 'font-bold text-green-600' : 'text-neutral-500'}>
+                          {label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+
+            <RippleButton
+              outerClassName={`mb-10 ${isSaving || reading || !text.trim() ? 'opacity-50' : ''}`}
+              className="w-full bg-green-600 py-4"
+              disabled={isSaving || reading || !text.trim()}
+              onPress={handleSave}>
+              <Text className="text-lg font-semibold text-white">
+                {isSaving ? '저장하는 중...' : '저장하기'}
+              </Text>
+            </RippleButton>
+          </BottomSheetView>
+        )}
       </CustomBottomSheet>
 
       <PassOnlyModal

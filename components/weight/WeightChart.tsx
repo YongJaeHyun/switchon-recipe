@@ -3,12 +3,14 @@ import { useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { LineChart } from 'react-native-gifted-charts';
 import colors from 'tailwindcss/colors';
-import { pointerWeight } from 'utils/weight';
+import { pointerWeight, round1 } from 'utils/weight';
 
 export interface WeightChartPoint {
   value: number;
   label: string;
   dataPointColor: string;
+  // 이 날 닿은 목표 표시 ("✓ 72kg 달성")
+  mark?: string;
 }
 
 interface WeightChartProps {
@@ -16,6 +18,8 @@ interface WeightChartProps {
   height?: number;
   // 홈 카드용 작은 그래프: 축 글자·터치 표시 없이 폭에 맞춘다
   compact?: boolean;
+  // 지금 목표 (kg). 있으면 점선과 "목표 72" 라벨
+  goalKg?: number | null;
 }
 
 const SECTIONS = 4;
@@ -32,10 +36,41 @@ const yRange = (values: number[]) => {
   return { offset: min, maxValue: step * SECTIONS, step };
 };
 
-// 체중 꺾은선 그래프 (곡선, 점은 주차 색). 점이 하나뿐이면 점 하나와 안내를 보여준다
-export function WeightChart({ points, height = 180, compact = false }: WeightChartProps) {
+const MARK_WIDTH = 76;
+
+// 체중 꺾은선 그래프 (곡선, 점은 주차 색). 점이 하나뿐이면 점 하나와 안내를 보여준다.
+// 목표가 있으면 목표 점선(축 범위에 목표를 넣는다), 달성한 날 점에는 작은 "✓ 달성" 표시
+export function WeightChart({
+  points,
+  height = 180,
+  compact = false,
+  goalKg = null,
+}: WeightChartProps) {
   const [width, setWidth] = useState(0);
-  const range = useMemo(() => yRange(points.map((p) => p.value)), [points]);
+  const range = useMemo(
+    () => yRange([...points.map((p) => p.value), ...(goalKg != null ? [goalKg] : [])]),
+    [points, goalKg]
+  );
+  const data = useMemo(
+    () =>
+      points.map(({ mark, ...point }) =>
+        mark
+          ? {
+              ...point,
+              dataPointLabelShiftX: -MARK_WIDTH / 2 + 15,
+              dataPointLabelShiftY: -32,
+              dataPointLabelComponent: () => (
+                <View style={{ width: MARK_WIDTH }} className="items-center">
+                  <Text className="rounded-full bg-green-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                    {mark}
+                  </Text>
+                </View>
+              ),
+            }
+          : point
+      ),
+    [points]
+  );
 
   if (points.length === 0) return null;
 
@@ -51,7 +86,7 @@ export function WeightChart({ points, height = 180, compact = false }: WeightCha
         <LineChart
           // 데이터가 바뀌면 스크롤 위치·포인터를 새로 잡는다
           key={`${points.length}-${points[0].label}-${points[points.length - 1].label}`}
-          data={points}
+          data={data}
           curved
           height={height}
           width={chartWidth}
@@ -75,6 +110,23 @@ export function WeightChart({ points, height = 180, compact = false }: WeightCha
           xAxisColor={colors.neutral[200]}
           rulesColor={colors.neutral[100]}
           rulesType="solid"
+          showReferenceLine1={goalKg != null}
+          referenceLine1Position={goalKg ?? 0}
+          referenceLine1Config={{
+            color: colors.green[600],
+            type: 'dashed',
+            thickness: 1.5,
+            dashWidth: 5,
+            dashGap: 4,
+            labelText: goalKg != null ? `목표 ${round1(goalKg)}` : '',
+            labelTextStyle: {
+              color: colors.green[700],
+              fontSize: 10,
+              fontWeight: '700',
+              top: -14,
+              left: 4,
+            },
+          }}
           hideRules={compact}
           disableScroll={compact}
           scrollToEnd={!compact}
