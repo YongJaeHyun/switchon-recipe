@@ -170,7 +170,7 @@ export default function MeScreen() {
             )}
             <Link href={'/(inquiry)'} asChild>
               <MenuButton
-                title="문의사항"
+                title="문의하기"
                 icon={<FontAwesome5 name="question-circle" size={24} color={colors.neutral[600]} />}
               />
             </Link>
