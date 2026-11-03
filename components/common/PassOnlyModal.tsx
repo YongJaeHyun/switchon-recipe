@@ -1,11 +1,15 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Text } from 'components/common/Text';
+import { PASS_FEATURE_IMAGES } from 'const/passFeatureImages';
+import type { PassFeatureId } from 'const/passFeatures';
 import { router } from 'expo-router';
 import { useRef } from 'react';
-import { Modal, TouchableOpacity, View } from 'react-native';
+import { Image, Modal, TouchableOpacity, View } from 'react-native';
 import colors from 'tailwindcss/colors';
 
 export interface PassOnlyModalView {
+  // 이 기능의 실제 화면을 위에 보여 주고, [패스 보기]는 패스 화면 갤러리를 이 기능부터 연다
+  featureId: PassFeatureId;
   // 기능 이름과 한 줄 설명
   feature: string;
   description: string;
@@ -34,7 +38,7 @@ export function PassOnlyModal({ view, onClose, onBeforeOpenPass }: PassOnlyModal
   const openPass = () => {
     onClose();
     onBeforeOpenPass?.();
-    router.push('/pass');
+    router.push({ pathname: '/pass', params: { feature: shown?.featureId } });
   };
 
   return (
@@ -42,9 +46,20 @@ export function PassOnlyModal({ view, onClose, onBeforeOpenPass }: PassOnlyModal
       <View className="flex-1 items-center justify-center bg-black/40 px-6">
         {shown && (
           <View className="w-full max-w-sm overflow-hidden rounded-3xl bg-white">
-            <View className="items-center px-6 pb-6 pt-7">
-              <View className="mb-3 h-12 w-12 items-center justify-center rounded-full bg-green-50">
-                <MaterialIcons name="diamond" size={24} color={colors.green[700]} />
+            {/* 실제 화면의 윗부분 (제목이 보이게 위에서부터 자른다) */}
+            <View className="bg-green-50 px-6 pt-5">
+              <View className="h-52 overflow-hidden rounded-t-2xl border border-b-0 border-neutral-200 bg-white">
+                <Image
+                  source={PASS_FEATURE_IMAGES[shown.featureId]}
+                  style={{ width: '100%', aspectRatio: 606 / 1000 }}
+                  accessibilityLabel={`${shown.feature} 화면`}
+                />
+              </View>
+            </View>
+            <View className="items-center px-6 pb-6 pt-5">
+              <View className="mb-2 flex-row items-center gap-1 rounded-full bg-green-50 px-2.5 py-1">
+                <MaterialIcons name="diamond" size={14} color={colors.green[700]} />
+                <Text className="text-xs font-bold text-green-700">패스</Text>
               </View>
               <Text className="text-center text-xl font-bold text-neutral-900">
                 스위치온 패스 기능이에요

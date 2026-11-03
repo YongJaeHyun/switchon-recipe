@@ -351,6 +351,7 @@ export function RecommendView({ embedded = false }: { embedded?: boolean }) {
   // 손대지 않았으면 서버의 저장 목록에 맡긴다
   // 패스가 없어도 조건은 골라 볼 수 있고, 버튼을 누를 때 "패스 기능이에요" 창으로 묻는다 (운영자 결정 2026-11-01)
   const recommendPrompt = usePassOnlyPrompt(
+    'recommend',
     '맞춤 레시피 추천',
     '먹고 싶은 걸 고르면 지금 주차에 맞는 레시피를 골라 드려요'
   );

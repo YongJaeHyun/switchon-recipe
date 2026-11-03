@@ -33,6 +33,7 @@ export const useRecipeByNameEntry = () => {
       return;
     }
     setPassModal({
+      featureId: 'byName',
       feature: RECIPE_BY_NAME_TITLE,
       description: RECIPE_BY_NAME_DESCRIPTION,
       trialNote: `무료 체험 ${RECIPE_BY_NAME_TRIAL_LIMIT}번을 모두 썼어요`,

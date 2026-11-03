@@ -105,7 +105,7 @@ const TrialExhaustedNotice = ({ canBuyPass }: { canBuyPass: boolean }) => (
         outerClassName="bg-green-600"
         rounded="lg"
         className="px-3 py-2"
-        onPress={() => router.push('/pass')}>
+        onPress={() => router.push({ pathname: '/pass', params: { feature: 'foodCheck' } })}>
         <Text className="text-sm font-bold text-white">패스 보기</Text>
       </RippleButton>
     )}
@@ -208,7 +208,7 @@ export default function FoodCheckScreen() {
             // 패스가 만료됐거나 무료 체험을 다 썼을 수 있다. 상태를 다시 받고, 이 빌드에서 살 수 있으면 결제 화면으로
             void queryClient.invalidateQueries({ queryKey: [QueryKey.pass] });
             if (isPassOnSale(passStatus?.sales, billingAvailable)) {
-              router.push('/pass');
+              router.push({ pathname: '/pass', params: { feature: 'foodCheck' } });
             } else {
               showInfoToast({ textType: 'CUSTOM', title: '패스가 필요한 기능이에요' });
             }

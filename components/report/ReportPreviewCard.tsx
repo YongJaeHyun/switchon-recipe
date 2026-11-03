@@ -33,7 +33,7 @@ export function ReportPassCard({ title, description }: { title: string; descript
       outerClassName="border border-green-200 bg-green-50"
       className="w-full flex-row !justify-between px-4 py-3"
       rippleColor={colors.green[100]}
-      onPress={() => router.push('/pass')}>
+      onPress={() => router.push({ pathname: '/pass', params: { feature: 'report' } })}>
       <View className="flex-1 flex-row items-center gap-3">
         <View className="h-11 w-11 items-center justify-center rounded-full bg-white">
           <MaterialIcons name="insights" size={24} color={colors.green[600]} />

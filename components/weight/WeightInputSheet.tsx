@@ -173,6 +173,7 @@ export function WeightInputSheet({ bottomSheetRef, target: openedTarget }: Weigh
   const [target, setTarget] = useState<Nullable<WeightInputTarget>>(openedTarget);
   const billingAvailable = useBillingAvailable();
   const photoPrompt = usePassOnlyPrompt(
+    'inbody',
     '인바디 결과지 사진으로 입력',
     '결과지 사진을 찍으면 체중·골격근량·체지방량을 읽어 채워 드려요'
   );
@@ -340,7 +341,7 @@ export function WeightInputSheet({ bottomSheetRef, target: openedTarget }: Weigh
     void queryClient.invalidateQueries({ queryKey: [QueryKey.pass] });
     if (isPassOnSale(passStatus?.sales, billingAvailable)) {
       bottomSheetRef.current?.close();
-      router.push('/pass');
+      router.push({ pathname: '/pass', params: { feature: 'inbody' } });
     } else {
       setNotice('패스가 필요한 기능이에요');
     }

@@ -3,11 +3,12 @@ import { PassAPI } from 'api/PassAPI';
 import { UserAPI } from 'api/UserAPI';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
-import { PASS_FEATURES } from 'const/passFeatures';
+import { PassFeatureGallery } from 'components/pass/PassFeatureGallery';
+import { type PassFeatureId, toPassFeatureId } from 'const/passFeatures';
 import { QueryKey } from 'const/queryKey';
 import { TIME_ZONE } from 'const/const';
 import { formatInTimeZone } from 'date-fns-tz';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useBillingAvailable } from 'hooks/useBillingAvailable';
 import { usePass } from 'hooks/usePass';
 import { useRecipeQuota } from 'hooks/useRecipeQuota';
@@ -333,12 +334,17 @@ const FeatureRow = ({
   </View>
 );
 
-const FeatureList = ({ recipeLine }: { recipeLine: string | null }) => (
-  <View className="gap-4 border-t border-neutral-100 pt-6">
+// 패스 기능의 실제 화면을 옆으로 넘겨 본다 (상품 고르기 위). 화면으로 보여 주기 어려운 레시피 개수는 글로
+const FeatureList = ({
+  recipeLine,
+  initialId,
+}: {
+  recipeLine: string | null;
+  initialId: PassFeatureId | null;
+}) => (
+  <View className="gap-4">
     <Text className="text-base font-bold text-neutral-900">패스로 쓸 수 있는 것</Text>
-    {PASS_FEATURES.map(({ icon, title, description }) => (
-      <FeatureRow key={title} icon={icon} title={title} description={description} />
-    ))}
+    <PassFeatureGallery initialId={initialId} />
     {recipeLine && <FeatureRow icon="menu-book" title={recipeLine} />}
   </View>
 );
@@ -396,6 +402,8 @@ const useLoadUserIfMissing = (uid: string) => {
 };
 
 export default function PassScreen() {
+  // "패스 기능이에요" 창에서 들어오면 그 기능의 화면부터 보여 준다
+  const featureId = toPassFeatureId(useLocalSearchParams<{ feature?: string }>().feature);
   const uid = useUserStore((state) => state.id);
   const userLoad = useLoadUserIfMissing(uid);
   const { status, isLoading, refetch } = usePass();
@@ -531,6 +539,10 @@ export default function PassScreen() {
       <>
         <ScrollView contentContainerClassName="gap-8 px-5 pb-6 pt-4">
           <JourneyHero status={status} option={selected} scheduleLoading={scheduleLoading} />
+          <FeatureList
+            recipeLine={getPassRecipeLine(quotaSetting?.passDaily)}
+            initialId={featureId}
+          />
           <View className="gap-3" accessibilityRole="radiogroup">
             {status.sales.freeActive && (
               <Text className="text-sm font-bold text-green-700">
@@ -548,7 +560,6 @@ export default function PassScreen() {
               />
             ))}
           </View>
-          <FeatureList recipeLine={getPassRecipeLine(quotaSetting?.passDaily)} />
           <PassLimitsPanel status={status} kind={selected.kind} />
         </ScrollView>
         <View className="gap-2 border-t border-neutral-100 px-5 pb-6 pt-3">
