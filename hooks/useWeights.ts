@@ -7,6 +7,7 @@ import { useUserStore } from 'stores/userStore';
 import type { UserSettingDB, WeightLogDB } from 'types/database';
 import { failFastWhenOffline } from 'utils/failFastWhenOffline';
 import { programWeightLoss } from 'utils/kakaoShare';
+import type { WeightGoalState } from 'utils/weightGoal';
 import { useQueryWith402Retry } from './useCustomQuery';
 
 // 내 체중 기록 전체 (날짜순). 무효화는 [QueryKey.weightLogs] 접두어로 한다
@@ -75,4 +76,31 @@ export const useProgramWeightLoss = () => {
   const startDate = useUserStore((state) => state.start_date);
   const programStart = useUserStore((state) => state.program_start);
   return programWeightLoss(logs, startDate, programStart);
+};
+
+// 체중 목표와 달성 기록. 열이 아직 없거나(마이그레이션 전) 읽기에 실패하면 status 'unknown' (화면은 목표 칸을 숨긴다)
+export const useWeightGoal = () => {
+  const uid = useUserStore((state) => state.id);
+
+  const query = useQueryWith402Retry<WeightGoalState>({
+    queryKey: [QueryKey.weightGoal, uid],
+    queryFn: failFastWhenOffline(UserSettingAPI.getGoal),
+    enabled: !!uid,
+  });
+
+  const { mutateAsync: saveGoal, isPending: isSavingGoal } = useMutation({
+    mutationFn: UserSettingAPI.upsertGoal,
+    onSuccess: (data) => {
+      if (data) queryClient.setQueryData([QueryKey.weightGoal, uid], data);
+    },
+  });
+
+  const goal = query.data;
+  const status: 'none' | 'set' | 'unknown' = !query.isSuccess
+    ? 'unknown'
+    : goal?.weight_goal_kg != null
+      ? 'set'
+      : 'none';
+
+  return { goal, status, saveGoal, isSavingGoal };
 };

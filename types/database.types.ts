@@ -920,23 +920,35 @@ export type Database = {
       };
       user_setting: {
         Row: {
+          fat_goal_kg: number | null;
+          muscle_goal_kg: number | null;
           report_reminder: boolean;
           uid: string;
           updated_at: string;
+          weight_goal_history: Json;
+          weight_goal_kg: number | null;
           weight_reminder: boolean;
           weight_reminder_asked: boolean;
         };
         Insert: {
+          fat_goal_kg?: number | null;
+          muscle_goal_kg?: number | null;
           report_reminder?: boolean;
           uid: string;
           updated_at?: string;
+          weight_goal_history?: Json;
+          weight_goal_kg?: number | null;
           weight_reminder?: boolean;
           weight_reminder_asked?: boolean;
         };
         Update: {
+          fat_goal_kg?: number | null;
+          muscle_goal_kg?: number | null;
           report_reminder?: boolean;
           uid?: string;
           updated_at?: string;
+          weight_goal_history?: Json;
+          weight_goal_kg?: number | null;
           weight_reminder?: boolean;
           weight_reminder_asked?: boolean;
         };
