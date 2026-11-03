@@ -13,6 +13,7 @@ import { Stack, useNavigationContainerRef } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useAuthStateObserver } from 'hooks/useAuthStateObserver';
+import { StoreUpdateModal } from 'components/common/StoreUpdateModal';
 import { useAutoUpdate } from 'hooks/useAutoUpdate';
 import { useNotificationObserver } from 'hooks/useNotificationObserver';
 import { useSupabaseAutoRefresh } from 'hooks/useSupabaseAutoRefresh';
@@ -107,6 +108,8 @@ function RootLayout() {
               <Stack.Screen name="report" options={{ headerShown: false }} />
               <Stack.Screen name="kakaolink" options={{ headerShown: false }} />
             </Stack>
+            {/* 스토어 업데이트 안내 (서버 스위치, 옛 스토어 빌드에서만) */}
+            <StoreUpdateModal />
             {/* 뒤에서 만드는 레시피 띠는 화면 위에, 바텀시트(Portal)는 띠 위에 그려진다 */}
             <RecipeJobBand />
             <RecipeByNameSheet />

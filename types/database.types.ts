@@ -1038,16 +1038,19 @@ export type Database = {
           created_at: string;
           id: number;
           latest_version: string | null;
+          store_update_mode: string;
         };
         Insert: {
           created_at?: string;
           id?: number;
           latest_version?: string | null;
+          store_update_mode?: string;
         };
         Update: {
           created_at?: string;
           id?: number;
           latest_version?: string | null;
+          store_update_mode?: string;
         };
         Relationships: [];
       };
