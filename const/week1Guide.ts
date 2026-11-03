@@ -1,4 +1,5 @@
 import type { PrepItemId } from 'stores/firstWeekStore';
+import type { AffiliateSlot } from 'types/affiliate';
 import type { Tip } from 'utils/dietGuide';
 
 // 1주차 안내 문구는 이 파일 한 곳에 모은다 (운영자 검토 대상). 해요체.
@@ -35,6 +36,33 @@ export const PREP_ITEMS: { id: PrepItemId; label: string; hint?: string }[] = [
   { id: 'groceries', label: '4일차부터 먹을 저탄수식 재료 장보기' },
   { id: 'mealAlarm', label: '끼니 알림 켜기' },
 ];
+
+// [사러 가기] 시트 (쿠팡 파트너스 추천 제품). 고르는 기준은 위·아래 1주차 안내 문구(책 근거)를 그대로 다시 쓴다.
+// 책에 없는 수치(단백질 g 등)는 넣지 않는다
+export const AFFILIATE_SHEETS: Record<AffiliateSlot, { title: string; criteria: string[] }> = {
+  // FIRST_DAYS_RULES_TIP·utils/dietGuide.ts SHAKE_TIP (1회 당류 5g 이하, p.13 물 또는 무가당 두유에),
+  // FIRST_DAYS_RULES_TIP 설명 (p.12·p.13 첫 3일 네 끼 쉐이크)
+  shake: {
+    title: '프로틴 쉐이크 고르기',
+    criteria: [
+      '1회 당류 5g 이하 제품을 골라요.',
+      '물, 무가당 두유, 아몬드 우유에 타서 드세요.',
+      '1~3일차는 네 끼 모두 쉐이크예요.',
+    ],
+  },
+  // FIRST_DAYS_RULES_TIP 설명 (p.12·p.14 4일차부터 점심 한 끼), 3일차 "내일 점심 준비" (p.14), 4일차 밥 양 (p.14)
+  groceries: {
+    title: '저탄수식 재료 장보기',
+    criteria: [
+      '4일차부터 점심 한 끼는 저탄수식이에요.',
+      '채소와 두부·달걀·생선·닭고기 같은 단백질 반찬 재료를 준비해 두세요.',
+      '밥은 흰쌀밥 반 공기, 현미밥·잡곡밥은 3분의 2공기 정도예요.',
+    ],
+  },
+};
+
+export const AFFILIATE_DISCLOSURE =
+  '이 링크로 구매하면 스위치온 레시피가 쿠팡 파트너스 활동으로 구매 금액의 일정 비율을 수수료로 받아요. 가격은 그대로예요.';
 
 // ── 1주차 일별 안내 카드 (오늘 탭 할 일 카드 위) ──────────────────
 // line: 카드 한 줄, tip: "자세히" 팁 시트, tomorrow: 내일 달라지는 점 (완주 축하 시트에서도 쓴다).

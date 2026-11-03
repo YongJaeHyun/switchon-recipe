@@ -1,22 +1,27 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { BottomSheetMethods } from '@gorhom/bottom-sheet/lib/typescript/types';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import { KakaoShareButton } from 'components/share/KakaoShareButton';
 import { FIRST_DAYS_RULES_TIP, PREP_ITEMS } from 'const/week1Guide';
 import { Checkbox } from 'expo-checkbox';
 import { router } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
 import { TouchableWithoutFeedback, View } from 'react-native';
+import { useAffiliateProducts } from 'hooks/useAffiliateProducts';
 import { turnOnMealAlarm, useMealAlarmSync } from 'hooks/useMealAlarmSync';
 import { useFirstWeekStore, type PrepItemId } from 'stores/firstWeekStore';
 import { useMealAlarmStore } from 'stores/mealAlarmStore';
 import { useTipSheetStore } from 'stores/tipSheetStore';
 import { useUserStore } from 'stores/userStore';
 import colors from 'tailwindcss/colors';
+import type { AffiliateSlot } from 'types/affiliate';
 import { getWeekColorHex } from 'utils/getWeekColor';
 import { showNotificationPermissionAlert } from 'utils/notifications';
 import { prepChecksFor } from 'utils/prepChecks';
 import { startCountdownLabel } from 'utils/programStart';
 import { shareInvite } from 'utils/shareKakao';
+import { AffiliateSheet } from './AffiliateSheet';
 
 const WEEK1_COLOR = getWeekColorHex(1);
 
@@ -38,6 +43,9 @@ const ACTIONS: Partial<Record<PrepItemId, { label: string; run: () => void }>> =
 const turnOnFromPrep = async () => {
   if (!(await turnOnMealAlarm())) showNotificationPermissionAlert('1주차 끼니 시간 알림');
 };
+const AFFILIATE_SLOTS: readonly PrepItemId[] = ['shake', 'groceries'];
+const isAffiliateSlot = (id: PrepItemId): id is AffiliateSlot => AFFILIATE_SLOTS.includes(id);
+
 const MEAL_ALARM_ACTIONS = {
   off: { label: '켜기', run: () => void turnOnFromPrep() },
   on: { label: '시각 바꾸기', run: () => router.navigate('/(tabs)/me') },
@@ -54,6 +62,14 @@ export function BeforeStartCard({ daysUntil }: { daysUntil: number }) {
   // 시작일에 묶인 체크만 (시작일을 바꾸면 처음부터). 끼니 알림은 켜져 있는지로 체크한다
   const prepChecks = { ...prepChecksFor(prep, startDate), mealAlarm: mealAlarmOn };
   const doneCount = PREP_ITEMS.filter((item) => prepChecks[item.id]).length;
+
+  // [사러 가기]: 그 자리에 운영자가 넣은 제품이 있을 때만 (못 불러오면 안 보인다)
+  const affiliateProducts = useAffiliateProducts();
+  const affiliateSheetRef = useRef<BottomSheetMethods>(null);
+  const [affiliate, setAffiliate] = useState<{ slot: AffiliateSlot; at: number } | null>(null);
+  useEffect(() => {
+    if (affiliate) affiliateSheetRef.current?.expand();
+  }, [affiliate]);
 
   return (
     <View className="rounded-xl border border-neutral-200 bg-white px-4 pb-2 pt-4">
@@ -83,6 +99,11 @@ export function BeforeStartCard({ daysUntil }: { daysUntil: number }) {
                   {item.label}
                 </Text>
                 {item.hint && <Text className="text-xs text-neutral-500">{item.hint}</Text>}
+                {isAffiliateSlot(item.id) && affiliateProducts[item.id].length > 0 && (
+                  <BuyChip
+                    onPress={() => setAffiliate({ slot: item.id as AffiliateSlot, at: Date.now() })}
+                  />
+                )}
               </View>
               {action && (
                 <RippleButton
@@ -104,6 +125,27 @@ export function BeforeStartCard({ daysUntil }: { daysUntil: number }) {
       <View className="mb-2 mt-2 border-t border-neutral-100 pt-3">
         <KakaoShareButton label="👥 같이 할 사람 초대하기" onPress={shareInvite} />
       </View>
+
+      <AffiliateSheet
+        ref={affiliateSheetRef}
+        slot={affiliate?.slot ?? null}
+        products={affiliate ? affiliateProducts[affiliate.slot] : []}
+      />
     </View>
+  );
+}
+
+// 준비 항목 아래 작은 초록 칩 (오른쪽 행동 버튼과 겹치지 않게 글자 아래에 둔다)
+function BuyChip({ onPress }: { onPress: () => void }) {
+  return (
+    <RippleButton
+      onPress={onPress}
+      rounded="full"
+      rippleColor={colors.green[200]}
+      outerClassName="mt-1 self-start border border-green-200 bg-green-50"
+      className="flex-row items-center gap-1 px-2.5 py-0.5">
+      <Ionicons name="cart-outline" size={12} color={colors.green[700]} />
+      <Text className="text-xs font-bold text-green-700">사러 가기</Text>
+    </RippleButton>
   );
 }

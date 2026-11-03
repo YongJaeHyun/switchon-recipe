@@ -8,6 +8,74 @@ export type Database = {
   };
   public: {
     Tables: {
+      affiliate_click: {
+        Row: {
+          created_at: string;
+          id: number;
+          product_id: number | null;
+          slot: string | null;
+          uid: string | null;
+        };
+        Insert: {
+          created_at?: string;
+          id?: never;
+          product_id?: number | null;
+          slot?: string | null;
+          uid?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          id?: never;
+          product_id?: number | null;
+          slot?: string | null;
+          uid?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'affiliate_click_product_id_fkey';
+            columns: ['product_id'];
+            isOneToOne: false;
+            referencedRelation: 'affiliate_product';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      affiliate_product: {
+        Row: {
+          active: boolean;
+          created_at: string | null;
+          description: string | null;
+          id: number;
+          image_url: string | null;
+          name: string;
+          slot: string;
+          sort: number;
+          url: string;
+        };
+        Insert: {
+          active?: boolean;
+          created_at?: string | null;
+          description?: string | null;
+          id?: never;
+          image_url?: string | null;
+          name: string;
+          slot: string;
+          sort?: number;
+          url: string;
+        };
+        Update: {
+          active?: boolean;
+          created_at?: string | null;
+          description?: string | null;
+          id?: never;
+          image_url?: string | null;
+          name?: string;
+          slot?: string;
+          sort?: number;
+          url?: string;
+        };
+        Relationships: [];
+      };
       fasting: {
         Row: {
           created_at: string;

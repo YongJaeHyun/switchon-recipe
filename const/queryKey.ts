@@ -25,4 +25,5 @@ export enum QueryKey {
   similarRecipes,
   recipeQuotaSetting,
   weightGoal,
+  affiliateProducts,
 }
