@@ -19,6 +19,7 @@ import {
   parseMealParam,
   recipeWeekOf,
   stepOf,
+  recommendConditionSummary,
 } from './recommendForm';
 
 describe('availableMeals', () => {
@@ -272,5 +273,34 @@ describe('끼니 규칙 일치', () => {
   it('종류·방식 선택지는 서버 값 목록 안에 있다', () => {
     for (const { value } of CUISINE_OPTIONS) expect(sharedTags.CUISINES).toContain(value);
     for (const { value } of METHOD_OPTIONS) expect(sharedTags.METHODS).toContain(value);
+  });
+});
+
+describe('recommendConditionSummary', () => {
+  it('고른 조건을 화면 순서대로 한 줄로', () => {
+    expect(
+      recommendConditionSummary({
+        meal: 'lunch',
+        spicy: true,
+        cuisine: 'korean',
+        method: 'soup',
+        maxMinutes: 30,
+        mustInclude: ['두부', '계란'],
+        exclude: ['오이'],
+      })
+    ).toBe(
+      '점심 · 매운 것 · 한식 · 국·탕 · 30분 이내 · 꼭 넣을 재료 두부, 계란 · 빼고 싶은 재료 오이'
+    );
+  });
+
+  it('상관없음(null)과 빈 재료는 빼고, 아무것도 없으면 안내 문구', () => {
+    expect(recommendConditionSummary({ meal: 'dinner', spicy: null, mustInclude: [] })).toBe(
+      '저녁'
+    );
+    expect(recommendConditionSummary({})).toBe('조건 없이 추천');
+  });
+
+  it('안 매운 것(false)도 조건으로 보인다', () => {
+    expect(recommendConditionSummary({ spicy: false })).toBe('안 매운 것');
   });
 });

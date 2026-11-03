@@ -52,6 +52,7 @@ import {
   METHOD_OPTIONS,
   parseMealParam,
   recipeWeekOf,
+  recommendConditionSummary,
   removeCarbMustInclude,
   SPICY_OPTIONS,
   toRecommendRequest,
@@ -291,6 +292,9 @@ export function RecommendView({ embedded = false }: { embedded?: boolean }) {
   const [mustInclude, setMustInclude] = useState<string[]>([]);
   const [exclude, setExclude] = useState<string[]>([]);
   const [picker, setPicker] = useState<PickerMode | null>(null);
+  // 추천을 받으면 조건 칸을 한 줄 요약으로 접어 결과가 바로 보이게 한다 ([조건 바꾸기]로 다시 편다)
+  const [collapsed, setCollapsed] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
 
   const {
     ingredients,
@@ -364,6 +368,10 @@ export function RecommendView({ embedded = false }: { embedded?: boolean }) {
       })
     );
     if (outcome === 'shake') setMeal(null);
+    if (outcome === 'ok') {
+      setCollapsed(true);
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
+    }
   });
 
   const handleSaveExclude = requireOnline(() => excluded.save(exclude));
@@ -458,125 +466,149 @@ export function RecommendView({ embedded = false }: { embedded?: boolean }) {
   return (
     <Shell embedded={embedded}>
       <ScrollView
+        ref={scrollRef}
         contentContainerClassName="gap-6 px-5 pb-10 pt-2"
         showsVerticalScrollIndicator={false}>
-        <Text className="text-base text-neutral-600">
-          먹고 싶은 것을 고르면 지금 주차에 맞는 레시피를 골라 드려요.
-        </Text>
-
-        <View className="gap-5">
-          <View className="gap-2">
-            <OptionChips<Meal>
-              title="끼니"
-              options={mealOptions.map((m) => ({
-                value: m.meal,
-                label: MEAL_LABELS[m.meal],
-                enabled: m.enabled,
-              }))}
-              value={meal}
-              onChange={setMeal}
-              disabled={busy}
-            />
-            {disabledMeals.length > 0 && (
-              <Text className="text-xs text-neutral-400">
-                {disabledMeals.map((m) => MEAL_LABELS[m.meal]).join('·')}: {disabledMeals[0].reason}
+        {collapsed && result ? (
+          <View className="flex-row items-center gap-3 rounded-2xl border border-neutral-200 bg-white py-3 pl-4 pr-2">
+            <View className="flex-1 gap-0.5">
+              <Text className="text-xs text-neutral-400">추천 조건</Text>
+              <Text className="text-sm font-bold text-neutral-800" numberOfLines={2}>
+                {recommendConditionSummary(conditions)}
               </Text>
-            )}
-          </View>
-          <OptionChips<boolean>
-            title="맛"
-            options={SPICY_OPTIONS}
-            value={spicy}
-            onChange={setSpicy}
-            disabled={busy}
-          />
-          <OptionChips<Cuisine>
-            title="종류"
-            options={CUISINE_OPTIONS}
-            value={cuisine}
-            onChange={setCuisine}
-            disabled={busy}
-          />
-          <OptionChips<Method>
-            title="요리 방식"
-            options={METHOD_OPTIONS}
-            value={method}
-            onChange={setMethod}
-            disabled={busy}
-          />
-          <OptionChips<MaxMinutes>
-            title="조리 시간"
-            options={MAX_MINUTES_OPTIONS}
-            value={maxMinutes}
-            onChange={setMaxMinutes}
-            disabled={busy}
-          />
-
-          <View className="gap-2">
-            <Text className="font-bold text-neutral-700">
-              꼭 넣을 재료{' '}
-              <Text className="text-sm font-normal text-neutral-400">
-                최대 {MAX_MUST_INCLUDE}개
-              </Text>
-            </Text>
-            <SelectedIngredients
-              names={mustInclude}
-              tone="must"
-              disabled={busy}
-              onAdd={() => setPicker('must')}
-              onRemove={(name) => setMustInclude(mustInclude.filter((n) => n !== name))}
-            />
-          </View>
-
-          <View className="gap-2">
-            <View className="flex-row items-center justify-between">
-              <Text className="font-bold text-neutral-700">빼고 싶은 재료</Text>
-              <RippleButton
-                outerClassName={`${recommendPrompt.locked ? 'bg-green-100' : 'bg-green-600'} ${
-                  saveDisabled ? 'opacity-40' : ''
-                }`}
-                rounded="lg"
-                className="flex-row gap-1 px-3 py-1.5"
-                disabled={saveDisabled}
-                onPress={recommendPrompt.guard(handleSaveExclude)}>
-                <Text
-                  className={`text-sm font-bold ${
-                    recommendPrompt.locked ? 'text-green-800' : 'text-white'
-                  }`}>
-                  저장
-                </Text>
-                {recommendPrompt.locked && <PassBadge state={{ kind: 'locked' }} />}
-              </RippleButton>
             </View>
-            <SelectedIngredients
-              names={exclude}
-              tone="exclude"
+            <TouchableOpacity
+              onPress={() => setCollapsed(false)}
               disabled={busy}
-              onAdd={() => setPicker('exclude')}
-              onRemove={(name) => {
-                excludeTouched.current = true;
-                setExclude(exclude.filter((n) => n !== name));
-              }}
-            />
-            <Text className="text-xs text-neutral-400">저장하면 다음에도 빼고 추천해요</Text>
+              hitSlop={8}
+              accessibilityRole="button"
+              className="flex-row items-center gap-1 rounded-full bg-green-50 px-3 py-2">
+              <MaterialIcons name="tune" size={16} color={colors.green[700]} />
+              <Text className="text-sm font-bold text-green-700">조건 바꾸기</Text>
+            </TouchableOpacity>
           </View>
-        </View>
+        ) : (
+          <>
+            <Text className="text-base text-neutral-600">
+              먹고 싶은 것을 고르면 지금 주차에 맞는 레시피를 골라 드려요.
+            </Text>
 
-        <RippleButton
-          outerClassName={`${recommendPrompt.locked ? 'bg-green-100' : 'bg-green-600'} ${
-            busy ? 'opacity-50' : ''
-          }`}
-          rounded="lg"
-          className="w-full flex-row gap-2 py-4"
-          rippleColor={recommendPrompt.locked ? colors.green[200] : undefined}
-          disabled={busy}
-          onPress={recommendPrompt.guard(handleRecommend)}>
-          <Text
-            className={`text-lg font-bold ${recommendPrompt.locked ? 'text-green-800' : 'text-white'}`}>
-            추천 받기
-          </Text>
-          {recommendPrompt.locked && <PassBadge state={{ kind: 'locked' }} />}
-        </RippleButton>
+            <View className="gap-5">
+              <View className="gap-2">
+                <OptionChips<Meal>
+                  title="끼니"
+                  options={mealOptions.map((m) => ({
+                    value: m.meal,
+                    label: MEAL_LABELS[m.meal],
+                    enabled: m.enabled,
+                  }))}
+                  value={meal}
+                  onChange={setMeal}
+                  disabled={busy}
+                />
+                {disabledMeals.length > 0 && (
+                  <Text className="text-xs text-neutral-400">
+                    {disabledMeals.map((m) => MEAL_LABELS[m.meal]).join('·')}:{' '}
+                    {disabledMeals[0].reason}
+                  </Text>
+                )}
+              </View>
+              <OptionChips<boolean>
+                title="맛"
+                options={SPICY_OPTIONS}
+                value={spicy}
+                onChange={setSpicy}
+                disabled={busy}
+              />
+              <OptionChips<Cuisine>
+                title="종류"
+                options={CUISINE_OPTIONS}
+                value={cuisine}
+                onChange={setCuisine}
+                disabled={busy}
+              />
+              <OptionChips<Method>
+                title="요리 방식"
+                options={METHOD_OPTIONS}
+                value={method}
+                onChange={setMethod}
+                disabled={busy}
+              />
+              <OptionChips<MaxMinutes>
+                title="조리 시간"
+                options={MAX_MINUTES_OPTIONS}
+                value={maxMinutes}
+                onChange={setMaxMinutes}
+                disabled={busy}
+              />
+
+              <View className="gap-2">
+                <Text className="font-bold text-neutral-700">
+                  꼭 넣을 재료{' '}
+                  <Text className="text-sm font-normal text-neutral-400">
+                    최대 {MAX_MUST_INCLUDE}개
+                  </Text>
+                </Text>
+                <SelectedIngredients
+                  names={mustInclude}
+                  tone="must"
+                  disabled={busy}
+                  onAdd={() => setPicker('must')}
+                  onRemove={(name) => setMustInclude(mustInclude.filter((n) => n !== name))}
+                />
+              </View>
+
+              <View className="gap-2">
+                <View className="flex-row items-center justify-between">
+                  <Text className="font-bold text-neutral-700">빼고 싶은 재료</Text>
+                  <RippleButton
+                    outerClassName={`${recommendPrompt.locked ? 'bg-green-100' : 'bg-green-600'} ${
+                      saveDisabled ? 'opacity-40' : ''
+                    }`}
+                    rounded="lg"
+                    className="flex-row gap-1 px-3 py-1.5"
+                    disabled={saveDisabled}
+                    onPress={recommendPrompt.guard(handleSaveExclude)}>
+                    <Text
+                      className={`text-sm font-bold ${
+                        recommendPrompt.locked ? 'text-green-800' : 'text-white'
+                      }`}>
+                      저장
+                    </Text>
+                    {recommendPrompt.locked && <PassBadge state={{ kind: 'locked' }} />}
+                  </RippleButton>
+                </View>
+                <SelectedIngredients
+                  names={exclude}
+                  tone="exclude"
+                  disabled={busy}
+                  onAdd={() => setPicker('exclude')}
+                  onRemove={(name) => {
+                    excludeTouched.current = true;
+                    setExclude(exclude.filter((n) => n !== name));
+                  }}
+                />
+                <Text className="text-xs text-neutral-400">저장하면 다음에도 빼고 추천해요</Text>
+              </View>
+            </View>
+
+            <RippleButton
+              outerClassName={`${recommendPrompt.locked ? 'bg-green-100' : 'bg-green-600'} ${
+                busy ? 'opacity-50' : ''
+              }`}
+              rounded="lg"
+              className="w-full flex-row gap-2 py-4"
+              rippleColor={recommendPrompt.locked ? colors.green[200] : undefined}
+              disabled={busy}
+              onPress={recommendPrompt.guard(handleRecommend)}>
+              <Text
+                className={`text-lg font-bold ${recommendPrompt.locked ? 'text-green-800' : 'text-white'}`}>
+                추천 받기
+              </Text>
+              {recommendPrompt.locked && <PassBadge state={{ kind: 'locked' }} />}
+            </RippleButton>
+          </>
+        )}
 
         {result && (
           <View className="gap-4">

@@ -72,9 +72,9 @@ export const useRecommend = () => {
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
-  // 반환값: 쉐이크 끼니라 추천할 수 없었으면 'shake' (화면이 끼니 선택을 비운다)
+  // 반환값: 결과를 받았으면 'ok' (화면이 조건 칸을 접는다), 쉐이크 끼니라 추천할 수 없었으면 'shake' (화면이 끼니 선택을 비운다)
   const recommend = useCallback(
-    async (conditions: RecommendRequest): Promise<'shake' | void> => {
+    async (conditions: RecommendRequest): Promise<'ok' | 'shake' | void> => {
       if (inFlightRef.current) return;
       inFlightRef.current = true;
       const controller = new AbortController();
@@ -89,7 +89,7 @@ export const useRecommend = () => {
             // 카드의 별 표시가 서버 저장 여부를 따르도록 저장 여부 맵에 합친다
             mergeIsSavedMap(savedEntriesOf(outcome.recipes));
             setResult({ recipes: outcome.recipes, totalMatches: outcome.totalMatches });
-            return;
+            return 'ok';
           case 'shake':
             showInfoToast({ textType: 'CUSTOM', title: SHAKE_MEAL_REASON });
             return 'shake';

@@ -88,6 +88,20 @@ export const MAX_MINUTES_OPTIONS: { value: MaxMinutes; label: string }[] = [
   { value: 30, label: '30분 이내' },
 ];
 
+// 추천을 받은 뒤 접힌 조건 칸에 보이는 한 줄 (화면의 조건 순서대로, 상관없음은 뺀다)
+export function recommendConditionSummary(c: RecommendConditions): string {
+  const parts = [
+    c.meal ? MEAL_LABELS[c.meal] : null,
+    SPICY_OPTIONS.find((o) => o.value === c.spicy)?.label,
+    CUISINE_OPTIONS.find((o) => o.value === c.cuisine)?.label,
+    METHOD_OPTIONS.find((o) => o.value === c.method)?.label,
+    MAX_MINUTES_OPTIONS.find((o) => o.value === c.maxMinutes)?.label,
+    c.mustInclude?.length ? `꼭 넣을 재료 ${c.mustInclude.join(', ')}` : null,
+    c.exclude?.length ? `빼고 싶은 재료 ${c.exclude.join(', ')}` : null,
+  ].filter((p): p is string => !!p);
+  return parts.length > 0 ? parts.join(' · ') : '조건 없이 추천';
+}
+
 // 쿼리 파라미터 meal(breakfast|lunch|dinner) 해석. 그 밖의 값은 null
 export function parseMealParam(value: unknown): Meal | null {
   const v = Array.isArray(value) ? value[0] : value;
