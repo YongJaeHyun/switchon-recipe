@@ -30,6 +30,7 @@ import { RecipeDB } from 'types/database';
 import { IngredientSchema, Recipe, RecipeIngredient } from 'types/recipe';
 import { carbTypeStyle } from 'utils/carbType';
 import { nutritionPerServing } from 'utils/nutritionPerServing';
+import { useUserStore } from 'stores/userStore';
 import { ADAPT_NOTE_TITLE, adaptNoteLines } from 'utils/recipeByName';
 import { parseRecipeFields } from 'utils/recipeFields';
 import {
@@ -58,8 +59,11 @@ export default function RecipeDetailScreen() {
     is_zero_carb,
   } = parsedRecipe;
   const carbType = carbTypeStyle(is_zero_carb);
-  // 먹고 싶은 음식으로 만들기에서 원래 음식을 스위치온식으로 바꿔 만든 경우의 안내 (옛 레시피·응답에는 없음)
-  const adaptLines = adaptNoteLines(parsedRecipe.adapt_note);
+  // 먹고 싶은 음식으로 만들기에서 원래 음식을 스위치온식으로 바꿔 만든 경우의 안내 (옛 레시피·응답에는 없음).
+  // 만든 사람에게만 보인다: 다른 사람에게는 "원래 음식"·"고른 주차" 맥락이 없어 엉뚱하다 (운영자 2026-11-03)
+  const userId = useUserStore((state) => state.id);
+  const isMine = !!userId && parsedRecipe.uid === userId;
+  const adaptLines = isMine ? adaptNoteLines(parsedRecipe.adapt_note) : [];
 
   // 카톡 링크 등 밖에서 온 레시피도 열리므로 칸의 모양이 틀려도 빈 값으로 읽는다 (utils/recipeFields)
   const fields = parseRecipeFields({ ingredients, cooking_steps, nutrition });
