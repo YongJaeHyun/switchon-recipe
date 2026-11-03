@@ -17,6 +17,7 @@ import { handleCreateRecipeRequest } from './createRecipeHandler.ts';
 import { createProviderAlertFetch } from './providerAlert.ts';
 import { parseQuotaDecision } from './quota.ts';
 import { loadIngredientTags } from './recipeIngredientTags.ts';
+import { raisedWeekNote, recipeWeekFromTags } from './recipeWeekFromTags.ts';
 import { requestRecipeImage } from './recipeImage.ts';
 import { parseServings } from './recipeServings.ts';
 import { parseRecipeTags } from './recipeTags.ts';
@@ -103,6 +104,9 @@ export interface GenerateRecipeInput {
   adaptNote?: string | null;
   // 요청한 유저. Gemini 사용량 기록(ai_usage)에 붙인다
   uid?: string | null;
+  // create-recipe-by-name: 저장 주차를 실제 재료(태그) 중 가장 높은 주차로 정한다 (_shared/recipeWeekFromTags.ts).
+  // 고른 주차보다 올라가면 adapt_note에 이유를 한 줄 붙인다
+  weekFromTags?: boolean;
 }
 
 // 레시피 텍스트 생성 → 이미지 생성·업로드 → recipe 저장. 저장된 행을 돌려준다.
@@ -110,7 +114,7 @@ export interface GenerateRecipeInput {
 export async function generateAndSaveRecipe(
   { userClient: supabaseClient, adminClient }: RecipeClients,
   providerFetch: typeof fetch,
-  { command, week, is_zero_carb, recipeName, adaptNote, uid }: GenerateRecipeInput
+  { command, week, is_zero_carb, recipeName, adaptNote, uid, weekFromTags }: GenerateRecipeInput
 ): Promise<unknown> {
   const geminiKey = Deno.env.get('GEMINI_API_KEY');
   if (!geminiKey) throw new Error('GEMINI_API_KEY not set');
@@ -164,20 +168,33 @@ export async function generateAndSaveRecipe(
 
   const ingredientsJson = JSON.stringify(validated.ingredients);
   // 검색용 재료 태그 (등록 재료 이름). 등록 재료를 못 읽어도 생성은 계속하고 빈 태그로 저장한다
+  // 재료 주차(week)도 같이 읽어 weekFromTags일 때 저장 주차를 정한다
+  const weekByName = new Map<string, number>();
   const ingredientTags = await loadIngredientTags(
     () =>
       fetchAllPages(async (from, to) => {
         const { data, error } = await adminClient
           .from('ingredient')
-          .select('name, sub_keywords')
+          .select('name, sub_keywords, week')
           .eq('is_active', true)
           .order('id')
           .range(from, to);
         if (error) throw error;
-        return (data ?? []) as RegisteredIngredient[];
+        const rows = (data ?? []) as (RegisteredIngredient & { week: number })[];
+        for (const row of rows) weekByName.set(row.name, row.week);
+        return rows;
       }),
     ingredientsJson
   );
+
+  let saveWeek = week;
+  let saveAdaptNote = adaptNote ?? null;
+  if (weekFromTags && typeof week === 'number') {
+    const result = recipeWeekFromTags(ingredientTags, weekByName, week);
+    saveWeek = result.week;
+    const note = raisedWeekNote(result);
+    if (note) saveAdaptNote = saveAdaptNote ? `${saveAdaptNote}\n${note}` : note;
+  }
 
   // 🔹 4. DB 저장
   const { data, error } = await supabaseClient
@@ -191,12 +208,12 @@ export async function generateAndSaveRecipe(
       recipe_name: validated.recipeName,
       image_uri: validated.imageUri,
       is_zero_carb,
-      week,
+      week: saveWeek,
       spicy: tags?.spicy ?? null,
       cuisine: tags?.cuisine ?? null,
       method: tags?.method ?? null,
       servings: validated.servings,
-      ...(adaptNote ? { adapt_note: adaptNote } : {}),
+      ...(saveAdaptNote ? { adapt_note: saveAdaptNote } : {}),
     })
     .select()
     .single();

@@ -102,6 +102,8 @@ const depsFor = (req: Request): RecipeByNameDeps => ({
       recipeName,
       adaptNote,
       uid,
+      // 저장 주차는 실제 재료 중 가장 높은 주차 (고른 주차 규칙을 넘는 재료가 들어가면 그 주차로)
+      weekFromTags: true,
     }),
 });
 

@@ -30,7 +30,7 @@ describe('createRecipe.ts 재료 태그 저장', () => {
 
   it('등록 재료(is_active)를 service role 클라이언트로 페이지 단위로 읽어 태그를 만든다', () => {
     expect(flat(src)).toMatch(
-      /loadIngredientTags\( \(\) => fetchAllPages\(async \(from, to\) => \{ const \{ data, error \} = await adminClient \.from\('ingredient'\) \.select\('name, sub_keywords'\) \.eq\('is_active', true\)/
+      /loadIngredientTags\( \(\) => fetchAllPages\(async \(from, to\) => \{ const \{ data, error \} = await adminClient \.from\('ingredient'\) \.select\('name, sub_keywords, week'\) \.eq\('is_active', true\)/
     );
   });
 
