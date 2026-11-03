@@ -8,6 +8,16 @@ import {
   RECIPE_TAG_SCHEMA_PROMPT,
 } from './recipeTags.ts';
 
+// 조리 순서 문장 형식 (운영자 2026-11-04). 앱이 문장별 줄·양/불 세기/시간 강조·괄호 팁 상자로 보여 주므로
+// 그 처리에 맞는 짧은 문장으로 받는다. 형식은 그대로 문자열 배열(옛 앱 호환), 기존 레시피는 바꾸지 않는다
+export const COOKING_STEPS_PROMPT =
+  'cookingSteps(조리 순서)는 요리하면서 한 단계씩 따라 하기 좋게 쓰세요. ' +
+  '각 단계는 짧은 문장 1~3개로, 한 문장에는 동작 하나만 쓰세요. ' +
+  '양·불 세기·시간은 숫자로 분명히 쓰세요 (예: 물 200ml, 간장 1큰술, 중불, 약불, 5분, 30초). ' +
+  '주의사항이나 팁은 단계 끝에 괄호 하나로만 붙이세요 (예: "(타지 않게 저어 주세요)"). ' +
+  '문장은 "~합니다" 대신 "~해요" 말투로 쓰세요. ' +
+  '예: "냄비에 물 200ml를 붓고 중불에서 끓여요. 끓어오르면 두부를 넣고 5분 더 끓여요. (넘치지 않게 불을 조절해요)"';
+
 // 성공하면 Gemini가 만든 레시피 JSON(검증 전)을 돌려준다. 검증은 호출부(createRecipe.ts의 zod 스키마)가 한다
 export async function requestRecipeText(
   command: string,
@@ -72,6 +82,8 @@ export async function requestRecipeText(
               },
               cookingSteps: {
                 type: 'ARRAY',
+                description:
+                  '조리 순서. 단계마다 짧은 문장 1~3개, 문장마다 동작 하나, "~해요" 말투',
                 items: {
                   type: 'STRING',
                 },
@@ -92,7 +104,9 @@ export async function requestRecipeText(
                 'You are an AI assistant specialized in generating cooking recipes for the Switch-On Diet. When a user requests a recipe, you should create a suitable recipe. Ingredient quantities should be as specific as possible. All responses must always be in Korean. ' +
                 RECIPE_TAG_SCHEMA_PROMPT +
                 ' ' +
-                RECIPE_SERVINGS_PROMPT,
+                RECIPE_SERVINGS_PROMPT +
+                ' ' +
+                COOKING_STEPS_PROMPT,
             },
           ],
         },
