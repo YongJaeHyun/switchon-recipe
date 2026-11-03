@@ -14,6 +14,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useAuthStateObserver } from 'hooks/useAuthStateObserver';
 import { useAutoUpdate } from 'hooks/useAutoUpdate';
 import { useNotificationObserver } from 'hooks/useNotificationObserver';
+import { useSupabaseAutoRefresh } from 'hooks/useSupabaseAutoRefresh';
 import { usePassPurchaseRecovery } from 'hooks/usePassPurchaseRecovery';
 import { queryClient } from 'lib/queryClient';
 import { useEffect } from 'react';
@@ -52,6 +53,7 @@ function RootLayout() {
   const updated = useAutoUpdate();
 
   useNotificationObserver();
+  useSupabaseAutoRefresh();
   useAuthStateObserver();
   usePassPurchaseRecovery();
 

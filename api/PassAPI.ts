@@ -1,15 +1,24 @@
 import { supabase } from 'lib/supabase';
 import type { PassPurchase, PassStatus, VerifyResult } from 'types/pass';
+import { describeFunctionsError, invokeWithAuthRetry } from 'utils/functionsInvoke';
 import { captureError } from 'utils/sendError';
+
+const refreshSession = () => supabase.auth.refreshSession();
 
 // 실패 시 throw: 호출부(React Query, 결제 흐름)가 재시도/표시를 정한다
 const getStatus = async (): Promise<PassStatus> => {
-  const { data, error } = await supabase.functions.invoke<PassStatus>('get-pass-status', {
-    method: 'POST',
-  });
+  const { data, error } = await invokeWithAuthRetry(
+    () => supabase.functions.invoke<PassStatus>('get-pass-status', { method: 'POST' }),
+    refreshSession
+  );
 
   if (error || !data) {
-    captureError({ error: error ?? new Error('empty response'), prefix: '[PassAPI.getStatus]: ' });
+    captureError({
+      error: error
+        ? await describeFunctionsError('get-pass-status', error)
+        : new Error('empty response'),
+      prefix: '[PassAPI.getStatus]: ',
+    });
     throw error ?? new Error('get-pass-status: empty response');
   }
   return data;
@@ -17,12 +26,18 @@ const getStatus = async (): Promise<PassStatus> => {
 
 // 서버가 Play 검증, 만료일 갱신, 구매 소비까지 한다. 결과 상태는 모두 200으로 온다
 const verify = async (input: PassPurchase): Promise<VerifyResult> => {
-  const { data, error } = await supabase.functions.invoke<VerifyResult>('verify-pass-purchase', {
-    body: input,
-  });
+  const { data, error } = await invokeWithAuthRetry(
+    () => supabase.functions.invoke<VerifyResult>('verify-pass-purchase', { body: input }),
+    refreshSession
+  );
 
   if (error || !data) {
-    captureError({ error: error ?? new Error('empty response'), prefix: '[PassAPI.verify]: ' });
+    captureError({
+      error: error
+        ? await describeFunctionsError('verify-pass-purchase', error)
+        : new Error('empty response'),
+      prefix: '[PassAPI.verify]: ',
+    });
     throw error ?? new Error('verify-pass-purchase: empty response');
   }
   return data;
