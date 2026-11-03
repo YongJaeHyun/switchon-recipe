@@ -48,7 +48,7 @@ export default function HomeScreen() {
         <View className="my-6 border-b-2 border-neutral-300" />
 
         <View className="mb-10 gap-5">
-          <LatestNotice notices={getLatestNotices(latestNotice)} />
+          <LatestNotice notices={getLatestNotices(latestNotice)} latestIngredient={latestNotice} />
           <TodayChecklist />
         </View>
       </ScrollView>

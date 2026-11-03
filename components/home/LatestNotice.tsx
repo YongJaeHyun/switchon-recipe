@@ -6,20 +6,26 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import type { LatestNoticeItem } from 'const/notices';
+import type { getLatestIngredientNotice } from 'utils/latestIngredientNotice';
 import { Nullable } from '../../types/common';
 import AllNoticesModal from './AllNoticesModal';
+import IngredientUpdateModal from './IngredientUpdateModal';
 
 interface LatestNoticeProps {
-  notices: string[];
+  notices: LatestNoticeItem[];
+  // 재료 줄을 눌렀을 때 보여 줄 새 재료
+  latestIngredient: ReturnType<typeof getLatestIngredientNotice>;
 }
 
 const INTERVAL = 5000;
 
-export function LatestNotice({ notices }: LatestNoticeProps) {
+export function LatestNotice({ notices, latestIngredient }: LatestNoticeProps) {
   const timerRef = useRef<Nullable<NodeJS.Timeout>>(null);
   const isActiveRef = useRef(true);
 
-  const [visible, setVisible] = useState(false);
+  // 지금 보이는 줄에 따라 연다: 앱 업데이트 → 업데이트 내역, 재료 → 새 재료 창
+  const [opened, setOpened] = useState<LatestNoticeItem['kind'] | null>(null);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const nextIndex = (currentIndex + 1) % notices.length;
@@ -29,8 +35,8 @@ export function LatestNotice({ notices }: LatestNoticeProps) {
   const translateY = useSharedValue(0);
   const opacity = useSharedValue(1);
 
-  const openModal = () => setVisible(true);
-  const closeModal = () => setVisible(false);
+  const openModal = () => setOpened(notices[currentIndex]?.kind ?? 'app');
+  const closeModal = () => setOpened(null);
 
   const animatedCurrent = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
@@ -109,7 +115,7 @@ export function LatestNotice({ notices }: LatestNoticeProps) {
               animatedCurrent,
             ]}>
             <Text className="text-sm text-neutral-600" numberOfLines={1}>
-              {notices[currentIndex]}
+              {notices[currentIndex]?.text}
             </Text>
           </Animated.View>
 
@@ -125,14 +131,18 @@ export function LatestNotice({ notices }: LatestNoticeProps) {
                 animatedNext,
               ]}>
               <Text className="text-sm text-neutral-600" numberOfLines={1}>
-                {notices[nextIndex]}
+                {notices[nextIndex]?.text}
               </Text>
             </Animated.View>
           )}
         </View>
       </Pressable>
 
-      <AllNoticesModal visible={visible} onClose={closeModal} />
+      <AllNoticesModal visible={opened === 'app'} onClose={closeModal} />
+      <IngredientUpdateModal
+        notice={opened === 'ingredient' ? latestIngredient : null}
+        onClose={closeModal}
+      />
     </>
   );
 }

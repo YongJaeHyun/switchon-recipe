@@ -4,16 +4,25 @@ import { getLatestIngredientNotice } from 'utils/latestIngredientNotice';
 
 const version = APP_VERSION.split('+')[0];
 
+// 홈 공지 띠의 한 줄. 재료 줄을 누르면 업데이트 내역 대신 새 재료 창을 연다
+export type LatestNoticeItem = { kind: 'app' | 'ingredient'; text: string };
+
 export const getLatestNotices = (
   latestIngredient: ReturnType<typeof getLatestIngredientNotice>
-) => {
-  const notices = [
-    `🚀 [v${version} 업데이트] - 스위치온 패스, 체중·인바디 기록, 1주차 안내와 끼니 알림, 완주 달력`,
+): LatestNoticeItem[] => {
+  const notices: LatestNoticeItem[] = [
+    {
+      kind: 'app',
+      text: `🚀 [v${version} 업데이트] - 스위치온 패스, 체중·인바디 기록, 1주차 안내와 끼니 알림, 완주 달력`,
+    },
   ];
 
   if (latestIngredient) {
     const { month, week, names } = latestIngredient;
-    notices.push(`🥗 [${month}월 ${seosusa(week)}주 재료 업데이트] - ${names.join(', ')} 추가`);
+    notices.push({
+      kind: 'ingredient',
+      text: `🥗 [${month}월 ${seosusa(week)}주 재료 업데이트] - ${names.join(', ')} 추가`,
+    });
   }
 
   return notices;
