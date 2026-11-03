@@ -31,3 +31,39 @@ describe('weekCompletePopupStore 한 주 더 하기 물은 키', () => {
     expect(useWeekCompletePopupStore.getState().repeatAskedKeys).toEqual(['2026-10-01:4']);
   });
 });
+
+describe('weekCompletePopupStore 계정별 지난 주차·일차', () => {
+  beforeEach(() => useWeekCompletePopupStore.setState({ dayByUid: {}, week: 1, day: 1 }));
+
+  it('처음엔 비어 있고, rememberDay는 계정마다 따로 남기며 전역 week·day는 건드리지 않는다', () => {
+    const s = useWeekCompletePopupStore.getState();
+    expect(s.dayByUid).toEqual({});
+    s.rememberDay('a', { week: 2, day: 3 });
+    s.rememberDay('b', { week: 1, day: 6 });
+    const after = useWeekCompletePopupStore.getState();
+    expect(after.dayByUid).toEqual({ a: { week: 2, day: 3 }, b: { week: 1, day: 6 } });
+    expect(after.week).toBe(1);
+    expect(after.day).toBe(1);
+  });
+});
+
+describe('weekCompletePopupStore 예전 버전에서 올라온 값', () => {
+  it('예전 버전(v0)이 남긴 week·day는 실제 값으로 표시한다', async () => {
+    const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+    useWeekCompletePopupStore.setState({ globalDayKnown: false, dayByUid: {} });
+    await AsyncStorage.setItem(
+      'weekCompletePopupStore',
+      JSON.stringify({ state: { week: 2, day: 4, isChecked: true }, version: 0 })
+    );
+    await useWeekCompletePopupStore.persist.rehydrate();
+    const s = useWeekCompletePopupStore.getState();
+    expect(s.globalDayKnown).toBe(true);
+    expect(s.week).toBe(2);
+    expect(s.day).toBe(4);
+    expect(s.dayByUid).toEqual({});
+  });
+
+  it('새로 깐 앱은 기본값이라 실제 값으로 보지 않는다', () => {
+    expect(useWeekCompletePopupStore.getInitialState?.().globalDayKnown ?? false).toBe(false);
+  });
+});

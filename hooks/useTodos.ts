@@ -13,6 +13,7 @@ import { useMealAlarmStore } from 'stores/mealAlarmStore';
 import { useWeekCompletePopupStore } from 'stores/weekCompletePopupStore';
 import { Todo } from 'types/todo';
 import { getKoreanDate, getKoreanDateString, getWeekAndDay } from 'utils/date';
+import { todoStep } from 'utils/dayState';
 import { fastingDayTodos } from 'utils/fastingTodos';
 import { mealEndMinutes, snapLegacySchedule } from 'utils/mealTimes';
 import { isBeforeStart } from 'utils/programStart';
@@ -27,8 +28,9 @@ import { useQueryWith402Retry } from './useCustomQuery';
 import { RESET_FASTING_MUTATION_KEY, useFasting } from './useFasting';
 import { useMealAlarmSync } from './useMealAlarmSync';
 
-// 날이 바뀌어 할 일을 초기화하는 중인지 확인용 (todo_daily 다시 보내기)
-const RESET_TODOS_MUTATION_KEY = ['resetTodos'];
+// 날이 바뀌어 할 일을 초기화하는 중인지 확인용 (todo_daily 다시 보내기).
+// 처음 보는 계정의 오늘 체크 맞추기(useKoreanToday)도 이 키를 쓴다
+export const RESET_TODOS_MUTATION_KEY = ['resetTodos'];
 
 // todo_daily 보내기 상태 (useTodos는 할 일마다 불리므로 모듈 단위로 하나).
 // 빠르게 여러 번 체크하면 요청 도착 순서가 뒤바뀔 수 있어, 마지막 상태만 잠깐 뒤에 보낸다
@@ -49,7 +51,7 @@ export const useTodos = (options?: { syncTodoDaily?: boolean }) => {
   const { week, day } = getWeekAndDay(startDate);
   // 시작 전(시작일이 미래)에는 할 일을 쓰지 않는다: 체크·todo_daily·완료율 기록을 보내지 않는다
   const beforeStart = isBeforeStart(startDate, getKoreanDateString({ formatType: 'date' }));
-  const currentStep = week === 1 ? (day <= 3 ? 1 : 2) : week + 1;
+  const currentStep = todoStep(week, day);
 
   const { schedule: fastingSchedule, isLoading: isFastingLoading } = useFasting();
   // 단식 중 숨기는 끼니는 사용자 끼니 시각의 '식후'로 판정한다
