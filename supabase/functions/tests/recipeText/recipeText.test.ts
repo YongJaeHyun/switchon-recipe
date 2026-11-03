@@ -29,7 +29,7 @@ describe('requestRecipeText 조리 순서 요청', () => {
     const { body } = await capture();
     const text: string = body.system_instruction.parts[0].text;
     expect(text).toContain(COOKING_STEPS_PROMPT);
-    for (const rule of ['짧은 문장 1~3개', '동작 하나', '숫자로', '괄호 하나', '~해요', 'ingredients의 name과 똑같이']) {
+    for (const rule of ['짧은 문장 1~3개', '동작 하나', '숫자로', '괄호 하나', '~해요', 'ingredients의 name과 똑같이', '6~8단계']) {
       expect(COOKING_STEPS_PROMPT).toContain(rule);
     }
   });
