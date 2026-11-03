@@ -52,8 +52,14 @@ describe('buildInquirySlackText', () => {
 });
 
 describe('toImagePaths', () => {
+  it('보낸 사람 폴더 밖의 경로는 빼서 남의 사진 링크를 만들지 않는다', () => {
+    expect(toImagePaths(['a/1.jpg', 'b/2.jpg', 'a/../b/3.jpg', 'ab/4.jpg'], 'a')).toEqual([
+      'a/1.jpg',
+    ]);
+  });
+
   it('문자열 배열에서 빈 값을 빼고 최대 3개만 쓴다', () => {
-    expect(toImagePaths(['a/1.jpg', '', 'a/2.jpg', 'a/3.jpg', 'a/4.jpg'])).toEqual([
+    expect(toImagePaths(['a/1.jpg', '', 'a/2.jpg', 'a/3.jpg', 'a/4.jpg'], 'a')).toEqual([
       'a/1.jpg',
       'a/2.jpg',
       'a/3.jpg',
@@ -61,10 +67,10 @@ describe('toImagePaths', () => {
   });
 
   it('옛 앱처럼 열이 없거나 모양이 다르면 빈 배열', () => {
-    expect(toImagePaths(undefined)).toEqual([]);
-    expect(toImagePaths(null)).toEqual([]);
-    expect(toImagePaths('a/1.jpg')).toEqual([]);
-    expect(toImagePaths([1, 'a/1.jpg'])).toEqual(['a/1.jpg']);
+    expect(toImagePaths(undefined, 'a')).toEqual([]);
+    expect(toImagePaths(null, 'a')).toEqual([]);
+    expect(toImagePaths('a/1.jpg', 'a')).toEqual([]);
+    expect(toImagePaths([1, 'a/1.jpg'], 'a')).toEqual(['a/1.jpg']);
   });
 });
 

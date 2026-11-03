@@ -40,7 +40,7 @@ serve(async (req: Request) => {
     const baseUrl = Deno.env.get('INQUIRY_URL');
     if (!baseUrl) throw new Error('INQUIRY_URL not set');
 
-    const imageUrls = await signImageUrls(toImagePaths(image_paths));
+    const imageUrls = await signImageUrls(toImagePaths(image_paths, String(uid)));
 
     const templateMessage = buildInquirySlackText({
       uid,

@@ -6,10 +6,15 @@ export const INQUIRY_IMAGE_LINK_DAYS = 7;
 export const INQUIRY_IMAGE_LINK_SECONDS = INQUIRY_IMAGE_LINK_DAYS * 24 * 60 * 60;
 
 // 트리거가 보낸 image_paths를 믿을 수 있는 모양으로. 옛 앱 행이나 이상한 값은 빈 배열
-export const toImagePaths = (value: unknown): string[] => {
+// 보낸 사람 폴더({uid}/…) 안의 경로만 쓴다: 조작된 앱이 남의 사진 경로를 넣어도 운영자 링크로 열리지 않게
+export const toImagePaths = (value: unknown, uid: string): string[] => {
   if (!Array.isArray(value)) return [];
+  const prefix = `${uid}/`;
   return value
-    .filter((item): item is string => typeof item === 'string' && item.length > 0)
+    .filter(
+      (item): item is string =>
+        typeof item === 'string' && item.startsWith(prefix) && !item.includes('..')
+    )
     .slice(0, INQUIRY_IMAGE_MAX);
 };
 
