@@ -21,7 +21,7 @@ export default function AllNoticesModal({ visible, onClose }: AllNoticesModalPro
 
           <FlatList
             data={allNotices}
-            keyExtractor={(item) => item.version}
+            keyExtractor={(item, index) => `${item.version}-${index}`}
             contentContainerClassName="px-6 pb-2"
             renderItem={({ item: { version, changes, updatedAt }, index }) => (
               <NoticeToggle
