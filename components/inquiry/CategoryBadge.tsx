@@ -52,5 +52,17 @@ export function CategoryBadge({ category, active = true }: CategoryBadgeProps) {
       </View>
     );
   }
+  if (category === '환불 문의') {
+    return (
+      <View className={`${baseViewClassName} ${active ? 'border-sky-600' : baseBorderColor}`}>
+        <MaterialIcons
+          name="receipt-long"
+          size={16}
+          color={active ? colors.sky[600] : baseIconColor}
+        />
+        <Text className={`ml-1 ${active ? 'text-sky-600' : baseTextColor}`}>{category}</Text>
+      </View>
+    );
+  }
   return null;
 }

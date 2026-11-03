@@ -7,10 +7,10 @@ import { Text } from 'components/common/Text';
 import CategoryButton from 'components/inquiry/CategoryButton';
 import { CHANNELS } from 'const/channels';
 import { QueryKey } from 'const/queryKey';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { queryClient } from 'lib/queryClient';
-import { useState } from 'react';
-import { FlatList, ScrollView, TextInput, TouchableOpacity, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { ScrollView, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import colors from 'tailwindcss/colors';
 import { InquiryCategory, InquiryDB } from 'types/database';
@@ -19,14 +19,23 @@ import { requireOnline } from 'utils/network';
 
 type InquiryError = Pick<InquiryDB, 'title' | 'message'>;
 
-const categories: InquiryCategory[] = ['일반 문의', '버그 신고', '기능 요청'];
+const categories: InquiryCategory[] = ['일반 문의', '버그 신고', '기능 요청', '환불 문의'];
+
+// 내 정보 > 패스 환불 안내에서 들어오면 환불 문의를 골라 둔다 (아는 주제만)
+const toCategory = (value: string | string[] | undefined): InquiryCategory => {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return categories.find((c) => c === raw) ?? '일반 문의';
+};
 
 export default function NewInquiryScreen() {
   const [isModalVisible, setModalVisible] = useState(false);
 
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
-  const [category, setCategory] = useState<InquiryCategory>('일반 문의');
+  const { category: categoryParam } = useLocalSearchParams<{ category?: string }>();
+  const [category, setCategory] = useState<InquiryCategory>(() => toCategory(categoryParam));
+  const categoryScrollRef = useRef<ScrollView>(null);
+  const scrolledToCategory = useRef(false);
   const [errors, setErrors] = useState<Partial<InquiryError>>({});
 
   const { mutate: insertInquiry, isPending } = useMutation({
@@ -89,18 +98,29 @@ export default function NewInquiryScreen() {
         <View className="gap-10">
           <View>
             <Text className="mb-2 text-lg font-semibold">카테고리</Text>
-            <FlatList
-              data={categories}
-              contentContainerClassName="gap-4"
-              renderItem={({ item }) => (
-                <CategoryButton
-                  category={item}
-                  currentCategory={category}
-                  onPress={() => setCategory(item)}
-                />
-              )}
+            {/* 가로로 넘겨 본다. 다른 화면에서 주제를 정해 들어오면(환불 문의) 그 칩이 보이게 넘겨 둔다 */}
+            <ScrollView
+              ref={categoryScrollRef}
               horizontal
-            />
+              showsHorizontalScrollIndicator={false}
+              contentContainerClassName="gap-4">
+              {categories.map((item) => (
+                <View
+                  key={item}
+                  onLayout={(event) => {
+                    if (item !== category || scrolledToCategory.current) return;
+                    scrolledToCategory.current = true;
+                    const { x } = event.nativeEvent.layout;
+                    if (x > 0) categoryScrollRef.current?.scrollTo({ x, animated: true });
+                  }}>
+                  <CategoryButton
+                    category={item}
+                    currentCategory={category}
+                    onPress={() => setCategory(item)}
+                  />
+                </View>
+              ))}
+            </ScrollView>
           </View>
 
           <View>
