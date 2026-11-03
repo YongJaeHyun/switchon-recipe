@@ -112,4 +112,12 @@ describe('ingredientsByStep', () => {
     const result = ingredientsByStep(['두부면을 삶아요.'], [ing('두부면'), ing('곤약면')]);
     expect(result[0].map((r) => r.name)).toEqual(['두부면']);
   });
+
+  it('"1큰술 중 1/2큰술"이면 이 단계에 쓰는 뒤의 양', () => {
+    const result = ingredientsByStep(
+      ['팬에 올리브유 1큰술 중 1/2큰술을 둘러요.'],
+      [ing('올리브유', '1큰술')]
+    );
+    expect(result[0][0]).toMatchObject({ amount: '1/2큰술', fromStep: true });
+  });
 });

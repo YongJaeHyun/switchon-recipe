@@ -125,7 +125,13 @@ export function ingredientsByStep(
         if (taken.some(([s, e]) => at < e && end > s)) continue;
         taken.push([at, end]);
         if (!firstAt.has(index) || at < firstAt.get(index)!) firstAt.set(index, at);
-        const amount = text.slice(end).match(STEP_AMOUNT)?.[1];
+        const after = text.slice(end);
+        const first = after.match(STEP_AMOUNT);
+        // "올리브유 1큰술 중 1/2큰술" → 이 단계에 쓰는 건 뒤의 양
+        const second = first ? after.slice(first[0].length).match(/^\s*중/) : null;
+        const amount = second
+          ? (after.slice(first![0].length + second[0].length).match(STEP_AMOUNT)?.[1] ?? first![1])
+          : first?.[1];
         if (amount && !stepAmount.has(index)) stepAmount.set(index, amount.replace(/\s+/g, ''));
       }
     }
