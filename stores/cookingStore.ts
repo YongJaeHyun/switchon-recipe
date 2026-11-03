@@ -53,11 +53,15 @@ async function cancelAlarm(key: string) {
 }
 
 async function scheduleAlarm(timer: CookingTimer, recipeName: string) {
-  const left = Math.round(remainingMs(timer, Date.now()) / 1000);
-  if (left <= 0) return;
+  if (remainingMs(timer, Date.now()) <= 0) return;
   // 권한이 없으면 처음 타이머를 켤 때 한 번 묻는다. 거부해도 화면 안 타이머와 진동은 그대로 돈다
   const ready = await prepareLocalNotifications(CHANNELS.COOKING);
   if (!ready) return;
+  // 권한 창을 보는 동안 시간이 흘렀으니 남은 시간은 지금 다시 잰다 (늦게 울리지 않게)
+  const latest = get().timers[timer.key];
+  if (!latest || timerState(latest, Date.now()) !== 'running') return;
+  const left = Math.round(remainingMs(latest, Date.now()) / 1000);
+  if (left <= 0) return;
   try {
     const id = await Notifications.scheduleNotificationAsync({
       content: {
@@ -76,6 +80,11 @@ async function scheduleAlarm(timer: CookingTimer, recipeName: string) {
     if (!now || timerState(now, Date.now()) !== 'running') {
       await Notifications.cancelScheduledNotificationAsync(id);
       return;
+    }
+    // 빠르게 멈췄다 다시 켜서 알림 걸기가 겹쳤으면, 먼저 걸린 알림은 지우고 이번 것만 남긴다 (두 번 울리지 않게)
+    const previous = get().alarms[timer.key];
+    if (previous && previous !== id) {
+      await Notifications.cancelScheduledNotificationAsync(previous).catch(() => {});
     }
     set((s) => ({ alarms: { ...s.alarms, [timer.key]: id } }));
   } catch (error) {
