@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/react-native';
 import { ErrorToastTextProps } from 'types/toast';
+import { isTransientServerError } from './emptyErrorResponse';
 import { isNetworkError } from './networkError';
 import { showNetworkErrorToast } from './network';
 import { showErrorToast } from './showToast';
@@ -28,6 +29,15 @@ const captureError = ({ error, prefix, level = 'error' }: CaptureErrorProps) => 
       category: 'network',
       level: 'info',
       message: `${prefix}network request failed`,
+    });
+    return;
+  }
+  // 서버 앞단의 일시적인 빈 5xx도 앱이 고칠 수 없어 흔적만 남긴다 (오류 코드는 메시지에 남아 있다)
+  if (isTransientServerError(error)) {
+    Sentry.addBreadcrumb({
+      category: 'http',
+      level: 'warning',
+      message: `${prefix}${(error as { message?: string }).message ?? ''}`,
     });
     return;
   }
