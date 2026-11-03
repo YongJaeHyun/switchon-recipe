@@ -27,8 +27,9 @@ const HEAT_WORDS = String.raw`중약불|약중불|중강불|중불|강불|약불
 const AMOUNT = String.raw`${NUM_RANGE}\s?(?:ml|mL|ML|kg|g|L|cc|큰술|작은술|티스푼|스푼|숟가락|스쿱|컵|꼬집|줌|개|장|쪽|알|조각|봉지|팩|캔|모)(?![A-Za-z])`;
 const WORD_AMOUNT = String.raw`(?<![가-힣])(?:한|두|세|네|반)\s?(?:큰술|작은술|스푼|숟가락|스쿱|컵|꼬집|줌|장|개)(?![월소면])`;
 
+// 첫 번째 묶음 = 불 세기·시간, 두 번째 = 양. 이름 붙은 묶음(?<name>)은 Hermes에서 groups가 비어 쓰지 않는다
 const MARK_RE = new RegExp(
-  `(?<heat>${TIME}|${TEMPERATURE}|${HEAT_WORDS})|(?<amount>${AMOUNT}|${WORD_AMOUNT})`,
+  `(${TIME}|${TEMPERATURE}|${HEAT_WORDS})|(${AMOUNT}|${WORD_AMOUNT})`,
   'g'
 );
 const TIME_RE = new RegExp(TIME);
@@ -39,7 +40,7 @@ export function highlight(text: string): Piece[] {
   for (const match of text.matchAll(MARK_RE)) {
     const start = match.index ?? 0;
     if (start > last) pieces.push({ text: text.slice(last, start) });
-    pieces.push({ text: match[0], mark: match.groups?.heat ? 'heat' : 'amount' });
+    pieces.push({ text: match[0], mark: match[1] !== undefined ? 'heat' : 'amount' });
     last = start + match[0].length;
   }
   if (last < text.length) pieces.push({ text: text.slice(last) });
