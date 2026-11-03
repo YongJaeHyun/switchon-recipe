@@ -71,6 +71,45 @@ describe('ingredientsByStep', () => {
       ['딜과 파슬리를 다지고 마늘을 볶아요.'],
       [ing('신선한 딜'), ing('신선한 파슬리'), ing('다진 마늘')]
     );
-    expect(result[0].map((r) => r.name)).toEqual(['신선한 파슬리', '다진 마늘']);
+    expect(result[0].map((r) => r.name)).toEqual(['신선한 딜', '신선한 파슬리', '다진 마늘']);
+  });
+
+  it('단계에 묶음 이름만 나오면 찾는다 (버섯·액젓·밥)', () => {
+    const result = ingredientsByStep(
+      ['버섯은 먹기 좋게 썰어요.', '액젓으로 간을 해요.', '밥 위에 올려요.'],
+      [
+        ing('표고버섯 또는 새송이버섯', '50g'),
+        ing('참치액젓 또는 멸치액젓', '1작은술'),
+        ing('현미밥', '100g'),
+      ]
+    );
+    expect(result.map((r) => r.map((x) => x.name))).toEqual([
+      ['표고버섯 또는 새송이버섯'],
+      ['참치액젓 또는 멸치액젓'],
+      ['현미밥'],
+    ]);
+  });
+
+  it('첫 낱말만 나와도 찾는다 (연어 필레 → 연어), 꾸미는 말(다진·신선한)은 첫 낱말로 쓰지 않는다', () => {
+    const result = ingredientsByStep(
+      ['연어와 소고기를 구워요.', '다진 양파를 넣어요.'],
+      [ing('연어 필레'), ing('소고기 등심'), ing('다진 마늘'), ing('양파')]
+    );
+    expect(result[0].map((r) => r.name)).toEqual(['연어 필레', '소고기 등심']);
+    expect(result[1].map((r) => r.name)).toEqual(['양파']);
+  });
+
+  it('한 글자 마지막 낱말도 낱말일 때 찾는다 (생 딜 → 딜)', () => {
+    const result = ingredientsByStep(
+      ['딜을 뿌려요.', '딸기를 올려요.'],
+      [ing('생 딜 또는 건조 딜')]
+    );
+    expect(result[0].map((r) => r.name)).toEqual(['생 딜 또는 건조 딜']);
+    expect(result[1]).toEqual([]);
+  });
+
+  it('정확한 이름이 묶음 이름보다 먼저 (두부면이 있으면 "면"으로 다른 재료를 잡지 않는다)', () => {
+    const result = ingredientsByStep(['두부면을 삶아요.'], [ing('두부면'), ing('곤약면')]);
+    expect(result[0].map((r) => r.name)).toEqual(['두부면']);
   });
 });

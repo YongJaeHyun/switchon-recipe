@@ -36,8 +36,19 @@ const STEP_AMOUNT =
   /^\s*(\d+(?:[./]\d+)?(?:\s*[~-]\s*\d+(?:[./]\d+)?)?\s*(?:큰술|작은술|스푼|티스푼|컵|ml|mL|L|g|kg|개|알|장|쪽|줄기|모|팩|봉지|캔|스쿱|꼬집|줌|대|T|t))/;
 const isHangul = (ch: string | undefined) => !!ch && ch >= '가' && ch <= '힣';
 
+// 꾸미는 말(다진·신선한·말린·삶은…)은 첫 낱말로 쓰지 않는다
+const MODIFIER = /(은|는|한|린|진|운|친|깬|썬|된|른|인)$|^(생|건조|냉동|통)$/;
+// 묶음 이름: 단계에 "버섯", "밥"처럼 묶음 이름만 나올 때 (표고버섯 → 버섯, 현미밥 → 밥)
+const HEADS = ['버섯', '액젓', '육수', '가루', '소스', '오일', '고기', '밥', '면'];
+
+interface SearchKey {
+  key: string;
+  // 정확한 이름이 아닌 보조 낱말 (정확한 이름을 다 찾은 뒤에 찾는다)
+  fallback: boolean;
+}
+
 // 재료 이름 → 찾을 낱말들
-function searchKeys(name: string): string[] {
+function searchKeys(name: string): SearchKey[] {
   const alternatives = [...name.matchAll(/\(([^)]*)\)/g)]
     .map((m) => m[1].trim())
     .filter((inner) => inner.startsWith('또는'))
@@ -51,12 +62,26 @@ function searchKeys(name: string): string[] {
     .flatMap((part) => part.split(/\s*(?:\/|,|또는)\s*/))
     .map((k) => k.trim())
     .filter((k) => k.length > 0);
-  // 꾸미는 말이 붙은 이름("신선한 파슬리", "다진 마늘")은 마지막 낱말로도 찾는다 (두 글자 이상)
-  const lastWords = parts
-    .map((part) => part.split(/\s+/))
-    .filter((ws) => ws.length > 1 && ws[ws.length - 1].length >= 2)
-    .map((ws) => ws[ws.length - 1]);
-  return [...new Set([...parts, ...lastWords])];
+
+  const fallback = new Set<string>();
+  for (const part of parts) {
+    const ws = part.split(/\s+/);
+    if (ws.length > 1) {
+      // "신선한 파슬리" → 파슬리, "생 딜" → 딜 (한 글자는 낱말일 때만 잡힌다)
+      fallback.add(ws[ws.length - 1]);
+      // "연어 필레" → 연어, "소고기 등심" → 소고기
+      if (ws[0].length >= 2 && !MODIFIER.test(ws[0])) fallback.add(ws[0]);
+    }
+    const last = ws[ws.length - 1];
+    for (const head of HEADS) {
+      if (last.length > head.length && last.endsWith(head)) fallback.add(head);
+    }
+  }
+  const exact = new Set(parts);
+  return [
+    ...[...exact].map((key) => ({ key, fallback: false })),
+    ...[...fallback].filter((key) => !exact.has(key)).map((key) => ({ key, fallback: true })),
+  ];
 }
 
 function findAll(text: string, key: string): number[] {
@@ -85,9 +110,10 @@ export function ingredientsByStep(
       ? { name: raw, amount: null, isOptional: false }
       : { name: raw.name, amount: raw.amount ?? null, isOptional: raw.isOptional === true }
   );
+  // 정확한 이름을 먼저(긴 것부터), 보조 낱말은 그 뒤에 (두부면이 있으면 "면"으로 다른 재료를 잡지 않게)
   const keys = items
-    .flatMap((item, index) => searchKeys(item.name).map((key) => ({ key, index })))
-    .sort((a, b) => b.key.length - a.key.length);
+    .flatMap((item, index) => searchKeys(item.name).map((k) => ({ ...k, index })))
+    .sort((a, b) => Number(a.fallback) - Number(b.fallback) || b.key.length - a.key.length);
 
   const perStep = steps.map((text) => {
     const taken: [number, number][] = [];
