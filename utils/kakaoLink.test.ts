@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { kakaoLinkRoute, parseKakaoLink, recipeDetailHref } from './kakaoLink';
+import { kakaoLinkRoute, parseKakaoLink, publicRecipeJson, recipeDetailHref } from './kakaoLink';
 
 const recipe = JSON.stringify({
   id: 12,
@@ -252,5 +252,44 @@ describe('kakaoLinkRoute (받은 사람을 어디로 보낼지)', () => {
       href: '/',
       afterLoginHref: null,
     });
+  });
+});
+
+describe('publicRecipeJson', () => {
+  it('공유 링크에는 만든 사람 정보와 본인만 보는 안내를 넣지 않는다', () => {
+    const json = publicRecipeJson(
+      JSON.stringify({
+        id: 1,
+        recipe_name: '두부면 라면',
+        uid: 'u1',
+        adapt_note: '치즈가 들어가…',
+        is_saved: true,
+      })
+    );
+    expect(JSON.parse(json)).toEqual({ id: 1, recipe_name: '두부면 라면' });
+  });
+
+  it('JSON이 아니면 그대로 둔다', () => {
+    expect(publicRecipeJson('x')).toBe('x');
+  });
+});
+
+describe('parseKakaoLink 개인 칸 제거', () => {
+  it('받은 레시피 링크에 안내·만든 사람 칸이 있어도 지우고 연다 (옛 앱이 보낸 링크)', () => {
+    const recipe = JSON.stringify({
+      id: 1,
+      ingredients: '[]',
+      cooking_steps: '[]',
+      nutrition: '{}',
+      adapt_note: '치즈가 들어가…',
+      uid: 'u1',
+    });
+    const target = parseKakaoLink(
+      `switchon-recipe://kakaolink?recipe=${encodeURIComponent(recipe)}`
+    );
+    expect(target?.type).toBe('recipe');
+    const opened = JSON.parse((target as { recipe: string }).recipe);
+    expect(opened.adapt_note).toBeUndefined();
+    expect(opened.uid).toBeUndefined();
   });
 });

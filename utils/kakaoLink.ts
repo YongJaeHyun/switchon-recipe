@@ -46,6 +46,18 @@ const isOpenableRecipe = (recipe: string) => {
   return hasRecipeFieldShapes(parsed);
 };
 
+// 친구에게 가는 레시피 링크에 넣지 않는 칸: 만든 사람(uid), 만든 사람만 보는 안내(adapt_note), 보낸 사람의 저장 여부.
+// 보낼 때와 받을 때 모두 지운다 (옛 앱이 보낸 링크에도 남아 있을 수 있다)
+const PRIVATE_RECIPE_FIELDS = ['uid', 'adapt_note', 'is_saved', 'isSaved', 'saved_at'];
+
+export function publicRecipeJson(recipe: string): string {
+  const parsed = parseJson(recipe);
+  if (!isObject(parsed)) return recipe;
+  const copy: Record<string, unknown> = { ...parsed };
+  for (const key of PRIVATE_RECIPE_FIELDS) delete copy[key];
+  return JSON.stringify(copy);
+}
+
 export function parseKakaoLink(url: string | null | undefined): KakaoLinkTarget | null {
   if (!url) return null;
   let parsed: URL;
@@ -68,7 +80,7 @@ export function parseKakaoLink(url: string | null | undefined): KakaoLinkTarget 
   if (params.has('recipe')) {
     const recipe = params.get('recipe');
     if (!recipe || !isOpenableRecipe(recipe)) return null;
-    return { type: 'recipe', recipe };
+    return { type: 'recipe', recipe: publicRecipeJson(recipe) };
   }
   if (params.has('invite')) {
     const startDate = params.get('invite');

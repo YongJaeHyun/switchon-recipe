@@ -100,13 +100,15 @@ export interface GenerateRecipeInput {
   is_zero_carb: unknown;
   // create-recipe-by-name: 이름 판정이 정한 레시피 이름 (AI가 만든 이름 대신, 이미지 생성 전에 바꾼다)
   recipeName?: string;
-  // create-recipe-by-name: 바꿔 만든 안내 (recipe.adapt_note). 없으면 insert에 넣지 않는다 (기존 생성 그대로)
+  // create-recipe-by-name: 바꿔 만든 안내. 만든 사람만 보는 recipe_note에 저장하고 응답 행에만 adapt_note로 붙인다
   adaptNote?: string | null;
   // 요청한 유저. Gemini 사용량 기록(ai_usage)에 붙인다
   uid?: string | null;
   // create-recipe-by-name: 저장 주차를 실제 재료(태그) 중 가장 높은 주차로 정한다 (_shared/recipeWeekFromTags.ts).
   // 고른 주차보다 올라가면 adapt_note에 이유를 한 줄 붙인다
   weekFromTags?: boolean;
+  // 주차가 올라갔을 때 안내를 붙일지 (이름으로 만들기만. 재료로 만들기·추천에서 만들기는 조용히 주차만 맞춘다)
+  weekNote?: boolean;
 }
 
 // 레시피 텍스트 생성 → 이미지 생성·업로드 → recipe 저장. 저장된 행을 돌려준다.
@@ -114,7 +116,16 @@ export interface GenerateRecipeInput {
 export async function generateAndSaveRecipe(
   { userClient: supabaseClient, adminClient }: RecipeClients,
   providerFetch: typeof fetch,
-  { command, week, is_zero_carb, recipeName, adaptNote, uid, weekFromTags }: GenerateRecipeInput
+  {
+    command,
+    week,
+    is_zero_carb,
+    recipeName,
+    adaptNote,
+    uid,
+    weekFromTags,
+    weekNote = true,
+  }: GenerateRecipeInput
 ): Promise<unknown> {
   const geminiKey = Deno.env.get('GEMINI_API_KEY');
   if (!geminiKey) throw new Error('GEMINI_API_KEY not set');
@@ -192,7 +203,7 @@ export async function generateAndSaveRecipe(
   if (weekFromTags && typeof week === 'number') {
     const result = recipeWeekFromTags(ingredientTags, weekByName, week);
     saveWeek = result.week;
-    const note = raisedWeekNote(result);
+    const note = weekNote ? raisedWeekNote(result) : null;
     if (note) saveAdaptNote = saveAdaptNote ? `${saveAdaptNote}\n${note}` : note;
   }
 
@@ -213,12 +224,25 @@ export async function generateAndSaveRecipe(
       cuisine: tags?.cuisine ?? null,
       method: tags?.method ?? null,
       servings: validated.servings,
-      ...(saveAdaptNote ? { adapt_note: saveAdaptNote } : {}),
     })
     .select()
     .single();
 
   if (error) throw new Error(`DB 저장 실패: ${error.message}`);
+
+  // 안내는 만든 사람만 보는 recipe_note에 둔다 (누구나 읽는 recipe 행에는 넣지 않는다).
+  // 실패해도 레시피는 이미 저장됐으므로 안내만 빠진다. 방금 만든 사람에게는 응답으로 바로 보여 준다
+  if (saveAdaptNote) {
+    const recipeId = (data as { id?: number } | null)?.id;
+    const ownerUid = uid ?? (data as { uid?: string } | null)?.uid ?? null;
+    if (recipeId && ownerUid) {
+      const { error: noteError } = await adminClient
+        .from('recipe_note')
+        .insert({ recipe_id: recipeId, uid: ownerUid, note: saveAdaptNote });
+      if (noteError) console.error('레시피 안내 저장 실패:', noteError);
+    }
+    return { ...(data as Record<string, unknown>), adapt_note: saveAdaptNote };
+  }
 
   return data;
 }
@@ -248,6 +272,14 @@ async function handleCreateRecipe(req: Request, providerFetch: typeof fetch): Pr
     },
 
     generate: ({ command, week, is_zero_carb }, uid) =>
-      generateAndSaveRecipe(clients, providerFetch, { command, week, is_zero_carb, uid }),
+      // 저장 주차는 실제 재료 중 가장 높은 주차로 맞춘다 (앱이 보낸 주차보다 정확, 옛 앱에도 적용). 안내는 붙이지 않는다
+      generateAndSaveRecipe(clients, providerFetch, {
+        command,
+        week,
+        is_zero_carb,
+        uid,
+        weekFromTags: true,
+        weekNote: false,
+      }),
   });
 }
