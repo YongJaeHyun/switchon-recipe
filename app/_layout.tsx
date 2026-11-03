@@ -1,6 +1,7 @@
 import { PortalProvider } from '@gorhom/portal';
 import { initializeKakaoSDK } from '@react-native-kakao/core';
 import * as Sentry from '@sentry/react-native';
+import * as Updates from 'expo-updates';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { RecipeJobBand } from 'components/common/RecipeJobBand';
 import { ReviewPromptModal } from 'components/common/ReviewPromptModal';
@@ -36,16 +37,26 @@ SplashScreen.setOptions({
 const navigationIntegration = Sentry.reactNavigationIntegration({
   enableTimeToInitialDisplay: !isRunningInExpoGo(),
 });
+// process.env.APP_ENV는 앱 번들에 들어가지 않아(EXPO_PUBLIC_만 들어감) 운영에서도 늘 비어 있었다 →
+// 모든 사용자가 개발용 설정(세션 녹화 100%, 성능 추적·프로파일링 100%)으로 돌았다. 개발 빌드 여부(__DEV__)로 나눈다.
+// 운영: 세션 녹화·프로파일링 끔 (네이티브에서 계속 돌아 복귀 직후 SIGABRT의 유력 원인), 성능 추적 10%
+const isDevBuild = __DEV__;
 Sentry.init({
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
   sendDefaultPii: true,
-  tracesSampleRate: process.env.APP_ENV === 'production' ? 0.1 : 1.0,
-  profilesSampleRate: process.env.APP_ENV === 'production' ? 0.1 : 1.0,
-  replaysSessionSampleRate: process.env.APP_ENV === 'production' ? 0.1 : 1.0,
-  replaysOnErrorSampleRate: process.env.APP_ENV === 'production' ? 1.0 : 0,
-  integrations: [navigationIntegration, Sentry.mobileReplayIntegration()],
+  environment: isDevBuild ? 'development' : 'production',
+  tracesSampleRate: isDevBuild ? 1.0 : 0.1,
+  profilesSampleRate: isDevBuild ? 1.0 : 0,
+  replaysSessionSampleRate: isDevBuild ? 1.0 : 0,
+  replaysOnErrorSampleRate: 0,
+  integrations: isDevBuild
+    ? [navigationIntegration, Sentry.mobileReplayIntegration()]
+    : [navigationIntegration],
   enableNativeFramesTracking: !isRunningInExpoGo(),
 });
+// 어떤 OTA에서 난 오류인지 알 수 있게 (릴리즈는 스토어 빌드만 구분해서 OTA를 모른다)
+Sentry.setTag('update_id', Updates.updateId ?? 'embedded');
+Sentry.setTag('update_channel', Updates.channel ?? 'unknown');
 
 function RootLayout() {
   const ref = useNavigationContainerRef();
