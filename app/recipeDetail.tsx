@@ -5,7 +5,9 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { shareCustomTemplate } from '@react-native-kakao/share';
 import { RecipeAPI } from 'api/RecipeAPI';
+import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
+import { CookingStepList } from 'components/cooking/CookingStepList';
 import { CarbBadge } from 'components/recipes/CarbBadge';
 import { ServingsStepper } from 'components/recipes/ServingsStepper';
 import { SimilarRecipes } from 'components/recipes/SimilarRecipes';
@@ -137,6 +139,10 @@ export default function RecipeDetailScreen() {
       router.replace('/(tabs)/home');
     }
   };
+
+  // 요리 모드: 같은 레시피 JSON과 지금 고른 인분(재료 보기에 반영)을 넘긴다
+  const openCookingMode = () =>
+    router.push({ pathname: '/cookingMode', params: { recipe, servings: String(servings) } });
 
   const shareRecipeWithKakao = async () => {
     await shareCustomTemplate({
@@ -287,22 +293,33 @@ export default function RecipeDetailScreen() {
           </View>
 
           <View className="mt-10">
-            <View className="flex-row items-center gap-4">
-              <Text className="text-2xl font-bold">조리순서</Text>
+            <View className="flex-row items-center justify-between">
+              <Text className="text-2xl font-bold">조리 순서</Text>
               <View className="flex-row items-center gap-1">
-                <Ionicons name="time-outline" size={16} color="black" />
-                <Text>약 {cooking_time}분</Text>
+                <Ionicons name="time-outline" size={16} color={colors.neutral[500]} />
+                <Text className="text-neutral-500">
+                  약 {cooking_time}분 · {parsedCookingSteps.length}단계
+                </Text>
               </View>
             </View>
-            <View className="mb-10 mt-2 border border-neutral-300" />
-            {parsedCookingSteps.map((step, index) => (
-              <View key={index} className="mb-8 w-full flex-row">
-                <View className="mr-4 h-6 w-6 items-center justify-center rounded-full bg-green-600">
-                  <Text className="text-center text-white">{index + 1}</Text>
-                </View>
-                <Text className="flex-1 text-medium leading-6 tracking-wide">{step}</Text>
-              </View>
-            ))}
+            <View className="mt-2 border border-neutral-300" />
+            {parsedCookingSteps.length > 0 && (
+              <RippleButton
+                onPress={openCookingMode}
+                outerClassName="mt-4 mb-2 w-full"
+                className="w-full flex-row items-center justify-center gap-2 rounded-xl bg-green-600 py-3.5"
+                accessibilityRole="button"
+                accessibilityLabel="요리 시작, 한 단계씩 크게 보기">
+                <Ionicons name="play" size={18} color="white" />
+                <Text className="text-medium font-bold text-white">요리 시작</Text>
+                <Text className="text-sm text-green-100">한 단계씩 크게</Text>
+              </RippleButton>
+            )}
+            <CookingStepList
+              recipeId={id}
+              recipeName={recipe_name ?? ''}
+              steps={parsedCookingSteps.map(String)}
+            />
           </View>
 
           <SimilarRecipes recipeId={id} />

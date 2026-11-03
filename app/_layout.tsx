@@ -88,6 +88,10 @@ function RootLayout() {
               <Stack.Screen name="(inquiry)" options={{ headerShown: false }} />
               <Stack.Screen name="recipeDetail" options={{ headerShown: false }} />
               <Stack.Screen
+                name="cookingMode"
+                options={{ headerShown: false, animation: 'slide_from_bottom' }}
+              />
+              <Stack.Screen
                 name="recipeCreation/zero"
                 options={{ title: '무탄수 레시피 제작', headerTitleStyle: { fontSize: 20 } }}
               />

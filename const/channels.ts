@@ -8,6 +8,8 @@ export const CHANNELS = {
   MEAL: 'MEAL',
   // 1주차 다음 날 아침 리마인드 (로컬)
   DAILY: 'DAILY',
+  // 요리 모드·조리 순서 타이머 (로컬)
+  COOKING: 'COOKING',
 } as const;
 
 export type Channel = (typeof CHANNELS)[keyof typeof CHANNELS];
