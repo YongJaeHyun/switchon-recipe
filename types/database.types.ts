@@ -270,6 +270,7 @@ export type Database = {
           category: string | null;
           created_at: string;
           id: number;
+          image_paths: string[];
           message: string | null;
           status: string | null;
           title: string | null;
@@ -280,6 +281,7 @@ export type Database = {
           category?: string | null;
           created_at?: string;
           id?: number;
+          image_paths?: string[];
           message?: string | null;
           status?: string | null;
           title?: string | null;
@@ -290,6 +292,7 @@ export type Database = {
           category?: string | null;
           created_at?: string;
           id?: number;
+          image_paths?: string[];
           message?: string | null;
           status?: string | null;
           title?: string | null;

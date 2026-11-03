@@ -5,6 +5,7 @@ import ConfirmModal from 'components/common/ConfirmModal';
 import RippleButton from 'components/common/RippleButton';
 import { Text } from 'components/common/Text';
 import CategoryButton from 'components/inquiry/CategoryButton';
+import InquiryImagePicker, { type PickedInquiryImage } from 'components/inquiry/InquiryImagePicker';
 import { CHANNELS } from 'const/channels';
 import { QueryKey } from 'const/queryKey';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -37,9 +38,18 @@ export default function NewInquiryScreen() {
   const categoryScrollRef = useRef<ScrollView>(null);
   const scrolledToCategory = useRef(false);
   const [errors, setErrors] = useState<Partial<InquiryError>>({});
+  const [images, setImages] = useState<PickedInquiryImage[]>([]);
 
-  const { mutate: insertInquiry, isPending } = useMutation({
-    mutationFn: InquiryAPI.insert,
+  // 사진을 먼저 올리고, 다 올라가야 문의를 넣는다. 실패하면(안내는 API가 함) undefined
+  const { mutateAsync: sendInquiry, isPending } = useMutation({
+    mutationFn: async (input: Pick<InquiryDB, 'title' | 'message' | 'category'>) => {
+      const paths = await InquiryAPI.uploadImages(
+        images.map(({ base64, mimeType }) => ({ base64, mimeType }))
+      );
+      if (!paths) return undefined;
+      // 사진이 없으면 열을 보내지 않는다 (DB에 열이 생기기 전에 앱이 나가도 문의는 들어간다)
+      return InquiryAPI.insert(paths.length > 0 ? { ...input, image_paths: paths } : input);
+    },
     onSuccess: (newData) => {
       if (newData) {
         queryClient.setQueryData<InquiryDB[]>([QueryKey.inquiries], (old = []) => [
@@ -66,6 +76,7 @@ export default function NewInquiryScreen() {
     setTitle('');
     setMessage('');
     setCategory('버그 신고');
+    setImages([]);
     setErrors({ title: '', message: '' });
   };
 
@@ -75,7 +86,11 @@ export default function NewInquiryScreen() {
   };
 
   const handleConfirm = async () => {
-    insertInquiry({ title, message, category });
+    const newData = await sendInquiry({ title, message, category });
+    if (!newData) {
+      setModalVisible(false);
+      return;
+    }
 
     router.back();
 
@@ -87,7 +102,7 @@ export default function NewInquiryScreen() {
 
   return (
     <SafeAreaView className="flex-1 justify-between bg-white p-4">
-      <ScrollView contentContainerClassName="gap-6">
+      <ScrollView contentContainerClassName="gap-6 pb-6">
         <View className="flex-row items-center gap-4">
           <TouchableOpacity onPress={router.back}>
             <MaterialIcons name="arrow-back" size={28} color="black" />
@@ -152,14 +167,19 @@ export default function NewInquiryScreen() {
             />
             {errors.message && <Text className="text-sm text-red-500">{errors.message}</Text>}
           </View>
+
+          <InquiryImagePicker images={images} onChange={setImages} disabled={isPending} />
         </View>
       </ScrollView>
 
       <RippleButton
         className="w-full bg-green-600 py-5"
         onPress={requireOnline(validateAndShowModal)}
+        disabled={isPending}
         rounded="xl">
-        <Text className="text-lg font-medium text-white">제출하기</Text>
+        <Text className="text-lg font-medium text-white">
+          {isPending ? '보내는 중…' : '제출하기'}
+        </Text>
       </RippleButton>
 
       <ConfirmModal
@@ -172,6 +192,7 @@ export default function NewInquiryScreen() {
         message="제출 후, 확인하기까지 최대 24시간이 소요될 수 있어요!"
         onConfirm={handleConfirm}
         onCancel={() => setModalVisible(false)}
+        confirmLabel={isPending ? '보내는 중…' : '네'}
         disabled={isPending}
       />
     </SafeAreaView>

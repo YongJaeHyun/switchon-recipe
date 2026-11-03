@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
 import { InquiryAPI } from 'api/InquiryAPI';
 import { Text } from 'components/common/Text';
 import { CategoryBadge } from 'components/inquiry/CategoryBadge';
@@ -39,6 +40,15 @@ export default function InquiryDetail() {
     enabled: !!id,
   });
 
+  const imagePaths = inquiry?.image_paths ?? [];
+  const { data: imageUrls = [] } = useQuery({
+    queryKey: ['inquiry-images', id, imagePaths],
+    queryFn: () => InquiryAPI.signImages(imagePaths),
+    enabled: imagePaths.length > 0,
+    // 링크는 1시간 열린다. 그 전에 새로 받는다
+    staleTime: 50 * 60 * 1000,
+  });
+
   const answerPrefix = '문의해주셔서 감사합니다!\n남겨주신 문의에 대해 확인 후 답변드립니다.\n\n';
   const answer = answerPrefix + inquiry?.answer;
 
@@ -76,6 +86,20 @@ export default function InquiryDetail() {
         </View>
 
         <Text className="my-10 text-neutral-600">{inquiry?.message ?? '-'}</Text>
+
+        {imageUrls.length > 0 && (
+          <View className="-mt-4 mb-10 flex-row gap-3">
+            {imageUrls.map((url, index) => (
+              <Image
+                key={url}
+                source={{ uri: url }}
+                style={{ width: 96, height: 96, borderRadius: 8 }}
+                contentFit="cover"
+                accessibilityLabel={`첨부한 사진 ${index + 1}`}
+              />
+            ))}
+          </View>
+        )}
 
         <View>
           <View className="flex-row items-center gap-2">
