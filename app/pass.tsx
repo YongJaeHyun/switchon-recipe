@@ -584,18 +584,13 @@ export default function PassScreen() {
           <Text className="text-center text-xs text-neutral-400">
             패스 기능을 쓰기 시작하면 단순 변심으로는 환불되지 않아요. 구매 후 48시간 안에는 Play
             스토어에서 환불을 요청할 수 있어요.
-            {/* 환불 안내 창은 패스를 산 사람에게만 (제한 안내 문장은 결제 전에 모두가 봐야 해서 그대로) */}
-            {hasPass && (
-              <>
-                {' '}
-                <Text
-                  className="text-xs font-bold text-neutral-500 underline"
-                  onPress={() => setRefundVisible(true)}
-                  accessibilityRole="link">
-                  환불 안내
-                </Text>
-              </>
-            )}
+            {/* 환불 안내 창은 모두에게 (사기 전에도 환불 방법을 볼 수 있게, 운영자 2026-11-03) */}{' '}
+            <Text
+              className="text-xs font-bold text-neutral-500 underline"
+              onPress={() => setRefundVisible(true)}
+              accessibilityRole="link">
+              환불 안내
+            </Text>
           </Text>
         </View>
       </>
