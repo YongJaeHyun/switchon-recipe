@@ -1,7 +1,6 @@
-import { BottomSheetMethods } from '@gorhom/bottom-sheet/lib/typescript/types';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Text } from 'components/common/Text';
-import { IngredientSheet } from 'components/cooking/IngredientSheet';
+import { StepIngredientList } from 'components/cooking/StepIngredientList';
 import { StepPieces } from 'components/cooking/StepPieces';
 import { TimerCard } from 'components/cooking/TimerCard';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -22,11 +21,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { clearRecipeTimers, setLastStep, useCookingStore } from 'stores/cookingStore';
 import colors from 'tailwindcss/colors';
 import type { RecipeDB } from 'types/database';
-import type { RecipeIngredient } from 'types/recipe';
 import { type CookingStep, formatClock, parseCookingStep } from 'utils/cookingSteps';
 import { remainingMs, timerState } from 'utils/cookingTimer';
 import { parseRecipeFields } from 'utils/recipeFields';
 import { baseServingsOf } from 'utils/scaleAmount';
+import { ingredientsByStep } from 'utils/stepIngredients';
 
 // 요리 모드: 한 단계씩 크게, 어두운 바탕. 레시피는 상세 화면처럼 JSON 파라미터로, 인분은 상세에서 고른 값.
 // 화면이 꺼지지 않고(네이티브 모듈이 있는 빌드에서만), 타이머는 단계를 넘겨도 계속 돈다.
@@ -44,11 +43,21 @@ export default function CookingModeScreen() {
   );
   const baseServings = baseServingsOf(recipe);
   const servings = Number(params.servings) || baseServings || 1;
+  // 단계마다 그 단계 문장에 나온 재료 (재료 보기 시트 대신)
+  const stepIngredients = useMemo(
+    () =>
+      ingredientsByStep(
+        fields.cookingSteps.map((s) => String(s)),
+        fields.ingredients as Parameters<typeof ingredientsByStep>[1]
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [params.recipe]
+  );
+  const amountFactor = baseServings ? servings / baseServings : 1;
 
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const listRef = useRef<FlatList<CookingStep>>(null);
-  const sheetRef = useRef<BottomSheetMethods>(null);
   const [index, setIndex] = useState(() =>
     Math.min(useCookingStore.getState().lastStep[id] ?? 0, Math.max(0, steps.length - 1))
   );
@@ -152,17 +161,7 @@ export default function CookingModeScreen() {
         className="flex-1"
         renderItem={({ item: step, index: stepIndex }) => (
           <ScrollView style={{ width }} contentContainerStyle={{ padding: 20, paddingTop: 24 }}>
-            <View className="mb-3 flex-row items-center justify-between">
-              <Text className="font-bold text-green-300">{stepIndex + 1}단계</Text>
-              <Pressable
-                onPress={() => sheetRef.current?.expand()}
-                accessibilityRole="button"
-                accessibilityLabel="재료 보기"
-                hitSlop={8}
-                className="rounded-full border border-slate-600 px-3 py-1.5">
-                <Text className="text-xs text-slate-300">재료 보기</Text>
-              </Pressable>
-            </View>
+            <Text className="mb-3 font-bold text-green-300">{stepIndex + 1}단계</Text>
             <View className="gap-3">
               {step.lines.map((line, i) => (
                 <StepPieces
@@ -183,6 +182,10 @@ export default function CookingModeScreen() {
                 />
               </View>
             ))}
+            <StepIngredientList
+              items={stepIngredients[stepIndex] ?? []}
+              amountFactor={amountFactor}
+            />
             {step.timer && (
               <TimerCard
                 recipeId={id}
@@ -225,13 +228,6 @@ export default function CookingModeScreen() {
           ? '요리하는 동안 화면이 꺼지지 않아요'
           : '좌우로 밀어도 단계를 넘길 수 있어요'}
       </Text>
-
-      <IngredientSheet
-        ref={sheetRef}
-        ingredients={fields.ingredients as RecipeIngredient[]}
-        servings={servings}
-        baseServings={baseServings}
-      />
     </View>
   );
 }
