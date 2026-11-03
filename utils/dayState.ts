@@ -53,12 +53,15 @@ export function todoStep(week: number, day: number): number {
 
 // 이 기기에서 처음 보는 계정: 서버의 오늘(KST) todo_daily 기록으로 할 일 체크를 정한다.
 // 기록이 있으면 그 체크로 맞추고(sync), 없으면 남아 있는 체크는 지난 날 것이라 초기화(reset).
-// 기록의 checked는 items 안 위치라, 그 문구를 오늘 할 일 목록에서 찾아 id로 바꾼다 (못 찾으면 건너뜀)
+// 기록의 checked는 items 안 위치라, 그 문구를 오늘 할 일 목록에서 찾아 id로 바꾼다 (못 찾으면 건너뜀).
+// 기록은 있는데 체크가 하나도 없으면 서버 체크를 건드리지 않는다(keep): 오늘 기록은 앱을 열 때 빈 채로 먼저
+// 만들어지므로, 빈 기록이 옛 앱·오프라인에서 한 오늘 체크보다 늦을 수 있다. 덮어쓰면 체크가 지워진다
 export function firstSeenTodoPlan(
   row: { items: string[]; checked: number[] } | null | undefined,
   todos: { id: number; value: string }[]
-): { kind: 'reset' } | { kind: 'sync'; checkedIds: number[] } {
+): { kind: 'reset' } | { kind: 'keep' } | { kind: 'sync'; checkedIds: number[] } {
   if (!row) return { kind: 'reset' };
+  if (row.checked.length === 0) return { kind: 'keep' };
   const used = new Set<number>();
   const checkedIds: number[] = [];
   for (const index of row.checked) {

@@ -50,6 +50,11 @@ async function syncFirstSeenDay({
       rows.find((row) => row.day.slice(0, 10) === today),
       todos
     );
+    // 오늘 빈 기록만 있으면 서버 체크를 그대로 두고 오늘 날짜만 기억한다
+    if (plan.kind === 'keep') {
+      useWeekCompletePopupStore.getState().rememberDay(uid, mark);
+      return;
+    }
     const checkedIds = plan.kind === 'sync' ? plan.checkedIds : [];
 
     const queryKey = [QueryKey.todos, uid];

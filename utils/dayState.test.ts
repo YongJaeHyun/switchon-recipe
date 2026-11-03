@@ -95,10 +95,9 @@ describe('firstSeenTodoPlan', () => {
     });
   });
 
-  it('오늘 기록에 체크가 없으면 빈 체크로 맞춘다', () => {
+  it('오늘 기록에 체크가 없으면 서버 체크를 건드리지 않는다 (빈 기록이 실제 체크보다 늦을 수 있다)', () => {
     expect(firstSeenTodoPlan({ items: ['아침', '점심', '저녁'], checked: [] }, todos)).toEqual({
-      kind: 'sync',
-      checkedIds: [],
+      kind: 'keep',
     });
   });
 
