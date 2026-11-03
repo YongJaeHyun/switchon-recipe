@@ -78,6 +78,11 @@ export default function CookingModeScreen() {
     if (router.canGoBack()) router.back();
     else router.replace('/(tabs)/home');
   };
+  // 완성하면 다음에 [요리 시작]을 눌렀을 때 처음부터 (중간에 닫으면 보던 단계부터 이어서)
+  const finish = () => {
+    setLastStep(id, 0);
+    close();
+  };
   const onSwipeEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) =>
     setIndex(Math.round(e.nativeEvent.contentOffset.x / width));
 
@@ -212,7 +217,7 @@ export default function CookingModeScreen() {
           <Text className="text-medium font-bold text-slate-300">← 이전</Text>
         </Pressable>
         <Pressable
-          onPress={() => (isLast ? close() : goTo(index + 1))}
+          onPress={() => (isLast ? finish() : goTo(index + 1))}
           accessibilityRole="button"
           accessibilityLabel={isLast ? '완성, 요리 모드 닫기' : '다음 단계'}
           className="min-h-14 flex-[1.4] items-center justify-center rounded-2xl bg-green-500">
