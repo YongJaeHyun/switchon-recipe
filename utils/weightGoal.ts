@@ -39,15 +39,11 @@ export interface GoalProgress {
   current: number;
   // 남은 kg (0 이상)
   remaining: number;
-  // 0~100. 증량 목표(목표 ≥ 시작)면 null
-  percent: number | null;
-  // 감량 목표 (목표 < 시작)
-  losing: boolean;
-  // 지금 기록이 목표에 닿음 (감량: 지금 ≤ 목표, 증량: 지금 ≥ 목표)
+  // 0~100 (시작이 목표 이하면 닿기 전 0, 닿으면 100)
+  percent: number;
+  // 지금(가장 최근) 체중이 목표 이하. 카드의 "닿았어요"는 이것만 본다
   reached: boolean;
-  // 달성 상태: 지금 닿았거나 이 목표가 이미 달성 기록에 있다 (다시 올라가도 달성으로 둔다)
-  achieved: boolean;
-  // 이 목표가 이미 달성 기록의 마지막 항목이다 (축하·기록 추가를 다시 하지 않는다)
+  // 이 목표값이 지금 프로그램의 달성 기록에 이미 있다 (축하·기록 추가를 다시 하지 않는다)
   recorded: boolean;
 }
 
@@ -91,16 +87,41 @@ export function goalFromRow(
 }
 
 // 입력 칸 → 목표. 목표 체중은 체중 입력과 같은 규칙(필수), 인바디 목표는 인바디 입력과 같은 규칙(선택)
-export function parseGoalInputs(texts: GoalInputTexts): {
+// 감량 앱이라 목표 체중은 지금 체중(currentKg, 가장 최근 기록)보다 낮아야 한다 (모르면 범위만 본다).
+// notLower = 범위 안이지만 지금 체중 이상이라 막음 ("지금 체중보다 낮게 정해 주세요")
+export function parseGoalInputs(
+  texts: GoalInputTexts,
+  currentKg?: number | null
+): {
   goal: WeightGoal | null;
   errors: Record<'weight' | BodyCompKind, boolean>;
+  notLower: boolean;
 } {
   const weight = parseWeightInput(texts.weight);
   const muscle = parseBodyCompInput(texts.muscle, 'muscle');
   const fat = parseBodyCompInput(texts.fat, 'fat');
-  const errors = { weight: weight === null, muscle: muscle === 'invalid', fat: fat === 'invalid' };
-  if (weight === null || muscle === 'invalid' || fat === 'invalid') return { goal: null, errors };
-  return { goal: { weight_goal_kg: weight, muscle_goal_kg: muscle, fat_goal_kg: fat }, errors };
+  const notLower = weight !== null && currentKg != null && weight >= currentKg;
+  const errors = {
+    weight: weight === null || notLower,
+    muscle: muscle === 'invalid',
+    fat: fat === 'invalid',
+  };
+  if (weight === null || notLower || muscle === 'invalid' || fat === 'invalid')
+    return { goal: null, errors, notLower };
+  return {
+    goal: { weight_goal_kg: weight, muscle_goal_kg: muscle, fat_goal_kg: fat },
+    errors,
+    notLower,
+  };
+}
+
+// 가장 최근(날짜가 가장 늦은) 기록의 체중. 기록이 없으면 null
+export function latestWeight(logs: WeightPoint[]): number | null {
+  const latest = logs.reduce<WeightPoint | null>(
+    (acc, log) => (!acc || log.day > acc.day ? log : acc),
+    null
+  );
+  return latest ? Number(latest.weight_kg) : null;
 }
 
 const toText = (value: number | null) => (value != null ? value.toFixed(1) : '');
@@ -129,30 +150,21 @@ export function goalProgress(
   const history = (period.history ?? []).filter(
     (item) => !periodStart || item.reached_on >= periodStart
   );
-  // 마지막 달성이 지금 목표면 이미 달성. 시작은 그 전 달성 지점
-  const last = history[history.length - 1];
-  const alreadyAchieved = !!last && last.goal_kg === goal;
-  const previous = alreadyAchieved ? history[history.length - 2] : last;
+  // 이 목표값을 이미 달성했으면 시작은 그 달성 바로 전 지점, 아니면 마지막 달성 지점
+  const ownIndex = history.map((item) => item.goal_kg).lastIndexOf(goal);
+  const previous = ownIndex >= 0 ? history[ownIndex - 1] : history[history.length - 1];
 
   const start = previous ? previous.reached_kg : Number(inPeriod[0].weight_kg);
   const current = Number(inPeriod[inPeriod.length - 1].weight_kg);
-  const losing = goal < start;
-  const reached = losing ? current <= goal : current >= goal;
-  const remaining = Math.max(0, round1(losing ? current - goal : goal - current));
-  const percent = losing
-    ? Math.round(Math.min(100, Math.max(0, ((start - current) / (start - goal)) * 100)))
-    : null;
-  return {
-    goal,
-    start,
-    current,
-    remaining,
-    percent,
-    losing,
-    reached,
-    achieved: reached || alreadyAchieved,
-    recorded: alreadyAchieved,
-  };
+  const reached = current <= goal;
+  const remaining = Math.max(0, round1(current - goal));
+  const percent =
+    start > goal
+      ? Math.round(Math.min(100, Math.max(0, ((start - current) / (start - goal)) * 100)))
+      : reached
+        ? 100
+        : 0;
+  return { goal, start, current, remaining, percent, reached, recorded: ownIndex >= 0 };
 }
 
 // "목표까지" 카드 글자
@@ -168,7 +180,7 @@ export function goalCardTexts(
     };
   }
   const path = `시작 ${progress.start.toFixed(1)}kg → 지금 ${progress.current.toFixed(1)}kg`;
-  if (progress.achieved) {
+  if (progress.reached) {
     const diff = round1(progress.start - progress.current);
     return {
       title: null,
@@ -179,7 +191,7 @@ export function goalCardTexts(
   return {
     title: `목표 ${goal.toFixed(1)}kg까지`,
     headline: `${progress.remaining.toFixed(1)}kg 남았어요`,
-    detail: progress.percent !== null ? `${path} · ${progress.percent}% 왔어요` : path,
+    detail: `${path} · ${progress.percent}% 왔어요`,
   };
 }
 
@@ -239,12 +251,12 @@ export function shouldAskGoalAfterSave(q: {
   return q.hadLogsBefore === false && q.goalStatus === 'none' && !q.skipped;
 }
 
-// 감량 목표에 지금 닿았고 아직 달성 기록에 없으면 추가할 항목 (= 축하할 때). 아니면 null
+// 지금 체중이 목표에 닿았고 이 목표값이 아직 달성 기록에 없으면 추가할 항목 (= 축하할 때). 아니면 null
 export function goalHistoryEntryToAdd(
   progress: GoalProgress | null,
   currentDay: string | null
 ): GoalHistoryItem | null {
-  if (!progress || !currentDay || !progress.losing || !progress.reached) return null;
+  if (!progress || !currentDay || !progress.reached) return null;
   if (progress.recorded) return null;
   return { goal_kg: progress.goal, reached_on: currentDay, reached_kg: progress.current };
 }

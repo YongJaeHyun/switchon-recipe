@@ -20,9 +20,9 @@ export function WeightGoalCard({
   onNewGoal(): void;
 }) {
   const { title, headline, detail } = goalCardTexts(goalKg, progress);
-  const achieved = !!progress?.achieved;
-  // 증량 목표는 진행 막대 없이 남은 kg만
-  const percent = achieved ? 100 : progress?.percent;
+  // 닿았어요 = 지금 체중이 목표 이하
+  const achieved = !!progress?.reached;
+  const percent = progress?.percent;
 
   return (
     <View className="gap-3 rounded-xl border border-neutral-200 bg-white p-4">

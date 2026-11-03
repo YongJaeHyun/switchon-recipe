@@ -10,6 +10,7 @@ import {
   goalInputTexts,
   goalProgress,
   inbodyGoalLines,
+  latestWeight,
   parseGoalInputs,
   shouldAskGoalAfterSave,
 } from './weightGoal';
@@ -73,6 +74,7 @@ describe('parseGoalInputs (체중·인바디 입력 규칙 재사용)', () => {
     expect(parseGoalInputs({ weight: '72', muscle: '', fat: '' })).toEqual({
       goal: { weight_goal_kg: 72, muscle_goal_kg: null, fat_goal_kg: null },
       errors: { weight: false, muscle: false, fat: false },
+      notLower: false,
     });
   });
 
@@ -88,6 +90,7 @@ describe('parseGoalInputs (체중·인바디 입력 규칙 재사용)', () => {
     expect(parseGoalInputs({ weight: '', muscle: '', fat: '' })).toEqual({
       goal: null,
       errors: { weight: true, muscle: false, fat: false },
+      notLower: false,
     });
     expect(parseGoalInputs({ weight: '19.9', muscle: '', fat: '' }).errors.weight).toBe(true);
     expect(parseGoalInputs({ weight: '300.1', muscle: '', fat: '' }).errors.weight).toBe(true);
@@ -97,7 +100,36 @@ describe('parseGoalInputs (체중·인바디 입력 규칙 재사용)', () => {
     expect(parseGoalInputs({ weight: '72', muscle: '4', fat: 'abc' })).toEqual({
       goal: null,
       errors: { weight: false, muscle: true, fat: true },
+      notLower: false,
     });
+  });
+
+  it('목표는 지금 체중보다 낮아야 한다 (같거나 높으면 저장하지 않음)', () => {
+    expect(parseGoalInputs({ weight: '72', muscle: '', fat: '' }, 78)).toMatchObject({
+      goal: { weight_goal_kg: 72 },
+      notLower: false,
+    });
+    expect(parseGoalInputs({ weight: '78', muscle: '', fat: '' }, 78)).toEqual({
+      goal: null,
+      errors: { weight: true, muscle: false, fat: false },
+      notLower: true,
+    });
+    expect(parseGoalInputs({ weight: '80', muscle: '', fat: '' }, 78).notLower).toBe(true);
+  });
+
+  it('지금 체중을 모르면 범위만 본다, 범위 밖이면 범위 오류가 먼저', () => {
+    expect(parseGoalInputs({ weight: '80', muscle: '', fat: '' }, null).goal).not.toBeNull();
+    expect(parseGoalInputs({ weight: '310', muscle: '', fat: '' }, 78)).toMatchObject({
+      errors: { weight: true },
+      notLower: false,
+    });
+  });
+});
+
+describe('latestWeight', () => {
+  it('날짜가 가장 늦은 기록의 체중, 없으면 null', () => {
+    expect(latestWeight([log('2026-11-01', 78), log('2026-10-31', 80)])).toBe(78);
+    expect(latestWeight([])).toBeNull();
   });
 });
 
@@ -118,9 +150,7 @@ describe('goalProgress', () => {
       current: 78,
       remaining: 6,
       percent: 25,
-      losing: true,
       reached: false,
-      achieved: false,
       recorded: false,
     });
   });
@@ -131,7 +161,6 @@ describe('goalProgress', () => {
       remaining: 0,
       percent: 100,
       reached: true,
-      achieved: true,
     });
   });
 
@@ -145,18 +174,13 @@ describe('goalProgress', () => {
     expect(goalProgress(logs, 72, period)).toMatchObject({ remaining: 9, percent: 0 });
   });
 
-  it('목표가 시작 이상(증량)이면 남은 kg만, 진행률 없음', () => {
-    const logs = [log('2026-10-21', 60), log('2026-10-30', 61)];
-    expect(goalProgress(logs, 63, period)).toEqual({
-      goal: 63,
-      start: 60,
-      current: 61,
+  it('시작이 목표 이하여도 나누지 않는다: 닿기 전 0, 닿으면 100', () => {
+    const history = [{ goal_kg: 75, reached_on: '2026-10-25', reached_kg: 71 }];
+    const logs = [log('2026-10-21', 80), log('2026-10-25', 71), log('2026-10-30', 74)];
+    expect(goalProgress(logs, 72, { ...period, history })).toMatchObject({
+      start: 71,
       remaining: 2,
-      percent: null,
-      losing: false,
-      reached: false,
-      achieved: false,
-      recorded: false,
+      percent: 0,
     });
   });
 
@@ -178,12 +202,12 @@ describe('goalProgress', () => {
       current: 70.5,
       remaining: 2.5,
       percent: 29,
-      achieved: false,
+      reached: false,
       recorded: false,
     });
   });
 
-  it('지금 목표가 이미 기록에 있으면 달성 유지 (다시 올라가도), 시작은 그 전 달성 지점', () => {
+  it('닿음은 지금 체중으로만: 기록에 있어도 다시 올라가면 닿지 않음. 시작은 그 전 달성 지점', () => {
     const logs = [log('2026-10-21', 80), log('2026-10-30', 71.5), log('2026-11-10', 69.9)];
     const history = [
       { goal_kg: 72, reached_on: '2026-10-30', reached_kg: 71.5 },
@@ -194,7 +218,20 @@ describe('goalProgress', () => {
       start: 71.5,
       current: 70.4,
       reached: false,
-      achieved: true,
+      recorded: true,
+    });
+  });
+
+  it('예전에 닿은 목표로 되돌리면 기록에 있음 (다시 축하하지 않음), 시작은 그 목표 전 지점', () => {
+    const history = [
+      { goal_kg: 72, reached_on: '2026-10-30', reached_kg: 71.5 },
+      { goal_kg: 70, reached_on: '2026-11-10', reached_kg: 69.9 },
+    ];
+    const logs = [log('2026-10-21', 80), log('2026-11-10', 69.9), log('2026-11-15', 73)];
+    expect(goalProgress(logs, 72, { ...period, history })).toMatchObject({
+      start: 80,
+      current: 73,
+      reached: false,
       recorded: true,
     });
   });
@@ -222,15 +259,6 @@ describe('goalCardTexts', () => {
       title: null,
       headline: '목표 72.0kg에 닿았어요 🎉',
       detail: '시작 80.0kg → 지금 71.5kg · 8.5kg 줄었어요',
-    });
-  });
-
-  it('증량 목표는 진행률 없이', () => {
-    const p = goalProgress([log('2026-10-21', 60), log('2026-10-30', 61)], 63, period);
-    expect(goalCardTexts(63, p)).toEqual({
-      title: '목표 63.0kg까지',
-      headline: '2.0kg 남았어요',
-      detail: '시작 60.0kg → 지금 61.0kg',
     });
   });
 
@@ -344,11 +372,9 @@ describe('달성 기록 (축하 1회 판정)', () => {
     expect(goalHistoryEntryToAdd(p, '2026-10-30')).toBeNull();
   });
 
-  it('닿지 않았거나 증량 목표, 기록 없음이면 null', () => {
+  it('닿지 않았거나 기록 없음이면 null', () => {
     const notYet = goalProgress([log('2026-10-21', 80), log('2026-10-30', 75)], 72, period);
-    const gained = goalProgress([log('2026-10-21', 60), log('2026-10-30', 64)], 63, period);
     expect(goalHistoryEntryToAdd(notYet, '2026-10-30')).toBeNull();
-    expect(goalHistoryEntryToAdd(gained, '2026-10-30')).toBeNull();
     expect(goalHistoryEntryToAdd(null, null)).toBeNull();
   });
 

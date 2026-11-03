@@ -73,6 +73,7 @@ import {
 } from 'utils/weightDateStrip';
 import {
   goalInputTexts,
+  latestWeight,
   type GoalInputTexts,
   shouldAskGoalAfterSave,
   type WeightGoal,
@@ -576,6 +577,7 @@ export function WeightInputSheet({
               mode={goalStep.mode}
               recordedKg={goalStep.recordedKg}
               initialTexts={goalStep.texts}
+              currentKg={goalStep.recordedKg ?? latestWeight(logs)}
               saving={isSavingGoal}
               onSave={(next) => void handleSaveGoal(next)}
               onSkip={finishGoalStep}

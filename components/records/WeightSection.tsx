@@ -183,7 +183,8 @@ export function WeightSection() {
     return inPeriod[inPeriod.length - 1]?.day ?? null;
   }, [logs, startDate, programStart]);
 
-  // 감량 목표에 닿았고 달성 기록에 없으면: 기록에 넣고 축하 (기록에 있으면 다시 축하하지 않는다)
+  // 목표에 닿았고 이 목표값이 달성 기록에 없으면: 기록에 넣고, 저장되면 축하 (기록에 있으면 다시 축하하지 않는다).
+  // 저장에 실패하면 축하하지 않고 다음에 다시 시도한다 (실패 안내는 API가 한다)
   useEffect(() => {
     if (!focused || !goal || progress === null) return;
     const entry = goalHistoryEntryToAdd(progress, lastDay);
@@ -191,8 +192,12 @@ export function WeightSection() {
     const key = `${entry.goal_kg}:${entry.reached_on}`;
     if (recordingRef.current === key) return;
     recordingRef.current = key;
-    setCelebration(goalCelebrationTexts(entry, progress.start));
-    void saveGoal({ weight_goal_history: appendGoalHistory(goal.history, entry) });
+    const texts = goalCelebrationTexts(entry, progress.start);
+    void (async () => {
+      const saved = await saveGoal({ weight_goal_history: appendGoalHistory(goal.history, entry) });
+      if (saved) setCelebration(texts);
+      else if (recordingRef.current === key) recordingRef.current = null;
+    })();
   }, [focused, goal, progress, lastDay, saveGoal]);
 
   const openGoal = (mode: WeightGoalRequest['mode']) => {

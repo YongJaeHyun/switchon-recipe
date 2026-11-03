@@ -41,6 +41,8 @@ interface WeightGoalStepProps {
   // ask일 때 방금 기록한 체중
   recordedKg?: number | null;
   initialTexts: GoalInputTexts;
+  // 지금(가장 최근) 체중. 목표는 이보다 낮아야 한다 (모르면 범위만 본다)
+  currentKg: number | null;
   saving: boolean;
   onSave(goal: WeightGoal): void;
   onSkip(): void;
@@ -52,6 +54,7 @@ export function WeightGoalStep({
   mode,
   recordedKg,
   initialTexts,
+  currentKg,
   saving,
   onSave,
   onSkip,
@@ -59,23 +62,28 @@ export function WeightGoalStep({
   const [texts, setTexts] = useState(initialTexts);
   // 범위 안내는 저장을 눌렀거나 칸을 벗어났을 때만 (체중 칸과 같다)
   const [errors, setErrors] = useState(NO_ERRORS);
+  const [notLower, setNotLower] = useState(false);
   const { title, subtitle } = TITLES[mode];
 
   const change = (kind: keyof GoalInputTexts, value: string) => {
     setTexts((prev) => ({ ...prev, [kind]: value }));
     setErrors((prev) => ({ ...prev, [kind]: false }));
+    if (kind === 'weight') setNotLower(false);
   };
 
   const blur = (kind: keyof GoalInputTexts) => {
     if (texts[kind].trim() === '') return;
-    if (parseGoalInputs(texts).errors[kind]) setErrors((prev) => ({ ...prev, [kind]: true }));
+    const parsed = parseGoalInputs(texts, currentKg);
+    if (parsed.errors[kind]) setErrors((prev) => ({ ...prev, [kind]: true }));
+    if (kind === 'weight') setNotLower(parsed.notLower);
   };
 
   const save = () => {
     if (saving) return;
-    const parsed = parseGoalInputs(texts);
+    const parsed = parseGoalInputs(texts, currentKg);
     if (!parsed.goal) {
       setErrors(parsed.errors);
+      setNotLower(parsed.notLower);
       return;
     }
     onSave(parsed.goal);
@@ -113,9 +121,11 @@ export function WeightGoalStep({
         <Text className="text-xl font-bold text-neutral-500">kg</Text>
       </View>
       <Text className={`mb-6 text-sm ${errors.weight ? 'text-red-500' : 'text-neutral-400'}`}>
-        {errors.weight
-          ? `${MIN_WEIGHT_KG}~${MAX_WEIGHT_KG}kg 사이로 입력해 주세요`
-          : '소수점 한 자리까지 정할 수 있어요'}
+        {notLower
+          ? '지금 체중보다 낮게 정해 주세요'
+          : errors.weight
+            ? `${MIN_WEIGHT_KG}~${MAX_WEIGHT_KG}kg 사이로 입력해 주세요`
+            : '소수점 한 자리까지 정할 수 있어요'}
       </Text>
 
       <View className="mb-3 flex-row items-center gap-2">
